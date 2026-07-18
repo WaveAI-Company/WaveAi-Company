@@ -24,7 +24,10 @@ BANDS = {
     "gamma": (30.0, 45.0),
 }
 
-_trapz = getattr(np, "trapezoid", getattr(np, "trapz"))
+# numpy >= 2.0 renomeou trapz -> trapezoid; fallback preguiçoso p/ numpy < 2.0.
+_trapz = getattr(np, "trapezoid", None)
+if _trapz is None:  # pragma: no cover - depende da versao do numpy
+    _trapz = np.trapz
 
 
 def psd(x, fs, nperseg=None):
