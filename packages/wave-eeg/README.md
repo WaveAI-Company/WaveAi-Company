@@ -13,7 +13,7 @@ O código é dividido em camadas testáveis:
 
 ## Instalação
 ```bash
-cd experiments/eeg-capture-spike
+cd packages/wave-eeg
 python -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install -e ".[serial,dev]"
 ```
