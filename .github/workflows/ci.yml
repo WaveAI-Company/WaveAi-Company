@@ -7,11 +7,11 @@ on:
     branches: [ main ]
 
 jobs:
-  test-eeg-spike:
+  test-wave-eeg:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: experiments/eeg-capture-spike
+        working-directory: packages/wave-eeg
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
