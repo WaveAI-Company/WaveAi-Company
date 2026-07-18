@@ -1,0 +1,30 @@
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+env/
+
+# --- Testes / cache ---
+.pytest_cache/
+.coverage
+htmlcov/
+
+# --- Dados de sinal (LGPD: nunca comitar dados de pessoas) ---
+*.csv
+*.edf
+*.fif
+data/
+raw/
+captures/
+
+# --- OS / IDE ---
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
