@@ -85,3 +85,13 @@ Registro central de tudo que ainda está **indefinido**. Prioridade: **P0** bloq
 ## Atualizações (2026-07-18) — captação de sinal
 - **Q-TEC-05 — ENCAMINHADA (P0→P1):** opções mapeadas e recomendação definida (ADR-0013 + [Architecture/21](Architecture/21_NeuroSky_Integration_and_Capture.md)); resta **executar** o spike do parser.
 - **[FATO verificado]** MindWave Mobile 2 é **dual-mode**: SPP (PC/Mac/Android) e **BLE/GATT (iOS)**. Remove o risco (antes hipótese) de bloqueio de iOS. Informa **Q-TEC-03 / ADR-0006** (framework mobile terá duas vias de transporte atrás da mesma abstração).
+
+---
+
+## Atualizações (2026-07-18) — serviço de análise (issue #3)
+
+| ID | Pergunta | Prio | Bloqueia |
+|---|---|---|---|
+| **Q-TEC-06** | Quais **limiares de qualidade de sinal** definem uma janela/sessão aproveitável (ex.: máx. contaminação de 60 Hz, faixa de amplitude, % de amostras com `poor_signal`)? | P1 | Campo `quality` do `AnalysisEngine`, rejeição de janelas, UX de "sinal ruim" |
+
+**Contexto:** o contrato `AnalysisEngine` (`Architecture/22`, §5) prevê um campo `quality` em `process_window`. Como não há definição de limiar defensável, a implementação v0 (`WaveEegEngine`) reporta apenas **métricas objetivas sem veredito** — `signal_std`, `mains_power` e `mains_power_ratio`. Nenhum limiar foi inventado. Quando Q-TEC-06 for respondida, a interpretação entra no engine sem quebrar o contrato.
