@@ -1,0 +1,72 @@
+# WaveAI — orquestração local de desenvolvimento.
+#
+# Uso (a partir de infra/):
+#   docker compose up --build
+#
+# Serviços: postgres, api (8000), analysis (8001).
+# Config por ambiente: copie .env.example para .env e ajuste (o .env real NÃO é
+# versionado). Os defaults abaixo são de DESENVOLVIMENTO LOCAL apenas.
+
+name: waveai
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-waveai}
+      # Valor descartável de desenvolvimento local. NUNCA usar em ambiente
+      # compartilhado ou produção — lá o segredo vem do ambiente/secret manager.
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-waveai_dev}
+      POSTGRES_DB: ${POSTGRES_DB:-waveai}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-waveai} -d ${POSTGRES_DB:-waveai}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      # A API se constrói a partir do próprio diretório (não depende do monorepo).
+      context: ../services/api
+      dockerfile: Dockerfile
+    environment:
+      WAVEAI_API_APP_ENV: ${WAVEAI_API_APP_ENV:-development}
+    ports:
+      - "${API_PORT:-8000}:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      # As imagens são python:slim (sem curl); o próprio Python faz o check.
+      test:
+        ["CMD", "python", "-c",
+         "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+
+  analysis:
+    build:
+      # O serviço de análise precisa de packages/wave-eeg -> contexto = raiz.
+      context: ..
+      dockerfile: services/analysis/Dockerfile
+    environment:
+      WAVEAI_ANALYSIS_APP_ENV: ${WAVEAI_ANALYSIS_APP_ENV:-development}
+    ports:
+      - "${ANALYSIS_PORT:-8001}:8001"
+    healthcheck:
+      test:
+        ["CMD", "python", "-c",
+         "import urllib.request; urllib.request.urlopen('http://localhost:8001/health')"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+
+volumes:
+  pgdata:
