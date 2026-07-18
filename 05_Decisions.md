@@ -1,0 +1,120 @@
+# 05 · Registro de Decisões (ADR Log) — WaveAI
+
+| Campo | Valor |
+|---|---|
+| Versão | 0.1 |
+| Status | Vivo |
+| Data | 2026-07-18 |
+
+Registro cronológico de **Architecture Decision Records (ADRs)**. Formato: Contexto → Decisão → Alternativas → Consequências → Status. Nenhuma decisão técnica relevante deve ser tomada fora deste log.
+
+Status possíveis: `Proposta` · `Aceita` · `Substituída` · `Revogada`.
+
+---
+
+## ADR-0001 — Natureza do produto: SaMD comercial
+**Status:** Aceita (2026-07-18)
+**Contexto:** Definir o posicionamento estratégico condiciona regulação, validação e rigor de engenharia.
+**Decisão:** O WaveAI será um **produto comercial classificado como Software as a Medical Device (SaMD)**.
+**Alternativas consideradas:**
+- *Bem-estar/consumer* — menor barreira regulatória, porém não permite claims clínicas; conflita com a visão de apoio ao neurologista.
+- *Pesquisa acadêmica* — rigor sem via comercial imediata.
+- *Portfólio* — sem exigências regulatórias.
+**Consequências:** Regulação (RDC 657/2022), gestão de risco (ISO 14971), ciclo de vida (IEC 62304) e QMS passam a ser pilares desde a Fase 0. Aumenta custo e prazo, mas habilita uso clínico legítimo.
+
+## ADR-0002 — Jurisdição regulatória alvo: Brasil (ANVISA / LGPD)
+**Status:** Aceita (2026-07-18)
+**Contexto:** É preciso um referencial regulatório para desenhar conformidade.
+**Decisão:** **Brasil** como mercado primário — ANVISA (RDC 657/2022, RDC 751/2022) e LGPD.
+**Alternativas consideradas:** EUA (FDA/HIPAA), Europa (MDR/GDPR), Global.
+**Consequências:** Arquitetura de dados orientada à LGPD (dado sensível, art. 11); dossiê e classificação segundo ANVISA. **[RECOMENDAÇÃO]** manter a arquitetura *portável* para futura expansão (FDA/MDR) sem retrabalho estrutural.
+
+## ADR-0003 — Recursos: time pequeno (2–5)
+**Status:** Aceita (2026-07-18)
+**Contexto:** Dimensionar o roadmap ao realismo do time.
+**Decisão:** Planejar para um **time pequeno multidisciplinar (2–5 pessoas)**.
+**Consequências:** Priorizar escopo enxuto, reuso, serviços gerenciados e automação. Evitar complexidade distribuída prematura. Sequenciar frentes em vez de paralelizar tudo.
+
+## ADR-0004 — Abordagem documental: docs-as-code, popular + expandir
+**Status:** Aceita (2026-07-18)
+**Contexto:** O projeto exige base documental sólida antes do código.
+**Decisão:** Adotar **documentação-como-código** (Markdown versionado), populando os documentos fundacionais (01–09) e expandindo a taxonomia por domínio (ver [Documentation/00_Documentation_Index](Documentation/00_Documentation_Index.md)).
+**Consequências:** Rastreabilidade e revisão via histórico; decisões registradas em ADR; RFCs para mudanças relevantes.
+
+---
+
+## Decisões pendentes (a virar ADR quando maduras)
+
+| Futuro ADR | Tema | Depende de | Prioridade |
+|---|---|---|---|
+| ADR-0005 | Processamento **edge vs nuvem** | Q-TEC-01, estudo de latência | P0 |
+| ADR-0006 | Stack **mobile** (React Native × Flutter × nativo) | Q-TEC-03, teste de SDK NeuroSky | P1 |
+| ADR-0007 | **Banco de série temporal** e retenção | Q-TEC-04 | P1 |
+| ADR-0008 | Provedor de **nuvem** e região (LGPD) | Q-LGP-01, ADR-0002 | P0 |
+| ADR-0009 | Abordagem inicial de **IA** (heurística DSP × ML) | Q-AI-02, dados disponíveis | P1 |
+| ADR-0010 | Estratégia de **on-ramp de bem-estar** | Q-REG-03 | P0 |
+| ADR-0011 | **Arquitetura de streaming** (WebSocket × MQTT × Kafka) | Q-TEC-01/02 | P1 |
+
+> **[RECOMENDAÇÃO]** Não promover nenhuma decisão pendente a "Aceita" antes de a pergunta em aberto correspondente estar resolvida com evidência — coerente com o princípio de não implementar o que não está suficientemente especificado.
+
+---
+
+## ADR-0012 — Estratégia regulatória faseada (protótipo não-clínico agora, SaMD depois)
+**Status:** Aceita (2026-07-18)
+**Contexto:** O fundador definiu a claim de forma genérica para evitar responsabilidade diagnóstica e informou **não haver neurologista consultor**, desejando evoluir tecnicamente sem validação clínica contínua. Isso é **incompatível** com operar como SaMD comercial *agora* (SaMD exige validação clínica).
+**Decisão:** Operar a **fase atual como protótipo de pesquisa / ferramenta de bem-estar não-clínica e não-diagnóstica**, adotando a Declaração de Uso Pretendido de [Medical/71](Medical/71_Intended_Use_and_Regulatory_Positioning.md); manter **SaMD como destino de longo prazo** (pós-investimento, com neurologista e QMS).
+**Alternativas:** (a) manter SaMD desde já — inviável sem neurologista/validação; (b) manter claim genérica sem reposicionar — pior dos mundos (finalidade médica + ambiguidade).
+**Consequências:** Reduz risco regulatório imediato; permite progresso técnico solo; exige disciplina de comunicação (guarda-corpos de marketing/UX). **Refina ADR-0001**, que passa a ser alvo de longo prazo, não modo de operação atual. Cria Q-REG-05.
+
+---
+
+## ADR-0013 — Estratégia de captação de sinal (estudo) + camada de abstração de dispositivo
+**Status:** Aceita (2026-07-18)
+**Contexto:** Necessário ler o raw 512 Hz do MindWave Mobile 2 para o estudo de fidelidade (Q-TEC-05). Quatro opções avaliadas em [Architecture/21](Architecture/21_NeuroSky_Integration_and_Capture.md). Fato verificado: o aparelho é dual-mode (SPP para PC/Mac/Android, BLE/GATT para iOS) — iOS não é bloqueio.
+**Decisão:** Para a **captação do estudo (PC/Mac, em Python)**: abordagem **híbrida** — (1) *bootstrap* rápido com TGC + biblioteca Python (NeuroPy/pyThinkGear) para validar a malha; (2) **parser direto do protocolo ThinkGear (pyserial)** como fundação durável. Tudo atrás de uma interface **`DeviceReader`** (anti-corrupção). Captação do estudo **desacoplada** do stack do produto.
+**Alternativas:** só TGC (desktop/antigo, libs sem manutenção); só parser direto (mais trabalho inicial).
+**Consequências:** Destrava o estudo de fidelidade; reduz dependência de libs não mantidas; reusa conhecimento de protocolo para o produto. **Não** decide a captação móvel do produto (fica em ADR-0006, agora informada pelos fatos de Bluetooth). Cria riscos R-09/R-10/R-11/R-12 (ver Architecture/21).
+
+---
+
+## ADR-0014 — Estrutura de repositório: monorepo
+**Status:** Aceita (2026-07-18)
+**Contexto:** Início da codificação, atrelada ao GitHub `WaveAI-Company/WaveAi-Company`. Time pequeno; necessidade de versionar documentação e código de forma rastreável.
+**Decisão:** **Monorepo** — documentação (núcleo + disciplinas) e código no mesmo repositório. Código do spike em `experiments/eeg-capture-spike/`; futuros `app/`, `backend/` etc. no mesmo repo.
+**Alternativas:** multi-repo (mais isolamento, mais overhead p/ time pequeno); só-código (docs fora do Git — perde rastreabilidade conjunta).
+**Consequências:** rastreabilidade única de docs+código+decisões; CI no mesmo repo. Crescimento futuro pode motivar mover docs para `docs/` (opcional, não bloqueante).
+
+## ADR-0015 — Modelo de branches: GitHub Flow
+**Status:** Aceita (2026-07-18)
+**Contexto:** Boas práticas de branch para um time de 2–5 pessoas.
+**Decisão:** **GitHub Flow** — `main` protegida e sempre implantável; branches curtas por tarefa; **Pull Request** com **CI obrigatório**; Conventional Commits. Guia e comandos em [Documentation/10_Git_Workflow](Documentation/10_Git_Workflow.md).
+**Alternativas:** Git Flow (cerimônia desnecessária nesta fase); trunk-based (exige CI/feature flags maduros).
+**Consequências:** fluxo leve e revisável; exige proteção de `main` e CI verde. Mudanças estruturais entram como RFC antes de virar ADR.
+
+---
+
+## ADR-0016 — Cliente: app universal React (Expo) para web + mobile, ambos os papéis
+**Status:** Aceita (2026-07-18)
+**Contexto:** O produto deve funcionar em **web e mobile**, para **médico e paciente**, com máximo reuso de React.
+**Decisão:** Um **app Expo (React Native + React Native Web)** único → iOS/Android/Web, com UI condicionada ao papel. Captura de EEG é *capability* por plataforma (mobile via módulo nativo BLE/SPP; web sem suporte exibe aviso).
+**Alternativas:** Next.js (web) + Expo (mobile) separados com pacotes compartilhados — mais controle na web, porém mais código/coordenação.
+**Consequências:** um só codebase e time; dashboards ricos exigem cuidado no RN Web. Ref.: [Architecture/22](Architecture/22_MVP_Platform_Architecture.md).
+
+## ADR-0017 — Execução da análise: no servidor
+**Status:** Aceita (2026-07-18)
+**Contexto:** Onde roda o DSP/ML: no app (edge) ou no servidor.
+**Decisão (recomendada):** **No servidor.** O app envia o raw (~1 KB/s) por WebSocket; o serviço Python (reusa `wave_eeg` atrás de `AnalysisEngine`) processa e devolve. Centraliza, torna atualizável sem republicar o app e rastreável.
+**Alternativas:** edge (offline/baixa latência, mas reescrever DSP em JS e difícil evoluir); híbrido (qualidade no edge, DSP no servidor) — futuro.
+**Consequências:** exige conectividade para a análise ao vivo; histórico funciona offline.
+
+## ADR-0018 — Backend/Auth: FastAPI + JWT + PostgreSQL
+**Status:** Aceita (2026-07-18)
+**Decisão (recomendada):** **FastAPI + JWT** (papéis paciente/médico), PostgreSQL. Mesma linguagem da análise; reusa o ecossistema Python.
+**Alternativas:** BaaS gerenciado (Supabase/Firebase) — muito menos código, menos controle, outra stack; Node/NestJS — TS alinhado ao front, separa do Python.
+**Consequências:** mais código de auth para manter, em troca de controle e coerência.
+
+## ADR-0019 — Transporte: WebSocket (ao vivo) + REST
+**Status:** Aceita (2026-07-18)
+**Decisão (recomendada):** **WebSocket** para o stream ao vivo (raw → features) e **REST** para auth, CRUD e relatórios de sessão.
+**Alternativas:** só REST (upload de sessão + relatório assíncrono) — mais simples, sem "ao vivo".
+**Consequências:** duas superfícies (WS+REST) para manter; melhor experiência ao vivo.
