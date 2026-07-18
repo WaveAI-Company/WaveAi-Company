@@ -37,6 +37,31 @@ jobs:
       - name: Run tests
         run: pytest -q
 
+  compose-smoke:
+    # Aceite da #5: `docker compose up` sobe o stack e os serviços respondem.
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: infra
+    steps:
+      - uses: actions/checkout@v4
+      - name: Subir o stack
+        run: docker compose up -d --build --wait
+      - name: Health checks
+        run: |
+          curl -fsS http://localhost:8000/health | tee /dev/stderr | grep -q '"ok"'
+          curl -fsS http://localhost:8001/health | tee /dev/stderr | grep -q '"ok"'
+      - name: Demo de análise ponta a ponta
+        run: |
+          curl -fsS -X POST http://localhost:8001/analyze/demo \
+            | tee /dev/stderr | grep -q '"verdict"'
+      - name: Logs em caso de falha
+        if: failure()
+        run: docker compose logs
+      - name: Derrubar
+        if: always()
+        run: docker compose down -v
+
   typecheck-app:
     runs-on: ubuntu-latest
     defaults:
