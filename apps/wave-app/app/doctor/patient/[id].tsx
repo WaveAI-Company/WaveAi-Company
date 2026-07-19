@@ -7,17 +7,11 @@ import { Card } from "../../../src/components/Card";
 import { MockBadge } from "../../../src/components/MockBadge";
 import { ScreenContainer } from "../../../src/components/ScreenContainer";
 import { StateView } from "../../../src/components/StateView";
+import { MOCK_SESSIONS, RESULTADO_INDISPONIVEL } from "../../../src/mocks/mockSessions";
 import { colors, spacing } from "../../../src/theme";
 
-/**
- * Sessões fictícias: o histórico real depende do relatório por sessão (#15).
- * Rotuladas na UI — nunca exibir mock sem deixar claro que não é dado real.
- */
-const MOCK_SESSIONS = [
-  { id: "s-1", date: "12/07/2026", duration: "8 min" },
-  { id: "s-2", date: "09/07/2026", duration: "12 min" },
-  { id: "s-3", date: "02/07/2026", duration: "6 min" },
-];
+// Mock compartilhado com as telas do paciente — a mesma sessão fictícia
+// aparece dos dois lados, e o selo de "dados fictícios" acompanha sempre.
 
 /**
  * Detalhe do paciente.
@@ -64,7 +58,7 @@ export default function PatientDetailScreen() {
             <Card
               key={session.id}
               title={`Sessão de ${session.date}`}
-              subtitle={`Duração ${session.duration} · resultado indisponível nesta fase`}
+              subtitle={`Duração ${session.duration} · ${RESULTADO_INDISPONIVEL}`}
               accent={colors.doctor}
             />
           ))}
