@@ -118,3 +118,32 @@ Status possíveis: `Proposta` · `Aceita` · `Substituída` · `Revogada`.
 **Decisão (recomendada):** **WebSocket** para o stream ao vivo (raw → features) e **REST** para auth, CRUD e relatórios de sessão.
 **Alternativas:** só REST (upload de sessão + relatório assíncrono) — mais simples, sem "ao vivo".
 **Consequências:** duas superfícies (WS+REST) para manter; melhor experiência ao vivo.
+
+---
+
+## ADR-0020 — Hashing de senha: Argon2id
+**Status:** Aceita (2026-07-18)
+**Contexto:** As issues #6/#7 introduzem credenciais. A escolha do algoritmo de hash de senha é decisão de segurança e deve ficar em ADR, não enterrada num commit.
+**Decisão:** **Argon2id** (lib `argon2-cffi` no FastAPI), atrás de uma interface `PasswordHasher` (permite trocar de algoritmo no futuro e suportar `needs_rehash`). Parâmetros conforme **OWASP Password Storage**: mínimo **m=19 MiB, t=2, p=1** (alternativa: m=46 MiB, t=1, p=1); usar os defaults mantidos pela lib e permitir ajuste por variável de ambiente. Nunca armazenar a senha — o hash do Argon2 já embute salt e parâmetros.
+**Alternativas:** **bcrypt** (aceitável, porém OWASP o reserva a sistemas legados; limite de 72 bytes exige pré-hash de senhas longas); **scrypt**; **PBKDF2** (mais frágil a GPU). Argon2id venceu a Password Hashing Competition e é a recomendação atual.
+**Consequências:** dependência `argon2-cffi`; custo de CPU/memória por login (aceitável e desejável). Implementar `check_needs_rehash` para futuros upgrades de parâmetros.
+
+## ADR-0021 — Política de tokens (JWT): TTL, rotação, revogação e armazenamento
+**Status:** Aceita (2026-07-18)
+**Contexto:** Definir tempo de vida dos tokens e onde o app (Expo universal) os persiste — decisão de segurança referenciada por #7 e #8.
+**Decisão:**
+- **Access token** JWT **curto: 15 min**; claims mínimas (`sub`, `role`, `exp`, `jti`); assinatura **HS256** com segredo forte via env (MVP mono-serviço; migrar para RS256 se vários serviços passarem a validar).
+- **Refresh token: 7 dias**, **rotacionado a cada uso** e **revogável** (guardar hash/`jti` no banco, ou `token_version` por usuário; logout invalida). 
+- **Armazenamento no cliente:** **Mobile** → `expo-secure-store` (Keychain iOS / Keystore Android) para o refresh, access em memória. **Web** → refresh em **cookie `httpOnly` + `Secure` + `SameSite`** (inacessível a JS, mitiga roubo por XSS), access em memória. **Nunca** tokens em `localStorage`.
+- **Não** colocar dado sensível no payload do JWT (é apenas base64, legível).
+**Alternativas:** access longo sem refresh (sem revogação — pior); tokens em `localStorage` (vulnerável a XSS); tokens opacos + sessão no servidor (mais estado; reconsiderar em escala).
+**Consequências:** backend ganha endpoints de refresh + revogação; o cliente trata persistência **por plataforma** (nuance do app universal). Segredos e rotação de chave via env/secret manager.
+
+---
+
+## ADR-0022 — Minimização de dados de perfil (LGPD)
+**Status:** Aceita (2026-07-18)
+**Contexto:** Ao modelar o usuário (#6) surge a tentação de adicionar campos de perfil (CRM, data de nascimento, condição de saúde). São dados pessoais — alguns **sensíveis** — e decisões de produto, não de implementação.
+**Decisão:** Perfis **minimalistas**: apenas `display_name` (além de email, role e credenciais). **Não** coletar CRM, data de nascimento, condição de saúde ou qualquer dado sensível nesta fase. A **verificação profissional do médico** (ex.: CRM + validação) é **feature futura**, com issue e finalidade próprias quando o produto exigir.
+**Alternativas:** coletar campos "por precaução" — rejeitado: viola a **minimização** da LGPD, cria dado sensível sem finalidade e é decisão de produto não especificada.
+**Consequências:** menor superfície de dados pessoais e menor risco. Quando um campo for necessário, entra com **finalidade explícita** e, se sensível, base legal/consentimento. Coerente com [Medical/71](Medical/71_Intended_Use_and_Regulatory_Positioning.md) (não-clínico) e com o princípio de o coder não inventar produto.

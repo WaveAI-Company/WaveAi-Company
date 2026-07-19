@@ -141,3 +141,15 @@ gh auth login                          # se ainda não autenticado
 bash infra/scripts/bootstrap_github.sh # dentro do repositório
 ```
 Requer o **GitHub CLI** (`gh`). Milestones repetidos são ignorados; **não** rode as issues duas vezes (ou apague as duplicadas). Cada issue aponta para este documento (escopo/aceite/testes completos aqui).
+
+---
+
+## Atualização (2026-07-18) — segurança de #6/#7 (decidido)
+- **#6 (hash de senha):** usar **Argon2id** (`argon2-cffi`) atrás de `PasswordHasher`; parâmetros OWASP (m=19 MiB, t=2, p=1). Ver **ADR-0020**.
+- **#7 (JWT):** access **15 min** + refresh **7 dias** rotacionado e revogável; armazenamento por plataforma (mobile `expo-secure-store`; web cookie `httpOnly`); HS256 por env. Ver **ADR-0021**.
+
+### Confirmações de #6/#7 (2026-07-18)
+- **Revogação:** `token_version` no `User` (logout global) já na **#6**; tabela `RefreshToken` (rotação + **detecção de reuso** → revoga a família de tokens) na **#7**, com migration própria. ✔
+- **Perfil:** apenas `display_name` — ver **ADR-0022** (minimização/LGPD). ✔
+- **Migrations:** **não** auto-rodar no start do container; passo explícito `alembic upgrade head` (documentar; helper de dev opcional, ex.: alvo no Makefile/compose). ✔
+- **E-mail:** normalizar (trim + lowercase) na borda + **constraint única** no valor normalizado; validar formato. ✔
