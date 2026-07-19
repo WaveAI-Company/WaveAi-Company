@@ -38,11 +38,39 @@ src/                   # tema e componentes compartilhados
 
 No web, cada tela tem URL própria (`/`, `/patient`, `/doctor`).
 
+## Autenticação (ADR-0021)
+
+Login/registro reais contra a API, com **guarda de rota por papel**: ao entrar,
+paciente vai para `/patient` e médico para `/doctor`; tentar a área do outro
+papel redireciona de volta.
+
+### Onde o token fica — e a assimetria que importa
+
+O access token vive **só em memória**, nunca em disco, nas duas plataformas.
+O refresh é uma **capability por plataforma** (`src/auth/storage*.ts`):
+
+| Plataforma | Refresh token |
+|---|---|
+| **Web** | Cookie `httpOnly` setado pelo backend. O app **não guarda nada** — `saveRefreshToken` é no-op e `getRefreshToken` devolve `null`. O navegador anexa o cookie sozinho (`credentials: "include"`). |
+| **Mobile** | `expo-secure-store` (Keychain/Keystore); enviado no corpo da requisição. |
+
+No web o token é **inacessível ao JS por design**: um XSS não tem o que roubar.
+**Nunca** usar `localStorage`/`sessionStorage` para tokens.
+
+### Configuração
+
+`EXPO_PUBLIC_API_URL` aponta para a API (ver `.env.example`). Em produção o MVP
+assume **same-origin** (app e API no mesmo domínio/proxy), o que mantém o cookie
+simples e permite `SameSite=Lax` mitigar CSRF. Em dev o Expo serve na 8081 e a
+API na 8000, então a API libera essas origens por CORS com credenciais.
+
+> Cenário **cross-site** (`SameSite=None; Secure` + token anti-CSRF) é um TODO
+> deliberado, não implementado — ver issue de endurecimento de auth.
+
 ## O que ainda NÃO existe (por design)
 
 | Assunto | Issue |
 |---|---|
-| Login/registro real + rotas por papel (JWT) | #8 |
 | Captação de EEG (BLE/SPP no mobile) | #12 |
 | Telas do médico com dados reais | #10 |
 | Histórico do paciente com dados reais | #11 |

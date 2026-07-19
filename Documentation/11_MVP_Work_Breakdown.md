@@ -163,3 +163,11 @@ Requer o **GitHub CLI** (`gh`). Milestones repetidos são ignorados; **não** ro
 - **Escopo:** lockout de conta; rate-limit distribuído (Redis); backoff/CAPTCHA; auditoria de falhas de login.
 - **Depende de:** #7. **Ref.:** ADR-0023.
 - **Aceite:** limiter compartilhado entre réplicas; bloqueio após N falhas; eventos de falha auditados.
+
+### Notas para #8 (2026-07-18) — armazenamento de token por plataforma
+- **Abstração `TokenStorage`** (capability por plataforma, como `DeviceConnection`):
+  - **Mobile:** refresh em `expo-secure-store` (Keychain/Keystore); access em **memória**.
+  - **Web:** refresh em **cookie `httpOnly`** setado pelo backend → o app **NÃO** guarda o refresh em JS (nem `localStorage`, nem storage algum); só mantém o access em memória. "Salvar refresh" no web é **no-op**; o navegador envia o cookie sozinho. Chamar o refresh com `credentials: 'include'`.
+- **[RECOMENDAÇÃO] Deploy same-origin no MVP** (app web e API no mesmo domínio/proxy) para o cookie `httpOnly` funcionar simples. Com `SameSite=Lax/Strict` o **CSRF** fica mitigado. Se um dia for cross-site: `SameSite=None; Secure` + token anti-CSRF (double-submit) — deixar TODO, não implementar agora.
+- **Validação:** caminho web verificável no navegador; mobile só por bundle (como na #4) — aceitável para o MVP.
+- **#19** (endurecimento de auth) ainda não existe como issue no GitHub — **criar via `gh`** (o bootstrap gerou só as 18 originais).

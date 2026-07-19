@@ -1,5 +1,7 @@
 import { StyleSheet, Text } from "react-native";
 
+import { useAuth } from "../../src/auth/AuthContext";
+import { Button } from "../../src/components/Button";
 import { Card } from "../../src/components/Card";
 import { MockBadge } from "../../src/components/MockBadge";
 import { ScreenContainer } from "../../src/components/ScreenContainer";
@@ -18,11 +20,14 @@ const MOCK_PATIENTS = [
  * telas de detalhe (issue #10).
  */
 export default function DoctorScreen() {
+  const { user, signOut } = useAuth();
+
   return (
     <ScreenContainer>
       <Text style={styles.heading}>Pacientes</Text>
       <Text style={styles.lead}>
-        Acompanhamento dos pacientes vinculados a você.
+        {user?.display_name ? `${user.display_name} — a` : "A"}companhamento dos
+        pacientes vinculados a você.
       </Text>
 
       <MockBadge />
@@ -39,6 +44,8 @@ export default function DoctorScreen() {
         Dados exploratórios de bem-estar — não-clínicos e não-diagnósticos. Não
         substituem avaliação profissional.
       </Text>
+
+      <Button label="Sair" onPress={signOut} accent={colors.border} />
     </ScreenContainer>
   );
 }

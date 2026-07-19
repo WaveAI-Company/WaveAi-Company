@@ -55,6 +55,17 @@ class Settings(BaseSettings):
     refresh_cookie_secure: bool = True
     refresh_cookie_samesite: str = "lax"
 
+    # -- CORS ----------------------------------------------------------------
+    #: Origens permitidas (separadas por vírgula) para o app web.
+    #: Em produção o MVP assume **same-origin** (app e API atrás do mesmo
+    #: domínio/proxy), então CORS não é necessário; isto atende o dev, em que
+    #: o Expo serve na 8081 e a API na 8000.
+    cors_origins: str = "http://localhost:8081,http://127.0.0.1:8081"
+
+    @property
+    def cors_origin_list(self) -> list[str]:
+        return [origem.strip() for origem in self.cors_origins.split(",") if origem.strip()]
+
     @field_validator("jwt_secret")
     @classmethod
     def _validar_segredo(cls, value: str) -> str:
