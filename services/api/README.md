@@ -128,6 +128,21 @@ backoff, auditoria) é a **issue #19**.
 `Secure` só trafega sob HTTPS. Em dev local (HTTP) use
 `WAVEAI_API_REFRESH_COOKIE_SECURE=false`, senão o navegador descarta o cookie.
 
+## Dados de desenvolvimento (seed)
+
+Cria um médico e três pacientes **fictícios** com vínculos `active`, para
+exercitar as telas sem passar pelo fluxo de convite (que é a #20):
+
+```bash
+python -m scripts.seed_dev
+# Medico de teste: dra.ficticia@example.com / senha-de-teste-bem-longa
+```
+
+É idempotente (rodar duas vezes não duplica) e **recusa-se a rodar** com
+`app_env` diferente de `development` — semear um banco real com contas de senha
+conhecida seria uma porta dos fundos. Todos os dados são inventados, em
+`example.com` (LGPD: nenhum dado de pessoa real).
+
 ## Testes
 
 ```bash
