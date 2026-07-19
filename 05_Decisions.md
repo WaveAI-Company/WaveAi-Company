@@ -159,3 +159,16 @@ Status possíveis: `Proposta` · `Aceita` · `Substituída` · `Revogada`.
 - **Endurecimento completo → issue #19 (M1):** lockout de conta, limiter distribuído (Redis), backoff/CAPTCHA, auditoria de falhas.
 **Alternativas:** adiar todo rate-limit (rejeitado — expõe DoS/brute-force desde o 1º dia); default de segredo "para facilitar o dev" (rejeitado — é assim que chaves vazam).
 **Consequências:** login robusto desde o MVP. Reforça ADR-0021 (JWT) e ADR-0020 (Argon2id). O limiter in-memory não compartilha estado entre réplicas até o #19.
+
+---
+
+## ADR-0024 — Consentimento e ciclo de vida do vínculo médico-paciente (CareLink)
+**Status:** Aceita (2026-07-18)
+**Contexto:** A #9 cria `CareLink(doctor, patient, status)`. Dados de EEG/saúde são **sensíveis** (LGPD art. 11); o acesso de um profissional aos dados de uma pessoa precisa de base legal — na nossa arquitetura, o **consentimento explícito do titular**. É a decisão de maior consequência regulatória do MVP.
+**Decisão:**
+- **Consent-first:** o vínculo nasce **`pending`** e **não concede acesso a nenhum dado**. O acesso (RBAC a sessões/resultados) só existe com o vínculo **`active`**, o que exige um **ato explícito do paciente** (aceitar o convite do médico, **ou** o próprio paciente iniciar o vínculo). **Invariante: nenhum acesso aos dados de um paciente sem um ato de autorização desse paciente** — enforçado na **camada de autorização**, não só na UI.
+- **Convite à prova de enumeração:** convidar por e-mail retorna resposta **genérica e idêntica** ("solicitação registrada"), exista ou não a conta (mesmo vetor da ADR-0023). A aceitação aparece depois, pela mudança de status do vínculo — não pela resposta ao convite.
+- **Revogação bilateral, a qualquer momento:** paciente **e** médico podem encerrar. Para o paciente é **exercício de direito sobre os próprios dados (LGPD)**, não cortesia: efeito **imediato** (acesso cortado na hora), estado vira `revoked`. Re-vincular exige **novo ciclo de consentimento** (pending→active), sem reativação silenciosa.
+- **Auditoria:** registrar eventos de consentimento e revogação (quem, quando) — é o registro que sustenta a base legal.
+**Alternativas:** vínculo **ativo na criação** (acesso unilateral do médico) — **rejeitado**: processa dado sensível sem base legal válida, viola autonomia e contradiz [Medical/71](Medical/71_Intended_Use_and_Regulatory_Positioning.md).
+**Consequências:** fluxo de convite/aceite no app (#10/#11) e RBAC condicionado a `active`. Semente para um futuro doc de **Consentimento & Direitos do Titular** (escopo, expiração, exclusão/portabilidade). Relaciona ADR-0023, [Medical/70](Medical/70_Regulatory_Clinical_Strategy.md) (LGPD) e Medical/71.

@@ -171,3 +171,10 @@ Requer o **GitHub CLI** (`gh`). Milestones repetidos são ignorados; **não** ro
 - **[RECOMENDAÇÃO] Deploy same-origin no MVP** (app web e API no mesmo domínio/proxy) para o cookie `httpOnly` funcionar simples. Com `SameSite=Lax/Strict` o **CSRF** fica mitigado. Se um dia for cross-site: `SameSite=None; Secure` + token anti-CSRF (double-submit) — deixar TODO, não implementar agora.
 - **Validação:** caminho web verificável no navegador; mobile só por bundle (como na #4) — aceitável para o MVP.
 - **#19** (endurecimento de auth) ainda não existe como issue no GitHub — **criar via `gh`** (o bootstrap gerou só as 18 originais).
+
+### Notas para #9 (2026-07-18) — consentimento (ver ADR-0024)
+- `CareLink` nasce **`pending`** (sem acesso a dado nenhum); vira **`active`** só após **ato explícito do paciente** (aceite ou iniciativa própria). RBAC a sessões/resultados exige `active`.
+- Convite por e-mail: resposta **genérica idêntica** (anti-enumeração, como no login).
+- **Revogação** por paciente **ou** médico a qualquer momento; efeito **imediato**; estado `revoked`; re-vínculo = novo consentimento.
+- **Auditar** eventos de consentimento/revogação (quem, quando).
+- **Aceite (testes):** médico com vínculo `pending` **não** acessa dados (403); acesso só com `active`; paciente revoga → acesso cortado imediatamente; convite **não** revela se o e-mail tem conta.

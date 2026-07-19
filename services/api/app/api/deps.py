@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import uuid
 from collections.abc import Callable, Iterator
 
 from fastapi import Depends, HTTPException, Request, status
@@ -16,6 +17,7 @@ from ..security.password import PasswordHasher, get_password_hasher
 from ..security.rate_limit import SlidingWindowRateLimiter
 from ..security.tokens import InvalidTokenError, decode_access_token
 from ..services.auth import AuthService
+from ..services.care import CareService
 
 _bearer = HTTPBearer(auto_error=False)
 
@@ -90,6 +92,36 @@ def require_role(*roles: UserRole) -> Callable[..., User]:
         return user
 
     return dependency
+
+
+def get_care_service(
+    session: Session = Depends(get_session),
+    hasher: PasswordHasher = Depends(get_hasher),
+) -> CareService:
+    return CareService(session=session, hasher=hasher)
+
+
+def require_active_care_link(
+    patient_id: uuid.UUID,
+    doctor: User = Depends(require_role(UserRole.DOCTOR)),
+    care: CareService = Depends(get_care_service),
+) -> User:
+    """Autorização de acesso aos dados de um paciente (ADR-0024).
+
+    A invariante vive **aqui**, na camada de autorização — e não na UI: sem um
+    vínculo `ACTIVE` (isto é, sem um ato de consentimento do próprio paciente),
+    o médico recebe 403. Vínculo `PENDING` ou `REVOKED` não concede nada.
+
+    Devolve o **paciente**, para a rota não precisar buscá-lo de novo.
+    """
+    link = care.acesso_ativo(doctor=doctor, patient_id=patient_id)
+    if link is None:
+        # Mensagem única: não distingue "não existe" de "não autorizado", para
+        # não virar oráculo de quem é paciente de quem.
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="sem vinculo ativo com este paciente"
+        )
+    return link.patient
 
 
 def client_ip(request: Request) -> str:
