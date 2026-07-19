@@ -16,6 +16,7 @@ from ..repositories.user import UserRepository
 from ..security.password import PasswordHasher, get_password_hasher
 from ..security.rate_limit import SlidingWindowRateLimiter
 from ..security.tokens import InvalidTokenError, decode_access_token
+from ..services.analysis_client import AnalysisClient, HttpAnalysisClient
 from ..services.auth import AuthService
 from ..services.care import CareService
 
@@ -92,6 +93,14 @@ def require_role(*roles: UserRole) -> Callable[..., User]:
         return user
 
     return dependency
+
+
+def get_analysis_client(settings: Settings = Depends(get_settings)) -> AnalysisClient:
+    """Cliente do serviço de Analysis (o gateway só encaminha janelas)."""
+    return HttpAnalysisClient(
+        base_url=settings.analysis_url,
+        timeout_seconds=settings.analysis_timeout_seconds,
+    )
 
 
 def get_care_service(

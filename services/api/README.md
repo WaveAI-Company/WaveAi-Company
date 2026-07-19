@@ -165,8 +165,26 @@ teto, um cliente enche a memória do servidor num único frame.
 
 **O sinal bruto não é persistido.** Pelo fluxo da ADR-0017 persiste-se o
 `Result` (features + `engine_version`); guardar raw está **fora do escopo do
-MVP** até haver necessidade concreta (Q-TEC-04 / ADR-0005 seguem abertos). O
-encaminhamento à Analysis é `TODO(#14)`.
+MVP** até haver necessidade concreta (Q-TEC-04 / ADR-0005 seguem abertos).
+
+### Features ao vivo (#14)
+
+A cada `stream_window_seconds` de sinal acumulado, o gateway encaminha a janela
+para `POST /analyze/window` da Analysis e devolve o resultado junto do `ack`:
+
+```json
+{"type":"ack","seq":3,"received":256,"total":1024,
+ "features":{"rel_alpha":0.94,"relative_band_powers":{...},"quality":{...},
+             "engine_version":"WaveEegEngine/0.1.0+wave_eeg/0.1.0"}}
+```
+
+O gateway **não analisa nada** — só encaminha (regra rígida: nada de DSP na
+API). A janela é decisão de **cadência**; a semântica de época do sinal vive no
+`AnalysisEngine`.
+
+**Analysis fora do ar não derruba a captação:** o bloco continua sendo aceito, a
+sessão segue registrada e o cliente recebe `"features":{"unavailable":true}`.
+Perder o "ao vivo" é aceitável; perder a sessão do paciente não.
 
 ## Dados de desenvolvimento (seed)
 
