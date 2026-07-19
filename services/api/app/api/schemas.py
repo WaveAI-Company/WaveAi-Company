@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 import uuid
+from datetime import datetime
 from enum import Enum
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
+from ..models.care_link import CareLinkParty, CareLinkStatus
 from ..models.user import UserRole
 
 #: Comprimento mínimo de senha. Alinhado ao OWASP (mínimo 8); o custo real de
@@ -60,3 +62,32 @@ class UserResponse(BaseModel):
     email: str
     role: UserRole
     display_name: str | None = None
+
+
+class CareLinkRequest(BaseModel):
+    """E-mail da contraparte (paciente, se quem pede é médico — e vice-versa)."""
+
+    email: EmailStr
+
+
+class CareLinkResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    status: CareLinkStatus
+    initiated_by: CareLinkParty
+    #: Só a contraparte é exposta — nunca dados de terceiros.
+    counterpart_user_id: uuid.UUID
+    counterpart_display_name: str | None
+    counterpart_role: UserRole
+    created_at: datetime
+    consented_at: datetime | None
+
+
+class PatientSummary(BaseModel):
+    """Dados mínimos do paciente (ADR-0022: minimização)."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    display_name: str | None
