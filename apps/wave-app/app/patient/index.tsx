@@ -1,5 +1,7 @@
 import { Platform, StyleSheet, Text } from "react-native";
 
+import { useAuth } from "../../src/auth/AuthContext";
+import { Button } from "../../src/components/Button";
 import { Card } from "../../src/components/Card";
 import { MockBadge } from "../../src/components/MockBadge";
 import { ScreenContainer } from "../../src/components/ScreenContainer";
@@ -19,10 +21,11 @@ const MOCK_SESSIONS = [
  */
 export default function PatientScreen() {
   const captureSupported = Platform.OS !== "web";
+  const { user, signOut } = useAuth();
 
   return (
     <ScreenContainer>
-      <Text style={styles.heading}>Olá!</Text>
+      <Text style={styles.heading}>Olá, {user?.display_name ?? "paciente"}!</Text>
       <Text style={styles.lead}>
         Acompanhe suas sessões e tendências de bem-estar.
       </Text>
@@ -50,6 +53,8 @@ export default function PatientScreen() {
       <Text style={styles.footnote}>
         Uso exploratório de bem-estar — não-clínico e não-diagnóstico.
       </Text>
+
+      <Button label="Sair" onPress={signOut} accent={colors.border} />
     </ScreenContainer>
   );
 }
