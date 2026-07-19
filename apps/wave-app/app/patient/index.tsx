@@ -1,27 +1,26 @@
-import { Platform, StyleSheet, Text } from "react-native";
+import { useRouter } from "expo-router";
+import { Platform, Pressable, StyleSheet, Text } from "react-native";
 
 import { useAuth } from "../../src/auth/AuthContext";
-import { Button } from "../../src/components/Button";
 import { Card } from "../../src/components/Card";
 import { MockBadge } from "../../src/components/MockBadge";
 import { ScreenContainer } from "../../src/components/ScreenContainer";
-import { colors, spacing } from "../../src/theme";
+import { MOCK_SESSIONS, RESULTADO_INDISPONIVEL } from "../../src/mocks/mockSessions";
+import { colors, radius, spacing } from "../../src/theme";
 
-/** Sessões fictícias apenas para dar forma à tela (issue #11 traz o histórico real). */
-const MOCK_SESSIONS = [
-  { id: "s-1", date: "12/07/2026", duration: "8 min" },
-  { id: "s-2", date: "09/07/2026", duration: "12 min" },
-];
+/** Quantas sessões aparecem na home antes de "ver todas". */
+const RESUMO = 2;
 
 /**
- * Área do paciente (placeholder).
+ * Home do paciente.
  *
  * Captação é uma **capability por plataforma** (`Architecture/22`, §3): existe
- * no mobile (módulo nativo BLE/SPP, issue #12) e não no web puro.
+ * no mobile (módulo nativo BLE/SPP, #12) e não no web puro.
  */
-export default function PatientScreen() {
+export default function PatientHomeScreen() {
+  const { user } = useAuth();
+  const router = useRouter();
   const captureSupported = Platform.OS !== "web";
-  const { user, signOut } = useAuth();
 
   return (
     <ScreenContainer>
@@ -40,21 +39,36 @@ export default function PatientScreen() {
         accent={captureSupported ? colors.patient : colors.warning}
       />
 
+      <Text style={styles.secao}>Sessões recentes</Text>
       <MockBadge />
-      {MOCK_SESSIONS.map((session) => (
+      {MOCK_SESSIONS.slice(0, RESUMO).map((session) => (
         <Card
           key={session.id}
           title={`Sessão de ${session.date}`}
-          subtitle={`Duração ${session.duration} · resultado indisponível nesta fase`}
+          subtitle={`Duração ${session.duration} · ${RESULTADO_INDISPONIVEL}`}
           accent={colors.patient}
         />
       ))}
 
+      <Pressable
+        accessibilityRole="button"
+        onPress={() => router.push("/patient/history")}
+        style={({ pressed }) => [styles.acao, pressed && styles.pressed]}
+      >
+        <Text style={styles.acaoTexto}>Ver histórico completo</Text>
+      </Pressable>
+
+      <Pressable
+        accessibilityRole="button"
+        onPress={() => router.push("/patient/profile")}
+        style={({ pressed }) => [styles.acao, pressed && styles.pressed]}
+      >
+        <Text style={styles.acaoTexto}>Meu perfil</Text>
+      </Pressable>
+
       <Text style={styles.footnote}>
         Uso exploratório de bem-estar — não-clínico e não-diagnóstico.
       </Text>
-
-      <Button label="Sair" onPress={signOut} accent={colors.border} />
     </ScreenContainer>
   );
 }
@@ -70,6 +84,27 @@ const styles = StyleSheet.create({
     fontSize: 15,
     lineHeight: 22,
     marginBottom: spacing.sm,
+  },
+  secao: {
+    color: colors.text,
+    fontSize: 17,
+    fontWeight: "600",
+    marginTop: spacing.sm,
+  },
+  acao: {
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    paddingVertical: spacing.md,
+  },
+  pressed: {
+    opacity: 0.7,
+  },
+  acaoTexto: {
+    color: colors.patient,
+    fontSize: 15,
+    fontWeight: "600",
+    textAlign: "center",
   },
   footnote: {
     color: colors.textMuted,
