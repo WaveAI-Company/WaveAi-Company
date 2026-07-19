@@ -53,7 +53,12 @@ type TokenResponse = {
   refresh_token: string | null;
 };
 
-async function request<T>(
+/**
+ * Chamada HTTP à API. Exportada para os demais módulos reusarem o mesmo
+ * tratamento de erro, o access token em memória e o `credentials: "include"`
+ * (sem o qual o cookie do refresh não trafega no web).
+ */
+export async function request<T>(
   path: string,
   options: { method?: string; body?: unknown; auth?: boolean } = {},
 ): Promise<T> {
