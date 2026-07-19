@@ -128,6 +128,46 @@ backoff, auditoria) é a **issue #19**.
 `Secure` só trafega sob HTTPS. Em dev local (HTTP) use
 `WAVEAI_API_REFRESH_COOKIE_SECURE=false`, senão o navegador descarta o cookie.
 
+## Gateway de streaming — `WS /stream` (ADR-0025)
+
+Recebe blocos de sinal bruto de um **paciente autenticado** e mantém a
+`CaptureSession`.
+
+```
+cliente -> {"type":"auth",    "token":"<access>"}      servidor -> {"type":"auth_ok"}
+        -> {"type":"start",   "device":"mindwave-mobile-2", "sample_rate":512}
+                                                       <- {"type":"session","session_id":...}
+        -> {"type":"samples", "seq":1, "data":[...]}   <- {"type":"ack","received":n,"total":N}
+        -> {"type":"stop"}                             <- {"type":"closed","sample_count":N}
+```
+
+**Token na primeira mensagem, nunca na URL.** Query string vaza em log de
+servidor, proxy e histórico; navegador não permite cabeçalho customizado em
+WebSocket. Nenhum frame de dados é processado antes do `auth`, que tem **10 s**
+de prazo. Em produção o transporte é **`wss://`** — sem TLS o token iria em claro.
+
+**Papéis:** só `patient` abre stream (a pessoa transmite o próprio sinal). O
+**consentimento (ADR-0024) não é exigido aqui**: ele governa a leitura pelo
+médico, não o direito do paciente de captar o próprio sinal.
+
+**Ciclo de vida:** `active` → `completed` (com `stop`) ou `aborted` (queda sem
+`stop`) — uma conexão perdida nunca deixa sessão ativa para sempre.
+
+**Limites** (config por env): amostras por bloco, por sessão e taxa máxima. Sem
+teto, um cliente enche a memória do servidor num único frame.
+
+| Código | Motivo |
+|---|---|
+| `4001` | Não autenticado (token ausente/inválido ou prazo esgotado) |
+| `4003` | Papel sem permissão |
+| `4400` | Protocolo inválido |
+| `4413` | Limite excedido |
+
+**O sinal bruto não é persistido.** Pelo fluxo da ADR-0017 persiste-se o
+`Result` (features + `engine_version`); guardar raw está **fora do escopo do
+MVP** até haver necessidade concreta (Q-TEC-04 / ADR-0005 seguem abertos). O
+encaminhamento à Analysis é `TODO(#14)`.
+
 ## Dados de desenvolvimento (seed)
 
 Cria um médico e três pacientes **fictícios** com vínculos `active`, para

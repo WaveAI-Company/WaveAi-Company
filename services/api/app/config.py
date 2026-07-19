@@ -55,6 +55,16 @@ class Settings(BaseSettings):
     refresh_cookie_secure: bool = True
     refresh_cookie_samesite: str = "lax"
 
+    # -- Streaming (#13) ------------------------------------------------------
+    #: Segundos para o cliente autenticar após conectar. Sem isso, conexões
+    #: anônimas ficariam abertas consumindo recursos.
+    stream_auth_timeout_seconds: float = 10.0
+    #: Teto de amostras por bloco (evita estourar memória num único frame).
+    stream_max_block_samples: int = 4096
+    #: Teto de amostras por sessão (~2 h a 512 Hz).
+    stream_max_session_samples: int = 4_000_000
+    stream_max_sample_rate: int = 2000
+
     # -- CORS ----------------------------------------------------------------
     #: Origens permitidas (separadas por vírgula) para o app web.
     #: Em produção o MVP assume **same-origin** (app e API atrás do mesmo
