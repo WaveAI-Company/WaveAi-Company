@@ -1,15 +1,12 @@
 import { Link } from "expo-router";
-import { Pressable, StyleSheet, Text } from "react-native";
+import { StyleSheet, Text } from "react-native";
 
-import { Card } from "../src/components/Card";
 import { ScreenContainer } from "../src/components/ScreenContainer";
-import { colors, radius, spacing } from "../src/theme";
+import { colors, spacing } from "../src/theme";
 
 /**
- * Tela inicial: escolha de papel.
- *
- * A seleção é **mock** — autenticação real (JWT + papéis) é a issue #7/#8.
- * Aqui só validamos boot e navegação em web e mobile.
+ * Tela inicial (pública). Quem já tem sessão é levado pela guarda de rota
+ * direto para a área do seu papel.
  */
 export default function HomeScreen() {
   return (
@@ -17,32 +14,18 @@ export default function HomeScreen() {
       <Text style={styles.heading}>WaveAI</Text>
       <Text style={styles.lead}>
         Plataforma de captação e análise de EEG de consumo, com acompanhamento de
-        bem-estar. Escolha um papel para ver a área correspondente.
+        bem-estar.
       </Text>
 
-      <Link href="/patient" asChild>
-        <Pressable style={({ pressed }) => [styles.role, pressed && styles.pressed]}>
-          <Card
-            title="Entrar como paciente"
-            subtitle="Sessões, histórico pessoal e estado ao vivo."
-            accent={colors.patient}
-          />
-        </Pressable>
+      <Link href="/login" style={styles.link}>
+        Entrar
       </Link>
-
-      <Link href="/doctor" asChild>
-        <Pressable style={({ pressed }) => [styles.role, pressed && styles.pressed]}>
-          <Card
-            title="Entrar como médico"
-            subtitle="Lista de pacientes vinculados e dashboards por sessão."
-            accent={colors.doctor}
-          />
-        </Pressable>
+      <Link href="/register" style={styles.link}>
+        Criar conta
       </Link>
 
       <Text style={styles.footnote}>
-        Seleção de papel simulada (sem login). Uso exploratório de bem-estar —
-        não-clínico e não-diagnóstico.
+        Uso exploratório de bem-estar — não-clínico e não-diagnóstico.
       </Text>
     </ScreenContainer>
   );
@@ -60,11 +43,11 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     marginBottom: spacing.sm,
   },
-  role: {
-    borderRadius: radius.md,
-  },
-  pressed: {
-    opacity: 0.7,
+  link: {
+    color: colors.patient,
+    fontSize: 16,
+    fontWeight: "600",
+    paddingVertical: spacing.sm,
   },
   footnote: {
     color: colors.textMuted,
