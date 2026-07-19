@@ -82,6 +82,36 @@ Nunca em `localStorage`.
 faltar ou tiver menos de 32 bytes, em **qualquer** ambiente. Gere com
 `openssl rand -hex 32`. O `docker compose` também recusa subir sem ele.
 
+## Vínculo médico-paciente (ADR-0024)
+
+| Rota | O que faz |
+|---|---|
+| `POST /care-links` | Solicita vínculo pelo e-mail da contraparte (`202` **sempre**) |
+| `GET /care-links` | Vínculos vivos do usuário (só a contraparte é exposta) |
+| `POST /care-links/{id}/accept` | **Paciente** consente (`pending` → `active`) |
+| `POST /care-links/{id}/revoke` | Qualquer uma das partes revoga |
+| `GET /patients/{id}` | Dados do paciente — **403 sem vínculo ativo** |
+
+**Invariante:** nenhum acesso aos dados de um paciente sem um ato de
+autorização *desse* paciente. Um convite de médico nasce `pending` e **não
+concede nada**; só o aceite do paciente (ou o vínculo iniciado por ele) leva a
+`active`.
+
+A regra vive na **camada de autorização** (`require_active_care_link` em
+`app/api/deps.py`), não na UI — a rota não tem como servir dados sem passar por
+ela.
+
+**Revogação** é imediata e definitiva (`revoked`). Re-vincular cria uma **linha
+nova**, exigindo novo consentimento: nada de reativação silenciosa. Um índice
+parcial garante no máximo um vínculo vivo por par, preservando os revogados
+como histórico.
+
+**Auditoria:** `care_link_events` registra `requested` / `accepted` / `revoked`
+com quem praticou o ato e quando.
+
+**Anti-enumeração:** o convite responde igual exista ou não a conta, e o `403`
+de `/patients/{id}` não distingue "paciente inexistente" de "não autorizado".
+
 ### Rate limiting
 
 Janela deslizante por **IP** e por **(IP + e-mail)**, aplicada **antes** do
