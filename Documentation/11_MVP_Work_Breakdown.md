@@ -153,3 +153,13 @@ Requer o **GitHub CLI** (`gh`). Milestones repetidos são ignorados; **não** ro
 - **Perfil:** apenas `display_name` — ver **ADR-0022** (minimização/LGPD). ✔
 - **Migrations:** **não** auto-rodar no start do container; passo explícito `alembic upgrade head` (documentar; helper de dev opcional, ex.: alvo no Makefile/compose). ✔
 - **E-mail:** normalizar (trim + lowercase) na borda + **constraint única** no valor normalizado; validar formato. ✔
+
+### Confirmações de #7 (2026-07-18) — segurança operacional
+- **Segredo JWT:** `WAVEAI_API_JWT_SECRET` sem default; a app não sobe se ausente/curto (≥ 32 bytes). Ver **ADR-0023**.
+- **Reuse de refresh:** confirmado — reuso de um refresh já rotacionado revoga a **família inteira** do login (todos os descendentes), não só o token. Guardar **hash** do token + `family_id`/`jti` + `used_at`. (Detalha ADR-0021.)
+- **Rate limiting:** **mínimo já na #7** (throttle por IP+e-mail ANTES do Argon2, erros genéricos, tempo uniforme); **completo na #19**. Ver ADR-0023.
+
+### #19 · Endurecimento de auth (M1) — [novo]
+- **Escopo:** lockout de conta; rate-limit distribuído (Redis); backoff/CAPTCHA; auditoria de falhas de login.
+- **Depende de:** #7. **Ref.:** ADR-0023.
+- **Aceite:** limiter compartilhado entre réplicas; bloqueio após N falhas; eventos de falha auditados.

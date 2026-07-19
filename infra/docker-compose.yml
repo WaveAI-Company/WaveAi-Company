@@ -36,6 +36,11 @@ services:
     environment:
       WAVEAI_API_APP_ENV: ${WAVEAI_API_APP_ENV:-development}
       WAVEAI_API_DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-waveai}:${POSTGRES_PASSWORD:-waveai_dev}@postgres:5432/${POSTGRES_DB:-waveai}
+      # Sem default por decisão (ADR-0023): se faltar, o compose falha aqui
+      # com esta mensagem, em vez de a app subir com um segredo fraco.
+      WAVEAI_API_JWT_SECRET: "${WAVEAI_API_JWT_SECRET:?defina em infra/.env - gere com 'openssl rand -hex 32'}"
+      # Dev local é HTTP: sem isto o navegador descarta o cookie do refresh.
+      WAVEAI_API_REFRESH_COOKIE_SECURE: ${WAVEAI_API_REFRESH_COOKIE_SECURE:-false}
     ports:
       - "${API_PORT:-8000}:8000"
     depends_on:
