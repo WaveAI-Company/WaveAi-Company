@@ -147,3 +147,15 @@ Status possíveis: `Proposta` · `Aceita` · `Substituída` · `Revogada`.
 **Decisão:** Perfis **minimalistas**: apenas `display_name` (além de email, role e credenciais). **Não** coletar CRM, data de nascimento, condição de saúde ou qualquer dado sensível nesta fase. A **verificação profissional do médico** (ex.: CRM + validação) é **feature futura**, com issue e finalidade próprias quando o produto exigir.
 **Alternativas:** coletar campos "por precaução" — rejeitado: viola a **minimização** da LGPD, cria dado sensível sem finalidade e é decisão de produto não especificada.
 **Consequências:** menor superfície de dados pessoais e menor risco. Quando um campo for necessário, entra com **finalidade explícita** e, se sensível, base legal/consentimento. Coerente com [Medical/71](Medical/71_Intended_Use_and_Regulatory_Positioning.md) (não-clínico) e com o princípio de o coder não inventar produto.
+
+---
+
+## ADR-0023 — Endurecimento do login: segredo fail-closed + rate limiting
+**Status:** Aceita (2026-07-18)
+**Contexto:** O login combina Argon2id (caro por design, ~19 MiB/tentativa) e JWT assinado. Dois riscos operacionais não cobertos: (a) segredo de assinatura fraco/ausente; (b) tentativas de login sem limite → força bruta online **e** DoS por amplificação do hash.
+**Decisão:**
+- **Segredo JWT fail-closed:** `WAVEAI_API_JWT_SECRET` via env, **sem default**, validado no carregamento da config (Pydantic Settings). A app **recusa iniciar** se ausente/vazio ou abaixo do mínimo (**≥ 32 bytes**). Exigido em **todos** os ambientes (dev via `.env`/`.env.example` com `openssl rand -hex 32`; prod via secret manager; testes definem segredo de teste explícito). O que muda por ambiente é a **origem** do segredo, nunca a exigência.
+- **Rate limiting no login (mínimo já na #7):** limitar tentativas por **(IP + e-mail)** e por IP (janela deslizante/token bucket), com **throttle ANTES** de executar o Argon2 (não deixar o atacante forçar o hash caro). Erros **genéricos** e tempo de resposta **uniforme** (anti-enumeração de usuários). In-memory no MVP mono-instância; **migrar para Redis** ao escalar réplicas (limitação conhecida).
+- **Endurecimento completo → issue #19 (M1):** lockout de conta, limiter distribuído (Redis), backoff/CAPTCHA, auditoria de falhas.
+**Alternativas:** adiar todo rate-limit (rejeitado — expõe DoS/brute-force desde o 1º dia); default de segredo "para facilitar o dev" (rejeitado — é assim que chaves vazam).
+**Consequências:** login robusto desde o MVP. Reforça ADR-0021 (JWT) e ADR-0020 (Argon2id). O limiter in-memory não compartilha estado entre réplicas até o #19.
