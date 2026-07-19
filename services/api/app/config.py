@@ -65,6 +65,16 @@ class Settings(BaseSettings):
     stream_max_session_samples: int = 4_000_000
     stream_max_sample_rate: int = 2000
 
+    #: URL do serviço de Analysis (o gateway apenas encaminha as janelas).
+    analysis_url: str = "http://localhost:8001"
+    #: Timeout por janela. Curto de propósito: análise ao vivo atrasada não
+    #: tem valor, e travar aqui seguraria o stream inteiro.
+    analysis_timeout_seconds: float = 5.0
+    #: Cadência do "ao vivo": de quantos em quantos segundos de sinal pedimos
+    #: uma leitura. É decisão de **cadência**, não de DSP — a semântica de
+    #: janela/época do sinal vive no AnalysisEngine (ADR-0017).
+    stream_window_seconds: float = 2.0
+
     # -- CORS ----------------------------------------------------------------
     #: Origens permitidas (separadas por vírgula) para o app web.
     #: Em produção o MVP assume **same-origin** (app e API atrás do mesmo

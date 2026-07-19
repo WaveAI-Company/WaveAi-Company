@@ -11,6 +11,7 @@ Posicionamento: resultados **exploratórios, não-clínicos e não-diagnósticos
 from __future__ import annotations
 
 from fastapi import FastAPI
+from pydantic import BaseModel, Field
 
 from . import __version__
 from .config import get_settings
@@ -27,10 +28,43 @@ DISCLAIMER = (
 )
 
 
+class WindowRequest(BaseModel):
+    """Uma janela de sinal bruto para análise ao vivo (#14)."""
+
+    #: Amostras da janela. O teto evita que uma requisição sozinha consuma
+    #: CPU/memória demais — o gateway já limita o bloco, isto é a segunda rede.
+    samples: list[float] = Field(min_length=16, max_length=32_768)
+    fs: float = Field(gt=0, le=20_000)
+
+
 @app.get("/health")
 def health() -> dict[str, str]:
     """Health check do serviço. Não expõe dado sensível."""
     return {"status": "ok"}
+
+
+@app.post("/analyze/window")
+def analyze_window(payload: WindowRequest) -> dict:
+    """Analisa uma janela e devolve as features ao vivo.
+
+    Toda a decisão de DSP (filtragem, PSD, épocas) vive no `AnalysisEngine` —
+    aqui só se adapta a entrada e se serializa a saída. Quem chama não escolhe
+    parâmetro de análise, apenas envia o sinal.
+    """
+    resultado = engine.process_window(payload.samples, payload.fs)
+    return {
+        "engine_version": resultado.engine_version,
+        "fs": resultado.fs,
+        "n_samples": resultado.n_samples,
+        "rel_alpha": resultado.rel_alpha,
+        "relative_band_powers": resultado.relative_band_powers,
+        "quality": {
+            "signal_std": resultado.quality.signal_std,
+            "mains_power": resultado.quality.mains_power,
+            "mains_power_ratio": resultado.quality.mains_power_ratio,
+        },
+        "disclaimer": DISCLAIMER,
+    }
 
 
 @app.post("/analyze/demo")

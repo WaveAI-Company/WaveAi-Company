@@ -52,6 +52,14 @@ export default function PatientHomeScreen() {
 
       <Pressable
         accessibilityRole="button"
+        onPress={() => router.push("/patient/live")}
+        style={({ pressed }) => [styles.acao, pressed && styles.pressed]}
+      >
+        <Text style={styles.acaoTexto}>Estado ao vivo (simulado)</Text>
+      </Pressable>
+
+      <Pressable
+        accessibilityRole="button"
         onPress={() => router.push("/patient/history")}
         style={({ pressed }) => [styles.acao, pressed && styles.pressed]}
       >
