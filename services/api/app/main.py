@@ -9,11 +9,14 @@ from __future__ import annotations
 from fastapi import FastAPI
 
 from . import __version__
+from .api import auth_router
 from .config import get_settings
 
+# Fail-closed: sem WAVEAI_API_JWT_SECRET válido a app nem sobe (ADR-0023).
 settings = get_settings()
 
 app = FastAPI(title=settings.app_name, version=__version__)
+app.include_router(auth_router)
 
 
 @app.get("/health")

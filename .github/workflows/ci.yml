@@ -46,6 +46,8 @@ jobs:
     env:
       WAVEAI_API_DATABASE_URL: postgresql+psycopg://waveai:waveai_ci@localhost:5432/waveai_test
       WAVEAI_TEST_REQUIRE_DB: "1"
+      # Segredo descartável só deste job (ADR-0023: exigido em todo ambiente).
+      WAVEAI_API_JWT_SECRET: ci-secret-nao-usar-fora-do-ci-0123456789abcdef
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -62,6 +64,9 @@ jobs:
     defaults:
       run:
         working-directory: infra
+    env:
+      # O compose exige o segredo (fail-closed); aqui usamos um descartável.
+      WAVEAI_API_JWT_SECRET: ci-secret-nao-usar-fora-do-ci-0123456789abcdef
     steps:
       - uses: actions/checkout@v4
       - name: Subir o stack

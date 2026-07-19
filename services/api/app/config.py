@@ -6,7 +6,11 @@ Ver `.env.example` para as variáveis suportadas.
 
 from __future__ import annotations
 
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+#: Tamanho mínimo do segredo de assinatura, em bytes (ADR-0023).
+JWT_SECRET_MIN_BYTES = 32
 
 
 class Settings(BaseSettings):
@@ -31,6 +35,36 @@ class Settings(BaseSettings):
     argon2_memory_cost: int = 19456
     argon2_time_cost: int = 2
     argon2_parallelism: int = 1
+
+    # -- JWT (ADR-0021 / ADR-0023) -------------------------------------------
+    #: Segredo de assinatura. **Sem default, obrigatório em todo ambiente**:
+    #: a app não sobe sem ele (fail-closed). Gere com `openssl rand -hex 32`.
+    jwt_secret: str = Field(...)
+    jwt_algorithm: str = "HS256"
+    access_token_ttl_minutes: int = 15
+    refresh_token_ttl_days: int = 7
+
+    # -- Rate limiting do login (ADR-0023) -----------------------------------
+    #: Tentativas permitidas por janela, por (IP + e-mail) e por IP.
+    login_rate_limit_attempts: int = 5
+    login_rate_limit_window_seconds: int = 60
+
+    # -- Cookie do refresh no web (ADR-0021) ---------------------------------
+    refresh_cookie_name: str = "waveai_refresh"
+    #: `False` apenas para desenvolvimento local sem TLS.
+    refresh_cookie_secure: bool = True
+    refresh_cookie_samesite: str = "lax"
+
+    @field_validator("jwt_secret")
+    @classmethod
+    def _validar_segredo(cls, value: str) -> str:
+        """Fail-closed: segredo ausente, vazio ou curto impede a app de subir."""
+        if len(value.strip().encode("utf-8")) < JWT_SECRET_MIN_BYTES:
+            raise ValueError(
+                "WAVEAI_API_JWT_SECRET deve ter ao menos "
+                f"{JWT_SECRET_MIN_BYTES} bytes (gere com: openssl rand -hex 32)"
+            )
+        return value
 
 
 def get_settings() -> Settings:
