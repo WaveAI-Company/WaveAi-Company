@@ -27,6 +27,25 @@ jobs:
     defaults:
       run:
         working-directory: services/api
+    services:
+      # Testes de persistência rodam contra Postgres real (o schema vem das
+      # migrations). WAVEAI_TEST_REQUIRE_DB impede "verde por omissão".
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: waveai
+          POSTGRES_PASSWORD: waveai_ci
+          POSTGRES_DB: waveai_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U waveai -d waveai_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      WAVEAI_API_DATABASE_URL: postgresql+psycopg://waveai:waveai_ci@localhost:5432/waveai_test
+      WAVEAI_TEST_REQUIRE_DB: "1"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5

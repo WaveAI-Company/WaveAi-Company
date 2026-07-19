@@ -10,8 +10,11 @@ WORKDIR /app
 COPY pyproject.toml ./
 RUN pip install --no-cache-dir .
 
-# Copia o código da aplicação.
+# Copia o código da aplicação e as migrations (necessárias para rodar
+# `alembic upgrade head` de dentro do container).
 COPY app ./app
+COPY alembic.ini ./
+COPY migrations ./migrations
 
 EXPOSE 8000
 

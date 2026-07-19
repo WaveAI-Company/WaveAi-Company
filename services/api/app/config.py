@@ -22,6 +22,16 @@ class Settings(BaseSettings):
     app_name: str = "waveai-api"
     app_env: str = "development"
 
+    #: URL do PostgreSQL. O default serve ao compose local; em qualquer
+    #: ambiente compartilhado vem do ambiente/secret manager.
+    database_url: str = "postgresql+psycopg://waveai:waveai_dev@localhost:5432/waveai"
+
+    # -- Argon2id (ADR-0020) — mínimos OWASP: m=19 MiB, t=2, p=1 -------------
+    #: Memória em KiB (19456 KiB = 19 MiB).
+    argon2_memory_cost: int = 19456
+    argon2_time_cost: int = 2
+    argon2_parallelism: int = 1
+
 
 def get_settings() -> Settings:
     """Retorna as configurações do serviço."""
