@@ -15,6 +15,11 @@ from __future__ import annotations
 import os
 from collections.abc import Iterator
 
+# Segredo de teste **explícito** (ADR-0023: não existe default em lugar nenhum;
+# o que muda por ambiente é a origem do segredo, nunca a exigência). Definido
+# antes de importar `app.*`, que valida a config no carregamento.
+os.environ.setdefault("WAVEAI_API_JWT_SECRET", "segredo-de-teste-" + "0" * 40)
+
 import pytest
 from alembic import command
 from alembic.config import Config
