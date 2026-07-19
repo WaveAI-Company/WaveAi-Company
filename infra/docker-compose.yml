@@ -41,10 +41,14 @@ services:
       WAVEAI_API_JWT_SECRET: "${WAVEAI_API_JWT_SECRET:?defina em infra/.env - gere com 'openssl rand -hex 32'}"
       # Dev local é HTTP: sem isto o navegador descarta o cookie do refresh.
       WAVEAI_API_REFRESH_COOKIE_SECURE: ${WAVEAI_API_REFRESH_COOKIE_SECURE:-false}
+      # O gateway encaminha as janelas para a Analysis (#14).
+      WAVEAI_API_ANALYSIS_URL: http://analysis:8001
     ports:
       - "${API_PORT:-8000}:8000"
     depends_on:
       postgres:
+        condition: service_healthy
+      analysis:
         condition: service_healthy
     healthcheck:
       # As imagens são python:slim (sem curl); o próprio Python faz o check.

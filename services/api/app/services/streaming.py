@@ -25,7 +25,7 @@ não aparece ainda; quando aparecer, a saída é um frame de re-auth no protocol
 from __future__ import annotations
 
 import enum
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
 from sqlalchemy.orm import Session
@@ -37,6 +37,7 @@ from ..repositories.session import CaptureSessionRepository
 from ..repositories.user import UserRepository
 from ..security.password import PasswordHasher
 from ..security.tokens import InvalidTokenError, decode_access_token
+from .analysis_client import AnalysisClient, AnalysisUnavailableError
 
 
 class CloseCode(int, enum.Enum):
@@ -63,6 +64,8 @@ class StreamState:
     user: User | None = None
     session: CaptureSession | None = None
     encerrada: bool = False
+    #: Sinal acumulado desde a última análise (não é persistido).
+    buffer: list[float] = field(default_factory=list)
 
 
 class StreamProtocol:
@@ -74,11 +77,13 @@ class StreamProtocol:
         db: Session,
         settings: Settings,
         hasher: PasswordHasher,
+        analysis: AnalysisClient | None = None,
     ) -> None:
         self._db = db
         self._settings = settings
         self._users = UserRepository(db, hasher)
         self._sessions = CaptureSessionRepository(db)
+        self._analysis = analysis
         self.state = StreamState()
 
     # -- entrada ---------------------------------------------------------
@@ -177,15 +182,43 @@ class StreamProtocol:
         self._sessions.somar_amostras(sessao, len(data))
         self._db.commit()
 
-        # TODO(#14): encaminhar o bloco ao serviço de Analysis
-        # (AnalysisEngine.process_window) e devolver as features ao vivo.
-        # Aqui o gateway só contabiliza e valida.
-        return {
+        resposta: dict[str, Any] = {
             "type": "ack",
             "seq": message.get("seq"),
             "received": len(data),
             "total": sessao.sample_count,
         }
+
+        features = self._analisar_se_completou_janela(data, sessao.sample_rate)
+        if features is not None:
+            resposta["features"] = features
+        return resposta
+
+    def _analisar_se_completou_janela(
+        self, data: list[float], sample_rate: int
+    ) -> dict[str, Any] | None:
+        """Acumula e, ao fechar uma janela, pede as features à Analysis.
+
+        O buffer guarda apenas o sinal **desde a última leitura**: janelas não
+        se sobrepõem e nada de raw fica retido além do necessário.
+        """
+        if self._analysis is None:
+            return None
+
+        self.state.buffer.extend(float(v) for v in data)
+        janela = int(sample_rate * self._settings.stream_window_seconds)
+        if janela <= 0 or len(self.state.buffer) < janela:
+            return None
+
+        amostras = self.state.buffer[:janela]
+        del self.state.buffer[:janela]
+
+        try:
+            return self._analysis.analyze_window(amostras, float(sample_rate))
+        except AnalysisUnavailableError:
+            # Perder o "ao vivo" é aceitável; perder a sessão do paciente não.
+            # A captação segue e o cliente fica sabendo que não há features.
+            return {"unavailable": True}
 
     def _stop(self) -> dict[str, Any]:
         sessao = self.state.session
