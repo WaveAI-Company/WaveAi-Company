@@ -1,43 +1,77 @@
-import { StyleSheet, Text } from "react-native";
+import { useRouter } from "expo-router";
+import { useCallback, useEffect, useState } from "react";
+import { Pressable, StyleSheet, Text } from "react-native";
 
+import { listActivePatients, type CareLink } from "../../src/api/care";
 import { useAuth } from "../../src/auth/AuthContext";
 import { Button } from "../../src/components/Button";
 import { Card } from "../../src/components/Card";
-import { MockBadge } from "../../src/components/MockBadge";
 import { ScreenContainer } from "../../src/components/ScreenContainer";
-import { colors, spacing } from "../../src/theme";
-
-/** Pacientes fictícios apenas para dar forma à tela (issue #10 traz a lista real). */
-const MOCK_PATIENTS = [
-  { id: "p-1", name: "Paciente A", lastSession: "12/07/2026" },
-  { id: "p-2", name: "Paciente B", lastSession: "05/07/2026" },
-];
+import { StateView } from "../../src/components/StateView";
+import { colors, radius, spacing } from "../../src/theme";
 
 /**
- * Área do médico (placeholder).
+ * Lista de pacientes do médico.
  *
- * A lista real depende do vínculo médico-paciente com RBAC (issue #9) e das
- * telas de detalhe (issue #10).
+ * Mostra **apenas vínculos `active`** (ADR-0024): um convite pendente não
+ * concede acesso, então exibi-lo aqui sugeriria um acompanhamento que não
+ * existe. A caixa de convites é a #20.
  */
 export default function DoctorScreen() {
   const { user, signOut } = useAuth();
+  const router = useRouter();
+  const [links, setLinks] = useState<CareLink[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [erro, setErro] = useState<string | null>(null);
+
+  const carregar = useCallback(async () => {
+    setLoading(true);
+    setErro(null);
+    try {
+      setLinks(await listActivePatients());
+    } catch {
+      setErro("Não foi possível carregar seus pacientes.");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void carregar();
+  }, [carregar]);
 
   return (
     <ScreenContainer>
       <Text style={styles.heading}>Pacientes</Text>
       <Text style={styles.lead}>
-        {user?.display_name ? `${user.display_name} — a` : "A"}companhamento dos
-        pacientes vinculados a você.
+        {user?.display_name
+          ? `${user.display_name} — pacientes que autorizaram o acompanhamento.`
+          : "Pacientes que autorizaram o acompanhamento."}
       </Text>
 
-      <MockBadge />
-      {MOCK_PATIENTS.map((patient) => (
-        <Card
-          key={patient.id}
-          title={patient.name}
-          subtitle={`Última sessão em ${patient.lastSession}`}
-          accent={colors.doctor}
-        />
+      <StateView
+        loading={loading}
+        error={erro}
+        empty={
+          !loading && !erro && links.length === 0
+            ? "Nenhum paciente autorizou o acompanhamento ainda."
+            : null
+        }
+      />
+
+      {links.map((link) => (
+        <Pressable
+          key={link.id}
+          accessibilityRole="button"
+          onPress={() => router.push(`/doctor/patient/${link.counterpart_user_id}`)}
+          style={({ pressed }) => [styles.item, pressed && styles.pressed]}
+        >
+          <Card
+            title={link.counterpart_display_name ?? "Paciente"}
+            subtitle="Ver sessões"
+            accent={colors.doctor}
+          />
+        </Pressable>
       ))}
 
       <Text style={styles.footnote}>
@@ -61,6 +95,12 @@ const styles = StyleSheet.create({
     fontSize: 15,
     lineHeight: 22,
     marginBottom: spacing.sm,
+  },
+  item: {
+    borderRadius: radius.md,
+  },
+  pressed: {
+    opacity: 0.7,
   },
   footnote: {
     color: colors.textMuted,

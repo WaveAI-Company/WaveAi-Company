@@ -178,3 +178,17 @@ Requer o **GitHub CLI** (`gh`). Milestones repetidos são ignorados; **não** ro
 - **Revogação** por paciente **ou** médico a qualquer momento; efeito **imediato**; estado `revoked`; re-vínculo = novo consentimento.
 - **Auditar** eventos de consentimento/revogação (quem, quando).
 - **Aceite (testes):** médico com vínculo `pending` **não** acessa dados (403); acesso só com `active`; paciente revoga → acesso cortado imediatamente; convite **não** revela se o e-mail tem conta.
+
+### Decisão de escopo (2026-07-18) — UI de consentimento vira issue própria (#20)
+Motivo: o fluxo convite→aceite é **uma feature coesa** e a manifestação de UI da **ADR-0024** (consentimento). Mantê-lo num PR próprio o torna revisável e testável como unidade, e mantém #10/#11 pequenas.
+
+- **#10** (médico) e **#11** (paciente) **permanecem no escopo original**: listagem/navegação com dados de teste. **#10 lista apenas vínculos `active`** (ADR-0024: sem acesso sem consentimento).
+
+#### #20 · Fluxo de convite/consentimento (UI, ambos os papéis) — [novo]
+- **Escopo:** UI da ADR-0024, num PR coeso.
+  - **Médico:** tela para **convidar por e-mail** (resposta **genérica idêntica**, anti-enumeração); lista de convites enviados com status.
+  - **Paciente:** **caixa de convites pendentes**; **aceitar** (→ `active`) ou **recusar** (→ `declined`).
+  - **Ambos:** **revogar** vínculo `active` (efeito imediato).
+- **Estados do CareLink:** `pending` → `active` | `declined`; `active` → `revoked` (adicionar `declined` no backend se a #9 não cobrir).
+- **Aceite (testes):** paciente vê pendente e aceita → vira `active` e o médico passa a ver; recusar → sem acesso; revogar → acesso cortado na hora; convite **não** revela existência de conta.
+- **Depende de:** #9 (backend), #8 (auth no app). **Ref.:** ADR-0024. **Criar no GitHub via `gh`.**
