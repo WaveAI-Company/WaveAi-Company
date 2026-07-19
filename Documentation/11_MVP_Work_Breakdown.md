@@ -192,3 +192,8 @@ Motivo: o fluxo convite→aceite é **uma feature coesa** e a manifestação de 
 - **Estados do CareLink:** `pending` → `active` | `declined`; `active` → `revoked` (adicionar `declined` no backend se a #9 não cobrir).
 - **Aceite (testes):** paciente vê pendente e aceita → vira `active` e o médico passa a ver; recusar → sem acesso; revogar → acesso cortado na hora; convite **não** revela existência de conta.
 - **Depende de:** #9 (backend), #8 (auth no app). **Ref.:** ADR-0024. **Criar no GitHub via `gh`.**
+
+### Notas para #13 (2026-07-18)
+- **Auth do WS:** primeira mensagem `{"type":"auth","token":...}`, timeout 10 s, sem dados antes do auth; sessão vinculada ao **usuário autenticado** (paciente transmite o próprio sinal). `wss://` obrigatório. Ver **ADR-0025**.
+- **Persistência do raw: NÃO agora — correto.** `CaptureSession` só metadados + contagem; encaminhamento à Analysis = `TODO(#14)`. **[DECISÃO] Não decidir o armazenamento de série temporal neste PR** — **Q-TEC-04 / ADR-0005 seguem abertos**. Pelo fluxo da ADR-0017, o que se persiste é o **`Result`** (features + `engine_version`), **não necessariamente o raw**; persistência de raw é concern separado (reprocessamento/pesquisa/auditoria) e **fora do escopo do MVP** até haver necessidade concreta — aí entra issue + ADR próprios (minimização LGPD).
+- **Consentimento (ADR-0024) não bloqueia** o paciente de capturar o próprio sinal; a visibilidade do médico vem depois, via CareLink `active`, na leitura (#15/#16).

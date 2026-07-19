@@ -172,3 +172,12 @@ Status possíveis: `Proposta` · `Aceita` · `Substituída` · `Revogada`.
 - **Auditoria:** registrar eventos de consentimento e revogação (quem, quando) — é o registro que sustenta a base legal.
 **Alternativas:** vínculo **ativo na criação** (acesso unilateral do médico) — **rejeitado**: processa dado sensível sem base legal válida, viola autonomia e contradiz [Medical/71](Medical/71_Intended_Use_and_Regulatory_Positioning.md).
 **Consequências:** fluxo de convite/aceite no app (#10/#11) e RBAC condicionado a `active`. Semente para um futuro doc de **Consentimento & Direitos do Titular** (escopo, expiração, exclusão/portabilidade). Relaciona ADR-0023, [Medical/70](Medical/70_Regulatory_Clinical_Strategy.md) (LGPD) e Medical/71.
+
+---
+
+## ADR-0025 — Autenticação do WebSocket via primeira mensagem
+**Status:** Aceita (2026-07-18)
+**Contexto:** O `WS /stream` (#13) precisa autenticar sem vazar credencial. Navegadores **não** permitem cabeçalho custom em WebSocket; `?token=` na URL vaza em logs de servidor, proxy e histórico.
+**Decisão:** Autenticar por **primeira mensagem** `{"type":"auth","token":"<access JWT>"}` logo após o handshake, com **timeout de 10 s** (fecha conexão anônima pendurada, com close code de aplicação). **Nenhum frame de dados é processado antes do auth.** Validar o access token (ADR-0021): assinatura, expiração, papel. **Vincular a `CaptureSession` ao usuário autenticado** (o paciente transmite o **próprio** sinal). `wss://` (TLS) obrigatório.
+**Alternativas:** `?token=` na URL (vaza — rejeitado); subprotocolo `Sec-WebSocket-Protocol` (hack, também pode ser logado); cookie httpOnly no handshake (funciona no web same-origin, mas **não** no mobile — inconsistente). A primeira-mensagem é a única **portável** web+mobile e sem vazamento.
+**Consequências:** o cliente envia auth antes de transmitir; a expiração do access token no meio de uma captura longa fica como **TODO** (capturas do MVP são curtas; re-auth futura). Reforça ADR-0021/0023.
