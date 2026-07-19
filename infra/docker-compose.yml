@@ -35,6 +35,7 @@ services:
       dockerfile: Dockerfile
     environment:
       WAVEAI_API_APP_ENV: ${WAVEAI_API_APP_ENV:-development}
+      WAVEAI_API_DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-waveai}:${POSTGRES_PASSWORD:-waveai_dev}@postgres:5432/${POSTGRES_DB:-waveai}
     ports:
       - "${API_PORT:-8000}:8000"
     depends_on:
