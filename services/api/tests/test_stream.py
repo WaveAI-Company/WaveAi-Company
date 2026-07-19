@@ -15,10 +15,11 @@ from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 from starlette.websockets import WebSocketDisconnect
 
-from app.api.deps import reset_login_limiter
+from app.api.deps import get_analysis_client, reset_login_limiter
 from app.db.session import get_session
 from app.main import app
 from app.models import CaptureSession, SessionStatus
+from app.services.analysis_client import AnalysisUnavailableError
 from app.services.streaming import CloseCode
 
 SENHA = "senha-de-teste-bem-longa"
@@ -289,6 +290,116 @@ def test_reautenticar_e_recusado(client: TestClient):
         assert ws.receive_json()["type"] == "error"
         with pytest.raises(WebSocketDisconnect):
             ws.receive_json()
+
+
+# -- análise ao vivo (#14) ----------------------------------------------
+
+
+class AnalysisFake:
+    """Duplo do serviço de Analysis: registra as janelas que recebeu."""
+
+    def __init__(self, *, falha: bool = False) -> None:
+        self.falha = falha
+        self.janelas: list[tuple[int, float]] = []
+
+    def analyze_window(self, samples, fs):
+        if self.falha:
+            raise AnalysisUnavailableError("fora do ar")
+        self.janelas.append((len(samples), fs))
+        return {"rel_alpha": 0.42, "engine_version": "fake/1.0"}
+
+
+@pytest.fixture
+def analysis() -> AnalysisFake:
+    return AnalysisFake()
+
+
+@pytest.fixture
+def client_com_analysis(
+    db_session: Session, analysis: AnalysisFake
+) -> Iterator[TestClient]:
+    app.dependency_overrides[get_session] = lambda: db_session
+    app.dependency_overrides[get_analysis_client] = lambda: analysis
+    with TestClient(app, base_url="https://testserver") as c:
+        yield c
+    app.dependency_overrides.clear()
+
+
+def test_features_chegam_quando_a_janela_fecha(
+    client_com_analysis: TestClient, analysis: AnalysisFake
+):
+    """Janela padrão = 2 s a 512 Hz = 1024 amostras."""
+    token = _token(client_com_analysis)
+    with client_com_analysis.websocket_connect("/stream") as ws:
+        _abrir_sessao(ws, token)
+
+        # Meia janela: ainda não analisa.
+        ws.send_json({"type": "samples", "seq": 1, "data": [1.0] * 512})
+        assert "features" not in ws.receive_json()
+
+        # Fecha a janela: agora sim.
+        ws.send_json({"type": "samples", "seq": 2, "data": [1.0] * 512})
+        resposta = ws.receive_json()
+
+    assert resposta["features"]["rel_alpha"] == 0.42
+    assert analysis.janelas == [(1024, 512.0)]
+
+
+def test_janela_usa_a_taxa_declarada_na_sessao(
+    client_com_analysis: TestClient, analysis: AnalysisFake
+):
+    token = _token(client_com_analysis)
+    with client_com_analysis.websocket_connect("/stream") as ws:
+        _abrir_sessao(ws, token, sample_rate=256)
+        ws.send_json({"type": "samples", "seq": 1, "data": [1.0] * 512})
+        ws.receive_json()
+
+    # 2 s a 256 Hz = 512 amostras.
+    assert analysis.janelas == [(512, 256.0)]
+
+
+def test_sobra_do_buffer_entra_na_proxima_janela(
+    client_com_analysis: TestClient, analysis: AnalysisFake
+):
+    token = _token(client_com_analysis)
+    with client_com_analysis.websocket_connect("/stream") as ws:
+        _abrir_sessao(ws, token)
+        for seq in range(4):  # 4 x 600 = 2400 amostras
+            ws.send_json({"type": "samples", "seq": seq, "data": [1.0] * 600})
+            ws.receive_json()
+
+    # 2400 amostras rendem 2 janelas de 1024; o resto fica no buffer.
+    assert analysis.janelas == [(1024, 512.0), (1024, 512.0)]
+
+
+def test_analysis_fora_do_ar_nao_derruba_a_captacao(
+    db_session: Session, analysis: AnalysisFake
+):
+    """Perder o ao vivo e aceitavel; perder a sessao do paciente nao."""
+    analysis.falha = True
+    app.dependency_overrides[get_session] = lambda: db_session
+    app.dependency_overrides[get_analysis_client] = lambda: analysis
+    try:
+        with TestClient(app, base_url="https://testserver") as client:
+            token = _token(client)
+            with client.websocket_connect("/stream") as ws:
+                session_id = _abrir_sessao(ws, token)
+                ws.send_json({"type": "samples", "seq": 1, "data": [1.0] * 1024})
+                resposta = ws.receive_json()
+                ws.send_json({"type": "stop"})
+                fim = ws.receive_json()
+    finally:
+        app.dependency_overrides.clear()
+
+    # O bloco foi aceito e a sessão encerrou normalmente...
+    assert resposta["received"] == 1024
+    assert fim["type"] == "closed"
+    # ...e o cliente sabe que as features não vieram.
+    assert resposta["features"] == {"unavailable": True}
+
+    sessao = db_session.get(CaptureSession, uuid.UUID(session_id))
+    assert sessao.status is SessionStatus.COMPLETED
+    assert sessao.sample_count == 1024
 
 
 def test_erro_nao_detalha_o_motivo_da_recusa(client: TestClient):

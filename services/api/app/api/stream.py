@@ -18,8 +18,9 @@ from sqlalchemy.orm import Session
 from ..config import Settings, get_settings
 from ..db.session import get_session
 from ..security.password import PasswordHasher
+from ..services.analysis_client import AnalysisClient
 from ..services.streaming import CloseCode, StreamError, StreamProtocol
-from .deps import get_hasher
+from .deps import get_analysis_client, get_hasher
 
 router = APIRouter(tags=["stream"])
 
@@ -30,6 +31,7 @@ async def stream(
     db: Session = Depends(get_session),
     settings: Settings = Depends(get_settings),
     hasher: PasswordHasher = Depends(get_hasher),
+    analysis: AnalysisClient = Depends(get_analysis_client),
 ) -> None:
     """Recebe blocos de sinal bruto de um paciente autenticado.
 
@@ -37,7 +39,9 @@ async def stream(
     `stream_auth_timeout_seconds` — conexão anônima parada é recurso preso.
     """
     await websocket.accept()
-    protocolo = StreamProtocol(db=db, settings=settings, hasher=hasher)
+    protocolo = StreamProtocol(
+        db=db, settings=settings, hasher=hasher, analysis=analysis
+    )
 
     try:
         while True:
