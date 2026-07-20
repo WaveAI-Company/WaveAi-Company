@@ -24,6 +24,9 @@ from ..db.base import Base
 class CareLinkStatus(str, enum.Enum):
     PENDING = "pending"
     ACTIVE = "active"
+    #: O paciente recusou o convite do médico. Terminal, como `REVOKED`: não
+    #: concede nada e não "reativa" — re-convidar cria um vínculo novo.
+    DECLINED = "declined"
     REVOKED = "revoked"
 
 
@@ -37,6 +40,7 @@ class CareLinkParty(str, enum.Enum):
 class CareLinkEventType(str, enum.Enum):
     REQUESTED = "requested"
     ACCEPTED = "accepted"
+    DECLINED = "declined"
     REVOKED = "revoked"
 
 
@@ -48,13 +52,14 @@ class CareLink(Base):
     __tablename__ = "care_links"
     __table_args__ = (
         # Impede dois vínculos vivos entre o mesmo par, mas **preserva** os
-        # revogados como histórico (índice parcial).
+        # terminais (revogados e recusados) como histórico (índice parcial).
+        # `declined` conta como morto: recusar não pode travar um re-convite.
         Index(
             "uq_care_links_vivo",
             "doctor_user_id",
             "patient_user_id",
             unique=True,
-            postgresql_where=text("status <> 'revoked'"),
+            postgresql_where=text("status NOT IN ('revoked', 'declined')"),
         ),
     )
 
@@ -85,6 +90,8 @@ class CareLink(Base):
     consented_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    #: Momento da recusa do convite pelo paciente.
+    declined_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     # Duas FKs para `users` exigem desambiguar qual coluna cada relação usa.

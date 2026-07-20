@@ -90,6 +90,7 @@ class ResultService:
             "consent_given_at": (
                 titular.consent_given_at.isoformat() if titular.consent_given_at else None
             ),
+            "consent_version": titular.consent_version,
             "results": [self._para_dict(r) for r in results],
         }
 

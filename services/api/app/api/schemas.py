@@ -64,6 +64,16 @@ class UserResponse(BaseModel):
     display_name: str | None = None
 
 
+class ConsentRequest(BaseModel):
+    """Aceite do termo. `version` é a versão que o app exibiu ao titular.
+
+    Opcional por compatibilidade, mas quando presente a API valida contra a
+    versão vigente: consentir a um termo desatualizado é recusado.
+    """
+
+    version: str | None = Field(default=None, max_length=32)
+
+
 class CareLinkRequest(BaseModel):
     """E-mail da contraparte (paciente, se quem pede é médico — e vice-versa)."""
 

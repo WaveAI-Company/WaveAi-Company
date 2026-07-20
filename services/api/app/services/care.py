@@ -119,6 +119,29 @@ class CareService:
         self._session.flush()
         return link
 
+    def recusar(self, *, care_link_id: uuid.UUID, ator: User) -> CareLink:
+        """Só o **paciente** recusa, e só um convite ainda `PENDING`.
+
+        Recusar é terminal: o vínculo vai para `DECLINED` e não volta. Um novo
+        convite do médico cria uma linha nova (novo ciclo de consentimento).
+        """
+        link = self._links.get(care_link_id)
+        if link is None or link.patient_user_id != ator.id:
+            raise NotAllowedError
+        if link.status is not CareLinkStatus.PENDING:
+            raise CareLinkError("vinculo nao esta pendente")
+
+        link.status = CareLinkStatus.DECLINED
+        link.declined_at = datetime.now(UTC)
+        self._links.registrar_evento(
+            care_link=link,
+            event=CareLinkEventType.DECLINED,
+            actor_user_id=ator.id,
+            actor_role=CareLinkParty.PATIENT,
+        )
+        self._session.flush()
+        return link
+
     # -- revogação -------------------------------------------------------
 
     def revogar(self, *, care_link_id: uuid.UUID, ator: User) -> CareLink:

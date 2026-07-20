@@ -23,12 +23,16 @@ class CareLinkRepository:
     def get(self, care_link_id: uuid.UUID) -> CareLink | None:
         return self._session.get(CareLink, care_link_id)
 
+    #: Estados terminais: não concedem acesso e não travam um re-convite.
+    _MORTOS = (CareLinkStatus.REVOKED, CareLinkStatus.DECLINED)
+
     def get_vivo(self, *, doctor_id: uuid.UUID, patient_id: uuid.UUID) -> CareLink | None:
-        """Vínculo não revogado entre o par (no máximo um, por índice parcial)."""
+        """Vínculo vivo (pendente ou ativo) entre o par — no máximo um, por
+        índice parcial. Revogados e recusados não contam."""
         stmt = select(CareLink).where(
             CareLink.doctor_user_id == doctor_id,
             CareLink.patient_user_id == patient_id,
-            CareLink.status != CareLinkStatus.REVOKED,
+            CareLink.status.not_in(self._MORTOS),
         )
         return self._session.scalars(stmt).one_or_none()
 
@@ -42,7 +46,12 @@ class CareLinkRepository:
         return self._session.scalars(stmt).one_or_none()
 
     def listar_do_usuario(self, user_id: uuid.UUID) -> list[CareLink]:
-        """Vínculos vivos em que o usuário participa (como médico ou paciente)."""
+        """Vínculos vivos em que o usuário participa (como médico ou paciente).
+
+        Terminais (revogados/recusados) não aparecem: são histórico. Um convite
+        recusado some da vista do médico como um revogado — não vira um "carimbo
+        de recusa" que exponha a decisão do paciente.
+        """
         stmt = (
             select(CareLink)
             .where(
@@ -50,7 +59,7 @@ class CareLinkRepository:
                     CareLink.doctor_user_id == user_id,
                     CareLink.patient_user_id == user_id,
                 ),
-                CareLink.status != CareLinkStatus.REVOKED,
+                CareLink.status.not_in(self._MORTOS),
             )
             .order_by(CareLink.created_at.desc())
         )
