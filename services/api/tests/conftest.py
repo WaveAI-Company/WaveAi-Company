@@ -19,6 +19,10 @@ from collections.abc import Iterator
 # o que muda por ambiente é a origem do segredo, nunca a exigência). Definido
 # antes de importar `app.*`, que valida a config no carregamento.
 os.environ.setdefault("WAVEAI_API_JWT_SECRET", "segredo-de-teste-" + "0" * 40)
+# Chave Fernet de teste (ADR-0026). Descartável e explícita, como o JWT.
+os.environ.setdefault(
+    "WAVEAI_API_RESULT_ENCRYPTION_KEY", "sRzpGGMSAff35dzYCgpeXTyI2rMfVLkVtN_nu5bhwTE="
+)
 
 import pytest
 from alembic import command

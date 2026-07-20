@@ -296,17 +296,24 @@ def test_reautenticar_e_recusado(client: TestClient):
 
 
 class AnalysisFake:
-    """Duplo do serviço de Analysis: registra as janelas que recebeu."""
+    """Duplo do serviço de Analysis: registra as janelas/sessões que recebeu."""
 
     def __init__(self, *, falha: bool = False) -> None:
         self.falha = falha
         self.janelas: list[tuple[int, float]] = []
+        self.sessoes: list[tuple[int, float]] = []
 
     def analyze_window(self, samples, fs):
         if self.falha:
             raise AnalysisUnavailableError("fora do ar")
         self.janelas.append((len(samples), fs))
         return {"rel_alpha": 0.42, "engine_version": "fake/1.0"}
+
+    def analyze_session(self, samples, fs, labels=None):
+        if self.falha:
+            raise AnalysisUnavailableError("fora do ar")
+        self.sessoes.append((len(samples), fs))
+        return {"rel_alpha": 0.33, "engine_version": "fake/1.0", "relative_band_powers": {}}
 
 
 @pytest.fixture
@@ -370,6 +377,51 @@ def test_sobra_do_buffer_entra_na_proxima_janela(
 
     # 2400 amostras rendem 2 janelas de 1024; o resto fica no buffer.
     assert analysis.janelas == [(1024, 512.0), (1024, 512.0)]
+
+
+def test_stop_gera_result_persistido_com_consentimento(
+    client_com_analysis: TestClient, analysis: AnalysisFake, db_session: Session
+):
+    """Aceite da #15: sessão encerrada gera relatório persistido (ADR-0026)."""
+    token = _token(client_com_analysis)
+    # Consentimento do titular — sem ele o gate impede a gravação.
+    assert client_com_analysis.post(
+        "/me/consent", headers={"Authorization": f"Bearer {token}"}
+    ).status_code == 204
+
+    with client_com_analysis.websocket_connect("/stream") as ws:
+        _abrir_sessao(ws, token)
+        ws.send_json({"type": "samples", "seq": 1, "data": [1.0] * 1024})
+        ws.receive_json()
+        ws.send_json({"type": "stop"})
+        fim = ws.receive_json()
+
+    assert fim["result"]["persisted"] is True
+    # A sessão inteira (1024) foi enviada para process_session.
+    assert analysis.sessoes == [(1024, 512.0)]
+    # E o Result existe no banco.
+    from app.models import Result
+    assert len(db_session.scalars(__import__("sqlalchemy").select(Result)).all()) == 1
+
+
+def test_stop_sem_consentimento_nao_persiste_mas_encerra(
+    client_com_analysis: TestClient, analysis: AnalysisFake, db_session: Session
+):
+    """Gate ADR-0026: sem consentimento, a sessão encerra mas nada é gravado."""
+    token = _token(client_com_analysis)  # sem /me/consent
+
+    with client_com_analysis.websocket_connect("/stream") as ws:
+        _abrir_sessao(ws, token)
+        ws.send_json({"type": "samples", "seq": 1, "data": [1.0] * 1024})
+        ws.receive_json()
+        ws.send_json({"type": "stop"})
+        fim = ws.receive_json()
+
+    assert fim["type"] == "closed"
+    assert fim["result"]["persisted"] is False
+    assert fim["result"]["reason"] == "sem consentimento"
+    from app.models import Result
+    assert db_session.scalars(__import__("sqlalchemy").select(Result)).all() == []
 
 
 def test_analysis_fora_do_ar_nao_derruba_a_captacao(

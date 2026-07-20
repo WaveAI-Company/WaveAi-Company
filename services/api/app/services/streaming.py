@@ -38,6 +38,7 @@ from ..repositories.user import UserRepository
 from ..security.password import PasswordHasher
 from ..security.tokens import InvalidTokenError, decode_access_token
 from .analysis_client import AnalysisClient, AnalysisUnavailableError
+from .results import ConsentRequiredError, ResultService
 
 
 class CloseCode(int, enum.Enum):
@@ -64,8 +65,12 @@ class StreamState:
     user: User | None = None
     session: CaptureSession | None = None
     encerrada: bool = False
-    #: Sinal acumulado desde a última análise (não é persistido).
+    #: Sinal acumulado desde a última análise ao vivo (não é persistido).
     buffer: list[float] = field(default_factory=list)
+    #: Sessão inteira, para o relatório em batch no `stop`. Vive **só em
+    #: memória** durante a captação — nunca é gravado em disco (ADR-0025). É
+    #: descartado ao encerrar; o que persiste é o Result derivado.
+    session_samples: list[float] = field(default_factory=list)
 
 
 class StreamProtocol:
@@ -78,12 +83,14 @@ class StreamProtocol:
         settings: Settings,
         hasher: PasswordHasher,
         analysis: AnalysisClient | None = None,
+        results: "ResultService | None" = None,
     ) -> None:
         self._db = db
         self._settings = settings
         self._users = UserRepository(db, hasher)
         self._sessions = CaptureSessionRepository(db)
         self._analysis = analysis
+        self._results = results
         self.state = StreamState()
 
     # -- entrada ---------------------------------------------------------
@@ -182,6 +189,11 @@ class StreamProtocol:
         self._sessions.somar_amostras(sessao, len(data))
         self._db.commit()
 
+        # Guarda a sessão inteira em memória para o relatório em batch do stop.
+        # O teto já foi validado acima (sessão longa demais é recusada).
+        if self._results is not None:
+            self.state.session_samples.extend(float(v) for v in data)
+
         resposta: dict[str, Any] = {
             "type": "ack",
             "seq": message.get("seq"),
@@ -225,14 +237,51 @@ class StreamProtocol:
         if sessao is None:
             raise StreamError(CloseCode.PROTOCOLO_INVALIDO, "sessao nao iniciada")
 
+        report = self._gerar_e_persistir_result(sessao)
+
         self._sessions.encerrar(sessao, status=SessionStatus.COMPLETED)
         self._db.commit()
         self.state.encerrada = True
-        return {
+        # Descarta o raw da memória assim que o Result (derivado) foi tratado.
+        self.state.session_samples = []
+
+        resposta = {
             "type": "closed",
             "session_id": str(sessao.id),
             "sample_count": sessao.sample_count,
+            "result": report,
         }
+        return resposta
+
+    def _gerar_e_persistir_result(self, sessao: CaptureSession) -> dict[str, Any]:
+        """Ao encerrar: process_session sobre a sessão inteira → Result cifrado.
+
+        Nunca deixa a falha aqui abortar o encerramento da sessão — o relatório
+        é um extra sobre a captação, não pré-requisito dela.
+        """
+        if self._results is None or self._analysis is None:
+            return {"persisted": False, "reason": "indisponivel"}
+        if self.state.user is None or not self.state.session_samples:
+            return {"persisted": False, "reason": "sem amostras"}
+
+        try:
+            metrics = self._analysis.analyze_session(
+                self.state.session_samples, float(sessao.sample_rate)
+            )
+        except AnalysisUnavailableError:
+            return {"persisted": False, "reason": "analise indisponivel"}
+
+        try:
+            result = self._results.persistir(
+                patient=self.state.user, session_id=sessao.id, metrics=metrics
+            )
+        except ConsentRequiredError:
+            # Gate ADR-0026: sem consentimento, o dado derivado não é gravado.
+            return {"persisted": False, "reason": "sem consentimento"}
+
+        if result is None:
+            return {"persisted": False, "reason": "persistencia desligada"}
+        return {"persisted": True, "result_id": str(result.id)}
 
     # -- desconexão ------------------------------------------------------
 

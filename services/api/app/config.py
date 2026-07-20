@@ -75,6 +75,16 @@ class Settings(BaseSettings):
     #: janela/época do sinal vive no AnalysisEngine (ADR-0017).
     stream_window_seconds: float = 2.0
 
+    # -- Persistência de Result (ADR-0026 / Medical/72) ----------------------
+    #: Chave de cifragem em repouso das métricas. **Sem default, obrigatória**
+    #: (fail-closed): a app não sobe sem ela. Gere com:
+    #:   python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+    result_encryption_key: str = Field(...)
+    #: GATE de produção (ADR-0026): quando `False`, nenhum Result de pessoa
+    #: real é persistido. Fica desligado em produção até o consentimento no
+    #: fluxo (#29). Em dev/test, ligado — mas só com dados sintéticos.
+    result_persistence_enabled: bool = True
+
     # -- CORS ----------------------------------------------------------------
     #: Origens permitidas (separadas por vírgula) para o app web.
     #: Em produção o MVP assume **same-origin** (app e API atrás do mesmo
@@ -96,6 +106,22 @@ class Settings(BaseSettings):
                 f"{JWT_SECRET_MIN_BYTES} bytes (gere com: openssl rand -hex 32)"
             )
         return value
+
+    @field_validator("result_encryption_key")
+    @classmethod
+    def _validar_chave_cifragem(cls, value: str) -> str:
+        """Fail-closed: a chave precisa ser um Fernet key válido."""
+        from cryptography.fernet import Fernet
+
+        try:
+            Fernet(value.strip().encode("utf-8"))
+        except Exception as exc:
+            raise ValueError(
+                "WAVEAI_API_RESULT_ENCRYPTION_KEY invalida (gere com: "
+                "python -c \"from cryptography.fernet import Fernet; "
+                "print(Fernet.generate_key().decode())\")"
+            ) from exc
+        return value.strip()
 
 
 def get_settings() -> Settings:

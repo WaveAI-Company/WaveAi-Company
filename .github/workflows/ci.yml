@@ -48,6 +48,8 @@ jobs:
       WAVEAI_TEST_REQUIRE_DB: "1"
       # Segredo descartável só deste job (ADR-0023: exigido em todo ambiente).
       WAVEAI_API_JWT_SECRET: ci-secret-nao-usar-fora-do-ci-0123456789abcdef
+      # Chave Fernet descartável só do CI (ADR-0026).
+      WAVEAI_API_RESULT_ENCRYPTION_KEY: sRzpGGMSAff35dzYCgpeXTyI2rMfVLkVtN_nu5bhwTE=
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -65,8 +67,9 @@ jobs:
       run:
         working-directory: infra
     env:
-      # O compose exige o segredo (fail-closed); aqui usamos um descartável.
+      # O compose exige estes segredos (fail-closed); aqui, descartáveis.
       WAVEAI_API_JWT_SECRET: ci-secret-nao-usar-fora-do-ci-0123456789abcdef
+      WAVEAI_API_RESULT_ENCRYPTION_KEY: sRzpGGMSAff35dzYCgpeXTyI2rMfVLkVtN_nu5bhwTE=
     steps:
       - uses: actions/checkout@v4
       - name: Subir o stack

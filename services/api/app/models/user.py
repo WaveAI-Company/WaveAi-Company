@@ -61,6 +61,13 @@ class User(Base):
     #: O logout global aumenta esta versão; a rotação por token vem na #7.
     token_version: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
 
+    #: Consentimento para persistir dados biométricos derivados (ADR-0026).
+    #: `None` = sem consentimento → nenhum Result é gravado. O termo informado
+    #: completo é a #29; aqui é o registro mínimo que sustenta a base legal.
+    consent_given_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

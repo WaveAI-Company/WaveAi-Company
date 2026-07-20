@@ -136,3 +136,4 @@ Este é o **mapa da estrutura documental ideal** do WaveAI. Define, por área, q
 - Criado **`Documentation/10 · Workflow de Git (GitHub Flow)`** (Vivo) e **`Architecture/21`** (integração/captação).
 - Criado código: **`experiments/eeg-capture-spike/`** (spike Q-TEC-05) — ADR-0013/0014/0015. Repo agora é **monorepo** (docs + código).
 - Criado **`Architecture/22 · Arquitetura da Plataforma (MVP)`**, **`Documentation/11 · Quebra de Trabalho do MVP`**, **`Documentation/12 · Guia do Claude Code`** e **`CLAUDE.md`** (raiz). ADRs 0016–0019.
+- Criado **`Medical/72 · Consentimento & Direitos do Titular`** (Semente) — requisito da #15; ADR-0026.
