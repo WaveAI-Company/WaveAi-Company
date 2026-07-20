@@ -59,7 +59,10 @@ function RouteGuard() {
       <Stack.Screen name="patient/live" options={{ title: "Estado ao vivo" }} />
       <Stack.Screen name="patient/history" options={{ title: "Histórico" }} />
       <Stack.Screen name="patient/profile" options={{ title: "Meu perfil" }} />
+      <Stack.Screen name="patient/consent" options={{ title: "Consentimento" }} />
+      <Stack.Screen name="patient/invites" options={{ title: "Convites" }} />
       <Stack.Screen name="doctor/index" options={{ title: "Área do médico" }} />
+      <Stack.Screen name="doctor/invite" options={{ title: "Convidar paciente" }} />
       <Stack.Screen name="doctor/patient/[id]" options={{ title: "Paciente" }} />
     </Stack>
   );
