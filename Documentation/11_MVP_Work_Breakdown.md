@@ -209,3 +209,13 @@ Motivo: o fluxo convite→aceite é **uma feature coesa** e a manifestação de 
 - **Raw em memória durante a sessão:** OK para o MVP — acumular a sessão em RAM para `process_session` no *stop* é **consistente com "raw não persistido"** (nada toca disco) e trivial para capturas curtas (limitado pelo teto de sessão). **[Adendo ADR-0025]** para sessões longas/muitas simultâneas, o caminho escalável é **agregar as features por janela incrementalmente** (memória ~O(1)) em vez de bufferizar todo o raw — revisitar quando necessário.
 - **Revogar consentimento ≠ apagar dados** (correção do Medical/72 §2, **aceita**): revogar **interrompe novas coletas**; a **exclusão** é direito **separado e explícito** (`DELETE /me/results`), não automática. Dados já coletados seguem a **retenção** (§5, em aberto). Não destruir implicitamente é mais seguro.
 - **Prioridade:** **#29 (UI de consentimento) ANTES de #16 (dashboards)** — a #29 é o **gate da persistência em produção** e fecha o laço de consentimento (inclui o estado `declined`). A #16 roda com dados sintéticos e não destrava nada downstream.
+
+### #29 concluída (2026-07-20) — UI de consentimento + `declined` + gate destravado
+> **Nota de numeração:** o `#20` acima (definido em 2026-07-18 como "Fluxo de convite/consentimento") é a **mesma feature** que virou a issue **#29** no GitHub. Referências antigas a "#20" no código foram alinhadas para "#29".
+
+Entregue (ADR-0024/0026, Medical/72; verificado no web ponta a ponta):
+- **Estado `declined`** no CareLink (recusa do convite pelo paciente): terminal como `revoked`, não concede acesso, não trava re-convite (índice parcial exclui ambos), auditado. Rota `POST /care-links/{id}/decline` (só o paciente). Migration 0006.
+- **Consentimento informado versionado:** `User.consent_version` registra **qual termo** foi aceito; `POST /me/consent` valida a versão contra a vigente (409 se defasada); `GET` expõe `consent_version` + `current_version`; export inclui a versão.
+- **UI (telas dedicadas):** `patient/consent` (termo informado + revogar), `patient/invites` (aceitar/recusar), `doctor/invite` (convidar por e-mail com resposta genérica + pendentes). Perfil do paciente ganhou revogação de acesso ativo e gestão de consentimento; home do paciente ganhou lembrete não-bloqueante e badge de convites.
+- **Gate de produção destravado:** com (a) consentimento informado no fluxo e (b) direitos (da #15), a persistência de dado real pode ser habilitada em produção. Dev/test seguem **só sintético**.
+- **Decisões validadas:** termo **versionado** (não só timestamp); consentimento **opt-in não-bloqueante** (não trava a captura simulada); **telas dedicadas**.
