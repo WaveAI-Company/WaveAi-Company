@@ -2,6 +2,7 @@
   "expo": {
     "name": "WaveAI",
     "slug": "wave-app",
+    "owner": "waveais-team",
     "scheme": "waveai",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -17,7 +18,13 @@
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
+      "package": "com.waveai.app",
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "android.permission.BLUETOOTH_CONNECT",
+        "android.permission.BLUETOOTH_SCAN",
+        "android.permission.ACCESS_FINE_LOCATION"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png",
@@ -27,6 +34,12 @@
     "plugins": [
       "expo-router",
       "expo-secure-store"
-    ]
+    ],
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "cb7b20d2-4978-4949-b9b4-91de9d8d4c40"
+      }
+    }
   }
 }
