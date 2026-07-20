@@ -7,6 +7,13 @@
       "runtimeArgs": ["run", "web"],
       "cwd": "apps/wave-app",
       "port": 8081
+    },
+    {
+      "name": "wave-app-dev-client",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["expo", "start", "--dev-client", "--lan"],
+      "cwd": "apps/wave-app",
+      "port": 8081
     }
   ]
 }

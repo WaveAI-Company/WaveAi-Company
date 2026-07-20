@@ -107,9 +107,16 @@ export default function PatientLiveScreen() {
     }, INTERVALO_MS);
   }
 
-  // Encerra o stream se a tela sair — sessão órfã fica `aborted` no servidor,
-  // mas fechar aqui evita segurar conexão à toa.
-  useEffect(() => parar, [parar]);
+  // Encerra o stream **apenas ao sair da tela**.
+  //
+  // Via ref de propósito: com `useEffect(() => parar, [parar])`, qualquer
+  // mudança de identidade de `parar` (ela depende de `usandoAparelho`) fazia o
+  // React rodar a limpeza do efeito anterior — desconectando o aparelho no
+  // instante seguinte ao connect. O simulador não sofria disso porque não
+  // alterava a dependência.
+  const pararRef = useRef(parar);
+  pararRef.current = parar;
+  useEffect(() => () => pararRef.current(), []);
 
   async function iniciar() {
     setErro(null);
@@ -149,7 +156,10 @@ export default function PatientLiveScreen() {
   return (
     <ScreenContainer>
       <Text style={styles.heading}>Estado ao vivo</Text>
-      <MockBadge />
+      {/* O selo vale só para o sinal simulado: exibi-lo sobre captação real
+          rotularia dado verdadeiro como fictício — enganoso na direção
+          oposta, e igualmente errado. */}
+      {!usandoAparelho ? <MockBadge /> : null}
       <Text style={styles.lead}>
         {deviceConnection.supported
           ? "Conecte o MindWave pareado, ou use o sinal simulado. As features são calculadas no servidor."
