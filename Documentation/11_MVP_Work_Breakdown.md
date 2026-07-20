@@ -197,3 +197,10 @@ Motivo: o fluxo convite→aceite é **uma feature coesa** e a manifestação de 
 - **Auth do WS:** primeira mensagem `{"type":"auth","token":...}`, timeout 10 s, sem dados antes do auth; sessão vinculada ao **usuário autenticado** (paciente transmite o próprio sinal). `wss://` obrigatório. Ver **ADR-0025**.
 - **Persistência do raw: NÃO agora — correto.** `CaptureSession` só metadados + contagem; encaminhamento à Analysis = `TODO(#14)`. **[DECISÃO] Não decidir o armazenamento de série temporal neste PR** — **Q-TEC-04 / ADR-0005 seguem abertos**. Pelo fluxo da ADR-0017, o que se persiste é o **`Result`** (features + `engine_version`), **não necessariamente o raw**; persistência de raw é concern separado (reprocessamento/pesquisa/auditoria) e **fora do escopo do MVP** até haver necessidade concreta — aí entra issue + ADR próprios (minimização LGPD).
 - **Consentimento (ADR-0024) não bloqueia** o paciente de capturar o próprio sinal; a visibilidade do médico vem depois, via CareLink `active`, na leitura (#15/#16).
+
+### Notas para #15 (2026-07-18) — persistência = dado biométrico real (ADR-0026)
+- Persistir **só `Result`** (features + `engine_version` + metadados), vinculado ao paciente; **raw não** (ADR-0025). Tratar como **sensível**: **cifragem em repouso**.
+- Suportar **direitos do titular**: acesso, **exclusão** (apagar/anonimizar todos os `Result` do usuário) e **exportação**. **Auditar** acesso.
+- **Gate de produção:** nenhum dado de pessoa real persistido até haver **consentimento no fluxo** + **direitos implementados**. Testes/dev: **só sintético** (`CLAUDE.md`).
+- Estado **`declined`** do CareLink (dependência do fluxo de consentimento) deve entrar no backend na issue de UI de consentimento — já anotado.
+- Ver **ADR-0026** e **Medical/72**.

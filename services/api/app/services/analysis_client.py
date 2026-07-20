@@ -26,6 +26,11 @@ class AnalysisClient(Protocol):
     def analyze_window(self, samples: list[float], fs: float) -> dict[str, Any]:
         ...
 
+    def analyze_session(
+        self, samples: list[float], fs: float, labels: list[str] | None = None
+    ) -> dict[str, Any]:
+        ...
+
 
 class HttpAnalysisClient:
     def __init__(self, *, base_url: str, timeout_seconds: float) -> None:
@@ -33,11 +38,26 @@ class HttpAnalysisClient:
         self._timeout = timeout_seconds
 
     def analyze_window(self, samples: list[float], fs: float) -> dict[str, Any]:
+        return self._post("/analyze/window", {"samples": samples, "fs": fs})
+
+    def analyze_session(
+        self, samples: list[float], fs: float, labels: list[str] | None = None
+    ) -> dict[str, Any]:
+        # Timeout maior: a análise de sessão inteira é mais pesada que a janela.
+        return self._post(
+            "/analyze/session",
+            {"samples": samples, "fs": fs, "labels": labels},
+            timeout=self._timeout * 6,
+        )
+
+    def _post(
+        self, path: str, payload: dict[str, Any], timeout: float | None = None
+    ) -> dict[str, Any]:
         try:
             resposta = httpx.post(
-                f"{self._base_url}/analyze/window",
-                json={"samples": samples, "fs": fs},
-                timeout=self._timeout,
+                f"{self._base_url}{path}",
+                json=payload,
+                timeout=timeout or self._timeout,
             )
             resposta.raise_for_status()
             return resposta.json()

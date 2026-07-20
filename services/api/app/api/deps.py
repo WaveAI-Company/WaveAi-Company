@@ -14,11 +14,14 @@ from ..db.session import get_session
 from ..models.user import User, UserRole
 from ..repositories.user import UserRepository
 from ..security.password import PasswordHasher, get_password_hasher
+from ..security.crypto import MetricsCipher
+from ..security.crypto import get_metrics_cipher as get_metrics_cipher_factory
 from ..security.rate_limit import SlidingWindowRateLimiter
 from ..security.tokens import InvalidTokenError, decode_access_token
 from ..services.analysis_client import AnalysisClient, HttpAnalysisClient
 from ..services.auth import AuthService
 from ..services.care import CareService
+from ..services.results import ResultService
 
 _bearer = HTTPBearer(auto_error=False)
 
@@ -101,6 +104,18 @@ def get_analysis_client(settings: Settings = Depends(get_settings)) -> AnalysisC
         base_url=settings.analysis_url,
         timeout_seconds=settings.analysis_timeout_seconds,
     )
+
+
+def get_metrics_cipher(settings: Settings = Depends(get_settings)) -> MetricsCipher:
+    return get_metrics_cipher_factory(settings)
+
+
+def get_result_service(
+    session: Session = Depends(get_session),
+    settings: Settings = Depends(get_settings),
+    cipher: MetricsCipher = Depends(get_metrics_cipher),
+) -> ResultService:
+    return ResultService(session=session, settings=settings, cipher=cipher)
 
 
 def get_care_service(

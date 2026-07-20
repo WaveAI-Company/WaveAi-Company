@@ -181,3 +181,19 @@ Status possíveis: `Proposta` · `Aceita` · `Substituída` · `Revogada`.
 **Decisão:** Autenticar por **primeira mensagem** `{"type":"auth","token":"<access JWT>"}` logo após o handshake, com **timeout de 10 s** (fecha conexão anônima pendurada, com close code de aplicação). **Nenhum frame de dados é processado antes do auth.** Validar o access token (ADR-0021): assinatura, expiração, papel. **Vincular a `CaptureSession` ao usuário autenticado** (o paciente transmite o **próprio** sinal). `wss://` (TLS) obrigatório.
 **Alternativas:** `?token=` na URL (vaza — rejeitado); subprotocolo `Sec-WebSocket-Protocol` (hack, também pode ser logado); cookie httpOnly no handshake (funciona no web same-origin, mas **não** no mobile — inconsistente). A primeira-mensagem é a única **portável** web+mobile e sem vazamento.
 **Consequências:** o cliente envia auth antes de transmitir; a expiração do access token no meio de uma captura longa fica como **TODO** (capturas do MVP são curtas; re-auth futura). Reforça ADR-0021/0023.
+
+---
+
+## ADR-0026 — Persistência de dados biométricos derivados (Result) sob LGPD
+**Status:** Aceita (2026-07-18)
+**Contexto:** A **#15** é o marco em que o sistema passa a **persistir dados derivados de uma pessoa real** (features de EEG: bandas, `rel_alpha`, qualidade, verdict + `engine_version` + vínculo ao usuário). Até aqui **nada biométrico foi gravado**. Isso torna as obrigações da LGPD **concretas**, não mais hipotéticas.
+**Decisão:**
+- **O que persiste:** apenas o **`Result`** (features derivadas + `engine_version` + metadados de sessão), vinculado ao paciente. **Raw não** (ADR-0025). Dados derivados de EEG são tratados com o **padrão de dado sensível** (cautela máxima), mesmo no enquadramento não-clínico ([Medical/71](Medical/71_Intended_Use_and_Regulatory_Positioning.md)).
+- **Base legal / consentimento:** o paciente captura o **próprio** dado (serviço que contratou) + **consentimento informado** no cadastro/captura. Acesso do médico só com CareLink `active` (ADR-0024).
+- **Cifragem em repouso** do armazenamento de `Result`.
+- **Direitos do titular** suportados desde já: **acesso, exportação (portabilidade) e exclusão (erasure)** — o schema deve permitir apagar/anonimizar **todos** os `Result` de um usuário.
+- **Retenção:** definir política (mínimo: manter até o titular excluir) e registrar.
+- **Auditoria** de acesso a `Result` (quem leu o quê) — estende ADR-0024.
+- **[GATE de produção]** Nenhum dado derivado de **pessoa real** é persistido em produção até: (a) **consentimento informado** no fluxo e (b) **direitos de acesso/exclusão/exportação** implementados. Em dev/test, **apenas dados sintéticos** (regra do `CLAUDE.md` permanece).
+**Alternativas:** persistir sem cifragem/direitos "para ir rápido" — **rejeitado** (dado biométrico sem salvaguardas); guardar raw — fora de escopo (ADR-0025).
+**Consequências:** a #15 ganha requisitos de cifragem, consentimento e direitos; nasce [Medical/72](Medical/72_Consent_and_Data_Subject_Rights.md). Relaciona ADR-0017, 0024, 0025, [Medical/70](Medical/70_Regulatory_Clinical_Strategy.md)/71.
