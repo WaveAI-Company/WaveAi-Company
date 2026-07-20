@@ -39,6 +39,8 @@ services:
       # Sem default por decisão (ADR-0023): se faltar, o compose falha aqui
       # com esta mensagem, em vez de a app subir com um segredo fraco.
       WAVEAI_API_JWT_SECRET: "${WAVEAI_API_JWT_SECRET:?defina em infra/.env - gere com 'openssl rand -hex 32'}"
+      # Cifragem do Result (ADR-0026): sem default, fail-closed.
+      WAVEAI_API_RESULT_ENCRYPTION_KEY: "${WAVEAI_API_RESULT_ENCRYPTION_KEY:?defina em infra/.env - gere com Fernet.generate_key()}"
       # Dev local é HTTP: sem isto o navegador descarta o cookie do refresh.
       WAVEAI_API_REFRESH_COOKIE_SECURE: ${WAVEAI_API_REFRESH_COOKIE_SECURE:-false}
       # O gateway encaminha as janelas para a Analysis (#14).
