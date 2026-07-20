@@ -10,7 +10,7 @@ Posicionamento: resultados **exploratórios, não-clínicos e não-diagnósticos
 
 from __future__ import annotations
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 
 from . import __version__
@@ -35,6 +35,16 @@ class WindowRequest(BaseModel):
     #: CPU/memória demais — o gateway já limita o bloco, isto é a segunda rede.
     samples: list[float] = Field(min_length=16, max_length=32_768)
     fs: float = Field(gt=0, le=20_000)
+
+
+class SessionRequest(BaseModel):
+    """Sessão inteira para o relatório em batch (#15)."""
+
+    samples: list[float] = Field(min_length=16, max_length=8_000_000)
+    fs: float = Field(gt=0, le=20_000)
+    #: Rótulos paralelos a `samples` (ex.: OC/OA). Habilita a comparação do
+    #: Exp. B quando presentes; ausentes, o relatório traz só bandas/qualidade.
+    labels: list[str] | None = None
 
 
 @app.get("/health")
@@ -65,6 +75,45 @@ def analyze_window(payload: WindowRequest) -> dict:
         },
         "disclaimer": DISCLAIMER,
     }
+
+
+@app.post("/analyze/session")
+def analyze_session(payload: SessionRequest) -> dict:
+    """Gera o relatório de uma sessão inteira (batch, ADR-0017).
+
+    Todo o DSP vive no `AnalysisEngine.process_session`; aqui só se adapta a
+    entrada e se serializa a saída para persistência (#15).
+    """
+    if payload.labels is not None and len(payload.labels) != len(payload.samples):
+        raise HTTPException(status_code=422, detail="labels e samples com tamanhos diferentes")
+
+    report = engine.process_session(payload.samples, payload.fs, labels=payload.labels)
+    comparison = report.comparison
+
+    corpo: dict = {
+        "engine_version": report.engine_version,
+        "fs": report.fs,
+        "n_samples": report.n_samples,
+        "rel_alpha": report.rel_alpha,
+        "relative_band_powers": report.relative_band_powers,
+        "band_powers": report.band_powers,
+        "quality": {
+            "signal_std": report.quality.signal_std,
+            "mains_power": report.quality.mains_power,
+            "mains_power_ratio": report.quality.mains_power_ratio,
+        },
+        "disclaimer": DISCLAIMER,
+    }
+    if comparison is not None:
+        corpo["comparison"] = {
+            "eyes_closed_rel_alpha": comparison.eyes_closed_rel_alpha,
+            "eyes_open_rel_alpha": comparison.eyes_open_rel_alpha,
+            "ratio": comparison.ratio,
+            "p_value": comparison.p_value,
+            "verdict": comparison.verdict,
+            "passed": comparison.passed,
+        }
+    return corpo
 
 
 @app.post("/analyze/demo")

@@ -19,8 +19,9 @@ from ..config import Settings, get_settings
 from ..db.session import get_session
 from ..security.password import PasswordHasher
 from ..services.analysis_client import AnalysisClient
+from ..services.results import ResultService
 from ..services.streaming import CloseCode, StreamError, StreamProtocol
-from .deps import get_analysis_client, get_hasher
+from .deps import get_analysis_client, get_hasher, get_result_service
 
 router = APIRouter(tags=["stream"])
 
@@ -32,6 +33,7 @@ async def stream(
     settings: Settings = Depends(get_settings),
     hasher: PasswordHasher = Depends(get_hasher),
     analysis: AnalysisClient = Depends(get_analysis_client),
+    results: ResultService = Depends(get_result_service),
 ) -> None:
     """Recebe blocos de sinal bruto de um paciente autenticado.
 
@@ -40,7 +42,7 @@ async def stream(
     """
     await websocket.accept()
     protocolo = StreamProtocol(
-        db=db, settings=settings, hasher=hasher, analysis=analysis
+        db=db, settings=settings, hasher=hasher, analysis=analysis, results=results
     )
 
     try:

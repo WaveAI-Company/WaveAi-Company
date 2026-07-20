@@ -8,6 +8,7 @@ from .care_link import (
     CareLinkStatus,
 )
 from .refresh_token import RefreshToken
+from .result import Result, ResultAccessAction, ResultAccessEvent
 from .session import CaptureSession, SessionStatus
 from .user import DoctorProfile, PatientProfile, User, UserRole, normalize_email
 
@@ -19,6 +20,9 @@ __all__ = [
     "RefreshToken",
     "CaptureSession",
     "SessionStatus",
+    "Result",
+    "ResultAccessEvent",
+    "ResultAccessAction",
     "CareLink",
     "CareLinkStatus",
     "CareLinkParty",

@@ -82,6 +82,37 @@ Nunca em `localStorage`.
 faltar ou tiver menos de 32 bytes, em **qualquer** ambiente. Gere com
 `openssl rand -hex 32`. O `docker compose` também recusa subir sem ele.
 
+## Resultado por sessão e direitos do titular (ADR-0026 / Medical/72)
+
+Ao encerrar o stream, o gateway pede à Analysis o relatório em batch
+(`process_session`) e persiste um **`Result`** vinculado ao paciente. O sinal
+**raw não é gravado** (ADR-0025) — vive só em memória durante a captação e é
+descartado; o que persiste é o dado **derivado**.
+
+**Tratado como dado sensível:**
+- **Cifragem em repouso:** as métricas ficam num campo binário cifrado (Fernet);
+  só `engine_version` fica em claro (rastreabilidade). Chave via
+  `WAVEAI_API_RESULT_ENCRYPTION_KEY`, **fail-closed** (a app não sobe sem ela).
+- **Gate de consentimento:** sem `consent_given_at` no titular, **nada é
+  gravado** — a sessão encerra, mas o `Result` não. `WAVEAI_API_RESULT_PERSISTENCE_ENABLED`
+  é o gate de produção (fica `false` até o consentimento no fluxo, #29).
+- **Auditoria:** `result_access_events` registra quem acessou dados de qual
+  titular (`created`/`read`/`exported`/`deleted`). O rastro **sobrevive à
+  exclusão** dos Result.
+
+**Direitos do titular (LGPD):**
+| Rota | Direito |
+|---|---|
+| `POST` / `DELETE` / `GET /me/consent` | Consentimento (dar, revogar, consultar) |
+| `GET /me/results` | **Acesso** — vê os próprios (decifrados) |
+| `GET /me/results/export` | **Portabilidade** — exporta tudo em JSON |
+| `DELETE /me/results` | **Exclusão** — apaga TODOS os próprios Result |
+| `GET /patients/{id}/results` | Médico lê, **só com CareLink `active`** (403 sem), auditado |
+
+Revogar consentimento **interrompe** novas coletas mas **não apaga** o que
+existe — a exclusão é direito explícito, para revogar não destruir dado por
+engano. A política de retenção pós-revogação fica em aberto (Medical/72, §5).
+
 ## Vínculo médico-paciente (ADR-0024)
 
 | Rota | O que faz |
