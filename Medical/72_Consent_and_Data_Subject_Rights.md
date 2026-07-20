@@ -19,7 +19,7 @@ Documento que rege como o WaveAI trata **consentimento** e os **direitos do titu
 ## 2. Consentimento
 **[RECOMENDAÇÃO]**
 - **Informado, específico e destacado** no cadastro/primeira captura: o que é coletado, para quê, por quanto tempo, e quem pode acessar.
-- **Revogável** a qualquer momento (sem penalidade); revogar o consentimento de tratamento interrompe novas coletas e dispara o fluxo de exclusão/retenção definido.
+- **Revogável** a qualquer momento (sem penalidade). **Revogar ≠ apagar:** revogar o consentimento **interrompe novas coletas/processamento**; a **exclusão** é um direito **separado e explícito** (não automática na revogação, para não destruir dado por engano). O destino dos dados **já coletados** após a revogação segue a **política de retenção** (§5).
 - **Registrado/auditado** (quando, versão do termo) — é o que sustenta a base legal.
 - Acesso de **médico** aos dados exige, adicionalmente, CareLink `active` (ADR-0024).
 

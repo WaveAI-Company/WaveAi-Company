@@ -204,3 +204,8 @@ Motivo: o fluxo convite→aceite é **uma feature coesa** e a manifestação de 
 - **Gate de produção:** nenhum dado de pessoa real persistido até haver **consentimento no fluxo** + **direitos implementados**. Testes/dev: **só sintético** (`CLAUDE.md`).
 - Estado **`declined`** do CareLink (dependência do fluxo de consentimento) deve entrar no backend na issue de UI de consentimento — já anotado.
 - Ver **ADR-0026** e **Medical/72**.
+
+### Notas para #15 — adendos (2026-07-18)
+- **Raw em memória durante a sessão:** OK para o MVP — acumular a sessão em RAM para `process_session` no *stop* é **consistente com "raw não persistido"** (nada toca disco) e trivial para capturas curtas (limitado pelo teto de sessão). **[Adendo ADR-0025]** para sessões longas/muitas simultâneas, o caminho escalável é **agregar as features por janela incrementalmente** (memória ~O(1)) em vez de bufferizar todo o raw — revisitar quando necessário.
+- **Revogar consentimento ≠ apagar dados** (correção do Medical/72 §2, **aceita**): revogar **interrompe novas coletas**; a **exclusão** é direito **separado e explícito** (`DELETE /me/results`), não automática. Dados já coletados seguem a **retenção** (§5, em aberto). Não destruir implicitamente é mais seguro.
+- **Prioridade:** **#29 (UI de consentimento) ANTES de #16 (dashboards)** — a #29 é o **gate da persistência em produção** e fecha o laço de consentimento (inclui o estado `declined`). A #16 roda com dados sintéticos e não destrava nada downstream.
