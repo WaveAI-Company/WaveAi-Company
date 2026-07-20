@@ -85,6 +85,9 @@ class Ator:
     def vinculos(self) -> list[dict]:
         return self.get("/care-links").json()
 
+    def recusar(self, vinculo_id: str):
+        return self.post(f"/care-links/{vinculo_id}/decline")
+
 
 @pytest.fixture
 def medico(client: TestClient) -> Ator:
@@ -182,6 +185,73 @@ def test_vinculo_revogado_nao_aparece_mais_na_lista(medico: Ator, paciente: Ator
 
     assert paciente.vinculos() == []
     assert medico.vinculos() == []
+
+
+# -- recusa (declined) ---------------------------------------------------
+
+
+def test_paciente_recusa_convite_e_nao_concede_acesso(medico: Ator, paciente: Ator):
+    medico.convidar(paciente)
+    vinculo = paciente.vinculos()[0]
+
+    recusa = paciente.recusar(vinculo["id"])
+
+    assert recusa.status_code == 200
+    assert recusa.json()["status"] == "declined"
+    # Recusar é terminal: some da vista de ambos e não dá acesso.
+    assert paciente.vinculos() == []
+    assert medico.vinculos() == []
+    assert medico.ver_paciente(paciente).status_code == 403
+
+
+def test_medico_nao_pode_recusar(medico: Ator, paciente: Ator):
+    """Recusar é ato do paciente (dono dos dados), como aceitar."""
+    medico.convidar(paciente)
+    vinculo_id = medico.vinculos()[0]["id"]
+
+    assert medico.recusar(vinculo_id).status_code == 404
+
+
+def test_nao_recusa_vinculo_ja_ativo(medico: Ator, paciente: Ator):
+    medico.convidar(paciente)
+    vinculo_id = paciente.vinculos()[0]["id"]
+    paciente.post(f"/care-links/{vinculo_id}/accept")
+
+    assert paciente.recusar(vinculo_id).status_code == 409
+
+
+def test_recusar_nao_trava_novo_convite(medico: Ator, paciente: Ator):
+    """Recusado não vira barreira: o médico pode convidar de novo (linha nova)."""
+    medico.convidar(paciente)
+    primeiro = paciente.vinculos()[0]["id"]
+    paciente.recusar(primeiro)
+
+    medico.convidar(paciente)
+
+    novo = paciente.vinculos()[0]
+    assert novo["id"] != primeiro
+    assert novo["status"] == "pending"
+
+
+def test_recusa_fica_auditada(medico: Ator, paciente: Ator, db_session: Session):
+    medico.convidar(paciente)
+    vinculo_id = paciente.vinculos()[0]["id"]
+    paciente.recusar(vinculo_id)
+
+    eventos = db_session.scalars(
+        select(CareLinkEvent)
+        .where(CareLinkEvent.care_link_id == uuid.UUID(vinculo_id))
+        .order_by(CareLinkEvent.created_at)
+    ).all()
+    assert [e.event for e in eventos] == [
+        CareLinkEventType.REQUESTED,
+        CareLinkEventType.DECLINED,
+    ]
+    assert str(eventos[1].actor_user_id) == paciente.id
+
+    link = db_session.get(CareLink, uuid.UUID(vinculo_id))
+    assert link.status is CareLinkStatus.DECLINED
+    assert link.declined_at is not None
 
 
 # -- quem pode fazer o quê ----------------------------------------------
