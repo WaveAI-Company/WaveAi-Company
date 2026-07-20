@@ -7,7 +7,7 @@
 
 import { request, type UserRole } from "../auth/api";
 
-export type CareLinkStatus = "pending" | "active" | "revoked";
+export type CareLinkStatus = "pending" | "active" | "declined" | "revoked";
 
 export type CareLink = {
   id: string;
@@ -28,6 +28,37 @@ export type PatientSummary = {
 /** Todos os vínculos vivos do usuário (pendentes e ativos). */
 export async function listCareLinks(): Promise<CareLink[]> {
   return request<CareLink[]>("/care-links", { auth: true });
+}
+
+/**
+ * Convida a contraparte por e-mail (médico→paciente ou paciente→médico).
+ *
+ * A resposta é **sempre a mesma** (202) exista ou não a conta — o backend não
+ * revela quem tem WaveAI (ADR-0024). Por isso não devolvemos nada útil aqui.
+ */
+export async function inviteCareLink(email: string): Promise<void> {
+  await request("/care-links", { method: "POST", body: { email }, auth: true });
+}
+
+/** Convites que o paciente recebeu e ainda não respondeu. */
+export async function listPendingInvites(): Promise<CareLink[]> {
+  const links = await listCareLinks();
+  return links.filter((link) => link.status === "pending");
+}
+
+/** Aceita um convite (→ `active`). Só o paciente do vínculo pode. */
+export async function acceptCareLink(id: string): Promise<CareLink> {
+  return request<CareLink>(`/care-links/${id}/accept`, { method: "POST", auth: true });
+}
+
+/** Recusa um convite (→ `declined`). Terminal: some da lista. */
+export async function declineCareLink(id: string): Promise<CareLink> {
+  return request<CareLink>(`/care-links/${id}/decline`, { method: "POST", auth: true });
+}
+
+/** Revoga um vínculo ativo (efeito imediato). Qualquer das partes pode. */
+export async function revokeCareLink(id: string): Promise<CareLink> {
+  return request<CareLink>(`/care-links/${id}/revoke`, { method: "POST", auth: true });
 }
 
 /**
