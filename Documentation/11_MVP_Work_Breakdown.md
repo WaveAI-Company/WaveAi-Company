@@ -219,3 +219,13 @@ Entregue (ADR-0024/0026, Medical/72; verificado no web ponta a ponta):
 - **UI (telas dedicadas):** `patient/consent` (termo informado + revogar), `patient/invites` (aceitar/recusar), `doctor/invite` (convidar por e-mail com resposta genérica + pendentes). Perfil do paciente ganhou revogação de acesso ativo e gestão de consentimento; home do paciente ganhou lembrete não-bloqueante e badge de convites.
 - **Gate de produção destravado:** com (a) consentimento informado no fluxo e (b) direitos (da #15), a persistência de dado real pode ser habilitada em produção. Dev/test seguem **só sintético**.
 - **Decisões validadas:** termo **versionado** (não só timestamp); consentimento **opt-in não-bloqueante** (não trava a captura simulada); **telas dedicadas**.
+
+### #16 concluída (2026-07-21) — dashboards por papel
+Entregue (ver **ADR-0027**; verificado no web e em largura de celular):
+- **Gráficos próprios sobre `react-native-svg`:** `TrendChart` (alfa relativo sessão a sessão, com mínimo/máximo rotulados), `BandBars` (composição por banda, com as faixas em Hz) e `SignalQuality`.
+- **`SessionsDashboard` compartilhado pelos dois papéis** — muda a origem dos dados e a cor de destaque, não a leitura. Paciente: `GET /me/results`. Médico: `GET /patients/{id}/results` (exige CareLink `active`, acesso auditado).
+- **Mocks aposentados:** `patient/history`, `doctor/patient/[id]` e a home do paciente passaram a ler `Result` real, com **empty state honesto**; `mockSessions.ts` foi removido (o `MockBadge` segue no sinal simulado da `live`).
+- **Seed de dev** (`scripts/seed_dev.py`) cria 6 sessões fictícias por paciente, determinísticas e idempotentes, marcadas com `engine_version = SEED-FICTICIO/0.1.0` — a origem fictícia fica visível na própria tela.
+- **Sem veredito de qualidade:** `Q-TEC-06` segue em aberto, então a UI mostra as medidas sem classificar a sessão como boa ou ruim.
+
+**Não incluído (deliberado):** a comparação olhos abertos/fechados (`comparison` do Exp. B) só existe em sessões rotuladas — fica para quando houver captação com rótulo (#17).
