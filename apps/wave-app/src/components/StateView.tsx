@@ -1,6 +1,7 @@
+import { useMemo } from "react";
 import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 
-import { colors, spacing } from "../theme";
+import { useRoleAccent, useTheme, type Theme } from "../theme";
 
 type Props = {
   loading?: boolean;
@@ -16,17 +17,23 @@ type Props = {
  * autorizou o acompanhamento".
  */
 export function StateView({ loading, error, empty }: Props) {
+  const t = useTheme();
+  const { accent } = useRoleAccent();
+  const styles = useMemo(() => criarEstilos(t), [t]);
+
   if (loading) {
     return (
-      <View style={styles.caixa}>
-        <ActivityIndicator color={colors.patient} />
+      <View style={styles.caixa} accessibilityRole="progressbar" accessibilityLabel="Carregando">
+        <ActivityIndicator color={accent} />
       </View>
     );
   }
   if (error) {
     return (
       <View style={styles.caixa}>
-        <Text style={styles.erro}>{error}</Text>
+        <Text style={styles.erro} accessibilityRole="alert">
+          {error}
+        </Text>
       </View>
     );
   }
@@ -40,20 +47,23 @@ export function StateView({ loading, error, empty }: Props) {
   return null;
 }
 
-const styles = StyleSheet.create({
-  caixa: {
-    alignItems: "center",
-    paddingVertical: spacing.xl,
-  },
-  erro: {
-    color: colors.warning,
-    fontSize: 14,
-    textAlign: "center",
-  },
-  vazio: {
-    color: colors.textMuted,
-    fontSize: 14,
-    lineHeight: 20,
-    textAlign: "center",
-  },
-});
+const criarEstilos = (t: Theme) =>
+  StyleSheet.create({
+    caixa: {
+      alignItems: "center",
+      paddingVertical: t.spacing.xl,
+    },
+    erro: {
+      ...t.typography.body,
+      color: t.colors.dangerText,
+      fontSize: 14,
+      textAlign: "center",
+    },
+    vazio: {
+      ...t.typography.body,
+      color: t.colors.textMuted,
+      fontSize: 14,
+      lineHeight: 20,
+      textAlign: "center",
+    },
+  });

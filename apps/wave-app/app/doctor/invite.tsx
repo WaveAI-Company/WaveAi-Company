@@ -1,17 +1,15 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { StyleSheet, Text } from "react-native";
 
-import {
-  inviteCareLink,
-  listCareLinks,
-  type CareLink,
-} from "../../src/api/care";
+import { inviteCareLink, listCareLinks, type CareLink } from "../../src/api/care";
 import { Button } from "../../src/components/Button";
 import { Card } from "../../src/components/Card";
+import { Disclaimer } from "../../src/components/Disclaimer";
 import { Field } from "../../src/components/Field";
 import { ScreenContainer } from "../../src/components/ScreenContainer";
+import { ScreenHeading } from "../../src/components/ScreenHeading";
 import { StateView } from "../../src/components/StateView";
-import { colors, spacing } from "../../src/theme";
+import { useTheme, type Theme } from "../../src/theme";
 
 /**
  * Convidar paciente (ADR-0024).
@@ -22,6 +20,9 @@ import { colors, spacing } from "../../src/theme";
  * afirma que "o convite foi entregue", só que "foi registrado".
  */
 export default function DoctorInviteScreen() {
+  const t = useTheme();
+  const styles = useMemo(() => criarEstilos(t), [t]);
+
   const [email, setEmail] = useState("");
   const [enviando, setEnviando] = useState(false);
   const [confirmacao, setConfirmacao] = useState<string | null>(null);
@@ -70,11 +71,10 @@ export default function DoctorInviteScreen() {
 
   return (
     <ScreenContainer>
-      <Text style={styles.heading}>Convidar paciente</Text>
-      <Text style={styles.lead}>
-        Envie um convite por e-mail. O acompanhamento só começa quando a pessoa
-        aceitar — o convite, sozinho, não dá acesso a nada.
-      </Text>
+      <ScreenHeading
+        title="Convidar paciente"
+        lead="Envie um convite por e-mail. O acompanhamento só começa quando a pessoa aceitar — o convite, sozinho, não dá acesso a nada."
+      />
 
       <Field
         label="E-mail do paciente"
@@ -84,74 +84,46 @@ export default function DoctorInviteScreen() {
         keyboardType="email-address"
         autoComplete="email"
         editable={!enviando}
+        error={erro}
       />
-      <Button
-        label="Enviar convite"
-        onPress={convidar}
-        loading={enviando}
-        accent={colors.doctor}
-      />
+      <Button label="Enviar convite" onPress={convidar} loading={enviando} />
 
-      {confirmacao ? <Text style={styles.confirmacao}>{confirmacao}</Text> : null}
-      {erro ? <Text style={styles.erro}>{erro}</Text> : null}
+      {confirmacao ? (
+        <Text style={styles.confirmacao} accessibilityRole="alert">
+          {confirmacao}
+        </Text>
+      ) : null}
 
       <Text style={styles.secao}>Convites aguardando resposta</Text>
       <StateView
         loading={loading}
-        empty={
-          !loading && pendentes.length === 0
-            ? "Nenhum convite pendente."
-            : null
-        }
+        empty={!loading && pendentes.length === 0 ? "Nenhum convite pendente." : null}
       />
       {pendentes.map((convite) => (
         <Card
           key={convite.id}
           title={convite.counterpart_display_name ?? "Paciente"}
           subtitle="Aguardando o aceite do paciente."
-          accent={colors.warning}
+          accent={t.colors.warningText}
         />
       ))}
 
-      <Text style={styles.footnote}>
-        Uso exploratório de bem-estar — não-clínico e não-diagnóstico.
-      </Text>
+      <Disclaimer />
     </ScreenContainer>
   );
 }
 
-const styles = StyleSheet.create({
-  heading: {
-    color: colors.text,
-    fontSize: 26,
-    fontWeight: "700",
-  },
-  lead: {
-    color: colors.textMuted,
-    fontSize: 15,
-    lineHeight: 22,
-    marginBottom: spacing.sm,
-  },
-  secao: {
-    color: colors.text,
-    fontSize: 17,
-    fontWeight: "600",
-    marginTop: spacing.md,
-  },
-  confirmacao: {
-    color: colors.patient,
-    fontSize: 14,
-    lineHeight: 20,
-  },
-  erro: {
-    color: colors.warning,
-    fontSize: 14,
-    lineHeight: 20,
-  },
-  footnote: {
-    color: colors.textMuted,
-    fontSize: 12,
-    lineHeight: 18,
-    marginTop: spacing.md,
-  },
-});
+const criarEstilos = (t: Theme) =>
+  StyleSheet.create({
+    secao: {
+      ...t.typography.heading,
+      color: t.colors.text,
+      marginTop: t.spacing.md,
+    },
+    confirmacao: {
+      ...t.typography.body,
+      color: t.colors.accentDoctorText,
+      fontSize: 14,
+      lineHeight: 20,
+    },
+  });

@@ -1,6 +1,7 @@
+import { useMemo } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
-import { colors, radius, spacing } from "../theme";
+import { useTheme, type Theme } from "../theme";
 
 /**
  * Marca visual de conteúdo fictício.
@@ -9,6 +10,9 @@ import { colors, radius, spacing } from "../theme";
  * exibir mock sem deixar claro que não é dado real.
  */
 export function MockBadge() {
+  const t = useTheme();
+  const styles = useMemo(() => criarEstilos(t), [t]);
+
   return (
     <View style={styles.badge}>
       <Text style={styles.text}>DADOS FICTÍCIOS — amostra de teste</Text>
@@ -16,20 +20,20 @@ export function MockBadge() {
   );
 }
 
-const styles = StyleSheet.create({
-  badge: {
-    alignSelf: "flex-start",
-    backgroundColor: "rgba(242, 201, 76, 0.15)",
-    borderColor: colors.warning,
-    borderWidth: 1,
-    borderRadius: radius.md,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 4,
-  },
-  text: {
-    color: colors.warning,
-    fontSize: 12,
-    fontWeight: "600",
-    letterSpacing: 0.4,
-  },
-});
+const criarEstilos = (t: Theme) =>
+  StyleSheet.create({
+    badge: {
+      alignSelf: "flex-start",
+      borderColor: t.colors.warningText,
+      borderRadius: t.radius.md,
+      borderWidth: 1,
+      paddingHorizontal: t.spacing.sm,
+      paddingVertical: t.spacing.xs,
+    },
+    text: {
+      ...t.typography.caption,
+      color: t.colors.warningText,
+      fontWeight: "600",
+      letterSpacing: 0.4,
+    },
+  });
