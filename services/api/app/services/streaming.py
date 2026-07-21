@@ -237,7 +237,7 @@ class StreamProtocol:
         if sessao is None:
             raise StreamError(CloseCode.PROTOCOLO_INVALIDO, "sessao nao iniciada")
 
-        report = self._gerar_e_persistir_result(sessao)
+        relatorio, armazenamento = self._gerar_e_persistir_result(sessao)
 
         self._sessions.encerrar(sessao, status=SessionStatus.COMPLETED)
         self._db.commit()
@@ -249,39 +249,50 @@ class StreamProtocol:
             "type": "closed",
             "session_id": str(sessao.id),
             "sample_count": sessao.sample_count,
-            "result": report,
+            #: Status de armazenamento (persistiu? por que não?).
+            "result": armazenamento,
+            #: Conteúdo do relatório da sessão — o que o app exibe ao encerrar.
+            "report": relatorio,
         }
         return resposta
 
-    def _gerar_e_persistir_result(self, sessao: CaptureSession) -> dict[str, Any]:
+    def _gerar_e_persistir_result(
+        self, sessao: CaptureSession
+    ) -> tuple[dict[str, Any] | None, dict[str, Any]]:
         """Ao encerrar: process_session sobre a sessão inteira → Result cifrado.
+
+        Devolve `(relatorio, armazenamento)`. O **relatório é devolvido mesmo
+        quando não é persistido**: mostrar ao titular o que acabou de ser medido
+        no próprio sinal dele não é guardar nada, e é o que fecha a jornada da
+        #17 quando o gate do ADR-0026 impede a gravação.
 
         Nunca deixa a falha aqui abortar o encerramento da sessão — o relatório
         é um extra sobre a captação, não pré-requisito dela.
         """
         if self._results is None or self._analysis is None:
-            return {"persisted": False, "reason": "indisponivel"}
+            return None, {"persisted": False, "reason": "indisponivel"}
         if self.state.user is None or not self.state.session_samples:
-            return {"persisted": False, "reason": "sem amostras"}
+            return None, {"persisted": False, "reason": "sem amostras"}
 
         try:
             metrics = self._analysis.analyze_session(
                 self.state.session_samples, float(sessao.sample_rate)
             )
         except AnalysisUnavailableError:
-            return {"persisted": False, "reason": "analise indisponivel"}
+            return None, {"persisted": False, "reason": "analise indisponivel"}
 
         try:
             result = self._results.persistir(
                 patient=self.state.user, session_id=sessao.id, metrics=metrics
             )
         except ConsentRequiredError:
-            # Gate ADR-0026: sem consentimento, o dado derivado não é gravado.
-            return {"persisted": False, "reason": "sem consentimento"}
+            # Gate ADR-0026: sem consentimento, o dado derivado não é gravado —
+            # mas o titular ainda vê o relatório da própria sessão.
+            return metrics, {"persisted": False, "reason": "sem consentimento"}
 
         if result is None:
-            return {"persisted": False, "reason": "persistencia desligada"}
-        return {"persisted": True, "result_id": str(result.id)}
+            return metrics, {"persisted": False, "reason": "persistencia desligada"}
+        return metrics, {"persisted": True, "result_id": str(result.id)}
 
     # -- desconexão ------------------------------------------------------
 

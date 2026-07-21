@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState } from "react";
+import { useFocusEffect } from "expo-router";
+import { useCallback, useState } from "react";
 import { StyleSheet, Text } from "react-native";
 
 import { listMyResults, type SessionResult } from "../../src/api/results";
@@ -31,9 +32,13 @@ export default function PatientHistoryScreen() {
     }
   }, []);
 
-  useEffect(() => {
-    void carregar();
-  }, [carregar]);
+  // Recarrega **ao focar**, não só ao montar: voltando de uma captação, a
+  // sessão recém-encerrada precisa aparecer sem recarregar o app (#17).
+  useFocusEffect(
+    useCallback(() => {
+      void carregar();
+    }, [carregar]),
+  );
 
   return (
     <ScreenContainer>
