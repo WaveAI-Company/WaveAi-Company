@@ -248,4 +248,6 @@ Entregue:
 
 Dois achados que **só a captação real produziu**:
 1. **`mains_power_ratio` = 153%** num campo declarado como fração. O denominador somava as `BANDS` (até 45 Hz), deixando os 60 Hz da rede de fora. Corrigido com `total_power` (espectro inteiro). O simulador nunca acusaria — não tem componente de 60 Hz.
-2. **Crash no histórico** (`Can't find ViewManager`): o `react-native-svg` da #16 é dependência **nativa** e o dev client do aparelho era anterior a ela. A #16 foi verificada só no navegador, onde o RN-Web dispensa código nativo — lacuna de verificação agora registrada no runbook. Correção é recompilar o dev client, não código.
+2. **Crash no histórico** (`Can't find ViewManager`): o `react-native-svg` da #16 é dependência **nativa** e o dev client do aparelho era anterior a ela. A #16 foi verificada só no navegador, onde o RN-Web dispensa código nativo — lacuna de verificação agora registrada no runbook.
+
+**Resolução (2026-07-21):** o `react-native-svg` **saiu do projeto**. Recompilar o dev client esbarrou num problema de ambiente da máquina (Gradle falhando em `sun.nio.ch.UnixDomainSockets` ao abrir seletor NIO), e um gráfico de linha simples não justifica bloquear a entrega. O `TrendChart` foi reescrito com `View`s — segmentos finos rotacionados — como as barras já eram. Visual indistinguível, **verificado no aparelho via adb** (histórico abre, linha e barras renderizam, sem crash no logcat). Ver adendo da **ADR-0027**.
