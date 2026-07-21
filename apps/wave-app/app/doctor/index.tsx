@@ -11,6 +11,7 @@ import { NavAction } from "../../src/components/NavAction";
 import { ScreenContainer } from "../../src/components/ScreenContainer";
 import { ScreenHeading } from "../../src/components/ScreenHeading";
 import { StateView } from "../../src/components/StateView";
+import { ThemeSelector } from "../../src/components/ThemeSelector";
 import { useRoleAccent, useTheme, type Theme } from "../../src/theme";
 
 /**
@@ -89,6 +90,9 @@ export default function DoctorScreen() {
           />
         </Pressable>
       ))}
+
+      <ScreenHeading title="Aparência" />
+      <ThemeSelector />
 
       <Disclaimer variant="profissional" />
 

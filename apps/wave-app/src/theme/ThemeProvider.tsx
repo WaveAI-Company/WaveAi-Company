@@ -6,10 +6,19 @@
  * sistema refletir no app na hora, sem reiniciar.
  */
 
-import { createContext, useContext, useMemo, type ReactNode } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
 import { useColorScheme } from "react-native";
 
 import { useAuth } from "../auth/AuthContext";
+import { loadThemePreference, saveThemePreference } from "./preference";
 import {
   MIN_TOUCH,
   palettes,
@@ -18,6 +27,7 @@ import {
   typography,
   type Role,
   type ThemeName,
+  type ThemePreference,
 } from "./tokens";
 
 export type Theme = {
@@ -28,6 +38,9 @@ export type Theme = {
   spacing: typeof spacing;
   radius: typeof radius;
   minTouch: number;
+  /** O que está escolhido: seguir o sistema, ou um tema fixo. */
+  preference: ThemePreference;
+  setPreference: (pref: ThemePreference) => void;
 };
 
 const ThemeContext = createContext<Theme | null>(null);
@@ -36,7 +49,27 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   // `null` acontece enquanto o sistema não respondeu; escuro é o padrão do
   // produto, então serve de fallback sem piscar.
   const esquema = useColorScheme();
-  const name: ThemeName = esquema === "light" ? "light" : "dark";
+  const [preference, setPreferenceState] = useState<ThemePreference>("system");
+
+  // A escolha anterior é lida uma vez, na montagem.
+  useEffect(() => {
+    let ativo = true;
+    void loadThemePreference().then((salva) => {
+      if (ativo && salva) setPreferenceState(salva);
+    });
+    return () => {
+      ativo = false;
+    };
+  }, []);
+
+  const setPreference = useCallback((pref: ThemePreference) => {
+    // Estado primeiro: a troca é imediata, gravar é detalhe assíncrono.
+    setPreferenceState(pref);
+    void saveThemePreference(pref);
+  }, []);
+
+  const name: ThemeName =
+    preference === "system" ? (esquema === "light" ? "light" : "dark") : preference;
 
   const valor = useMemo<Theme>(
     () => ({
@@ -47,8 +80,10 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       spacing,
       radius,
       minTouch: MIN_TOUCH,
+      preference,
+      setPreference,
     }),
-    [name],
+    [name, preference, setPreference],
   );
 
   return <ThemeContext.Provider value={valor}>{children}</ThemeContext.Provider>;
