@@ -213,6 +213,14 @@ Status possíveis: `Proposta` · `Aceita` · `Substituída` · `Revogada`.
 - **`victory-native`** — ecossistema maduro e API compartilhada com a web, mas pesado; a linha XL depende de **Skia**, que complica o alvo web do Expo.
 **Consequências:** uma única dependência bem suportada, controle total do visual (o design system é a #18) e nenhuma surpresa cross-platform — ao custo de manter ~200 linhas de componentes de gráfico. Se a necessidade de gráficos crescer muito (zoom, interação, muitas séries), reavaliar uma biblioteca é um passo natural, sem retrabalho de dados.
 
+**[Adendo 2026-07-21 — #17] Revertido: saímos do `react-native-svg`.** A dependência **nativa** cobrou um preço que a #16 não previu, porque a #16 foi verificada **só no navegador** — onde o React Native Web renderiza SVG em JavaScript e dispensa código nativo. No aparelho, o development client era anterior à dependência e a tela de histórico quebrava com `IllegalViewOperationException: Can't find ViewManager`. Módulo nativo não entra por *hot reload*: exige recompilar o app.
+
+Recompilar, por sua vez, esbarrou num problema de ambiente da máquina de desenvolvimento (o Gradle falha ao abrir um seletor NIO: `SocketException: Invalid argument` em `sun.nio.ch.UnixDomainSockets`, dentro de `PipeImpl`). Ou seja: um gráfico de linha simples passou a bloquear a entrega.
+
+**Decisão:** o `TrendChart` foi reescrito com **`View`s**, como as barras já eram — cada segmento é um retângulo fino rotacionado entre dois pontos. O `react-native-svg` **saiu do projeto**. O resultado visual é indistinguível no tamanho em que usamos, funciona no build atual do aparelho (verificado) e o app volta a não ter dependência nativa além do Bluetooth.
+
+**O que isto ensina, e vale como regra:** toda dependência **nativa** precisa de uma passada em **build de dispositivo** antes de ser considerada verificada — navegador não prova nada sobre ela. E, para um desenho simples, `View`s valem mais que uma dependência nativa: o custo dela não é o bundle, é o acoplamento ao ciclo de build.
+
 **Nota de honestidade visual (vale para todo gráfico do produto):** a escala do eixo y é automática **com mínimo e máximo rotulados** — sem os rótulos, uma variação minúscula pareceria dramática. E `SignalQuality` mostra os valores medidos **sem veredito**: o que conta como sinal "bom o suficiente" segue indefinido (**Q-TEC-06**), então a UI não inventa faixa "boa/ruim". Coerente com [Medical/71](Medical/71_Intended_Use_and_Regulatory_Positioning.md) (não-clínico) e com a regra de o coder não decidir parâmetro clínico.
 
 ---
