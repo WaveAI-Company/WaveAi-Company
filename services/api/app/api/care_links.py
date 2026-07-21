@@ -90,6 +90,29 @@ def aceitar_vinculo(
     return _para_resposta(link, user)
 
 
+@router.post("/care-links/{care_link_id}/decline", response_model=CareLinkResponse)
+def recusar_vinculo(
+    care_link_id: uuid.UUID,
+    session: Session = Depends(get_session),
+    user: User = Depends(get_current_user),
+    care: CareService = Depends(get_care_service),
+) -> CareLinkResponse:
+    """Recusa do paciente — o convite vai para `declined`, sem conceder acesso."""
+    try:
+        link = care.recusar(care_link_id=care_link_id, ator=user)
+    except NotAllowedError:
+        # Mesmo 404 do accept: não distingue "não existe" de "não é seu".
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="vinculo nao encontrado"
+        ) from None
+    except CareLinkError:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail="vinculo nao esta pendente"
+        ) from None
+    session.commit()
+    return _para_resposta(link, user)
+
+
 @router.post("/care-links/{care_link_id}/revoke", response_model=CareLinkResponse)
 def revogar_vinculo(
     care_link_id: uuid.UUID,

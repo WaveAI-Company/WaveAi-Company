@@ -211,6 +211,32 @@ def test_consentimento_liga_e_desliga(client: TestClient):
     assert p.get("/me/consent").json()["consent_given"] is False
 
 
+def test_consentimento_registra_a_versao_do_termo(client: TestClient):
+    from app.consent import CONSENT_TERM_VERSION
+
+    p = Paciente(client, consentiu=False)
+    # O app envia a versão que exibiu; a API registra a vigente.
+    assert p.post("/me/consent", {"version": CONSENT_TERM_VERSION}).status_code == 204
+
+    status = p.get("/me/consent").json()
+    assert status["consent_version"] == CONSENT_TERM_VERSION
+    assert status["current_version"] == CONSENT_TERM_VERSION
+
+    # Revogar limpa a versão junto com a data.
+    p.delete("/me/consent")
+    assert p.get("/me/consent").json()["consent_version"] is None
+
+
+def test_termo_desatualizado_e_recusado(client: TestClient):
+    """Consentir a um texto que já mudou não é consentimento informado."""
+    p = Paciente(client, consentiu=False)
+
+    resp = p.post("/me/consent", {"version": "versao-antiga-0.0"})
+
+    assert resp.status_code == 409
+    assert p.get("/me/consent").json()["consent_given"] is False
+
+
 def test_titular_acessa_os_proprios_results(client: TestClient, db_session: Session):
     p = Paciente(client, consentiu=True)
     _semear_result(db_session, p.email)

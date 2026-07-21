@@ -62,11 +62,13 @@ class User(Base):
     token_version: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
 
     #: Consentimento para persistir dados biométricos derivados (ADR-0026).
-    #: `None` = sem consentimento → nenhum Result é gravado. O termo informado
-    #: completo é a #29; aqui é o registro mínimo que sustenta a base legal.
+    #: `None` = sem consentimento → nenhum Result é gravado.
     consent_given_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    #: Versão do termo que o titular aceitou (Medical/72 §2 — registrar **o
+    #: que** foi consentido, não só quando). `None` quando não há consentimento.
+    consent_version: Mapped[str | None] = mapped_column(String(32), nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False

@@ -15,7 +15,7 @@ import { colors, radius, spacing } from "../../src/theme";
  *
  * Mostra **apenas vínculos `active`** (ADR-0024): um convite pendente não
  * concede acesso, então exibi-lo aqui sugeriria um acompanhamento que não
- * existe. A caixa de convites é a #20.
+ * existe. Convidar e ver convites pendentes é a tela `doctor/invite` (#29).
  */
 export default function DoctorScreen() {
   const { user, signOut } = useAuth();
@@ -48,6 +48,14 @@ export default function DoctorScreen() {
           ? `${user.display_name} — pacientes que autorizaram o acompanhamento.`
           : "Pacientes que autorizaram o acompanhamento."}
       </Text>
+
+      <Pressable
+        accessibilityRole="button"
+        onPress={() => router.push("/doctor/invite")}
+        style={({ pressed }) => [styles.convidar, pressed && styles.pressed]}
+      >
+        <Text style={styles.convidarTexto}>+ Convidar paciente</Text>
+      </Pressable>
 
       <StateView
         loading={loading}
@@ -98,6 +106,18 @@ const styles = StyleSheet.create({
   },
   item: {
     borderRadius: radius.md,
+  },
+  convidar: {
+    borderColor: colors.doctor,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    paddingVertical: spacing.md,
+  },
+  convidarTexto: {
+    color: colors.doctor,
+    fontSize: 15,
+    fontWeight: "600",
+    textAlign: "center",
   },
   pressed: {
     opacity: 0.7,

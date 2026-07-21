@@ -19,8 +19,8 @@ Documento que rege como o WaveAI trata **consentimento** e os **direitos do titu
 ## 2. Consentimento
 **[RECOMENDAÇÃO]**
 - **Informado, específico e destacado** no cadastro/primeira captura: o que é coletado, para quê, por quanto tempo, e quem pode acessar.
-- **Revogável** a qualquer momento (sem penalidade); revogar o consentimento de tratamento interrompe novas coletas e dispara o fluxo de exclusão/retenção definido.
-- **Registrado/auditado** (quando, versão do termo) — é o que sustenta a base legal.
+- **Revogável** a qualquer momento (sem penalidade). **Revogar ≠ apagar:** revogar o consentimento **interrompe novas coletas/processamento**; a **exclusão** é um direito **separado e explícito** (não automática na revogação, para não destruir dado por engano). O destino dos dados **já coletados** após a revogação segue a **política de retenção** (§5).
+- **Registrado/auditado** (quando, versão do termo) — é o que sustenta a base legal. **[Implementado #29]** `consent_given_at` + `consent_version` no usuário; o backend é a fonte da versão vigente e recusa aceite a termo desatualizado.
 - Acesso de **médico** aos dados exige, adicionalmente, CareLink `active` (ADR-0024).
 
 ## 3. Direitos do titular (LGPD)
@@ -43,6 +43,8 @@ Documento que rege como o WaveAI trata **consentimento** e os **direitos do titu
 
 ## 6. Gate de produção *(da ADR-0026)*
 **[DECISÃO]** Em produção, **nenhum dado derivado de pessoa real** é persistido até: (a) **consentimento informado** no fluxo e (b) **direitos de acesso/exclusão/exportação** implementados. Em dev/test, **apenas dados sintéticos**.
+
+**[Status 2026-07-20]** Ambas as condições **satisfeitas**: (a) consentimento informado versionado na #29 (tela `patient/consent` + `consent_version`); (b) direitos entregues na #15 (`/me/results`, `/export`, exclusão). O gate pode ser habilitado em produção; a regra de dev/test com **só sintético** (`CLAUDE.md`) permanece.
 
 ## 7. Perguntas em aberto
 - Escopo do consentimento: acesso total vs. por sessão? Expiração/renovação do consentimento?
