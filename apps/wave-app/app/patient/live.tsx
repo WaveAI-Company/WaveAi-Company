@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useMemo } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { formatPercent } from "../../src/api/results";
@@ -13,10 +14,12 @@ import { BandBars } from "../../src/components/charts/BandBars";
 import { SignalQuality } from "../../src/components/charts/SignalQuality";
 import { MockBadge } from "../../src/components/MockBadge";
 import { ScreenContainer } from "../../src/components/ScreenContainer";
+import { ScreenHeading } from "../../src/components/ScreenHeading";
+import { Disclaimer } from "../../src/components/Disclaimer";
 import { deviceConnection } from "../../src/device/connection";
 import type { DeviceInfo } from "../../src/device/DeviceConnection";
 import { SignalSimulator } from "../../src/mocks/signalSimulator";
-import { colors, radius, spacing } from "../../src/theme";
+import { useAccentFor, useRoleAccent, useTheme, type Theme } from "../../src/theme";
 
 /** Por que o relatório não foi guardado, em português para o titular. */
 const MOTIVO_NAO_GUARDADO: Record<string, string> = {
@@ -42,6 +45,11 @@ const INTERVALO_MS = 500;
  * servidor — nada é calculado no cliente.
  */
 export default function PatientLiveScreen() {
+  const t = useTheme();
+  const papel = useRoleAccent();
+  const aparelhoAccent = useAccentFor("doctor");
+  const styles = useMemo(() => criarEstilos(t), [t]);
+
   const [ativo, setAtivo] = useState(false);
   const [features, setFeatures] = useState<LiveFeatures | null>(null);
   const [janelas, setJanelas] = useState(0);
@@ -210,16 +218,18 @@ export default function PatientLiveScreen() {
 
   return (
     <ScreenContainer>
-      <Text style={styles.heading}>Estado ao vivo</Text>
+      <ScreenHeading
+        title="Estado ao vivo"
+        lead={
+          deviceConnection.supported
+            ? "Conecte o MindWave pareado, ou use o sinal simulado. As features são calculadas no servidor."
+            : "Sinal simulado — a captação do aparelho existe no app do celular. As features são calculadas no servidor."
+        }
+      />
       {/* O selo vale só para o sinal simulado: exibi-lo sobre captação real
           rotularia dado verdadeiro como fictício — enganoso na direção
           oposta, e igualmente errado. */}
       {!usandoAparelho ? <MockBadge /> : null}
-      <Text style={styles.lead}>
-        {deviceConnection.supported
-          ? "Conecte o MindWave pareado, ou use o sinal simulado. As features são calculadas no servidor."
-          : "Sinal simulado — a captação do aparelho existe no app do celular. As features são calculadas no servidor."}
-      </Text>
 
       {!ativo && deviceConnection.supported ? (
         <>
@@ -227,7 +237,7 @@ export default function PatientLiveScreen() {
           <Button
             label="Procurar aparelhos pareados"
             onPress={procurarAparelhos}
-            accent={colors.doctor}
+            accent={aparelhoAccent.accent}
           />
           {aparelhos.map((d) => (
             <Pressable
@@ -235,7 +245,7 @@ export default function PatientLiveScreen() {
               accessibilityRole="button"
               onPress={() => void iniciarComAparelho(d)}
             >
-              <Card title={d.name} subtitle={d.id} accent={colors.doctor} />
+              <Card title={d.name} subtitle={d.id} accent={aparelhoAccent.accent} />
             </Pressable>
           ))}
         </>
@@ -245,7 +255,7 @@ export default function PatientLiveScreen() {
         <Card
           title="Captura indisponível neste dispositivo"
           subtitle="A conexão com o MindWave existe no app do celular. Aqui você pode usar o sinal simulado."
-          accent={colors.warning}
+          accent={t.colors.warningText}
         />
       ) : null}
 
@@ -258,7 +268,7 @@ export default function PatientLiveScreen() {
               : "Iniciar captação simulada"
         }
         onPress={ativo ? parar : iniciar}
-        accent={ativo ? colors.warning : colors.patient}
+        accent={ativo ? t.colors.warningText : papel.accent}
       />
 
       {erro ? <Text style={styles.erro}>{erro}</Text> : null}
@@ -267,7 +277,7 @@ export default function PatientLiveScreen() {
         <Card
           title={`Contato do sensor: ${poorSignal}`}
           subtitle="0 = bom contato · 200 = eletrodo solto (valor reportado pelo aparelho)"
-          accent={poorSignal === 0 ? colors.patient : colors.warning}
+          accent={poorSignal === 0 ? papel.accent : t.colors.warningText}
         />
       ) : null}
 
@@ -275,7 +285,7 @@ export default function PatientLiveScreen() {
         <Card
           title="Análise indisponível"
           subtitle="A captação continua e a sessão está sendo registrada."
-          accent={colors.warning}
+          accent={t.colors.warningText}
         />
       ) : null}
 
@@ -289,7 +299,7 @@ export default function PatientLiveScreen() {
         <Card
           title="Coletando…"
           subtitle="A primeira leitura aparece quando a janela fecha (~2 s)."
-          accent={colors.patient}
+          accent={papel.accent}
         />
       ) : null}
 
@@ -299,7 +309,7 @@ export default function PatientLiveScreen() {
               key={banda}
               title={banda}
               subtitle={`${(valor * 100).toFixed(1)}% da potência total`}
-              accent={colors.patient}
+              accent={papel.accent}
             />
           ))
         : null}
@@ -308,7 +318,7 @@ export default function PatientLiveScreen() {
         <Card
           title="Encerrando a sessão…"
           subtitle="Calculando o relatório sobre a sessão inteira."
-          accent={colors.patient}
+          accent={papel.accent}
         />
       ) : null}
 
@@ -323,14 +333,14 @@ export default function PatientLiveScreen() {
                 : "Sessão encerrada"
             }
             subtitle={`${encerrada.sampleCount} amostras recebidas`}
-            accent={colors.patient}
+            accent={papel.accent}
           >
             {encerrada.report?.relative_band_powers ? (
               <>
                 <Text style={styles.subsecao}>Composição por banda</Text>
                 <BandBars
                   relative={encerrada.report.relative_band_powers}
-                  accent={colors.patient}
+                  accent={papel.accent}
                 />
               </>
             ) : null}
@@ -363,7 +373,7 @@ export default function PatientLiveScreen() {
                     ? MOTIVO_NAO_GUARDADO[encerrada.storage.reason]
                     : undefined) ?? "O resultado desta sessão não foi registrado."
             }
-            accent={encerrada.storage.persisted ? colors.patient : colors.warning}
+            accent={encerrada.storage.persisted ? papel.accent : t.colors.warningText}
           />
         </>
       ) : null}
@@ -372,73 +382,62 @@ export default function PatientLiveScreen() {
         <Text style={styles.footnote}>Sessão {sessionId.slice(0, 8)}…</Text>
       ) : null}
 
-      <Text style={styles.footnote}>
-        Uso exploratório de bem-estar — não-clínico e não-diagnóstico. Estes
-        números não indicam diagnóstico.
-      </Text>
+      <Disclaimer variant="medidas" />
     </ScreenContainer>
   );
 }
 
-const styles = StyleSheet.create({
-  heading: {
-    color: colors.text,
-    fontSize: 26,
-    fontWeight: "700",
-  },
-  lead: {
-    color: colors.textMuted,
-    fontSize: 14,
-    lineHeight: 20,
-    marginBottom: spacing.sm,
-  },
-  secao: {
-    color: colors.text,
-    fontSize: 17,
-    fontWeight: "600",
-    marginTop: spacing.sm,
-  },
-  subsecao: {
-    color: colors.text,
-    fontSize: 14,
-    fontWeight: "600",
-    marginTop: spacing.sm / 2,
-  },
-  engine: {
-    color: colors.textMuted,
-    fontSize: 11,
-    marginTop: spacing.sm / 2,
-  },
-  erro: {
-    color: colors.warning,
-    fontSize: 14,
-  },
-  destaque: {
-    alignItems: "center",
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    paddingVertical: spacing.lg,
-  },
-  destaqueRotulo: {
-    color: colors.textMuted,
-    fontSize: 13,
-    fontWeight: "600",
-    letterSpacing: 0.5,
-    textTransform: "uppercase",
-  },
-  destaqueValor: {
-    color: colors.patient,
-    fontSize: 44,
-    fontWeight: "700",
-  },
-  destaqueNota: {
-    color: colors.textMuted,
-    fontSize: 12,
-  },
-  footnote: {
-    color: colors.textMuted,
-    fontSize: 12,
-    lineHeight: 18,
-    marginTop: spacing.sm,
-  },
-});
+const criarEstilos = (t: Theme) =>
+  StyleSheet.create({
+    secao: {
+      ...t.typography.heading,
+      color: t.colors.text,
+      marginTop: t.spacing.sm,
+    },
+    subsecao: {
+      ...t.typography.body,
+      color: t.colors.text,
+      fontSize: 14,
+      fontWeight: "600",
+      marginTop: t.spacing.xs,
+    },
+    engine: {
+      ...t.typography.caption,
+      color: t.colors.textMuted,
+      fontSize: 11,
+      marginTop: t.spacing.xs,
+    },
+    erro: {
+      ...t.typography.body,
+      color: t.colors.dangerText,
+      fontSize: 14,
+    },
+    destaque: {
+      alignItems: "center",
+      backgroundColor: t.colors.surface,
+      borderRadius: t.radius.lg,
+      paddingVertical: t.spacing.lg,
+    },
+    destaqueRotulo: {
+      ...t.typography.label,
+      color: t.colors.textMuted,
+      letterSpacing: 0.5,
+      textTransform: "uppercase",
+    },
+    destaqueValor: {
+      // Tela do paciente: o número em destaque usa o tom dele, e o
+      // `...Text` garante contraste também no tema claro.
+      color: t.colors.accentPatientText,
+      fontSize: 44,
+      fontWeight: "700",
+    },
+    destaqueNota: {
+      ...t.typography.caption,
+      color: t.colors.textMuted,
+    },
+    footnote: {
+      ...t.typography.caption,
+      color: t.colors.textMuted,
+      marginTop: t.spacing.sm,
+    },
+  });

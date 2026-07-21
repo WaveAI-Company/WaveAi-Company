@@ -1,15 +1,16 @@
-import { Link } from "expo-router";
+import { useRouter } from "expo-router";
 import { useState } from "react";
-import { StyleSheet, Text } from "react-native";
 
 import { useAuth } from "../src/auth/AuthContext";
 import { Button } from "../src/components/Button";
 import { Field } from "../src/components/Field";
 import { ScreenContainer } from "../src/components/ScreenContainer";
-import { colors, spacing } from "../src/theme";
+import { ScreenHeading } from "../src/components/ScreenHeading";
+import { StateView } from "../src/components/StateView";
 
 export default function LoginScreen() {
   const { signIn } = useAuth();
+  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [erro, setErro] = useState<string | null>(null);
@@ -32,7 +33,7 @@ export default function LoginScreen() {
 
   return (
     <ScreenContainer>
-      <Text style={styles.heading}>Entrar</Text>
+      <ScreenHeading title="Entrar" />
 
       <Field
         label="E-mail"
@@ -51,32 +52,14 @@ export default function LoginScreen() {
         placeholder="sua senha"
       />
 
-      {erro ? <Text style={styles.erro}>{erro}</Text> : null}
+      <StateView error={erro} />
 
-      <Button label="Entrar" onPress={entrar} loading={enviando} accent={colors.patient} />
-
-      <Link href="/register" style={styles.link}>
-        Não tem conta? Criar conta
-      </Link>
+      <Button label="Entrar" onPress={entrar} loading={enviando} />
+      <Button
+        label="Não tem conta? Criar conta"
+        onPress={() => router.push("/register")}
+        variant="secondary"
+      />
     </ScreenContainer>
   );
 }
-
-const styles = StyleSheet.create({
-  heading: {
-    color: colors.text,
-    fontSize: 28,
-    fontWeight: "700",
-    marginBottom: spacing.sm,
-  },
-  erro: {
-    color: colors.warning,
-    fontSize: 14,
-  },
-  link: {
-    color: colors.textMuted,
-    fontSize: 14,
-    paddingVertical: spacing.sm,
-    textAlign: "center",
-  },
-});

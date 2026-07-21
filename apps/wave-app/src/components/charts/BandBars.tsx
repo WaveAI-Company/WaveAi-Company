@@ -1,7 +1,8 @@
+import { useMemo } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
 import { BANDS, formatPercent, type BandKey } from "../../api/results";
-import { colors, radius, spacing } from "../../theme";
+import { useRoleAccent, useTheme, type Theme } from "../../theme";
 
 type Props = {
   /** Potências **relativas** por banda (frações que somam ~1). */
@@ -19,7 +20,12 @@ type Props = {
  * Todas as bandas usam a mesma cor: destacar uma sugeriria que ela é a
  * "certa", e nesta fase não há interpretação clínica a fazer.
  */
-export function BandBars({ relative, accent = colors.patient }: Props) {
+export function BandBars({ relative, accent }: Props) {
+  const t = useTheme();
+  const papel = useRoleAccent();
+  const styles = useMemo(() => criarEstilos(t), [t]);
+  const cor = accent ?? papel.accent;
+
   // A maior banda define a escala — com frações pequenas, normalizar pelo topo
   // torna a comparação legível sem distorcer a proporção entre elas.
   const valores = BANDS.map(({ key }) => relative[key] ?? 0);
@@ -31,20 +37,24 @@ export function BandBars({ relative, accent = colors.patient }: Props) {
         const valor = relative[key];
         const fracao = valor ?? 0;
         const largura = maior > 0 ? `${(fracao / maior) * 100}%` : "0%";
+        const texto = valor === undefined ? "—" : formatPercent(fracao);
         return (
-          <View key={key} style={styles.linha}>
+          <View
+            key={key}
+            style={styles.linha}
+            accessible
+            accessibilityLabel={`${label}, ${range}: ${texto}`}
+          >
             <View style={styles.rotulo}>
               <Text style={styles.nome}>{label}</Text>
               <Text style={styles.faixa}>{range}</Text>
             </View>
             <View style={styles.trilho}>
               <View
-                style={[styles.barra, { width: largura as `${number}%`, backgroundColor: accent }]}
+                style={[styles.barra, { width: largura as `${number}%`, backgroundColor: cor }]}
               />
             </View>
-            <Text style={styles.valor}>
-              {valor === undefined ? "—" : formatPercent(fracao)}
-            </Text>
+            <Text style={styles.valor}>{texto}</Text>
           </View>
         );
       })}
@@ -52,43 +62,47 @@ export function BandBars({ relative, accent = colors.patient }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
-  wrapper: {
-    gap: spacing.sm,
-    marginTop: spacing.sm / 2,
-  },
-  linha: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: spacing.sm,
-  },
-  rotulo: {
-    width: 96,
-  },
-  nome: {
-    color: colors.text,
-    fontSize: 14,
-    fontWeight: "600",
-  },
-  faixa: {
-    color: colors.textMuted,
-    fontSize: 11,
-  },
-  trilho: {
-    backgroundColor: colors.border,
-    borderRadius: radius.md,
-    flex: 1,
-    height: 10,
-    overflow: "hidden",
-  },
-  barra: {
-    borderRadius: radius.md,
-    height: "100%",
-  },
-  valor: {
-    color: colors.textMuted,
-    fontSize: 13,
-    textAlign: "right",
-    width: 52,
-  },
-});
+const criarEstilos = (t: Theme) =>
+  StyleSheet.create({
+    wrapper: {
+      gap: t.spacing.sm,
+      marginTop: t.spacing.xs,
+    },
+    linha: {
+      alignItems: "center",
+      flexDirection: "row",
+      gap: t.spacing.sm,
+    },
+    rotulo: {
+      width: 96,
+    },
+    nome: {
+      ...t.typography.body,
+      color: t.colors.text,
+      fontSize: 14,
+      fontWeight: "600",
+    },
+    faixa: {
+      ...t.typography.caption,
+      color: t.colors.textMuted,
+      fontSize: 11,
+    },
+    trilho: {
+      backgroundColor: t.colors.surfaceAlt,
+      borderRadius: t.radius.pill,
+      flex: 1,
+      height: 10,
+      overflow: "hidden",
+    },
+    barra: {
+      borderRadius: t.radius.pill,
+      height: "100%",
+    },
+    valor: {
+      ...t.typography.body,
+      color: t.colors.textMuted,
+      fontSize: 13,
+      textAlign: "right",
+      width: 52,
+    },
+  });

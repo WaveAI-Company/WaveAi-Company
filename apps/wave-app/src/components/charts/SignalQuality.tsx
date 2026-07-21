@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
 import {
@@ -5,7 +6,7 @@ import {
   formatPercent,
   type SignalQuality as Quality,
 } from "../../api/results";
-import { colors, spacing } from "../../theme";
+import { useTheme, type Theme } from "../../theme";
 
 type Props = {
   quality: Quality;
@@ -20,6 +21,9 @@ type Props = {
  * mostramos os números medidos e dizemos o que cada um é.
  */
 export function SignalQuality({ quality }: Props) {
+  const t = useTheme();
+  const styles = useMemo(() => criarEstilos(t), [t]);
+
   const itens = [
     {
       chave: "amplitude",
@@ -38,7 +42,12 @@ export function SignalQuality({ quality }: Props) {
   return (
     <View style={styles.wrapper}>
       {itens.map((item) => (
-        <View key={item.chave} style={styles.linha}>
+        <View
+          key={item.chave}
+          style={styles.linha}
+          accessible
+          accessibilityLabel={`${item.rotulo}: ${item.valor}. ${item.nota}`}
+        >
           <View style={styles.texto}>
             <Text style={styles.rotulo}>{item.rotulo}</Text>
             <Text style={styles.nota}>{item.nota}</Text>
@@ -54,39 +63,43 @@ export function SignalQuality({ quality }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
-  wrapper: {
-    gap: spacing.sm,
-    marginTop: spacing.sm / 2,
-  },
-  linha: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: spacing.sm,
-    justifyContent: "space-between",
-  },
-  texto: {
-    flex: 1,
-  },
-  rotulo: {
-    color: colors.text,
-    fontSize: 14,
-    fontWeight: "600",
-  },
-  nota: {
-    color: colors.textMuted,
-    fontSize: 11,
-    lineHeight: 16,
-  },
-  valor: {
-    color: colors.text,
-    fontSize: 15,
-    fontWeight: "700",
-  },
-  aviso: {
-    color: colors.textMuted,
-    fontSize: 11,
-    fontStyle: "italic",
-    lineHeight: 16,
-  },
-});
+const criarEstilos = (t: Theme) =>
+  StyleSheet.create({
+    wrapper: {
+      gap: t.spacing.sm,
+      marginTop: t.spacing.xs,
+    },
+    linha: {
+      alignItems: "center",
+      flexDirection: "row",
+      gap: t.spacing.sm,
+      justifyContent: "space-between",
+    },
+    texto: {
+      flex: 1,
+    },
+    rotulo: {
+      ...t.typography.body,
+      color: t.colors.text,
+      fontSize: 14,
+      fontWeight: "600",
+    },
+    nota: {
+      ...t.typography.caption,
+      color: t.colors.textMuted,
+      fontSize: 11,
+      lineHeight: 16,
+    },
+    valor: {
+      ...t.typography.bodyStrong,
+      color: t.colors.text,
+      fontWeight: "700",
+    },
+    aviso: {
+      ...t.typography.caption,
+      color: t.colors.textMuted,
+      fontSize: 11,
+      fontStyle: "italic",
+      lineHeight: 16,
+    },
+  });

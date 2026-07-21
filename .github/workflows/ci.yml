@@ -103,6 +103,10 @@ jobs:
         run: npm ci
       - name: Typecheck
         run: npm run typecheck
+      # Contraste AA é critério de aceite da #18: se alguém mexer numa cor e
+      # quebrar a legibilidade, o CI reprova em vez de depender de revisão visual.
+      - name: Contraste (WCAG AA)
+        run: npm run check:contrast
 
   test-analysis:
     runs-on: ubuntu-latest

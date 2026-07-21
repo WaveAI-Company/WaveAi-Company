@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import { ActivityIndicator, StyleSheet, View } from "react-native";
 
 import { AuthProvider, homeForRole, useAuth } from "../src/auth/AuthContext";
-import { colors } from "../src/theme";
+import { ThemeProvider, useRoleAccent, useTheme } from "../src/theme";
 
 /** Rotas acessíveis sem sessão. */
 const ROTAS_PUBLICAS = new Set(["login", "register"]);
@@ -15,6 +15,8 @@ const ROTAS_PUBLICAS = new Set(["login", "register"]);
  */
 function RouteGuard() {
   const { user, loading } = useAuth();
+  const t = useTheme();
+  const { accent } = useRoleAccent();
   const segments = useSegments();
   const router = useRouter();
 
@@ -38,8 +40,8 @@ function RouteGuard() {
 
   if (loading) {
     return (
-      <View style={styles.carregando}>
-        <ActivityIndicator color={colors.patient} size="large" />
+      <View style={[styles.carregando, { backgroundColor: t.colors.background }]}>
+        <ActivityIndicator color={accent} size="large" />
       </View>
     );
   }
@@ -47,9 +49,9 @@ function RouteGuard() {
   return (
     <Stack
       screenOptions={{
-        headerStyle: { backgroundColor: colors.surface },
-        headerTintColor: colors.text,
-        contentStyle: { backgroundColor: colors.background },
+        headerStyle: { backgroundColor: t.colors.surface },
+        headerTintColor: t.colors.text,
+        contentStyle: { backgroundColor: t.colors.background },
       }}
     >
       <Stack.Screen name="index" options={{ title: "WaveAI" }} />
@@ -68,11 +70,20 @@ function RouteGuard() {
   );
 }
 
+/** A barra de status acompanha o tema — clara no escuro, escura no claro. */
+function BarraDeStatus() {
+  const t = useTheme();
+  return <StatusBar style={t.isDark ? "light" : "dark"} />;
+}
+
 export default function RootLayout() {
   return (
     <AuthProvider>
-      <StatusBar style="light" />
-      <RouteGuard />
+      {/* ThemeProvider depende de useAuth (sotaque por papel), então fica dentro. */}
+      <ThemeProvider>
+        <BarraDeStatus />
+        <RouteGuard />
+      </ThemeProvider>
     </AuthProvider>
   );
 }
@@ -80,7 +91,6 @@ export default function RootLayout() {
 const styles = StyleSheet.create({
   carregando: {
     alignItems: "center",
-    backgroundColor: colors.background,
     flex: 1,
     justifyContent: "center",
   },

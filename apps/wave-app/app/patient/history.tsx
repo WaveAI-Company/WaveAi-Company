@@ -1,12 +1,12 @@
 import { useFocusEffect } from "expo-router";
 import { useCallback, useState } from "react";
-import { StyleSheet, Text } from "react-native";
 
 import { listMyResults, type SessionResult } from "../../src/api/results";
+import { Disclaimer } from "../../src/components/Disclaimer";
 import { ScreenContainer } from "../../src/components/ScreenContainer";
+import { ScreenHeading } from "../../src/components/ScreenHeading";
 import { SessionsDashboard } from "../../src/components/SessionsDashboard";
 import { StateView } from "../../src/components/StateView";
-import { colors, spacing } from "../../src/theme";
 
 /**
  * Histórico e tendências do paciente (#16).
@@ -42,10 +42,10 @@ export default function PatientHistoryScreen() {
 
   return (
     <ScreenContainer>
-      <Text style={styles.heading}>Histórico</Text>
-      <Text style={styles.lead}>
-        Suas sessões registradas e como suas medidas variam ao longo do tempo.
-      </Text>
+      <ScreenHeading
+        title="Histórico"
+        lead="Suas sessões registradas e como suas medidas variam ao longo do tempo."
+      />
 
       <StateView
         loading={loading}
@@ -58,33 +58,10 @@ export default function PatientHistoryScreen() {
       />
 
       {!loading && !erro && results.length > 0 ? (
-        <SessionsDashboard results={results} accent={colors.patient} />
+        <SessionsDashboard results={results} />
       ) : null}
 
-      <Text style={styles.footnote}>
-        Uso exploratório de bem-estar — não-clínico e não-diagnóstico. Estes
-        números não indicam diagnóstico nem substituem avaliação profissional.
-      </Text>
+      <Disclaimer variant="medidas" />
     </ScreenContainer>
   );
 }
-
-const styles = StyleSheet.create({
-  heading: {
-    color: colors.text,
-    fontSize: 26,
-    fontWeight: "700",
-  },
-  lead: {
-    color: colors.textMuted,
-    fontSize: 15,
-    lineHeight: 22,
-    marginBottom: spacing.sm,
-  },
-  footnote: {
-    color: colors.textMuted,
-    fontSize: 12,
-    lineHeight: 18,
-    marginTop: spacing.md,
-  },
-});

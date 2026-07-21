@@ -1,7 +1,7 @@
-import type { ReactNode } from "react";
+import { useMemo, type ReactNode } from "react";
 import { ScrollView, StyleSheet, View } from "react-native";
 
-import { colors, spacing } from "../theme";
+import { useTheme, type Theme } from "../theme";
 
 type Props = {
   children: ReactNode;
@@ -9,6 +9,9 @@ type Props = {
 
 /** Container padrão das telas: fundo, respiro e rolagem (útil no web estreito). */
 export function ScreenContainer({ children }: Props) {
+  const t = useTheme();
+  const styles = useMemo(() => criarEstilos(t), [t]);
+
   return (
     <ScrollView
       style={styles.scroll}
@@ -20,20 +23,21 @@ export function ScreenContainer({ children }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
-  scroll: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  content: {
-    flexGrow: 1,
-    padding: spacing.lg,
-  },
-  inner: {
-    flex: 1,
-    width: "100%",
-    maxWidth: 720,
-    alignSelf: "center",
-    gap: spacing.md,
-  },
-});
+const criarEstilos = (t: Theme) =>
+  StyleSheet.create({
+    scroll: {
+      backgroundColor: t.colors.background,
+      flex: 1,
+    },
+    content: {
+      flexGrow: 1,
+      padding: t.spacing.lg,
+    },
+    inner: {
+      alignSelf: "center",
+      flex: 1,
+      gap: t.spacing.md,
+      maxWidth: 720,
+      width: "100%",
+    },
+  });

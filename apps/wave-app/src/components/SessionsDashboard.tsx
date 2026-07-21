@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
 import {
@@ -7,7 +8,7 @@ import {
   sessionDurationSeconds,
   type SessionResult,
 } from "../api/results";
-import { colors, spacing } from "../theme";
+import { useRoleAccent, useTheme, type Theme } from "../theme";
 import { BandBars } from "./charts/BandBars";
 import { SignalQuality } from "./charts/SignalQuality";
 import { TrendChart, type TrendPoint } from "./charts/TrendChart";
@@ -27,7 +28,12 @@ type Props = {
  *
  * `results` chega ordenado do mais antigo ao mais recente.
  */
-export function SessionsDashboard({ results, accent = colors.patient }: Props) {
+export function SessionsDashboard({ results, accent }: Props) {
+  const t = useTheme();
+  const papel = useRoleAccent();
+  const styles = useMemo(() => criarEstilos(t), [t]);
+  const cor = accent ?? papel.accent;
+
   // Só entram sessões que realmente têm a métrica: plotar 0 por ausência
   // inventaria uma medição que não existe.
   const tendencia: TrendPoint[] = results
@@ -44,13 +50,13 @@ export function SessionsDashboard({ results, accent = colors.patient }: Props) {
   return (
     <View style={styles.wrapper}>
       {tendencia.length > 0 ? (
-        <Card title="Tendência de alfa relativo" accent={accent}>
+        <Card title="Tendência de alfa relativo" accent={cor}>
           <Text style={styles.explicacao}>
             Fração da potência total do sinal na banda alfa (8–13 Hz), sessão a
             sessão.
             {tendencia.length === 1 ? " Com mais sessões, a linha aparece." : ""}
           </Text>
-          <TrendChart data={tendencia} accent={accent} formatValue={formatPercent} />
+          <TrendChart data={tendencia} accent={cor} formatValue={formatPercent} />
         </Card>
       ) : null}
 
@@ -63,12 +69,12 @@ export function SessionsDashboard({ results, accent = colors.patient }: Props) {
           ]
             .filter(Boolean)
             .join(" · ")}
-          accent={accent}
+          accent={cor}
         >
           {relativas ? (
             <>
               <Text style={styles.secao}>Composição por banda</Text>
-              <BandBars relative={relativas} accent={accent} />
+              <BandBars relative={relativas} accent={cor} />
             </>
           ) : null}
 
@@ -100,7 +106,7 @@ export function SessionsDashboard({ results, accent = colors.patient }: Props) {
                 ]
                   .filter(Boolean)
                   .join(" · ")}
-                accent={accent}
+                accent={cor}
               />
             );
           })}
@@ -110,30 +116,33 @@ export function SessionsDashboard({ results, accent = colors.patient }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
-  wrapper: {
-    gap: spacing.md,
-  },
-  explicacao: {
-    color: colors.textMuted,
-    fontSize: 13,
-    lineHeight: 19,
-  },
-  secao: {
-    color: colors.text,
-    fontSize: 14,
-    fontWeight: "600",
-    marginTop: spacing.sm / 2,
-  },
-  engine: {
-    color: colors.textMuted,
-    fontSize: 11,
-    marginTop: spacing.sm / 2,
-  },
-  tituloLista: {
-    color: colors.text,
-    fontSize: 17,
-    fontWeight: "600",
-    marginTop: spacing.sm,
-  },
-});
+const criarEstilos = (t: Theme) =>
+  StyleSheet.create({
+    wrapper: {
+      gap: t.spacing.md,
+    },
+    explicacao: {
+      ...t.typography.body,
+      color: t.colors.textMuted,
+      fontSize: 13,
+      lineHeight: 19,
+    },
+    secao: {
+      ...t.typography.body,
+      color: t.colors.text,
+      fontSize: 14,
+      fontWeight: "600",
+      marginTop: t.spacing.xs,
+    },
+    engine: {
+      ...t.typography.caption,
+      color: t.colors.textMuted,
+      fontSize: 11,
+      marginTop: t.spacing.xs,
+    },
+    tituloLista: {
+      ...t.typography.heading,
+      color: t.colors.text,
+      marginTop: t.spacing.sm,
+    },
+  });

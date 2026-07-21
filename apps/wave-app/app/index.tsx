@@ -1,58 +1,29 @@
-import { Link } from "expo-router";
-import { StyleSheet, Text } from "react-native";
+import { useRouter } from "expo-router";
 
+import { Button } from "../src/components/Button";
+import { Disclaimer } from "../src/components/Disclaimer";
 import { ScreenContainer } from "../src/components/ScreenContainer";
-import { colors, spacing } from "../src/theme";
+import { ScreenHeading } from "../src/components/ScreenHeading";
 
 /**
  * Tela inicial (pública). Quem já tem sessão é levado pela guarda de rota
  * direto para a área do seu papel.
  */
 export default function HomeScreen() {
+  const router = useRouter();
+
   return (
     <ScreenContainer>
-      <Text style={styles.heading}>WaveAI</Text>
-      <Text style={styles.lead}>
-        Plataforma de captação e análise de EEG de consumo, com acompanhamento de
-        bem-estar.
-      </Text>
+      <ScreenHeading
+        title="WaveAI"
+        size="display"
+        lead="Plataforma de captação e análise de EEG de consumo, com acompanhamento de bem-estar."
+      />
 
-      <Link href="/login" style={styles.link}>
-        Entrar
-      </Link>
-      <Link href="/register" style={styles.link}>
-        Criar conta
-      </Link>
+      <Button label="Entrar" onPress={() => router.push("/login")} />
+      <Button label="Criar conta" onPress={() => router.push("/register")} variant="secondary" />
 
-      <Text style={styles.footnote}>
-        Uso exploratório de bem-estar — não-clínico e não-diagnóstico.
-      </Text>
+      <Disclaimer />
     </ScreenContainer>
   );
 }
-
-const styles = StyleSheet.create({
-  heading: {
-    color: colors.text,
-    fontSize: 32,
-    fontWeight: "700",
-  },
-  lead: {
-    color: colors.textMuted,
-    fontSize: 15,
-    lineHeight: 22,
-    marginBottom: spacing.sm,
-  },
-  link: {
-    color: colors.patient,
-    fontSize: 16,
-    fontWeight: "600",
-    paddingVertical: spacing.sm,
-  },
-  footnote: {
-    color: colors.textMuted,
-    fontSize: 12,
-    lineHeight: 18,
-    marginTop: spacing.md,
-  },
-});
