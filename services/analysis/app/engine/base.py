@@ -31,7 +31,12 @@ class QualityMetrics:
     """Potência absoluta ao redor da rede elétrica (60 Hz)."""
 
     mains_power_ratio: float
-    """Fração da potência total concentrada na rede elétrica (0..1)."""
+    """Fração da potência do **espectro inteiro** concentrada na rede (0..1).
+
+    O denominador é o espectro completo (0..Nyquist), e não a soma das `BANDS`
+    — que param em 45 Hz e deixariam os 60 Hz da rede de fora, permitindo
+    razões acima de 1.
+    """
 
 
 @dataclass(frozen=True)

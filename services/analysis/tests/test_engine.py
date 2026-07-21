@@ -45,6 +45,29 @@ def test_process_window_reporta_qualidade_sem_veredito(engine):
     assert not hasattr(res.quality, "passed")
 
 
+def test_qualidade_com_rede_dominante_continua_sendo_fracao(engine):
+    """Regressão de captação REAL (#17): razão da rede passava de 100%.
+
+    Numa sessão real com eletrodo seco, os 60 Hz superaram a soma das bandas
+    (que param em 45 Hz) e `mains_power_ratio` deu **153%** — impossível para
+    algo declarado como fração. O denominador passou a ser o espectro inteiro.
+
+    O sinal aqui é dominado pela rede de propósito: é o cenário que o
+    simulador nunca produz e que quebrava a invariante.
+    """
+    fs = 512.0
+    t = np.arange(int(fs * 8)) / fs
+    rede = 400 * np.sin(2 * np.pi * 60 * t)
+    cerebro = 10 * np.sin(2 * np.pi * 10 * t)
+    samples = (cerebro + rede).tolist()
+
+    res = engine.process_window(samples, fs)
+
+    assert 0.0 <= res.quality.mains_power_ratio <= 1.0
+    # E deve acusar contaminação alta — a métrica ainda precisa ser informativa.
+    assert res.quality.mains_power_ratio > 0.5
+
+
 def test_process_session_sem_labels_nao_compara(engine):
     samples, _, fs = synthetic_session(secs=4.0)
     report = engine.process_session(samples, fs)

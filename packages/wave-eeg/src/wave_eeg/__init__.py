@@ -10,6 +10,7 @@ from .analysis import (
     band_powers,
     compare_eyes_closed_open,
     relative_band_powers,
+    total_power,
 )
 from .reader import DeviceReader, SerialReader, SimulatedReader
 from .thinkgear import TGPacket, ThinkGearParser, checksum, parse_payload
@@ -25,6 +26,7 @@ __all__ = [
     "SerialReader",
     "band_powers",
     "relative_band_powers",
+    "total_power",
     "compare_eyes_closed_open",
     "BANDS",
 ]
