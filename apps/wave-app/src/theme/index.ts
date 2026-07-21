@@ -13,4 +13,12 @@ export {
   type RoleAccent,
   type Theme,
 } from "./ThemeProvider";
-export { MIN_TOUCH, radius, spacing, typography, type Role, type ThemeName } from "./tokens";
+export {
+  MIN_TOUCH,
+  radius,
+  spacing,
+  typography,
+  type Role,
+  type ThemeName,
+  type ThemePreference,
+} from "./tokens";

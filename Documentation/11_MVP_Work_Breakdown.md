@@ -253,3 +253,17 @@ Dois achados que **só a captação real produziu**:
 **Aceite fechado (2026-07-21):** captação real de **92,7 s** conduzida no aparelho, com **contato do sensor = 0** (bom). Perfil delta-dominante (delta 50,8%, theta 37,7%, **alfa 6,4%**, beta 3,2%, gama 1,8%) — EEG real, longe dos 97% do simulador. O relatório apareceu na tela ao encerrar, a sessão foi guardada e o histórico abriu com a linha de tendência. **`mains_power_ratio` = 31,2%**, confirmando a correção com sinal real (era 153%): agora é fração válida e ainda informativa sobre interferência de rede.
 
 **Resolução (2026-07-21):** o `react-native-svg` **saiu do projeto**. Recompilar o dev client esbarrou num problema de ambiente da máquina (Gradle falhando em `sun.nio.ch.UnixDomainSockets` ao abrir seletor NIO), e um gráfico de linha simples não justifica bloquear a entrega. O `TrendChart` foi reescrito com `View`s — segmentos finos rotacionados — como as barras já eram. Visual indistinguível, **verificado no aparelho via adb** (histórico abre, linha e barras renderizam, sem crash no logcat). Ver adendo da **ADR-0027**.
+
+### #18 concluída (2026-07-21) — design system e identidade por papel
+Entregue (ver **ADR-0029**; verificado no navegador **e no aparelho**):
+- **Tokens semânticos** com **tema claro e escuro**; nenhuma tela usa cor literal.
+- **Sotaque por papel** sobre base comum: paciente turquesa, médico azul, um só conjunto de componentes.
+- **Acessibilidade:** alvo de toque de 44 px, foco visível nos campos, rótulos e estados para leitores de tela.
+- **Contraste validado por script** (`npm run check:contrast`), rodando **no CI** — "AA razoável" deixou de ser opinião.
+- `<Disclaimer>` centraliza o aviso não-clínico, que estava com **três redações diferentes** espalhadas (regra rígida do Medical/71, não texto de UI).
+
+**Dois defeitos reais encontrados por medição, não por impressão:**
+1. Botões secundários ("Sair", "Recusar") pintavam texto escuro sobre fundo escuro — **1,42:1**, ilegível. A variante passou a decidir fundo e texto juntos, tornando o erro impossível.
+2. Bordas de controle em 1,42:1, abaixo do mínimo 3:1 de elementos não-textuais (WCAG 1.4.11).
+
+**Achado no teste em aparelho:** `app.json` tinha `userInterfaceStyle: "light"`, que **travava o app em claro** no celular — o tema escuro só existia na web. Config corrigida para `"automatic"` (vale no próximo build; no Android ainda depende de `expo-system-ui`), e adicionado um **seletor de tema em JavaScript puro**, que funciona no build atual e mantém "seguir o sistema" como padrão.

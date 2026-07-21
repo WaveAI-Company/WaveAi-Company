@@ -13,6 +13,16 @@
 export type ThemeName = "dark" | "light";
 export type Role = "patient" | "doctor";
 
+/**
+ * O que a pessoa escolheu: seguir o sistema (padrão) ou fixar um tema.
+ *
+ * O seletor existe porque `userInterfaceStyle` do Expo é resolvido em **tempo
+ * de build** e, no Android, exige `expo-system-ui` — dependência nativa. Sem
+ * ela, o app fica preso a um tema no aparelho por mais que o sistema mude.
+ * Este override é puro JavaScript e funciona em qualquer build.
+ */
+export type ThemePreference = "system" | "light" | "dark";
+
 const darkColors = {
   background: "#0B1220",
   surface: "#151E32",
