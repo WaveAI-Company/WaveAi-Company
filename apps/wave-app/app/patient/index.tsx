@@ -4,11 +4,16 @@ import { Platform, Pressable, StyleSheet, Text } from "react-native";
 
 import { listPendingInvites } from "../../src/api/care";
 import { getConsentStatus } from "../../src/api/consent";
+import {
+  formatDate,
+  formatDuration,
+  listMyResults,
+  sessionDurationSeconds,
+  type SessionResult,
+} from "../../src/api/results";
 import { useAuth } from "../../src/auth/AuthContext";
 import { Card } from "../../src/components/Card";
-import { MockBadge } from "../../src/components/MockBadge";
 import { ScreenContainer } from "../../src/components/ScreenContainer";
-import { MOCK_SESSIONS, RESULTADO_INDISPONIVEL } from "../../src/mocks/mockSessions";
 import { colors, radius, spacing } from "../../src/theme";
 
 /** Quantas sessões aparecem na home antes de "ver todas". */
@@ -30,15 +35,19 @@ export default function PatientHomeScreen() {
   const captureSupported = Platform.OS !== "web";
   const [consentido, setConsentido] = useState<boolean | null>(null);
   const [pendentes, setPendentes] = useState(0);
+  const [recentes, setRecentes] = useState<SessionResult[]>([]);
 
   const carregar = useCallback(async () => {
     try {
-      const [status, convites] = await Promise.all([
+      const [status, convites, sessoes] = await Promise.all([
         getConsentStatus(),
         listPendingInvites(),
+        listMyResults(),
       ]);
       setConsentido(status.consent_given);
       setPendentes(convites.length);
+      // Mais recentes primeiro: a home mostra só um resumo.
+      setRecentes([...sessoes].reverse().slice(0, RESUMO));
     } catch {
       // A home não deve quebrar se os avisos falharem; ficam ocultos.
       setConsentido(null);
@@ -96,15 +105,22 @@ export default function PatientHomeScreen() {
       />
 
       <Text style={styles.secao}>Sessões recentes</Text>
-      <MockBadge />
-      {MOCK_SESSIONS.slice(0, RESUMO).map((session) => (
-        <Card
-          key={session.id}
-          title={`Sessão de ${session.date}`}
-          subtitle={`Duração ${session.duration} · ${RESULTADO_INDISPONIVEL}`}
-          accent={colors.patient}
-        />
-      ))}
+      {recentes.length === 0 ? (
+        <Text style={styles.vazio}>
+          Nenhuma sessão registrada ainda.
+        </Text>
+      ) : (
+        recentes.map((sessao) => (
+          <Card
+            key={sessao.id}
+            title={`Sessão de ${formatDate(sessao.created_at)}`}
+            subtitle={
+              formatDuration(sessionDurationSeconds(sessao.metrics)) ?? undefined
+            }
+            accent={colors.patient}
+          />
+        ))
+      )}
 
       <Pressable
         accessibilityRole="button"
@@ -184,6 +200,11 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: "600",
     marginTop: spacing.sm,
+  },
+  vazio: {
+    color: colors.textMuted,
+    fontSize: 14,
+    lineHeight: 20,
   },
   acao: {
     borderColor: colors.border,
