@@ -8,7 +8,7 @@ Plataforma de captação e análise de EEG de consumo (NeuroSky MindWave Mobile 
 ## Posicionamento e REGRAS RÍGIDAS (não violar)
 - **Não-clínico / não-diagnóstico** nesta fase (ver `Medical/71_Intended_Use_and_Regulatory_Positioning.md`). **Nenhuma claim clínica** na UI, textos ou marketing. Termos ok: bem-estar, tendências, estados mentais, exploratório.
 - **Análise plugável:** toda análise fica atrás da interface `AnalysisEngine`; hoje = pacote `wave_eeg`. Não espalhar DSP pela API/UI.
-- **Sem dado real de pessoa** em testes/dev (LGPD). Dados fictícios devem ser rotulados como tal.
+- **Sem dado real de pessoa** em testes/dev (LGPD). Dados fictícios devem ser rotulados como tal. **Fixtures, seeds e testes automatizados são sempre 100% sintéticos — isto não tem exceção.** Única exceção, estreita e condicionada: a **autocaptação do próprio desenvolvedor** em banco local descartável, nos termos da **ADR-0028** (titular = operador; consentimento pelo fluxo real; nada commitado; captar terceiros segue proibido).
 - **Segredos** só via variáveis de ambiente; nunca commitar `.env`/chaves (`.gitignore` cobre).
 - Gravar sempre a `engine_version` em cada resultado (rastreabilidade).
 

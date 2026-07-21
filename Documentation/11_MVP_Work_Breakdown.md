@@ -229,3 +229,17 @@ Entregue (ver **ADR-0027**; verificado no web e em largura de celular):
 - **Sem veredito de qualidade:** `Q-TEC-06` segue em aberto, então a UI mostra as medidas sem classificar a sessão como boa ou ruim.
 
 **Não incluído (deliberado):** a comparação olhos abertos/fechados (`comparison` do Exp. B) só existe em sessões rotuladas — fica para quando houver captação com rótulo (#17).
+
+### #17 (2026-07-21) — jornada ponta a ponta
+**O gap era o encerramento.** As peças (#12–#16) já existiam, mas o `process_session` calculava as métricas e elas eram **descartadas**: o `stop` devolvia só o status de persistência, então o app não tinha como mostrar o relatório — justamente o aceite da issue.
+
+Entregue:
+- **`_stop` devolve `report` (conteúdo) separado de `result` (armazenamento).** O relatório volta ao titular **mesmo quando nada é persistido** — mostrar ao dono do sinal o que acabou de ser medido não é guardar nada.
+- **Correção no cliente WS:** ele fechava o socket logo após o `stop`, o que descartava a resposta `closed`. Agora quem fecha é o handler do `closed`, com um estado "Encerrando a sessão…" cobrindo o cálculo da sessão inteira (alguns segundos).
+- **Relatório inline na `live`**, reusando `BandBars`/`SignalQuality` da #16, dizendo explicitamente se foi guardado — e por que não, quando não foi.
+- **Refresh ao focar** nas telas que leem estado do servidor: sem isso, a sessão recém-encerrada não aparecia no histórico sem recarregar o app.
+- **Runbook** do teste físico: [13_Device_E2E_Runbook](13_Device_E2E_Runbook.md).
+
+**Decisão de dado real:** a demonstração usa **autocaptação do próprio desenvolvedor**, sob a **ADR-0028** — exceção estreita à regra de "sem dado real em dev", com titular = operador, consentimento pelo fluxo real, banco local descartável e **fixtures/seeds seguindo 100% sintéticos**.
+
+**Verificado com o simulador** (web): captar → stream → análise → relatório inline → guardado → aparecer no dashboard, nos dois caminhos (com e sem consentimento). **Falta a passada com o aparelho físico** para fechar o aceite.
