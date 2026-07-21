@@ -1,15 +1,33 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
-import { StreamSession, type LiveFeatures } from "../../src/api/stream";
+import { formatPercent } from "../../src/api/results";
+import {
+  StreamSession,
+  type LiveFeatures,
+  type SessionClosed,
+} from "../../src/api/stream";
 import { Button } from "../../src/components/Button";
 import { Card } from "../../src/components/Card";
+import { BandBars } from "../../src/components/charts/BandBars";
+import { SignalQuality } from "../../src/components/charts/SignalQuality";
 import { MockBadge } from "../../src/components/MockBadge";
 import { ScreenContainer } from "../../src/components/ScreenContainer";
 import { deviceConnection } from "../../src/device/connection";
 import type { DeviceInfo } from "../../src/device/DeviceConnection";
 import { SignalSimulator } from "../../src/mocks/signalSimulator";
 import { colors, radius, spacing } from "../../src/theme";
+
+/** Por que o relatório não foi guardado, em português para o titular. */
+const MOTIVO_NAO_GUARDADO: Record<string, string> = {
+  "sem consentimento":
+    "Não guardamos: você ainda não autorizou o registro dos resultados.",
+  "persistencia desligada":
+    "Não guardamos: o registro de resultados está desligado neste ambiente.",
+  "analise indisponivel": "A análise ficou indisponível ao encerrar.",
+  "sem amostras": "A sessão terminou sem amostras suficientes.",
+  indisponivel: "O registro de resultados não está disponível.",
+};
 
 const SAMPLE_RATE = 512;
 /** Cadência de envio: blocos de 256 amostras a cada 500 ms (≈ tempo real). */
@@ -33,23 +51,55 @@ export default function PatientLiveScreen() {
   const [aparelhos, setAparelhos] = useState<DeviceInfo[]>([]);
   const [poorSignal, setPoorSignal] = useState<number | null>(null);
   const [usandoAparelho, setUsandoAparelho] = useState(false);
+  /** Relatório da sessão encerrada (#17) — fecha a jornada na própria tela. */
+  const [encerrada, setEncerrada] = useState<SessionClosed | null>(null);
+  /** `true` entre o "stop" e a chegada do relatório. */
+  const [encerrando, setEncerrando] = useState(false);
 
   const sessao = useRef<StreamSession | null>(null);
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
   /** Amostras do aparelho acumuladas entre envios ao servidor. */
   const pendentes = useRef<number[]>([]);
 
-  const parar = useCallback(() => {
+  /** Encerra a captação local (timer + aparelho), sem tocar no socket. */
+  const encerrarCaptacao = useCallback(() => {
     if (timer.current) clearInterval(timer.current);
     timer.current = null;
     if (usandoAparelho) void deviceConnection.disconnect();
-    sessao.current?.stop();
-    sessao.current?.close();
-    sessao.current = null;
     pendentes.current = [];
     setAtivo(false);
     setUsandoAparelho(false);
   }, [usandoAparelho]);
+
+  /**
+   * Para a captação e **aguarda** o relatório da sessão.
+   *
+   * O socket NÃO é fechado aqui: fechá-lo logo após o `stop` descartaria a
+   * resposta `closed`, que é justamente onde vem o relatório (#17). Quem fecha
+   * é o handler `onClosed`.
+   */
+  const parar = useCallback(() => {
+    encerrarCaptacao();
+    if (sessao.current) {
+      setEncerrando(true);
+      sessao.current.stop();
+    }
+  }, [encerrarCaptacao]);
+
+  /** Abandona a sessão sem esperar nada (usado ao sair da tela). */
+  const descartar = useCallback(() => {
+    encerrarCaptacao();
+    sessao.current?.close();
+    sessao.current = null;
+  }, [encerrarCaptacao]);
+
+  /** Handler comum: chega o relatório, aí sim o socket pode fechar. */
+  const aoEncerrar = useCallback((fim: SessionClosed) => {
+    setEncerrada(fim);
+    setEncerrando(false);
+    sessao.current?.close();
+    sessao.current = null;
+  }, []);
 
   async function procurarAparelhos() {
     setErro(null);
@@ -68,6 +118,7 @@ export default function PatientLiveScreen() {
     setFeatures(null);
     setJanelas(0);
     setPoorSignal(null);
+    setEncerrada(null);
 
     const stream = new StreamSession({
       onSession: setSessionId,
@@ -75,6 +126,7 @@ export default function PatientLiveScreen() {
         setFeatures(f);
         setJanelas((n) => n + 1);
       },
+      onClosed: aoEncerrar,
       onError: (detalhe) => {
         setErro(detalhe);
         parar();
@@ -107,21 +159,23 @@ export default function PatientLiveScreen() {
     }, INTERVALO_MS);
   }
 
-  // Encerra o stream **apenas ao sair da tela**.
+  // Encerra o stream **apenas ao sair da tela** — e aí descarta sem esperar
+  // relatório, porque não há mais tela para exibi-lo.
   //
-  // Via ref de propósito: com `useEffect(() => parar, [parar])`, qualquer
-  // mudança de identidade de `parar` (ela depende de `usandoAparelho`) fazia o
-  // React rodar a limpeza do efeito anterior — desconectando o aparelho no
-  // instante seguinte ao connect. O simulador não sofria disso porque não
+  // Via ref de propósito: com `useEffect(() => descartar, [descartar])`,
+  // qualquer mudança de identidade de `descartar` (depende de `usandoAparelho`)
+  // faria o React rodar a limpeza do efeito anterior — desconectando o aparelho
+  // no instante seguinte ao connect. O simulador não sofria disso porque não
   // alterava a dependência.
-  const pararRef = useRef(parar);
-  pararRef.current = parar;
-  useEffect(() => () => pararRef.current(), []);
+  const descartarRef = useRef(descartar);
+  descartarRef.current = descartar;
+  useEffect(() => () => descartarRef.current(), []);
 
   async function iniciar() {
     setErro(null);
     setFeatures(null);
     setJanelas(0);
+    setEncerrada(null);
 
     const stream = new StreamSession({
       onSession: setSessionId,
@@ -129,6 +183,7 @@ export default function PatientLiveScreen() {
         setFeatures(f);
         setJanelas((n) => n + 1);
       },
+      onClosed: aoEncerrar,
       onError: (detalhe) => {
         setErro(detalhe);
         parar();
@@ -249,6 +304,70 @@ export default function PatientLiveScreen() {
           ))
         : null}
 
+      {encerrando ? (
+        <Card
+          title="Encerrando a sessão…"
+          subtitle="Calculando o relatório sobre a sessão inteira."
+          accent={colors.patient}
+        />
+      ) : null}
+
+      {/* Relatório da sessão encerrada (#17): fecha a jornada captar → ver. */}
+      {encerrada ? (
+        <>
+          <Text style={styles.secao}>Relatório da sessão</Text>
+          <Card
+            title={
+              typeof encerrada.report?.rel_alpha === "number"
+                ? `Alfa relativa média: ${formatPercent(encerrada.report.rel_alpha)}`
+                : "Sessão encerrada"
+            }
+            subtitle={`${encerrada.sampleCount} amostras recebidas`}
+            accent={colors.patient}
+          >
+            {encerrada.report?.relative_band_powers ? (
+              <>
+                <Text style={styles.subsecao}>Composição por banda</Text>
+                <BandBars
+                  relative={encerrada.report.relative_band_powers}
+                  accent={colors.patient}
+                />
+              </>
+            ) : null}
+
+            {encerrada.report?.quality ? (
+              <>
+                <Text style={styles.subsecao}>Qualidade do sinal</Text>
+                <SignalQuality quality={encerrada.report.quality} />
+              </>
+            ) : null}
+
+            {encerrada.report?.engine_version ? (
+              <Text style={styles.engine}>
+                Motor de análise: {encerrada.report.engine_version}
+              </Text>
+            ) : null}
+          </Card>
+
+          {/* Ser explícito sobre guardar ou não é parte do consent-first. */}
+          <Card
+            title={
+              encerrada.storage.persisted
+                ? "Sessão guardada no seu histórico"
+                : "Sessão não guardada"
+            }
+            subtitle={
+              encerrada.storage.persisted
+                ? "Você pode revê-la a qualquer momento em Histórico."
+                : (encerrada.storage.reason
+                    ? MOTIVO_NAO_GUARDADO[encerrada.storage.reason]
+                    : undefined) ?? "O resultado desta sessão não foi registrado."
+            }
+            accent={encerrada.storage.persisted ? colors.patient : colors.warning}
+          />
+        </>
+      ) : null}
+
       {sessionId ? (
         <Text style={styles.footnote}>Sessão {sessionId.slice(0, 8)}…</Text>
       ) : null}
@@ -278,6 +397,17 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: "600",
     marginTop: spacing.sm,
+  },
+  subsecao: {
+    color: colors.text,
+    fontSize: 14,
+    fontWeight: "600",
+    marginTop: spacing.sm / 2,
+  },
+  engine: {
+    color: colors.textMuted,
+    fontSize: 11,
+    marginTop: spacing.sm / 2,
   },
   erro: {
     color: colors.warning,

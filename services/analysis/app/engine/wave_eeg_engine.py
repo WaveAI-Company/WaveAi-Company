@@ -17,6 +17,7 @@ from wave_eeg.analysis import (
     mains_power,
     preprocess,
     relative_band_powers,
+    total_power,
 )
 
 from .base import (
@@ -45,9 +46,15 @@ class WaveEegEngine(AnalysisEngine):
 
     # -- helpers ---------------------------------------------------------
 
-    def _quality(self, x: np.ndarray, fs: float, powers: dict[str, float]) -> QualityMetrics:
+    def _quality(self, x: np.ndarray, fs: float) -> QualityMetrics:
+        """Qualidade medida no sinal **bruto** (o notch removeria a rede).
+
+        O denominador é a potência do **espectro inteiro**, não a soma das
+        bandas: elas param em 45 Hz, e os 60 Hz da rede ficariam fora do total
+        — a "fração" passava de 1. Uma captação real deu 153% antes disto.
+        """
         mains = float(mains_power(x, fs))
-        total = float(sum(powers.values()))
+        total = float(total_power(x, fs))
         return QualityMetrics(
             signal_std=float(np.std(x)),
             mains_power=mains,
@@ -62,7 +69,7 @@ class WaveEegEngine(AnalysisEngine):
         rel = {k: float(v) for k, v in relative_band_powers(filtered, fs).items()}
         # Qualidade é medida no sinal BRUTO: o notch do pré-processamento
         # removeria justamente o 60 Hz que queremos quantificar.
-        quality = self._quality(raw, fs, band_powers(raw, fs))
+        quality = self._quality(raw, fs)
         return raw, powers, rel, quality
 
     def _split_by_condition(self, samples: Sequence[float], labels: Sequence[str]):

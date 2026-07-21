@@ -6,6 +6,7 @@
  */
 
 import { API_URL, getAccessToken } from "../auth/api";
+import type { ResultMetrics } from "./results";
 
 export type LiveFeatures = {
   rel_alpha?: number;
@@ -16,11 +17,27 @@ export type LiveFeatures = {
   unavailable?: boolean;
 };
 
+/** Onde (e se) o relatório da sessão foi guardado (gate do ADR-0026). */
+export type StorageStatus = {
+  persisted: boolean;
+  /** Por que não foi guardado: "sem consentimento", "persistencia desligada"… */
+  reason?: string;
+  result_id?: string;
+};
+
+/** Encerramento da sessão: o que foi medido e se foi guardado. */
+export type SessionClosed = {
+  sampleCount: number;
+  /** Conteúdo do relatório — vem mesmo quando nada é persistido. */
+  report: ResultMetrics | null;
+  storage: StorageStatus;
+};
+
 export type StreamHandlers = {
   onSession?(sessionId: string): void;
   onFeatures?(features: LiveFeatures): void;
   onError?(detail: string): void;
-  onClosed?(sampleCount: number): void;
+  onClosed?(closed: SessionClosed): void;
 };
 
 function wsUrl(): string {
@@ -66,7 +83,11 @@ export class StreamSession {
             if (msg.features) this.handlers.onFeatures?.(msg.features);
             break;
           case "closed":
-            this.handlers.onClosed?.(msg.sample_count);
+            this.handlers.onClosed?.({
+              sampleCount: msg.sample_count,
+              report: msg.report ?? null,
+              storage: msg.result ?? { persisted: false },
+            });
             break;
           case "error":
             this.handlers.onError?.(msg.detail);

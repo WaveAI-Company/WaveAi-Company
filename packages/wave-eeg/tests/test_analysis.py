@@ -1,7 +1,12 @@
 """Testes da análise de sinal — validam o Exp. B com sinais sintéticos de alfa conhecido."""
 import numpy as np
 
-from wave_eeg.analysis import band_powers, compare_eyes_closed_open
+from wave_eeg.analysis import (
+    band_powers,
+    compare_eyes_closed_open,
+    mains_power,
+    total_power,
+)
 
 
 def _sig(fs, secs, freq, amp, noise=5.0, seed=0):
@@ -15,6 +20,24 @@ def test_potencia_pico_na_banda_alfa():
     x = _sig(fs, 10, freq=10.0, amp=30.0)  # 10 Hz -> banda alfa
     bp = band_powers(x, fs)
     assert bp["alpha"] == max(bp.values())
+
+
+def test_total_power_engloba_as_bandas_e_a_rede():
+    """O total do espectro precisa conter o que as BANDS (0,5–45 Hz) deixam de fora.
+
+    Sem isso, `mains_power / total` não é fração: numa captação real com 60 Hz
+    forte, a razão chegou a 153%.
+    """
+    fs = 512
+    t = np.arange(fs * 8) / fs
+    x = 10 * np.sin(2 * np.pi * 10 * t) + 400 * np.sin(2 * np.pi * 60 * t)
+
+    total = total_power(x, fs)
+    soma_bandas = sum(band_powers(x, fs).values())
+
+    # A rede vive fora das bandas, então o total é estritamente maior.
+    assert total > soma_bandas
+    assert 0.0 <= mains_power(x, fs) / total <= 1.0
 
 
 def test_alfa_maior_de_olhos_fechados():
