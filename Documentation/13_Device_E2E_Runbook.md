@@ -18,6 +18,12 @@ Como rodar a jornada completa — **captar do MindWave → transmitir → analis
 - **MindWave Mobile 2** com pilha, **pareado no Android** (Configurações → Bluetooth). O transporte no Android é **SPP/RFCOMM**, e o pareamento é feito **pelo sistema**, não pelo app.
 - Celular Android e o PC **na mesma rede Wi-Fi**.
 - **Development client** instalado no celular. Expo Go **não serve**: a captação usa módulo nativo (`react-native-bluetooth-classic`).
+
+> **[ARMADILHA] Dependência nativa nova exige recompilar o development client.** Módulo nativo **não** entra por *hot reload* — ele precisa estar compilado no APK. Se alguém adicionar um pacote com código nativo (foi o caso do `react-native-svg` na #16) e o build do celular for anterior, a tela que o usa quebra com `IllegalViewOperationException: Can't find ViewManager...`, mesmo com o JS atualizado.
+>
+> Pior: **verificar só no navegador não pega isso**, porque o React Native Web renderiza esses componentes em JS, sem código nativo. Toda dependência nativa precisa de uma passada em **build de dispositivo**.
+>
+> Correção: `npx expo run:android` (com o aparelho conectado) ou um novo EAS Build.
 - Docker (Postgres), e os venvs de `services/api` e `services/analysis`.
 
 ## 2. Subir a infraestrutura
@@ -82,6 +88,7 @@ Abra o development client no celular e carregue o projeto.
 | "Análise indisponível" | Serviço de Analysis (8001) fora do ar — a captação segue, sem features |
 | "Sessão não guardada" | Consentimento não dado, ou `WAVEAI_API_RESULT_PERSISTENCE_ENABLED=false` |
 | Sessão cai ao recarregar no navegador | Esperado com API em IP de LAN (cookie cross-site) — ver §3 |
+| `Can't find ViewManager...` numa tela | Dependência **nativa** nova sem recompilar o dev client — ver §1 |
 
 ## 7. Ao terminar
 
