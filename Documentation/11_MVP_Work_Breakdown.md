@@ -242,4 +242,10 @@ Entregue:
 
 **Decisão de dado real:** a demonstração usa **autocaptação do próprio desenvolvedor**, sob a **ADR-0028** — exceção estreita à regra de "sem dado real em dev", com titular = operador, consentimento pelo fluxo real, banco local descartável e **fixtures/seeds seguindo 100% sintéticos**.
 
-**Verificado com o simulador** (web): captar → stream → análise → relatório inline → guardado → aparecer no dashboard, nos dois caminhos (com e sem consentimento). **Falta a passada com o aparelho físico** para fechar o aceite.
+**Verificado com o simulador** (web): captar → stream → análise → relatório inline → guardado → aparecer no dashboard, nos dois caminhos (com e sem consentimento).
+
+**Captação real feita (2026-07-21)** — Motorola Edge 50 Fusion + MindWave Mobile, via `adb reverse` por USB: 3 sessões, 82 janelas ao vivo, relatório na tela. Sessão de **73,6 s com alfa relativo de 12,0%** (contra 97,8% do simulador, que é senoide pura) — a jornada funciona com sinal real.
+
+Dois achados que **só a captação real produziu**:
+1. **`mains_power_ratio` = 153%** num campo declarado como fração. O denominador somava as `BANDS` (até 45 Hz), deixando os 60 Hz da rede de fora. Corrigido com `total_power` (espectro inteiro). O simulador nunca acusaria — não tem componente de 60 Hz.
+2. **Crash no histórico** (`Can't find ViewManager`): o `react-native-svg` da #16 é dependência **nativa** e o dev client do aparelho era anterior a ela. A #16 foi verificada só no navegador, onde o RN-Web dispensa código nativo — lacuna de verificação agora registrada no runbook. Correção é recompilar o dev client, não código.
