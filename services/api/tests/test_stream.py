@@ -404,6 +404,53 @@ def test_stop_gera_result_persistido_com_consentimento(
     assert len(db_session.scalars(__import__("sqlalchemy").select(Result)).all()) == 1
 
 
+def test_stop_devolve_o_relatorio_da_sessao(
+    client_com_analysis: TestClient, analysis: AnalysisFake
+):
+    """Aceite da #17: ao encerrar, o app recebe o **conteúdo** do relatório.
+
+    Sem isto, a jornada "captar → ver o relatório" não fecha: as métricas eram
+    calculadas e descartadas, sobrando só o status de persistência.
+    """
+    token = _token(client_com_analysis)
+    assert client_com_analysis.post(
+        "/me/consent", headers={"Authorization": f"Bearer {token}"}
+    ).status_code == 204
+
+    with client_com_analysis.websocket_connect("/stream") as ws:
+        _abrir_sessao(ws, token)
+        ws.send_json({"type": "samples", "seq": 1, "data": [1.0] * 1024})
+        ws.receive_json()
+        ws.send_json({"type": "stop"})
+        fim = ws.receive_json()
+
+    assert fim["report"]["rel_alpha"] == 0.33
+    assert fim["report"]["engine_version"] == "fake/1.0"
+    # O status de armazenamento continua separado do conteúdo.
+    assert fim["result"]["persisted"] is True
+
+
+def test_relatorio_volta_ao_titular_mesmo_sem_persistir(
+    client_com_analysis: TestClient, analysis: AnalysisFake, db_session: Session
+):
+    """Sem consentimento nada é gravado — mas o titular ainda vê a própria
+    medição. Mostrar não é guardar."""
+    token = _token(client_com_analysis)  # sem /me/consent
+
+    with client_com_analysis.websocket_connect("/stream") as ws:
+        _abrir_sessao(ws, token)
+        ws.send_json({"type": "samples", "seq": 1, "data": [1.0] * 1024})
+        ws.receive_json()
+        ws.send_json({"type": "stop"})
+        fim = ws.receive_json()
+
+    assert fim["report"]["rel_alpha"] == 0.33
+    assert fim["result"]["persisted"] is False
+    assert fim["result"]["reason"] == "sem consentimento"
+    from app.models import Result
+    assert db_session.scalars(__import__("sqlalchemy").select(Result)).all() == []
+
+
 def test_stop_sem_consentimento_nao_persiste_mas_encerra(
     client_com_analysis: TestClient, analysis: AnalysisFake, db_session: Session
 ):

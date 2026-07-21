@@ -1,5 +1,5 @@
-import { useRouter } from "expo-router";
-import { useCallback, useEffect, useState } from "react";
+import { useFocusEffect, useRouter } from "expo-router";
+import { useCallback, useState } from "react";
 import { Platform, Pressable, StyleSheet, Text } from "react-native";
 
 import { listPendingInvites } from "../../src/api/care";
@@ -54,9 +54,13 @@ export default function PatientHomeScreen() {
     }
   }, []);
 
-  useEffect(() => {
-    void carregar();
-  }, [carregar]);
+  // Ao focar, não só ao montar: voltando do consentimento ou de uma captação,
+  // o aviso e as sessões recentes precisam refletir o que acabou de mudar.
+  useFocusEffect(
+    useCallback(() => {
+      void carregar();
+    }, [carregar]),
+  );
 
   return (
     <ScreenContainer>
