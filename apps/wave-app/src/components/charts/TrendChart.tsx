@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { StyleSheet, Text, View, type LayoutChangeEvent } from "react-native";
 
-import { colors, spacing } from "../../theme";
+import { useRoleAccent, useTheme, type Theme } from "../../theme";
 
 export type TrendPoint = {
   value: number;
@@ -15,6 +15,8 @@ type Props = {
   height?: number;
   /** Formata os rótulos do eixo y (ex.: fração → porcentagem). */
   formatValue?: (value: number) => string;
+  /** Descrição para leitores de tela (o gráfico em si é decorativo). */
+  accessibilityLabel?: string;
 };
 
 const PAD_LEFT = 46;
@@ -36,9 +38,19 @@ const PONTO = 7;
  * rótulos, uma variação minúscula pareceria dramática. A leitura do que a
  * curva significa não é feita aqui — é medida, não veredito.
  */
-export function TrendChart({ data, accent = colors.patient, height = 180, formatValue }: Props) {
+export function TrendChart({
+  data,
+  accent,
+  height = 180,
+  formatValue,
+  accessibilityLabel,
+}: Props) {
+  const t = useTheme();
+  const papel = useRoleAccent();
+  const styles = useMemo(() => criarEstilos(t), [t]);
   const [width, setWidth] = useState(0);
 
+  const cor = accent ?? papel.accent;
   const aoMedir = (e: LayoutChangeEvent) => setWidth(e.nativeEvent.layout.width);
   const formatar = formatValue ?? ((v: number) => v.toFixed(2));
 
@@ -82,8 +94,20 @@ export function TrendChart({ data, accent = colors.patient, height = 180, format
     };
   });
 
+  const descricao =
+    accessibilityLabel ??
+    `Tendência de ${data.length} sessões, de ${formatar(data[0].value)} em ${data[0].label} a ${formatar(
+      data[data.length - 1].value,
+    )} em ${data[data.length - 1].label}.`;
+
   return (
-    <View style={[styles.wrapper, { height }]} onLayout={aoMedir}>
+    <View
+      style={[styles.wrapper, { height }]}
+      onLayout={aoMedir}
+      accessible
+      accessibilityRole="image"
+      accessibilityLabel={descricao}
+    >
       {/* Linhas de base: máximo e mínimo, ambos rotulados. */}
       {[max, min].map((valor) => (
         <View
@@ -110,7 +134,7 @@ export function TrendChart({ data, accent = colors.patient, height = 180, format
               left: s.left,
               top: s.top,
               width: s.width,
-              backgroundColor: accent,
+              backgroundColor: cor,
               transform: [{ rotate: `${s.angulo}deg` }],
             },
           ]}
@@ -122,7 +146,7 @@ export function TrendChart({ data, accent = colors.patient, height = 180, format
           key={`ponto-${d.label}-${i}`}
           style={[
             styles.ponto,
-            { left: x(i) - PONTO / 2, top: y(d.value) - PONTO / 2, backgroundColor: accent },
+            { left: x(i) - PONTO / 2, top: y(d.value) - PONTO / 2, backgroundColor: cor },
           ]}
         />
       ))}
@@ -143,42 +167,45 @@ export function TrendChart({ data, accent = colors.patient, height = 180, format
   );
 }
 
-const styles = StyleSheet.create({
-  wrapper: {
-    marginTop: spacing.sm / 2,
-    position: "relative",
-    width: "100%",
-  },
-  grade: {
-    backgroundColor: colors.border,
-    height: 1,
-    position: "absolute",
-  },
-  rotuloY: {
-    color: colors.textMuted,
-    fontSize: 11,
-    left: 0,
-    position: "absolute",
-    textAlign: "right",
-  },
-  segmento: {
-    borderRadius: ESPESSURA / 2,
-    height: ESPESSURA,
-    position: "absolute",
-  },
-  ponto: {
-    borderRadius: PONTO / 2,
-    height: PONTO,
-    position: "absolute",
-    width: PONTO,
-  },
-  rotuloX: {
-    bottom: 4,
-    color: colors.textMuted,
-    fontSize: 11,
-    position: "absolute",
-  },
-  rotuloXFim: {
-    textAlign: "right",
-  },
-});
+const criarEstilos = (t: Theme) =>
+  StyleSheet.create({
+    wrapper: {
+      marginTop: t.spacing.xs,
+      position: "relative",
+      width: "100%",
+    },
+    grade: {
+      backgroundColor: t.colors.border,
+      height: 1,
+      position: "absolute",
+    },
+    rotuloY: {
+      ...t.typography.caption,
+      color: t.colors.textMuted,
+      fontSize: 11,
+      left: 0,
+      position: "absolute",
+      textAlign: "right",
+    },
+    segmento: {
+      borderRadius: ESPESSURA / 2,
+      height: ESPESSURA,
+      position: "absolute",
+    },
+    ponto: {
+      borderRadius: PONTO / 2,
+      height: PONTO,
+      position: "absolute",
+      width: PONTO,
+    },
+    rotuloX: {
+      ...t.typography.caption,
+      bottom: 4,
+      color: t.colors.textMuted,
+      fontSize: 11,
+      position: "absolute",
+    },
+    rotuloXFim: {
+      textAlign: "right",
+    },
+  });
