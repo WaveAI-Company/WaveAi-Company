@@ -1,5 +1,5 @@
-import { useRouter } from "expo-router";
-import { useCallback, useEffect, useState } from "react";
+import { useFocusEffect, useRouter } from "expo-router";
+import { useCallback, useState } from "react";
 import { Pressable, StyleSheet, Text } from "react-native";
 
 import {
@@ -50,9 +50,13 @@ export default function PatientProfileScreen() {
     }
   }, []);
 
-  useEffect(() => {
-    void carregar();
-  }, [carregar]);
+  // Ao focar: voltando da tela de consentimento ou de convites, o que mudou
+  // lá precisa aparecer aqui.
+  useFocusEffect(
+    useCallback(() => {
+      void carregar();
+    }, [carregar]),
+  );
 
   const revogar = useCallback(async (id: string) => {
     setRevogando(id);

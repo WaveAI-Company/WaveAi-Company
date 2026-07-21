@@ -64,6 +64,18 @@ def relative_band_powers(x, fs, bands=BANDS):
     return {k: v / total for k, v in bp.items()}
 
 
+def total_power(x, fs):
+    """Potência do espectro **inteiro** (0 até Nyquist).
+
+    Existe para dar um denominador honesto a razões como a da rede elétrica.
+    Somar as `BANDS` não serve: elas param em 45 Hz, então uma componente em
+    60 Hz ficaria **fora** do total e a "fração" poderia passar de 1 — foi
+    exatamente o que uma captação real expôs (razão de 153%).
+    """
+    f, pxx = psd(x, fs)
+    return float(_trapz(pxx, f)) if f.size else 0.0
+
+
 def mains_power(x, fs, f0=60.0, bw=2.0):
     """Potência ao redor da rede elétrica (proxy de contaminação de 60 Hz)."""
     if f0 >= 0.5 * fs:

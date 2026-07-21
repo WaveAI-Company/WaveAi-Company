@@ -1,5 +1,5 @@
-import { useRouter } from "expo-router";
-import { useCallback, useEffect, useState } from "react";
+import { useFocusEffect, useRouter } from "expo-router";
+import { useCallback, useState } from "react";
 import { Pressable, StyleSheet, Text } from "react-native";
 
 import { listActivePatients, type CareLink } from "../../src/api/care";
@@ -36,9 +36,13 @@ export default function DoctorScreen() {
     }
   }, []);
 
-  useEffect(() => {
-    void carregar();
-  }, [carregar]);
+  // Ao focar: um convite aceito pelo paciente, ou um vínculo revogado, muda
+  // esta lista sem que nada aconteça nesta tela.
+  useFocusEffect(
+    useCallback(() => {
+      void carregar();
+    }, [carregar]),
+  );
 
   return (
     <ScreenContainer>
