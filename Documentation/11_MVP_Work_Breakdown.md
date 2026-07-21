@@ -230,7 +230,7 @@ Entregue (ver **ADR-0027**; verificado no web e em largura de celular):
 
 **Não incluído (deliberado):** a comparação olhos abertos/fechados (`comparison` do Exp. B) só existe em sessões rotuladas — fica para quando houver captação com rótulo (#17).
 
-### #17 (2026-07-21) — jornada ponta a ponta
+### #17 concluída (2026-07-21) — jornada ponta a ponta com o aparelho
 **O gap era o encerramento.** As peças (#12–#16) já existiam, mas o `process_session` calculava as métricas e elas eram **descartadas**: o `stop` devolvia só o status de persistência, então o app não tinha como mostrar o relatório — justamente o aceite da issue.
 
 Entregue:
@@ -249,5 +249,7 @@ Entregue:
 Dois achados que **só a captação real produziu**:
 1. **`mains_power_ratio` = 153%** num campo declarado como fração. O denominador somava as `BANDS` (até 45 Hz), deixando os 60 Hz da rede de fora. Corrigido com `total_power` (espectro inteiro). O simulador nunca acusaria — não tem componente de 60 Hz.
 2. **Crash no histórico** (`Can't find ViewManager`): o `react-native-svg` da #16 é dependência **nativa** e o dev client do aparelho era anterior a ela. A #16 foi verificada só no navegador, onde o RN-Web dispensa código nativo — lacuna de verificação agora registrada no runbook.
+
+**Aceite fechado (2026-07-21):** captação real de **92,7 s** conduzida no aparelho, com **contato do sensor = 0** (bom). Perfil delta-dominante (delta 50,8%, theta 37,7%, **alfa 6,4%**, beta 3,2%, gama 1,8%) — EEG real, longe dos 97% do simulador. O relatório apareceu na tela ao encerrar, a sessão foi guardada e o histórico abriu com a linha de tendência. **`mains_power_ratio` = 31,2%**, confirmando a correção com sinal real (era 153%): agora é fração válida e ainda informativa sobre interferência de rede.
 
 **Resolução (2026-07-21):** o `react-native-svg` **saiu do projeto**. Recompilar o dev client esbarrou num problema de ambiente da máquina (Gradle falhando em `sun.nio.ch.UnixDomainSockets` ao abrir seletor NIO), e um gráfico de linha simples não justifica bloquear a entrega. O `TrendChart` foi reescrito com `View`s — segmentos finos rotacionados — como as barras já eram. Visual indistinguível, **verificado no aparelho via adb** (histórico abre, linha e barras renderizam, sem crash no logcat). Ver adendo da **ADR-0027**.
