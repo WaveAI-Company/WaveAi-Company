@@ -1,13 +1,15 @@
 import { useLocalSearchParams } from "expo-router";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { StyleSheet, Text } from "react-native";
 
 import { getPatient, type PatientSummary } from "../../../src/api/care";
 import { listPatientResults, type SessionResult } from "../../../src/api/results";
+import { Disclaimer } from "../../../src/components/Disclaimer";
 import { ScreenContainer } from "../../../src/components/ScreenContainer";
+import { ScreenHeading } from "../../../src/components/ScreenHeading";
 import { SessionsDashboard } from "../../../src/components/SessionsDashboard";
 import { StateView } from "../../../src/components/StateView";
-import { colors, spacing } from "../../../src/theme";
+import { useTheme, type Theme } from "../../../src/theme";
 
 /**
  * Detalhe do paciente com dashboards (#16).
@@ -18,6 +20,9 @@ import { colors, spacing } from "../../../src/theme";
  */
 export default function PatientDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const t = useTheme();
+  const styles = useMemo(() => criarEstilos(t), [t]);
+
   const [patient, setPatient] = useState<PatientSummary | null>(null);
   const [results, setResults] = useState<SessionResult[]>([]);
   const [loading, setLoading] = useState(true);
@@ -30,10 +35,7 @@ export default function PatientDetailScreen() {
     try {
       // As duas leituras dependem do mesmo vínculo ativo: se uma cai por 403,
       // a tela inteira não tem o que mostrar.
-      const [dados, sessoes] = await Promise.all([
-        getPatient(id),
-        listPatientResults(id),
-      ]);
+      const [dados, sessoes] = await Promise.all([getPatient(id), listPatientResults(id)]);
       setPatient(dados);
       setResults(sessoes);
     } catch {
@@ -55,50 +57,32 @@ export default function PatientDetailScreen() {
 
       {!loading && !erro && patient ? (
         <>
-          <Text style={styles.heading}>{patient.display_name ?? "Paciente"}</Text>
-          <Text style={styles.lead}>
-            Sessões registradas e tendências, com autorização deste paciente.
-          </Text>
+          <ScreenHeading
+            title={patient.display_name ?? "Paciente"}
+            lead="Sessões registradas e tendências, com autorização deste paciente."
+          />
 
           {results.length === 0 ? (
             <Text style={styles.vazio}>
               Este paciente ainda não tem sessões registradas.
             </Text>
           ) : (
-            <SessionsDashboard results={results} accent={colors.doctor} />
+            <SessionsDashboard results={results} />
           )}
 
-          <Text style={styles.footnote}>
-            Dados exploratórios de bem-estar — não-clínicos e não-diagnósticos.
-            Não substituem avaliação profissional.
-          </Text>
+          <Disclaimer variant="profissional" />
         </>
       ) : null}
     </ScreenContainer>
   );
 }
 
-const styles = StyleSheet.create({
-  heading: {
-    color: colors.text,
-    fontSize: 26,
-    fontWeight: "700",
-  },
-  lead: {
-    color: colors.textMuted,
-    fontSize: 15,
-    lineHeight: 22,
-    marginBottom: spacing.sm,
-  },
-  vazio: {
-    color: colors.textMuted,
-    fontSize: 14,
-    lineHeight: 20,
-  },
-  footnote: {
-    color: colors.textMuted,
-    fontSize: 12,
-    lineHeight: 18,
-    marginTop: spacing.md,
-  },
-});
+const criarEstilos = (t: Theme) =>
+  StyleSheet.create({
+    vazio: {
+      ...t.typography.body,
+      color: t.colors.textMuted,
+      fontSize: 14,
+      lineHeight: 20,
+    },
+  });

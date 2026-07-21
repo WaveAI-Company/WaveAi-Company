@@ -1,19 +1,23 @@
-import type { ReactNode } from "react";
+import { useMemo, type ReactNode } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
-import { colors, radius, spacing } from "../theme";
+import { useTheme, type Theme } from "../theme";
 
 type Props = {
   title: string;
   subtitle?: string;
+  /** Faixa lateral de destaque. Sem valor, usa a borda neutra. */
   accent?: string;
   children?: ReactNode;
 };
 
 /** Bloco de conteúdo com título e faixa de destaque opcional. */
-export function Card({ title, subtitle, accent = colors.border, children }: Props) {
+export function Card({ title, subtitle, accent, children }: Props) {
+  const t = useTheme();
+  const styles = useMemo(() => criarEstilos(t), [t]);
+
   return (
-    <View style={[styles.card, { borderLeftColor: accent }]}>
+    <View style={[styles.card, { borderLeftColor: accent ?? t.colors.border }]}>
       <Text style={styles.title}>{title}</Text>
       {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
       {children}
@@ -21,22 +25,23 @@ export function Card({ title, subtitle, accent = colors.border, children }: Prop
   );
 }
 
-const styles = StyleSheet.create({
-  card: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.md,
-    borderLeftWidth: 4,
-    padding: spacing.md,
-    gap: spacing.sm,
-  },
-  title: {
-    color: colors.text,
-    fontSize: 17,
-    fontWeight: "600",
-  },
-  subtitle: {
-    color: colors.textMuted,
-    fontSize: 14,
-    lineHeight: 20,
-  },
-});
+const criarEstilos = (t: Theme) =>
+  StyleSheet.create({
+    card: {
+      backgroundColor: t.colors.surface,
+      borderLeftWidth: 4,
+      borderRadius: t.radius.md,
+      gap: t.spacing.sm,
+      padding: t.spacing.md,
+    },
+    title: {
+      ...t.typography.heading,
+      color: t.colors.text,
+    },
+    subtitle: {
+      ...t.typography.body,
+      color: t.colors.textMuted,
+      fontSize: 14,
+      lineHeight: 20,
+    },
+  });

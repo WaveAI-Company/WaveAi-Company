@@ -1,19 +1,18 @@
 import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useState } from "react";
-import { Pressable, StyleSheet, Text } from "react-native";
 
-import {
-  listCareLinks,
-  revokeCareLink,
-  type CareLink,
-} from "../../src/api/care";
+import { listCareLinks, revokeCareLink, type CareLink } from "../../src/api/care";
 import { getConsentStatus, type ConsentStatus } from "../../src/api/consent";
 import { useAuth } from "../../src/auth/AuthContext";
 import { Button } from "../../src/components/Button";
 import { Card } from "../../src/components/Card";
+import { Disclaimer } from "../../src/components/Disclaimer";
+import { NavAction } from "../../src/components/NavAction";
 import { ScreenContainer } from "../../src/components/ScreenContainer";
+import { ScreenHeading } from "../../src/components/ScreenHeading";
 import { StateView } from "../../src/components/StateView";
-import { colors, radius, spacing } from "../../src/theme";
+import { ThemeSelector } from "../../src/components/ThemeSelector";
+import { useAccentFor, useRoleAccent, useTheme } from "../../src/theme";
 
 /**
  * Perfil do paciente.
@@ -25,6 +24,10 @@ import { colors, radius, spacing } from "../../src/theme";
 export default function PatientProfileScreen() {
   const { user, signOut } = useAuth();
   const router = useRouter();
+  const t = useTheme();
+  const { accent } = useRoleAccent();
+  const medico = useAccentFor("doctor");
+
   const [links, setLinks] = useState<CareLink[]>([]);
   const [pendentes, setPendentes] = useState(0);
   const [consent, setConsent] = useState<ConsentStatus | null>(null);
@@ -36,10 +39,7 @@ export default function PatientProfileScreen() {
     setLoading(true);
     setErro(null);
     try {
-      const [todos, status] = await Promise.all([
-        listCareLinks(),
-        getConsentStatus(),
-      ]);
+      const [todos, status] = await Promise.all([listCareLinks(), getConsentStatus()]);
       setLinks(todos.filter((link) => link.status === "active"));
       setPendentes(todos.filter((link) => link.status === "pending").length);
       setConsent(status);
@@ -75,16 +75,16 @@ export default function PatientProfileScreen() {
 
   return (
     <ScreenContainer>
-      <Text style={styles.heading}>Meu perfil</Text>
+      <ScreenHeading title="Meu perfil" />
 
-      <Card title={user?.display_name ?? "Paciente"} subtitle={user?.email} accent={colors.patient} />
+      <Card title={user?.display_name ?? "Paciente"} subtitle={user?.email} accent={accent} />
 
       <StateView loading={loading} error={erro} />
 
       {!loading ? (
         <>
           {/* Consentimento — o gate que libera guardar resultados. */}
-          <Text style={styles.secao}>Consentimento</Text>
+          <ScreenHeading title="Consentimento" />
           <Card
             title={consentido ? "Consentimento ativo" : "Consentimento pendente"}
             subtitle={
@@ -92,43 +92,32 @@ export default function PatientProfileScreen() {
                 ? "Você autorizou guardar os resultados das suas sessões."
                 : "Sem consentimento, os resultados das suas sessões não são guardados."
             }
-            accent={consentido ? colors.patient : colors.warning}
+            accent={consentido ? accent : t.colors.warningText}
           />
-          <Pressable
-            accessibilityRole="button"
+          <NavAction
+            label={consentido ? "Gerenciar consentimento" : "Rever e autorizar"}
+            tone={consentido ? "accent" : "attention"}
             onPress={() => router.push("/patient/consent")}
-            style={({ pressed }) => [styles.acao, pressed && styles.pressed]}
-          >
-            <Text style={styles.acaoTexto}>
-              {consentido ? "Gerenciar consentimento" : "Rever e autorizar"}
-            </Text>
-          </Pressable>
+          />
 
-          {/* Convites pendentes — atalho para a caixa. */}
           {pendentes > 0 ? (
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => router.push("/patient/invites")}
-              style={({ pressed }) => [styles.acao, pressed && styles.pressed]}
-            >
-              <Text style={styles.acaoTexto}>
-                {pendentes === 1
+            <NavAction
+              label={
+                pendentes === 1
                   ? "1 convite aguardando resposta"
-                  : `${pendentes} convites aguardando resposta`}
-              </Text>
-            </Pressable>
+                  : `${pendentes} convites aguardando resposta`
+              }
+              onPress={() => router.push("/patient/invites")}
+            />
           ) : null}
 
-          <Text style={styles.secao}>Quem acompanha você</Text>
-          <Text style={styles.explicacao}>
-            Estes profissionais têm acesso às suas sessões porque você autorizou.
-            Você pode revogar quando quiser — o efeito é imediato.
-          </Text>
+          <ScreenHeading
+            title="Quem acompanha você"
+            lead="Estes profissionais têm acesso às suas sessões porque você autorizou. Você pode revogar quando quiser — o efeito é imediato."
+          />
 
           {links.length === 0 ? (
-            <Text style={styles.vazio}>
-              Nenhum profissional acompanha você no momento.
-            </Text>
+            <Card title="Nenhum profissional acompanha você no momento" />
           ) : null}
 
           {links.map((link) => (
@@ -136,69 +125,25 @@ export default function PatientProfileScreen() {
               key={link.id}
               title={link.counterpart_display_name ?? "Profissional"}
               subtitle="Acesso autorizado por você"
-              accent={colors.doctor}
+              accent={medico.accent}
             >
               <Button
                 label="Revogar acesso"
                 onPress={() => revogar(link.id)}
                 loading={revogando === link.id}
-                accent={colors.warning}
+                variant="danger"
               />
             </Card>
           ))}
         </>
       ) : null}
 
-      <Text style={styles.footnote}>
-        Uso exploratório de bem-estar — não-clínico e não-diagnóstico.
-      </Text>
+      <ScreenHeading title="Aparência" />
+      <ThemeSelector />
 
-      <Button label="Sair" onPress={signOut} accent={colors.border} />
+      <Disclaimer />
+
+      <Button label="Sair" onPress={signOut} variant="secondary" />
     </ScreenContainer>
   );
 }
-
-const styles = StyleSheet.create({
-  heading: {
-    color: colors.text,
-    fontSize: 26,
-    fontWeight: "700",
-  },
-  secao: {
-    color: colors.text,
-    fontSize: 17,
-    fontWeight: "600",
-    marginTop: spacing.sm,
-  },
-  explicacao: {
-    color: colors.textMuted,
-    fontSize: 14,
-    lineHeight: 20,
-  },
-  vazio: {
-    color: colors.textMuted,
-    fontSize: 14,
-    lineHeight: 20,
-  },
-  acao: {
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    paddingVertical: spacing.md,
-  },
-  pressed: {
-    opacity: 0.7,
-  },
-  acaoTexto: {
-    color: colors.patient,
-    fontSize: 15,
-    fontWeight: "600",
-    textAlign: "center",
-  },
-  footnote: {
-    color: colors.textMuted,
-    fontSize: 12,
-    lineHeight: 18,
-    marginTop: spacing.md,
-  },
-});

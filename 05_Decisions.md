@@ -242,3 +242,19 @@ Recompilar, por sua vez, esbarrou num problema de ambiente da máquina de desenv
 - **Só sintético, sem aparelho:** a #17 ficaria tecnicamente pronta e **factualmente não demonstrada** — o risco que a issue existe para eliminar.
 
 **Consequências:** o `CLAUDE.md` passa a apontar para esta ADR, para que a regra e a exceção não se contradigam em leituras futuras. A exceção é **de desenvolvimento**, não de produto: qualquer captação de terceiro, ou qualquer uso fora do ambiente local, volta a cair na regra geral e exige nova decisão. Relaciona ADR-0024, 0025, 0026 e [Medical/72](Medical/72_Consent_and_Data_Subject_Rights.md).
+
+---
+
+## ADR-0029 — Design system: tokens semânticos, dois temas e sotaque por papel
+**Status:** Aceita (2026-07-21)
+**Contexto:** A **#18** pede identidade visual por papel, acessibilidade básica e consistência. O que existia era um `theme.ts` com cores literais que cada tela consumia à mão, e a divergência já era visível: três tamanhos de fonte diferentes para o mesmo nível de título, e **três redações distintas** do aviso não-clínico — que é regra rígida de posicionamento ([Medical/71](Medical/71_Intended_Use_and_Regulatory_Positioning.md)), não texto de UI.
+**Decisão:**
+- **Tokens semânticos** (`text`, `surface`, `accent`…), nunca hex em tela, resolvidos em tempo de execução por `useTheme()`. É o que permite dois temas sem duplicar tela.
+- **Tema claro e escuro seguindo o sistema.** As cores de destaque **mudam entre os temas**: o turquesa que rende 10:1 sobre o fundo escuro cai para ~1,8:1 sobre branco, ilegível como texto. Cada tema tem seu par `accentX` (preenchimento) e `accentXText` (texto).
+- **Sotaque por papel sobre base comum:** mesma tipografia, espaçamento e componentes; muda a cor de destaque (`useRoleAccent()`), derivada do papel de quem está logado. Um sistema só para manter.
+- **Fontes do sistema, sem `expo-font`.** Fonte customizada é dependência **nativa**, e a #17 mostrou o custo disso: quebra no aparelho até recompilar o app, e o build local pode simplesmente não funcionar. Identidade vem de escala, peso e ritmo.
+- **Contraste verificado por script** (`npm run check:contrast`), rodando **no CI**. "AA razoável" deixa de ser opinião.
+- **Aviso não-clínico vira componente** (`<Disclaimer>`), com as redações centralizadas: não pode divergir nem sumir de uma tela por descuido.
+- **Seletor de tema no app** (Sistema / Claro / Escuro), com **Sistema como padrão**. Motivo concreto: o `userInterfaceStyle` do Expo é resolvido em **tempo de build** e, no Android, exige `expo-system-ui` — outra dependência nativa. O `app.json` estava com `"light"`, o que **travava o app em claro no aparelho** por mais que o sistema mudasse (comprovado por teste no dispositivo). A config foi corrigida para `"automatic"`, mas só vale no próximo build; o seletor é **puro JavaScript** e funciona em qualquer build já instalado. A preferência persiste (secure-store no mobile, `localStorage` no web — aceitável aqui, ao contrário de token, que é proibido guardar assim).
+**Alternativas:** identidades bem distintas por papel (dobraria variações a manter); só tema escuro (menor escopo, mas o claro é expectativa básica hoje); fonte customizada (rejeitada pelo custo nativo acima); depender só do `userInterfaceStyle` (deixaria o tema escuro inalcançável no aparelho até um rebuild que hoje está bloqueado).
+**Consequências:** um bug real de acessibilidade foi encontrado e corrigido — botões secundários pintavam texto escuro sobre fundo escuro (**1,42:1**, ilegível); agora a variante decide fundo e texto **juntos**, tornando o erro impossível. Bordas de controle passaram a exigir 3:1 (WCAG 1.4.11). Toda tela consome tokens, então mudar a paleta é mudança de um arquivo.

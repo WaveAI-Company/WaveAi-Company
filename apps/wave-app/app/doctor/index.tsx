@@ -1,14 +1,18 @@
 import { useFocusEffect, useRouter } from "expo-router";
-import { useCallback, useState } from "react";
-import { Pressable, StyleSheet, Text } from "react-native";
+import { useCallback, useMemo, useState } from "react";
+import { Pressable, StyleSheet } from "react-native";
 
 import { listActivePatients, type CareLink } from "../../src/api/care";
 import { useAuth } from "../../src/auth/AuthContext";
 import { Button } from "../../src/components/Button";
 import { Card } from "../../src/components/Card";
+import { Disclaimer } from "../../src/components/Disclaimer";
+import { NavAction } from "../../src/components/NavAction";
 import { ScreenContainer } from "../../src/components/ScreenContainer";
+import { ScreenHeading } from "../../src/components/ScreenHeading";
 import { StateView } from "../../src/components/StateView";
-import { colors, radius, spacing } from "../../src/theme";
+import { ThemeSelector } from "../../src/components/ThemeSelector";
+import { useRoleAccent, useTheme, type Theme } from "../../src/theme";
 
 /**
  * Lista de pacientes do médico.
@@ -20,6 +24,10 @@ import { colors, radius, spacing } from "../../src/theme";
 export default function DoctorScreen() {
   const { user, signOut } = useAuth();
   const router = useRouter();
+  const t = useTheme();
+  const { accent } = useRoleAccent();
+  const styles = useMemo(() => criarEstilos(t), [t]);
+
   const [links, setLinks] = useState<CareLink[]>([]);
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
@@ -46,20 +54,16 @@ export default function DoctorScreen() {
 
   return (
     <ScreenContainer>
-      <Text style={styles.heading}>Pacientes</Text>
-      <Text style={styles.lead}>
-        {user?.display_name
-          ? `${user.display_name} — pacientes que autorizaram o acompanhamento.`
-          : "Pacientes que autorizaram o acompanhamento."}
-      </Text>
+      <ScreenHeading
+        title="Pacientes"
+        lead={
+          user?.display_name
+            ? `${user.display_name} — pacientes que autorizaram o acompanhamento.`
+            : "Pacientes que autorizaram o acompanhamento."
+        }
+      />
 
-      <Pressable
-        accessibilityRole="button"
-        onPress={() => router.push("/doctor/invite")}
-        style={({ pressed }) => [styles.convidar, pressed && styles.pressed]}
-      >
-        <Text style={styles.convidarTexto}>+ Convidar paciente</Text>
-      </Pressable>
+      <NavAction label="+ Convidar paciente" onPress={() => router.push("/doctor/invite")} />
 
       <StateView
         loading={loading}
@@ -75,61 +79,34 @@ export default function DoctorScreen() {
         <Pressable
           key={link.id}
           accessibilityRole="button"
+          accessibilityLabel={`${link.counterpart_display_name ?? "Paciente"}. Ver sessões.`}
           onPress={() => router.push(`/doctor/patient/${link.counterpart_user_id}`)}
           style={({ pressed }) => [styles.item, pressed && styles.pressed]}
         >
           <Card
             title={link.counterpart_display_name ?? "Paciente"}
             subtitle="Ver sessões"
-            accent={colors.doctor}
+            accent={accent}
           />
         </Pressable>
       ))}
 
-      <Text style={styles.footnote}>
-        Dados exploratórios de bem-estar — não-clínicos e não-diagnósticos. Não
-        substituem avaliação profissional.
-      </Text>
+      <ScreenHeading title="Aparência" />
+      <ThemeSelector />
 
-      <Button label="Sair" onPress={signOut} accent={colors.border} />
+      <Disclaimer variant="profissional" />
+
+      <Button label="Sair" onPress={signOut} variant="secondary" />
     </ScreenContainer>
   );
 }
 
-const styles = StyleSheet.create({
-  heading: {
-    color: colors.text,
-    fontSize: 26,
-    fontWeight: "700",
-  },
-  lead: {
-    color: colors.textMuted,
-    fontSize: 15,
-    lineHeight: 22,
-    marginBottom: spacing.sm,
-  },
-  item: {
-    borderRadius: radius.md,
-  },
-  convidar: {
-    borderColor: colors.doctor,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    paddingVertical: spacing.md,
-  },
-  convidarTexto: {
-    color: colors.doctor,
-    fontSize: 15,
-    fontWeight: "600",
-    textAlign: "center",
-  },
-  pressed: {
-    opacity: 0.7,
-  },
-  footnote: {
-    color: colors.textMuted,
-    fontSize: 12,
-    lineHeight: 18,
-    marginTop: spacing.md,
-  },
-});
+const criarEstilos = (t: Theme) =>
+  StyleSheet.create({
+    item: {
+      borderRadius: t.radius.md,
+    },
+    pressed: {
+      opacity: 0.7,
+    },
+  });

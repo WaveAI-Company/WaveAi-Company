@@ -1,5 +1,5 @@
-import { Link } from "expo-router";
-import { useState } from "react";
+import { useRouter } from "expo-router";
+import { useMemo, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import type { UserRole } from "../src/auth/api";
@@ -7,19 +7,30 @@ import { useAuth } from "../src/auth/AuthContext";
 import { Button } from "../src/components/Button";
 import { Field } from "../src/components/Field";
 import { ScreenContainer } from "../src/components/ScreenContainer";
-import { colors, radius, spacing } from "../src/theme";
+import { ScreenHeading } from "../src/components/ScreenHeading";
+import { StateView } from "../src/components/StateView";
+import { useAccentFor, useTheme, type Theme } from "../src/theme";
 
 /** Alinhado ao mínimo validado pela API. */
 const SENHA_MIN = 8;
 
 export default function RegisterScreen() {
   const { signUp } = useAuth();
+  const router = useRouter();
+  const t = useTheme();
+  const styles = useMemo(() => criarEstilos(t), [t]);
+
   const [displayName, setDisplayName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState<UserRole>("patient");
   const [erro, setErro] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
+
+  // O destaque acompanha o papel escolhido — o "sotaque" começa já no cadastro.
+  const paciente = useAccentFor("patient");
+  const medico = useAccentFor("doctor");
+  const destaque = role === "doctor" ? medico : paciente;
 
   async function criar() {
     setErro(null);
@@ -39,7 +50,7 @@ export default function RegisterScreen() {
 
   return (
     <ScreenContainer>
-      <Text style={styles.heading}>Criar conta</Text>
+      <ScreenHeading title="Criar conta" />
 
       <Field
         label="Nome"
@@ -66,81 +77,60 @@ export default function RegisterScreen() {
       />
 
       <Text style={styles.label}>Perfil</Text>
-      <View style={styles.papeis}>
-        {(["patient", "doctor"] as const).map((opcao) => (
-          <Pressable
-            key={opcao}
-            accessibilityRole="radio"
-            accessibilityState={{ selected: role === opcao }}
-            onPress={() => setRole(opcao)}
-            style={[
-              styles.papel,
-              role === opcao && {
-                borderColor: opcao === "doctor" ? colors.doctor : colors.patient,
-              },
-            ]}
-          >
-            <Text style={styles.papelTexto}>
-              {opcao === "patient" ? "Paciente" : "Médico"}
-            </Text>
-          </Pressable>
-        ))}
+      <View style={styles.papeis} accessibilityRole="radiogroup">
+        {(["patient", "doctor"] as const).map((opcao) => {
+          const selecionado = role === opcao;
+          const cor = opcao === "doctor" ? medico.accent : paciente.accent;
+          const nome = opcao === "patient" ? "Paciente" : "Médico";
+          return (
+            <Pressable
+              key={opcao}
+              accessibilityRole="radio"
+              accessibilityState={{ selected: selecionado }}
+              accessibilityLabel={nome}
+              onPress={() => setRole(opcao)}
+              style={[styles.papel, { borderColor: selecionado ? cor : t.colors.borderStrong }]}
+            >
+              <Text style={styles.papelTexto}>{nome}</Text>
+            </Pressable>
+          );
+        })}
       </View>
 
-      {erro ? <Text style={styles.erro}>{erro}</Text> : null}
+      <StateView error={erro} />
 
+      <Button label="Criar conta" onPress={criar} loading={enviando} accent={destaque.accent} />
       <Button
-        label="Criar conta"
-        onPress={criar}
-        loading={enviando}
-        accent={role === "doctor" ? colors.doctor : colors.patient}
+        label="Já tem conta? Entrar"
+        onPress={() => router.push("/login")}
+        variant="secondary"
       />
-
-      <Link href="/login" style={styles.link}>
-        Já tem conta? Entrar
-      </Link>
     </ScreenContainer>
   );
 }
 
-const styles = StyleSheet.create({
-  heading: {
-    color: colors.text,
-    fontSize: 28,
-    fontWeight: "700",
-    marginBottom: spacing.sm,
-  },
-  label: {
-    color: colors.textMuted,
-    fontSize: 13,
-    fontWeight: "600",
-  },
-  papeis: {
-    flexDirection: "row",
-    gap: spacing.sm,
-  },
-  papel: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    borderWidth: 2,
-    flex: 1,
-    paddingVertical: spacing.md,
-  },
-  papelTexto: {
-    color: colors.text,
-    fontSize: 15,
-    fontWeight: "600",
-    textAlign: "center",
-  },
-  erro: {
-    color: colors.warning,
-    fontSize: 14,
-  },
-  link: {
-    color: colors.textMuted,
-    fontSize: 14,
-    paddingVertical: spacing.sm,
-    textAlign: "center",
-  },
-});
+const criarEstilos = (t: Theme) =>
+  StyleSheet.create({
+    label: {
+      ...t.typography.label,
+      color: t.colors.textMuted,
+    },
+    papeis: {
+      flexDirection: "row",
+      gap: t.spacing.sm,
+    },
+    papel: {
+      backgroundColor: t.colors.surface,
+      borderRadius: t.radius.md,
+      borderWidth: 2,
+      flex: 1,
+      justifyContent: "center",
+      minHeight: t.minTouch,
+      paddingVertical: t.spacing.md,
+    },
+    papelTexto: {
+      ...t.typography.bodyStrong,
+      color: t.colors.text,
+      textAlign: "center",
+    },
+  });
