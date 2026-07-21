@@ -1,32 +1,60 @@
+import { useCallback, useEffect, useState } from "react";
 import { StyleSheet, Text } from "react-native";
 
-import { Card } from "../../src/components/Card";
-import { MockBadge } from "../../src/components/MockBadge";
+import { listMyResults, type SessionResult } from "../../src/api/results";
 import { ScreenContainer } from "../../src/components/ScreenContainer";
-import { MOCK_SESSIONS, RESULTADO_INDISPONIVEL } from "../../src/mocks/mockSessions";
+import { SessionsDashboard } from "../../src/components/SessionsDashboard";
+import { StateView } from "../../src/components/StateView";
 import { colors, spacing } from "../../src/theme";
 
 /**
- * Histórico de sessões do paciente.
+ * Histórico e tendências do paciente (#16).
  *
- * Os dados são **fictícios** e rotulados: o histórico real depende do
- * relatório por sessão (#15), que ainda não existe.
+ * Lê os `Result` reais do titular (#15). Sem sessões, mostra vazio honesto —
+ * antes havia mock aqui, mas exibir sessão fictícia ao lado de medição real
+ * confundiria as duas coisas.
  */
 export default function PatientHistoryScreen() {
+  const [results, setResults] = useState<SessionResult[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [erro, setErro] = useState<string | null>(null);
+
+  const carregar = useCallback(async () => {
+    setLoading(true);
+    setErro(null);
+    try {
+      setResults(await listMyResults());
+    } catch {
+      setErro("Não foi possível carregar suas sessões.");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void carregar();
+  }, [carregar]);
+
   return (
     <ScreenContainer>
       <Text style={styles.heading}>Histórico</Text>
-      <Text style={styles.lead}>Suas sessões registradas, da mais recente à mais antiga.</Text>
+      <Text style={styles.lead}>
+        Suas sessões registradas e como suas medidas variam ao longo do tempo.
+      </Text>
 
-      <MockBadge />
-      {MOCK_SESSIONS.map((session) => (
-        <Card
-          key={session.id}
-          title={`Sessão de ${session.date}`}
-          subtitle={`Duração ${session.duration} · ${RESULTADO_INDISPONIVEL}`}
-          accent={colors.patient}
-        />
-      ))}
+      <StateView
+        loading={loading}
+        error={erro}
+        empty={
+          !loading && !erro && results.length === 0
+            ? "Nenhuma sessão registrada ainda. Quando você captar uma sessão, ela aparece aqui."
+            : null
+        }
+      />
+
+      {!loading && !erro && results.length > 0 ? (
+        <SessionsDashboard results={results} accent={colors.patient} />
+      ) : null}
 
       <Text style={styles.footnote}>
         Uso exploratório de bem-estar — não-clínico e não-diagnóstico. Estes

@@ -201,3 +201,16 @@ Status possíveis: `Proposta` · `Aceita` · `Substituída` · `Revogada`.
 **Consequências:** a #15 ganha requisitos de cifragem, consentimento e direitos; nasce [Medical/72](Medical/72_Consent_and_Data_Subject_Rights.md). Relaciona ADR-0017, 0024, 0025, [Medical/70](Medical/70_Regulatory_Clinical_Strategy.md)/71.
 
 **[Adendo 2026-07-20 — #29] Consentimento informado versionado + gate destravado.** O consentimento passou de um simples carimbo de data (`consent_given_at`, semente da #15) para **informado e versionado**: registra-se **qual termo** o titular aceitou (`consent_version`), não só quando (Medical/72 §2). O **backend é a fonte da versão vigente**; o app envia a versão que exibiu e a API **recusa (409)** um aceite a termo desatualizado — consentir a um texto que já mudou não é informado. A UI do termo (o que é guardado, para quê, retenção, quem acessa, direitos) é a tela `patient/consent`. Com a #29, os dois requisitos do **[GATE de produção]** estão satisfeitos — **consentimento informado no fluxo** (b) direitos já entregues na #15 —, então a persistência de dado de pessoa real pode ser habilitada em produção (a regra de dev/test com **só sintético** permanece).
+
+---
+
+## ADR-0027 — Gráficos no app: `react-native-svg` + componentes próprios
+**Status:** Aceita (2026-07-21)
+**Contexto:** A **#16** (dashboards por papel) exige gráficos no app **universal** (iOS/Android/Web via Expo, ADR-0016). O `package.json` não tinha nenhuma biblioteca de gráficos, e a escolha condiciona bundle, portabilidade e liberdade visual — decisão técnica relevante, logo entra no log.
+**Decisão:** Usar **`react-native-svg`** (parte do SDK do Expo, funciona nas três plataformas) e escrever **componentes de gráfico próprios** (`TrendChart`, `BandBars`, `SignalQuality`), em vez de adotar uma biblioteca de charting pronta. Barras proporcionais são feitas com `View`s e flex — é problema de **layout**, não de geometria —, ficando responsivas sem medir nada; o SVG entra onde há geometria real (a linha de tendência).
+**Alternativas consideradas:**
+- **`react-native-gifted-charts`** — menos código a escrever, porém API e estilo de terceiros, mais superfície de dependência e ajustes para casar com o tema escuro.
+- **`victory-native`** — ecossistema maduro e API compartilhada com a web, mas pesado; a linha XL depende de **Skia**, que complica o alvo web do Expo.
+**Consequências:** uma única dependência bem suportada, controle total do visual (o design system é a #18) e nenhuma surpresa cross-platform — ao custo de manter ~200 linhas de componentes de gráfico. Se a necessidade de gráficos crescer muito (zoom, interação, muitas séries), reavaliar uma biblioteca é um passo natural, sem retrabalho de dados.
+
+**Nota de honestidade visual (vale para todo gráfico do produto):** a escala do eixo y é automática **com mínimo e máximo rotulados** — sem os rótulos, uma variação minúscula pareceria dramática. E `SignalQuality` mostra os valores medidos **sem veredito**: o que conta como sinal "bom o suficiente" segue indefinido (**Q-TEC-06**), então a UI não inventa faixa "boa/ruim". Coerente com [Medical/71](Medical/71_Intended_Use_and_Regulatory_Positioning.md) (não-clínico) e com a regra de o coder não decidir parâmetro clínico.
