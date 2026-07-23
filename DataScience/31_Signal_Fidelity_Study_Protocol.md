@@ -160,3 +160,28 @@ Pipeline conforme [doc 30]: PSD por Welch; potências absolutas e **relativas** 
 **Conclusão [OPINIÃO/RECOMENDAÇÃO]:** resultado **encorajador, porém inconclusivo**. Próximo passo correto (e **não** é p-hacking): **refazer a coleta no desenho intercalado** — OF/OA/OF/OA/OF/OA de 60 s, **mesma colocação do headset**, descartando ~5 s de transição de cada bloco; idealmente ≥3 sujeitos. **Não** se deve ajustar o estimador para "passar" neste dataset. Buscar também reduzir o 60 Hz (afastar de fontes/carregadores; verificar contato do clipe de orelha).
 
 **Impacto nas hipóteses:** H-SIG-01 sobe de 🔴 para **🔴→🟡** (sinal preliminar plausível, a confirmar). O pipeline de análise do spike agora implementa a estratégia do [doc 30](30_EEG_Signal_Processing_Strategy.md) (filtro + notch + features relativas).
+
+
+---
+
+## 12. Pré-registro da recoleta — Exp. B (desenho intercalado) — 2026-07-21
+**[DECISÃO]** Antes de coletar qualquer novo dado, ficam **travados** os itens abaixo (anti-p-hacking). Nenhum estimador ou critério será ajustado para "passar" no dataset; qualquer mudança de método vira nova versão datada deste pré-registro.
+
+**Parâmetros do estudo (fundador, 2026-07-21):**
+- **Sujeitos:** **N=1, autocaptação do desenvolvedor** (titular=operador, ADR-0028). Voluntários (N>1) **fora de escopo por ora** — exigiriam base legal + eventual CEP (Q-ETH-01).
+- **EEG de referência:** **não há** acesso a laboratório (Q-SIG-03 fechada por ora). Nível 2 fica **condicional** e, quando executado, usará o **dataset público** de MindWave Mobile 2 como comparação aproximada — **não** como padrão-ouro.
+- **60 Hz:** contaminação de rede será **atacada e medida** na recoleta (afastar de fontes/carregadores; verificar contato do clipe de orelha). É uma variável **a testar** (Q-SIG-04), não um pressuposto resolvido.
+
+**Desenho (travado):**
+- **6 blocos alternados** OF/OA/OF/OA/OF/OA de **60 s**, em **uma única colocação** do headset (elimina o confundidor de contato entre sessões separadas identificado em §8.1).
+- **Descartar os primeiros ~5 s** de cada bloco (acomodação/transição).
+
+**Hipótese primária (travada):** potência **alfa relativa (8–13 Hz)** maior em **olhos fechados** que abertos (efeito de Berger).
+
+**Pipeline de análise (travado, conforme [doc 30](30_EEG_Signal_Processing_Strategy.md)):** detrend → passa-banda 1–45 Hz (fase zero) → **notch 60 Hz** → janelas de 4 s → **PSD por Welch** → **alfa relativa** (nunca absoluta). `fs` calculado por bloco pelo tempo real (não juntar timestamps de condições — erro corrigido em §8.1).
+
+**Teste estatístico (travado):** teste pareado (OF vs OA) por bloco/época + **tamanho de efeito**. Reprodutibilidade via repetição em **≥2 sessões/dias** e **ICC** (Exp. E).
+
+**Critério de aceite (travado):** aumento de alfa em OF **detectável e replicável** entre sessões, com artefatos gerenciáveis (Exp. D). Este é o principal teste **vai/não-vai** (H-SIG-01).
+
+**Registro obrigatório por sessão:** `poor_signal_quality`, timestamps, condição, marcações de evento, e a **tétrade de proveniência** da ADR-0030 (commit, versão DVC do dataset, versão do engine, parâmetros).

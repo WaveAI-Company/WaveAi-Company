@@ -3,7 +3,7 @@
 | Campo | Valor |
 |---|---|
 | Versão | 0.1 |
-| Status | Rascunho (Fase 0) |
+| Status | Vivo — MVP de plataforma **concluído** (2026-07-21); fase atual: Análise & Ciência |
 | Data | 2026-07-18 |
 | Documentos relacionados | [MASTER_PLAN](MASTER_PLAN.md), [09_Project_Backlog](09_Project_Backlog.md) |
 
@@ -73,3 +73,8 @@ Trilhas contínuas (transversais): Segurança & Privacidade · MLOps · Pós-mer
 
 ## Roadmaps descendentes (a criar)
 Cada disciplina terá seu próprio roadmap, derivado deste: Sinais (DataScience), IA/ML (AI), Backend, Mobile, Frontend, Infra, Segurança, Regulatório/Clínico (Medical), UX. Ver a taxonomia em [Documentation/00_Documentation_Index](Documentation/00_Documentation_Index.md).
+
+---
+
+## Estado (2026-07-21) — MVP concluído
+O **MVP de plataforma** (equivalente à "Fase 3" deste roadmap) foi **entregue** (M0–M5): captação+streaming de EEG real, `Result` cifrado, dashboards, jornada ponta a ponta e design system. A **fase atual** é o **Motor de Análise & Ciência de Dados** ([Documentation/13](Documentation/13_Analysis_Phase_Work_Breakdown.md)), que **retoma o de-risking científico** (H-SIG-01, estudo de fidelidade [DataScience/31](DataScience/31_Signal_Fidelity_Study_Protocol.md)) deliberadamente adiado para construir o esqueleto. Validação clínica/QMS/ANVISA (Fases 4–6) seguem **futuras** e condicionadas ao resultado da ciência.
