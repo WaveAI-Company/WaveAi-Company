@@ -51,9 +51,21 @@ Candidatos monocanal, a comparar em benchmark:
 ### E5. Extração de features (transparentes)
 Candidatas: potências absolutas/relativas por banda; razões (ex.: teta/beta, alfa/beta); potência total; frequência mediana/de borda espectral; entropia espectral; métricas de variabilidade temporal. **[RECOMENDAÇÃO]** priorizar features **interpretáveis** — o médico precisa entender o que embasa um alerta (XAI).
 
-### E6. Detecção de eventos ("pico", "estabilização", "anomalia")
-**[HIPÓTESE/ALERTA]** Estes termos ainda **não têm definição operacional**. É preciso defini-los de forma **reprodutível e clinicamente defensável** (Q-CLN-03) — por exemplo, "pico" como desvio de N σ de uma linha de base personalizada em uma feature específica. Sem isso, os detectores medem ruído com nome bonito.
-- Abordagem inicial recomendada: **heurísticas de DSP + estatística** (baselines personalizados), evoluindo para ML clássico quando houver dados rotulados; deep learning só se justificado.
+### E6. Detecção de eventos — contrastes de estado + desvio de baseline pessoal
+> **[RESOLVIDO — [ADR-0032](../05_Decisions.md), 2026-07-21]** Q-CLN-03 fechada. Esta seção substitui a redação-semente anterior, cujos rótulos **não tinham definição operacional** ("os detectores mediam ruído com nome bonito").
+
+O vocabulário de evento fica **restrito ao defensável**, em duas formas mensuráveis e reprodutíveis:
+
+1. **Contrastes de estado** — diferença de uma feature entre condições controladas (ex.: alfa relativa olhos-fechados vs. abertos; repouso vs. carga cognitiva). É o que o estudo de fidelidade ([DataScience/31](31_Signal_Fidelity_Study_Protocol.md), Exp. B/C) já sabe medir.
+2. **Desvio de um baseline pessoal** — quanto uma feature específica se afasta da linha de base **do próprio usuário**, expresso em **N desvios-padrão (N σ)**.
+
+**[RÍGIDO]** Rótulos que soam clínicos/diagnósticos foram **abandonados** — incompatíveis com a fronteira não-clínica ([Medical/71](../Medical/71_Intended_Use_and_Regulatory_Positioning.md)) e com a regra do `CLAUDE.md`. Não há "achado" nem rótulo diagnóstico: há **contraste medido** e **desvio quantificado**.
+
+**Cold-start e transparência ([ADR-0032](../05_Decisions.md)):** enquanto não há histórico do usuário, usa-se um **baseline populacional provisório** (dados de treino + literatura); o **baseline individual** cresce a cada sessão e passa a prevalecer. Classificações carregam **menor confiança** até um volume mínimo de observações, e a UI deve deixar **explícito o que é pessoal vs. populacional** — transparência é requisito, não enfeite.
+
+**Ordem ([ADR-0032](../05_Decisions.md)):** as definições de evento ficam **atrás do Catálogo de Features (N2)** — sem catálogo formal, não há feature sobre a qual definir evento.
+
+- Abordagem inicial: **heurísticas de DSP + estatística** (baselines pessoais), evoluindo para ML clássico quando houver dados rotulados (Q-DAT-01); deep learning só se justificado.
 
 ## 4. Protocolo de validação de sinal (Fase 1) — prioridade máxima
 **[RECOMENDAÇÃO]** Antes de construir a plataforma:
@@ -68,7 +80,7 @@ Resultado alimenta a claim clínica (Q-CLN-01) e a decisão de seguir/pivotar (r
 - Definir latência aceitável (Q-TEC-02) e o que roda no edge vs nuvem (ADR-0005).
 
 ## 6. Perguntas em aberto deste documento
-Q-SIG-01 (validade do sinal), Q-SIG-02 (EEG de referência), Q-CLN-03 (definições de evento), Q-AI-01 (dados rotulados), Q-AI-02 (heurística vs ML).
+Q-SIG-01 (validade do sinal), Q-SIG-02 (EEG de referência), ~~Q-CLN-03 (definições de evento)~~ **resolvida em [ADR-0032](../05_Decisions.md)** (ver §E6), Q-AI-01 (dados rotulados), Q-AI-02 (heurística vs ML).
 
 ## 7. Próximas expansões (documentos-filho)
 Protocolo de Validação de Sinal · Catálogo de Features · Definições Operacionais de Evento · Benchmark de Métodos de Artefato (em `Research/`).
