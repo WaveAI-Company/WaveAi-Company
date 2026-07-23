@@ -3,7 +3,7 @@
 | Campo | Valor |
 |---|---|
 | Versão | 0.1 |
-| Status | Rascunho (Fase 0) |
+| Status | Vivo — MVP (M0–M5) concluído; fase atual: **Análise & Ciência** (ver Documentation/13) |
 | Data | 2026-07-18 |
 | Autor | Cofundador técnico / Arquiteto-chefe (IA) |
 | Escopo | Guia mestre de toda a evolução do WaveAI |
