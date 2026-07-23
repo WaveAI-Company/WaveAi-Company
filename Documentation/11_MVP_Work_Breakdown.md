@@ -267,3 +267,8 @@ Entregue (ver **ADR-0029**; verificado no navegador **e no aparelho**):
 2. Bordas de controle em 1,42:1, abaixo do mínimo 3:1 de elementos não-textuais (WCAG 1.4.11).
 
 **Achado no teste em aparelho:** `app.json` tinha `userInterfaceStyle: "light"`, que **travava o app em claro** no celular — o tema escuro só existia na web. Config corrigida para `"automatic"` (vale no próximo build; no Android ainda depende de `expo-system-ui`), e adicionado um **seletor de tema em JavaScript puro**, que funciona no build atual e mantém "seguir o sistema" como padrão.
+
+---
+
+## ✅ MVP CONCLUÍDO (2026-07-21)
+Todos os marcos **M0–M5** e issues **#1–#18** (+ hardening #19, consentimento #20/#29) entregues. O trabalho continua em **[Documentation/13 · Fase 2 — Motor de Análise & Ciência](13_Analysis_Phase_Work_Breakdown.md)**. Este documento fica como **registro histórico** do MVP.

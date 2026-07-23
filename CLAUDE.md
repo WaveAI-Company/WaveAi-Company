@@ -3,7 +3,7 @@
 Contexto do repositório para o Claude Code. **Leia antes de codar.** Fonte de verdade das decisões: `05_Decisions.md` (ADRs). Guia mestre: `MASTER_PLAN.md`.
 
 ## O que é
-Plataforma de captação e análise de EEG de consumo (NeuroSky MindWave Mobile 2, canal único, FP1, 512 Hz) com IA de apoio, dois papéis (paciente e médico). **Fase atual = MVP "esqueleto que anda"** com dados de teste.
+Plataforma de captação e análise de EEG de consumo (NeuroSky MindWave Mobile 2, canal único, FP1, 512 Hz) com IA de apoio, dois papéis (paciente e médico). **MVP (esqueleto) concluído — M0–M5.** Fase atual = **Motor de Análise & Ciência de Dados** (ver `Documentation/13_Analysis_Phase_Work_Breakdown.md`): aprofundar o servidor de análise, validar o sinal (retomar `DataScience/31`), features/relatórios mais ricos; UI adaptada só depois. Dados de ciência: sintético + autocaptação do dev (ADR-0028).
 
 ## Posicionamento e REGRAS RÍGIDAS (não violar)
 - **Não-clínico / não-diagnóstico** nesta fase (ver `Medical/71_Intended_Use_and_Regulatory_Positioning.md`). **Nenhuma claim clínica** na UI, textos ou marketing. Termos ok: bem-estar, tendências, estados mentais, exploratório.
