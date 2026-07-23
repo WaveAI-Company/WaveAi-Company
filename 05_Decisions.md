@@ -258,3 +258,64 @@ Recompilar, por sua vez, esbarrou num problema de ambiente da máquina de desenv
 - **Seletor de tema no app** (Sistema / Claro / Escuro), com **Sistema como padrão**. Motivo concreto: o `userInterfaceStyle` do Expo é resolvido em **tempo de build** e, no Android, exige `expo-system-ui` — outra dependência nativa. O `app.json` estava com `"light"`, o que **travava o app em claro no aparelho** por mais que o sistema mudasse (comprovado por teste no dispositivo). A config foi corrigida para `"automatic"`, mas só vale no próximo build; o seletor é **puro JavaScript** e funciona em qualquer build já instalado. A preferência persiste (secure-store no mobile, `localStorage` no web — aceitável aqui, ao contrário de token, que é proibido guardar assim).
 **Alternativas:** identidades bem distintas por papel (dobraria variações a manter); só tema escuro (menor escopo, mas o claro é expectativa básica hoje); fonte customizada (rejeitada pelo custo nativo acima); depender só do `userInterfaceStyle` (deixaria o tema escuro inalcançável no aparelho até um rebuild que hoje está bloqueado).
 **Consequências:** um bug real de acessibilidade foi encontrado e corrigido — botões secundários pintavam texto escuro sobre fundo escuro (**1,42:1**, ilegível); agora a variante decide fundo e texto **juntos**, tornando o erro impossível. Bordas de controle passaram a exigir 3:1 (WCAG 1.4.11). Toda tela consome tokens, então mudar a paleta é mudança de um arquivo.
+
+---
+
+## ADR-0030 — Armazenamento de dados de pesquisa (corpus separado, raw + janelas, versionado)
+**Status:** Aceita (2026-07-21)
+**Contexto:** A Fase 2 (Análise & Ciência, [Documentation/13](Documentation/13_Analysis_Phase_Work_Breakdown.md), decisão de kickoff **D1**) precisa **reprocessar** o sinal, **comparar engines** e **treinar/validar** detectores. Isso colide com a arquitetura de produção, que por decisão explícita **não persiste o raw** (ADR-0025) e guarda apenas o `Result` cifrado (ADR-0026). **[FATO]** features derivadas não bastam para ciência: sem o sinal bruto (ou ao menos as janelas), não há como reexecutar um pipeline diferente sobre o mesmo dado. Reabre Q-TEC-04 e revisita ADR-0005/0025/0026.
+**Decisão:**
+- **Corpus de pesquisa fisicamente separado do banco de produção** — versionado, cifrado, alimentado **exclusivamente** por dados **sintéticos** e pela **autocaptação do desenvolvedor** (ADR-0028). **Nunca** recebe dado de terceiro sem novo protocolo e base legal. Não altera ADR-0025, que continua regendo produção (lá, raw segue não persistido).
+- **Escopo do dado guardado:** **raw completo (512 Hz) + janelas/épocas + features**, para permitir qualquer reprocessamento. Raw vive só no corpus de pesquisa.
+- **Substrato físico:** **arquivos Parquet content-addressed** (em disco/objeto) para raw e janelas; **Postgres apenas como índice/metadados** (sessão, device, montagem, condição experimental, ponteiros de arquivo). Timescale e tabela particionada foram consideradas **prematuras** para o N pequeno atual.
+- **Versionamento e reprodutibilidade (mínimo aceitável):** todo resultado deve amarrar **(a) commit Git do código, (b) identificador imutável do dataset (versão DVC), (c) versão do modelo gerado e (d) hiperparâmetros de treinamento.** Ferramenta: **Git + DVC** para datasets e artefatos de modelo.
+**Alternativas consideradas:**
+- *Guardar só janelas+features (sem raw):* mais leve e menos sensível, mas **impede** trocar o pré-processamento (filtro/notch/epoching) — justamente o que a ciência precisa variar. Rejeitada.
+- *Timescale desde já:* bom para série temporal em escala, **overkill** para N=1 exploratório; adia sem ganho. Reavaliar quando houver volume real.
+- *Reusar o banco de produção com flag:* arriscaria misturar dado de pesquisa com o gate do ADR-0026 e a residência LGPD. Rejeitada por acoplamento.
+**Consequências:** nasce a frente **N4** (engenharia de dados) com Parquet + DVC; qualquer `Result` de pesquisa passa a carregar a tétrade de proveniência (commit/dataset/modelo/hiperparâmetros). O corpus de pesquisa **não** é servido ao app. Mantém intactas as regras rígidas do `CLAUDE.md` (sintético/autocaptação; sem terceiros). Relaciona ADR-0005, 0007, 0025, 0026, 0028.
+
+---
+
+## ADR-0031 — Veredito de qualidade de sinal: score contínuo + rejeição por limiar grosseiro
+**Status:** Aceita (2026-07-21)
+**Contexto:** Decisão de kickoff **D2** ([Documentation/13](Documentation/13_Analysis_Phase_Work_Breakdown.md)) e Q-TEC-06. Hoje o `WaveEegEngine` reporta **métricas objetivas sem veredito** (`signal_std`, `mains_power`, `mains_power_ratio`) porque nenhum limiar defensável havia sido definido — e inventar limiar seria desonestidade científica. O piloto de 2026-07-18 mostrou **contaminação de 60 Hz massiva** (potência ~26 000 a ~53 000), o que dá um teto grosseiro óbvio de inutilizabilidade.
+**Decisão:**
+- **Qualidade é um `score` contínuo 0..1** anexado ao `Result` (não um booleano), derivado das métricas objetivas (`mains_power_ratio`, faixa de amplitude, % de amostras com `poor_signal`). Preserva o dado para auditoria e a honestidade visual (ADR-0027).
+- **Rejeição só acima de um limiar grosseiro** (janela claramente inutilizável, ex.: 60 Hz dominante) — descarte conservador, não "limpeza" que arrisca artefato residual (coerente com [DataScience/30](DataScience/30_EEG_Signal_Processing_Strategy.md) §E3).
+- **Limiares iniciais são provisórios**, derivados do piloto, e **iterados** conforme a Exp. A (distribuição formal de qualidade) — versionados com `engine_version`.
+**Alternativas consideradas:**
+- *Gate booleano rígido (usável/não-usável):* simples, mas **joga fora informação** e esconde a incerteza; incompatível com a honestidade científica da fase. Rejeitada.
+- *Bloquear até a Exp. A dar a distribuição formal:* mais puro, mas **trava o cronograma** sem necessidade — o teto do 60 Hz já é acionável. Rejeitada em favor de "provisório + iterar".
+**Consequências:** o campo `quality` do `AnalysisEngine` ganha semântica (score + flag de rejeição) sem quebrar o contrato; a UX de "sinal ruim" passa a ter base numérica. Fecha Q-TEC-06 como **encaminhada** (limiar provisório; refino pela Exp. A). Relaciona ADR-0017, 0027 e DataScience/30/31.
+
+---
+
+## ADR-0032 — Definições operacionais de evento: contrastes de estado + baseline pessoal (sem "anomalia")
+**Status:** Aceita (2026-07-21)
+**Contexto:** Decisão de kickoff **D3** e Q-CLN-03. [DataScience/30](DataScience/30_EEG_Signal_Processing_Strategy.md) §E6 alerta que "pico/estabilização/anomalia" **não têm definição operacional** — sem isso, um detector "mede ruído com nome bonito". Além disso, no enquadramento **não-clínico** ([Medical/71](Medical/71_Intended_Use_and_Regulatory_Positioning.md)), o termo **"anomalia" é perigoso** (soa clínico/diagnóstico).
+**Decisão:**
+- **Vocabulário de evento restrito ao defensável:** (1) **contrastes de estado** medíveis (ex.: alfa olhos-fechados vs abertos; repouso vs carga) e (2) **desvios de um baseline pessoal** expressos em **N desvios-padrão** de uma feature específica. **Abandona-se o termo "anomalia"** nos textos, UI e código.
+- **Cold-start:** enquanto não há histórico do usuário, usar **baseline populacional provisório** derivado dos dados de treinamento + literatura; o **baseline individual** é construído progressivamente a partir das sessões do próprio usuário. Alertas/classificações carregam **menor confiança** até atingir um volume mínimo de observações. **[RECOMENDAÇÃO/RÍGIDA]** deixar **explícito ao usuário o que é particular dele e o que é populacional** — transparência é requisito, não enfeite.
+- **Ordem:** as definições de evento ficam **atrás do Catálogo de Features (N2)** — sem catálogo formal, não há feature sobre a qual definir evento.
+**Alternativas consideradas:**
+- *Manter "anomalia":* cômodo, mas **fura a fronteira não-clínica** e a regra do `CLAUDE.md`. Rejeitada.
+- *Só baseline populacional (sem personalização):* simples, mas ignora a variabilidade individual do EEG e degrada a utilidade. Rejeitada em favor do híbrido com cold-start.
+- *Só baseline individual desde a 1ª sessão:* impossível no cold-start; geraria eventos sem base. Rejeitada.
+**Consequências:** o §E6 do DataScience/30 será reescrito sem "anomalia"; o Catálogo de Features (N2) precede os detectores; o `Result`/UI passam a distinguir sinal **populacional vs pessoal** e a expor **nível de confiança**. Fecha Q-CLN-03. Relaciona DataScience/30, Medical/71 e Q-AI-01 (dados para baseline).
+
+---
+
+## ADR-0033 — Modelo de sinal multicanal / device-agnóstico (forward-proofing sem novos drivers)
+**Status:** Aceita (2026-07-21)
+**Contexto:** [Documentation/13](Documentation/13_Analysis_Phase_Work_Breakdown.md) (portabilidade de hardware) aponta que conexão/ingestão (`DeviceReader`) e análise (`AnalysisEngine`) já estão desacopladas, **mas** a ciência/DSP embute a suposição de **canal único (FP1)**. Subir para multicanal (ex.: Muse 2, 4 canais — *confirmar no datasheet ao decidir*) muda a **forma do dado** de `amostras[]` (1D) para `canais × amostras` (2D). **[FATO]** é refactor contido, não rewrite — as abstrações existem. Objetivo declarado pelo fundador: **não é desacoplar totalmente ciência de hardware (impossível)**, e sim projetar ciência+arquitetura para que, quando o equipamento evoluir, **otimizar o que já existe e "plugar" novas features** seja fácil.
+**Decisão (aplicar durante N3/N4, enquanto já se mexe no engine):**
+- **Generalizar o tipo interno de amostra para quadro multicanal** (`canais × amostras` + `fs` + `rótulos/montagem` + `device`), com o NeuroSky preenchendo **N=1**. Barato agora, caro de retrofitar depois.
+- **Gravar `device` e `montagem/canais` no `Result`** (junto de `engine_version`) — comparabilidade e rastreabilidade entre aparelhos.
+- **`DeviceReader` retorna quadros, não escalares**; **qualidade normalizada 0..1** (mapear o indicador nativo de cada aparelho) — casa com ADR-0031.
+- **Features aditivas e plugáveis:** novas features (inclusive espaciais, quando houver >1 canal) entram **sem quebrar** o `Result` existente; a interface `AnalysisEngine` não muda.
+- **[FATO/limite explícito]** a **montagem** (FP1 vs TP9/AF7/AF8/TP10) muda o que é mensurável e a estratégia de artefato — e com >1 canal **ICA passa a ser possível** (indisponível hoje, DataScience/30 §2). Essa parte **re-deriva-se por aparelho**; **nenhuma abstração de código a remove**.
+**Alternativas consideradas:**
+- *Deixar 1D e só refatorar quando/se o Muse 2 entrar:* adia custo, mas **retrofitar o tipo de dado** (Result, storage, engine) depois é caro e arriscado. Rejeitada.
+- *Implementar já drivers multicanais:* desperdício — não há aparelho decidido; violaria o escopo enxuto (ADR-0003). Rejeitada; mantém-se **pronto para N canais sem drivers novos**.
+**Consequências:** N3 generaliza o modelo de dado (N=1 hoje); `Result` passa a carregar `device`+`montagem`; o design fica **pronto para multicanal** sem implementar hardware novo. **Não** decide adotar o Muse 2 (decisão futura, com datasheet). Relaciona ADR-0017, 0025, 0031 e Documentation/13.

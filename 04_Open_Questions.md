@@ -95,3 +95,24 @@ Registro central de tudo que ainda está **indefinido**. Prioridade: **P0** bloq
 | **Q-TEC-06** | Quais **limiares de qualidade de sinal** definem uma janela/sessão aproveitável (ex.: máx. contaminação de 60 Hz, faixa de amplitude, % de amostras com `poor_signal`)? | P1 | Campo `quality` do `AnalysisEngine`, rejeição de janelas, UX de "sinal ruim" |
 
 **Contexto:** o contrato `AnalysisEngine` (`Architecture/22`, §5) prevê um campo `quality` em `process_window`. Como não há definição de limiar defensável, a implementação v0 (`WaveEegEngine`) reporta apenas **métricas objetivas sem veredito** — `signal_std`, `mains_power` e `mains_power_ratio`. Nenhum limiar foi inventado. Quando Q-TEC-06 for respondida, a interpretação entra no engine sem quebrar o contrato.
+
+
+---
+
+## Atualizações (2026-07-21) — kickoff Fase 2 (D1/D2/D3 + multicanal)
+Decisões do fundador registradas como **ADR-0030/0031/0032/0033** ([05_Decisions](05_Decisions.md)).
+
+| ID | Situação | Resolução |
+|---|---|---|
+| **Q-TEC-04** | **Encaminhada** | Corpus de pesquisa separado (raw+janelas em **Parquet content-addressed**, índice em Postgres; **Git+DVC** para versionamento). **ADR-0030.** Timescale/particionamento adiados até haver volume real. |
+| **Q-TEC-06** | **Encaminhada** | Qualidade = **score contínuo 0..1** + rejeição só por limiar grosseiro; limiares **provisórios** do piloto, refinados pela Exp. A. **ADR-0031.** |
+| **Q-CLN-03** | **Resolvida** | Evento = **contrastes de estado** + **desvio de baseline pessoal (N σ)**; **abandona "anomalia"**; atrás do Catálogo de Features (N2). **ADR-0032.** |
+| **Q-AI-01** | **Parcial** | Cold-start com **baseline populacional provisório** (treino+literatura); baseline **individual** cresce por sessão; confiança menor até volume mínimo; **transparência** do que é pessoal vs populacional. **ADR-0032.** Fonte de dados rotulados segue aberta. |
+| **Q-ETH-01** | **Encaminhada** | Fase atual fica em **N=1 autocaptação** (ADR-0028); **sem submissão a CEP por ora**. Voluntários (N>1) exigem nova decisão + base legal. |
+| **Q-SIG-02 / Q-SIG-03** | **Fechada (por ora)** | **Não há** acesso a EEG de referência/laboratório. Nível 2 do estudo de fidelidade fica limitado ao **dataset público** de MindWave Mobile 2 como comparação aproximada. |
+
+### Nova/aberta
+| ID | Pergunta | Prio | Bloqueia |
+|---|---|---|---|
+| **Q-DAT-01 (nova)** | Qual a origem de **dados rotulados** para treinar/validar detectores e o baseline populacional (sintético parametrizado × dataset público × autocaptação)? | P1 | Detectores, cold-start (ADR-0032) |
+| **Q-SIG-04 (nova)** | O ambiente de captação consegue **reduzir a contaminação de 60 Hz** (afastar de fontes/carregadores; contato do clipe de orelha)? **A testar na recoleta.** | P1 | Qualidade do estudo de fidelidade |
