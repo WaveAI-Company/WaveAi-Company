@@ -1,0 +1,25 @@
+"""wave-corpus — corpus de pesquisa do WaveAI (ADR-0030).
+
+Store Parquet content-addressed (raw + janelas) + índice de metadados,
+**fisicamente separado** da produção. Alimentado só por sintético e
+autocaptação do dev (ADR-0028); nunca recebe dado de terceiro sem novo
+protocolo. A tétrade de proveniência (commit/DVC/engine/hiperparâmetros) e a
+ingestão entram na N4-b.
+"""
+from __future__ import annotations
+
+from .config import CorpusSettings
+from .frame import Frame
+from .index import CorpusIndex
+from .models import Artifact, Base, ResearchSession
+from .store import ContentAddressedStore
+
+__all__ = [
+    "Frame",
+    "ContentAddressedStore",
+    "CorpusIndex",
+    "CorpusSettings",
+    "Base",
+    "ResearchSession",
+    "Artifact",
+]

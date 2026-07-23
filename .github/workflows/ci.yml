@@ -125,6 +125,23 @@ jobs:
       - name: Run tests
         run: pytest -q
 
+  test-corpus:
+    # Corpus de pesquisa (ADR-0030): store Parquet content-addressed + índice.
+    # Testes 100% sintéticos com SQLite/tmp — sem serviço de banco.
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: packages/wave-corpus
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install
+        run: pip install -e ".[dev]"
+      - name: Run tests
+        run: pytest -q
+
   lint-vocabulary:
     # Guarda o vocabulário não-clínico (ADR-0032): "anomalia" foi abandonado em
     # código/UI e na estratégia de sinal (DataScience/30). Registros de decisão
