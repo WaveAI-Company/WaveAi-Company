@@ -124,3 +124,14 @@ jobs:
         run: pip install -e ".[dev]"
       - name: Run tests
         run: pytest -q
+
+  lint-vocabulary:
+    # Guarda o vocabulário não-clínico (ADR-0032): "anomalia" foi abandonado em
+    # código/UI e na estratégia de sinal (DataScience/30). Registros de decisão
+    # (ADRs, perguntas em aberto) podem citá-lo para explicar o abandono, e
+    # ficam fora do escopo do guard de propósito.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Termos proibidos (ADR-0032)
+        run: bash infra/scripts/check_forbidden_terms.sh
