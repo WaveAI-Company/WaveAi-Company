@@ -17,7 +17,13 @@ dependencies = [
 [project.optional-dependencies]
 # Índice em Postgres no deployment (ADR-0030); SQLite basta para local/testes.
 postgres = ["psycopg[binary]>=3.1"]
+# Versionamento real dos bytes num remote local (ADR-0030). Opcional: o resto do
+# corpus funciona sem o binário — a identidade imutável já vem do hash de conteúdo.
+dvc = ["dvc>=3.0"]
 dev = ["pytest>=7.0"]
+
+[project.scripts]
+research = "wave_corpus.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

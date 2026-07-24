@@ -13,7 +13,8 @@ from sqlalchemy import create_engine, select
 from sqlalchemy.orm import sessionmaker
 
 from .frame import Frame
-from .models import Artifact, Base, ResearchSession
+from .models import Artifact, Base, ResearchResult, ResearchSession
+from .provenance import Provenance
 from .store import ContentAddressedStore
 
 
@@ -78,6 +79,45 @@ class CorpusIndex:
         with self._Session() as s:
             return list(
                 s.scalars(select(Artifact).where(Artifact.session_id == session_id))
+            )
+
+    def artifact_by_hash(self, content_hash: str) -> Optional[Artifact]:
+        """Primeiro artefato com este `content_hash` (base da ingestão idempotente)."""
+        with self._Session() as s:
+            return s.scalars(
+                select(Artifact).where(Artifact.content_hash == content_hash)
+            ).first()
+
+    def add_result(
+        self, session_id: str, output_hash: str, provenance: Provenance
+    ) -> str:
+        """Registra um `ResearchResult` — **só** com a tétrade completa (ADR-0030).
+
+        `provenance` já é validada na construção (fail-closed): sem qualquer das
+        quatro âncoras, o `Provenance` nem chega aqui, então nada é persistido.
+        """
+        with self._Session.begin() as s:
+            row = ResearchResult(
+                session_id=session_id,
+                computation_id=provenance.computation_id(),
+                output_hash=output_hash,
+                git_commit=provenance.git_commit,
+                dataset_version=provenance.dataset_version,
+                engine_version=provenance.engine_version,
+                hyperparameters=dict(provenance.hyperparameters),
+            )
+            s.add(row)
+            s.flush()
+            return row.id
+
+    def results_for(self, session_id: str) -> List[ResearchResult]:
+        with self._Session() as s:
+            return list(
+                s.scalars(
+                    select(ResearchResult).where(
+                        ResearchResult.session_id == session_id
+                    )
+                )
             )
 
     def read_frame(self, content_hash: str) -> Frame:
