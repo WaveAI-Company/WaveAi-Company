@@ -21,9 +21,26 @@ guarda (ADR-0025/0026).
 - **`CorpusSettings`** — config `WAVEAI_CORPUS_*`; **fail-closed**: recusa
   apontar para o banco de produção (`WAVEAI_API_DATABASE_URL`).
 
-## Ainda **não** aqui (N4-b, issue #43)
-Git+DVC, a **tétrade de proveniência** (commit / versão DVC do dataset /
-`engine_version` / hiperparâmetros) e a **CLI de ingestão**.
+## Proveniência e ingestão (N4-b)
+- **`Provenance`** — a **tétrade** (ADR-0030): `git_commit`, `dataset_version`
+  (id imutável do dataset), `engine_version`, `hyperparameters`. Construção
+  **fail-closed**: sem as quatro, não há resultado reprodutível. `computation_id()`
+  é a identidade determinística (dataset × engine × params; o commit é auditoria,
+  não identidade).
+- **`ResearchResult` + `CorpusIndex.add_result`** — persiste um resultado **só**
+  com a tétrade completa.
+- **`ingest_frame` / CLI `research ingest`** — move um dataset sintético/autocaptação
+  para o corpus (store + índice), **idempotente por conteúdo**.
+- **`LocalRemote`** — remote DVC **sempre local/descartável**; recusa nuvem/rede
+  (autocaptação nunca é empurrada — ADR-0028). `DvcLocalRepo` embrulha o binário
+  `dvc` (extra `[dvc]`) para `init/add/push` no remote local.
+
+### CLI
+```bash
+research ingest --input sessao.npy --device "NeuroSky MindWave Mobile 2" \
+  --montage FP1 --fs 512 --condition olhos_fechados \
+  --engine-version wave_eeg-0.1 --hyperparams '{"lo":1.0,"hi":45.0}'
+```
 
 ## Rodar os testes
 ```bash
