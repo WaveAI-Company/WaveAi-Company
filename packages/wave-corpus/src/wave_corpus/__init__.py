@@ -9,9 +9,13 @@ ingestão entram na N4-b.
 from __future__ import annotations
 
 from .config import CorpusSettings
+from .dvc import DvcLocalRepo, LocalRemote, dvc_available
 from .frame import Frame
+from .gitref import current_commit
 from .index import CorpusIndex
-from .models import Artifact, Base, ResearchSession
+from .ingest import ingest_frame
+from .models import Artifact, Base, ResearchResult, ResearchSession
+from .provenance import Provenance
 from .store import ContentAddressedStore
 
 __all__ = [
@@ -22,4 +26,11 @@ __all__ = [
     "Base",
     "ResearchSession",
     "Artifact",
+    "ResearchResult",
+    "Provenance",
+    "ingest_frame",
+    "current_commit",
+    "LocalRemote",
+    "DvcLocalRepo",
+    "dvc_available",
 ]

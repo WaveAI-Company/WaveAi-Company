@@ -72,3 +72,25 @@ class Artifact(Base):
     n_samples: Mapped[int] = mapped_column(Integer)
 
     session: Mapped["ResearchSession"] = relationship(back_populates="artifacts")
+
+
+class ResearchResult(Base):
+    """Resultado de uma computação sobre o corpus, com a **tétrade** (ADR-0030).
+
+    Persistido só com proveniência completa (commit / dataset / engine / params).
+    `computation_id` é a identidade determinística (dataset × engine × params);
+    `output_hash` aponta para o `Frame`/features de saída no store.
+    """
+
+    __tablename__ = "research_result"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    session_id: Mapped[str] = mapped_column(ForeignKey("research_session.id"))
+    computation_id: Mapped[str] = mapped_column(String(64))
+    output_hash: Mapped[str] = mapped_column(String(64))
+    # -- tétrade de proveniência --------------------------------------------
+    git_commit: Mapped[str] = mapped_column(String(64))
+    dataset_version: Mapped[str] = mapped_column(String(120))
+    engine_version: Mapped[str] = mapped_column(String(64))
+    hyperparameters: Mapped[dict] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
