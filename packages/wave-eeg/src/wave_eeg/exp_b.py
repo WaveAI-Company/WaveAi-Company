@@ -15,6 +15,7 @@ sai do pipeline travado; um sinal sem diferença real **não** passa.
 """
 from __future__ import annotations
 
+import csv
 from dataclasses import dataclass
 
 import numpy as np
@@ -25,6 +26,20 @@ from .analysis import BANDS, epoch_relative_alpha, preprocess
 #: Rótulos canônicos de condição (alinhar com o índice do corpus).
 EYES_CLOSED = "eyes_closed"
 EYES_OPEN = "eyes_open"
+
+#: Rótulos aceitos no CSV de captura, mapeados para os canônicos.
+_OC_LABELS = {"OC", "OF", "EYES_CLOSED", "FECHADO", "FECHADOS"}
+_OA_LABELS = {"OA", "EYES_OPEN", "ABERTO", "ABERTOS"}
+
+
+def condition_from_label(label: str) -> str:
+    """Mapeia um rótulo do CSV (OC/OA/…) para a condição canônica."""
+    u = str(label).strip().upper()
+    if u in _OC_LABELS:
+        return EYES_CLOSED
+    if u in _OA_LABELS:
+        return EYES_OPEN
+    raise ValueError(f"condição desconhecida no CSV: {label!r}")
 
 
 def fs_from_duration(n_samples: int, duration_s: float) -> float:
@@ -139,6 +154,65 @@ def analyze_interleaved(
         n_blocks_open=n_oa_blocks,
         passed=passed,
     )
+
+
+@dataclass
+class CaptureData:
+    """Conteúdo de um CSV de captura (`t, raw, poor_signal, condition`)."""
+
+    raw: np.ndarray
+    t: np.ndarray
+    poor_signal: np.ndarray  # pode conter NaN (antes do 1º pacote de qualidade)
+    condition: str
+
+    @property
+    def poor_signal_mean(self) -> float:
+        finite = self.poor_signal[np.isfinite(self.poor_signal)]
+        return float(np.mean(finite)) if finite.size else float("nan")
+
+
+def read_capture_csv(path: str) -> CaptureData:
+    """Lê um CSV gerado por `wave-eeg capture` (`t, raw, poor_signal, condition`)."""
+    ts, raw, poor, labels = [], [], [], []
+    with open(path, newline="") as f:
+        for row in csv.DictReader(f):
+            try:
+                raw.append(float(row["raw"]))
+            except (KeyError, ValueError):
+                continue
+            ts.append(float(row.get("t") or "nan"))
+            ps = (row.get("poor_signal") or "").strip()
+            poor.append(float(ps) if ps else np.nan)
+            label = (row.get("condition") or "").strip()
+            if label:
+                labels.append(label)
+    if not raw:
+        raise ValueError(f"{path}: sem coluna 'raw' utilizável")
+    if not labels:
+        raise ValueError(f"{path}: sem coluna 'condition'")
+    return CaptureData(
+        raw=np.asarray(raw, dtype=float),
+        t=np.asarray(ts, dtype=float),
+        poor_signal=np.asarray(poor, dtype=float),
+        condition=condition_from_label(labels[0]),
+    )
+
+
+def load_blocks(paths):
+    """Carrega vários CSVs de captura como `Block`s, com **`fs` por bloco**.
+
+    O `fs` de cada bloco vem do tempo real **daquele** arquivo (§8.1): nunca se
+    juntam timestamps de arquivos/condições diferentes.
+    """
+    blocks = []
+    for path in paths:
+        cap = read_capture_csv(path)
+        finite_t = cap.t[np.isfinite(cap.t)]
+        if finite_t.size < 2 or (finite_t.max() - finite_t.min()) <= 0:
+            raise ValueError(f"{path}: timestamps insuficientes para estimar fs")
+        fs = fs_from_duration(cap.raw.size, float(finite_t.max() - finite_t.min()))
+        blocks.append(Block(condition=cap.condition, samples=cap.raw, fs=fs))
+    return blocks
 
 
 def synth_interleaved(

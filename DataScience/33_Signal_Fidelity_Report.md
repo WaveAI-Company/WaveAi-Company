@@ -55,8 +55,25 @@
 
 ---
 
-## 5. Próximos passos (do operador) e critério de decisão
-**[RECOMENDAÇÃO]** Executar a recoleta conforme §12 (6 blocos OF/OA de 60 s, **uma** colocação, descartar ~5 s/bloco), **atacando o 60 Hz** (Q-SIG-04); ingerir no corpus; rodar `analyze_interleaved`; repetir em **≥2 sessões/dias** (Exp. E, ICC). Preencher as RQ1/RQ2/RQ5 aqui.
+## 5. Runbook do operador (recoleta) e critério de decisão
+**[FATO]** O glue ponta a ponta existe. Sequência (uma colocação; **não** ajustar o headset entre blocos; ambiente longe de carregadores para o 60 Hz — Q-SIG-04):
+
+```bash
+# 1) Capturar os 6 blocos (grava t, raw, poor_signal, condition)
+wave-eeg capture --port COM5 --secs 60 --condition OC --out b1_oc.csv
+wave-eeg capture --port COM5 --secs 60 --condition OA --out b2_oa.csv
+# ... b3_oc, b4_oa, b5_oc, b6_oa
+
+# 2) Veredito do Exp. B intercalado (pipeline TRAVADO, §12)
+wave-eeg exp-b b1_oc.csv b2_oa.csv b3_oc.csv b4_oa.csv b5_oc.csv b6_oa.csv
+
+# 3) Ingerir cada bloco no corpus com proveniência (grava condição + poor_signal + tétrade)
+research ingest --from-capture --input b1_oc.csv --device "NeuroSky MindWave Mobile 2" \
+  --montage FP1 --engine-version wave_eeg-0.1 --hyperparams '{"lo":1.0,"hi":45.0,"notch":60}'
+# ... repetir para os 6 blocos
+```
+
+**[RECOMENDAÇÃO]** Repetir a sessão inteira em **≥2 dias** (Exp. E, ICC). Depois, preencher as RQ1/RQ2/RQ5 aqui com os números reais.
 
 **Critério (travado, §12):** aumento de alfa em OF **detectável e replicável** entre sessões, com artefatos gerenciáveis. Só então este relatório fecha **vai/não-vai** e H-SIG-01 é reavaliada.
 

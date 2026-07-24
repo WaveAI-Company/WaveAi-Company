@@ -1,12 +1,14 @@
 """
 CLI do spike:
-  wave-eeg demo                 # Exp. B em dados sintéticos (sem hardware)
-  wave-eeg capture --port COMx  # captura raw do dispositivo real -> CSV
-  wave-eeg analyze arquivo.csv  # analisa CSV (coluna 'condition' com OC/OA)
+  wave-eeg demo                       # Exp. B em dados sintéticos (sem hardware)
+  wave-eeg capture --port COMx        # captura raw+poor_signal do device -> CSV
+  wave-eeg analyze arquivo.csv        # análise (dois sinais agrupados) de 1 CSV
+  wave-eeg exp-b b1.csv b2.csv ...    # Exp. B INTERCALADO (§12) sobre N blocos
 
-O `analyze` calcula o fs efetivo pelos timestamps, pré-processa (detrend +
-passa-banda + notch 60 Hz) e usa alfa RELATIVA — evitando o falso-negativo
-observado na 1ª coleta.
+O `capture` grava `t, raw, poor_signal, condition`. O `exp-b` roda o pipeline
+TRAVADO do desenho intercalado (DataScience/31 §12): fs por bloco, descarte de
+transição, detrend + passa-banda + notch 60 Hz, alfa RELATIVA — evitando o
+falso-negativo da 1ª coleta.
 """
 from __future__ import annotations
 
@@ -23,6 +25,7 @@ from .analysis import (
     mains_power,
     preprocess,
     relative_band_powers,
+    total_power,
 )
 from .reader import SerialReader
 
@@ -48,20 +51,35 @@ def cmd_demo(args) -> int:
     return 0
 
 
+def capture_rows(reader, max_seconds, clock=time.time):
+    """Coleta `(t, raw, poor_signal)` de um `DeviceReader` por até `max_seconds`.
+
+    O `poor_signal` chega em pacotes próprios (~1 Hz); cada amostra raw é pareada
+    ao **último** `poor_signal` visto (None até o 1º pacote de qualidade). Puro e
+    testável com o `SimulatedReader` (sem hardware).
+    """
+    t0 = clock()
+    poor = None
+    rows = []
+    for pkt in reader.packets():
+        if pkt.poor_signal is not None:
+            poor = pkt.poor_signal
+        for s in pkt.raw_samples:
+            rows.append((clock() - t0, s, poor))
+        if clock() - t0 >= max_seconds:
+            break
+    return rows
+
+
 def cmd_capture(args) -> int:
     reader = SerialReader(args.port, baudrate=args.baud)
     print(f"Capturando {args.secs}s de {args.port} @ {args.baud} baud...", file=sys.stderr)
-    t0 = time.time()
-    rows = []
-    for s in reader.raw_samples():
-        rows.append((time.time() - t0, s))
-        if time.time() - t0 >= args.secs:
-            break
+    rows = capture_rows(reader, args.secs)
     with open(args.out, "w", newline="") as f:
         w = csv.writer(f)
-        w.writerow(["t", "raw", "condition"])
-        for t, s in rows:
-            w.writerow([f"{t:.6f}", s, args.condition])
+        w.writerow(["t", "raw", "poor_signal", "condition"])
+        for t, s, poor in rows:
+            w.writerow([f"{t:.6f}", s, "" if poor is None else poor, args.condition])
     span = (rows[-1][0] - rows[0][0]) if len(rows) > 1 else args.secs
     fs_eff = len(rows) / span if span else 0
     print(f"{len(rows)} amostras em {span:.1f}s (fs efetivo ~{fs_eff:.0f} Hz) -> {args.out}", file=sys.stderr)
@@ -116,6 +134,27 @@ def cmd_analyze(args) -> int:
     return 0
 
 
+def cmd_exp_b(args) -> int:
+    """Exp. B intercalado (§12) sobre os CSVs de captura — pipeline TRAVADO."""
+    from .exp_b import EYES_CLOSED, analyze_interleaved, load_blocks, read_capture_csv
+
+    blocks = load_blocks(args.csvs)
+    print("== Exp. B intercalado (alfa relativa OF vs OA, pipeline travado) ==")
+    for path, block in zip(args.csvs, blocks):
+        cap = read_capture_csv(path)
+        cond = "OF" if block.condition == EYES_CLOSED else "OA"
+        mains_ratio = mains_power(block.samples, block.fs) / (total_power(block.samples, block.fs) or 1.0)
+        print(f"  {cond}  n={block.samples.size:6d}  fs~{block.fs:5.0f}Hz  "
+              f"poor_signal(médio)={cap.poor_signal_mean:5.1f}  60Hz/total={mains_ratio*100:4.1f}%  ({path})")
+    res = analyze_interleaved(blocks, discard_s=args.discard)
+    print(f"\n  alfa_rel(OF)={res.eyes_closed_rel_alpha*100:5.1f}%  "
+          f"alfa_rel(OA)={res.eyes_open_rel_alpha*100:5.1f}%  razão={res.ratio:5.2f}")
+    print(f"  épocas OF/OA={res.n_epochs_closed}/{res.n_epochs_open}  "
+          f"t={res.t_stat:6.2f}  p={res.p_value:.2e}  d={res.cohens_d:.2f}")
+    print(f"  VEREDITO: {res.verdict}")
+    return 0
+
+
 def main(argv=None) -> int:
     p = argparse.ArgumentParser(prog="wave-eeg", description="WaveAI — spike de captação/análise EEG (NeuroSky).")
     sub = p.add_subparsers(dest="cmd", required=True)
@@ -136,6 +175,11 @@ def main(argv=None) -> int:
     a.add_argument("csv")
     a.add_argument("--fs", type=int, default=0, help="Força fs (0 = estimar pelos timestamps).")
     a.set_defaults(func=cmd_analyze)
+
+    e = sub.add_parser("exp-b", help="Exp. B intercalado (§12) sobre vários CSVs de captura.")
+    e.add_argument("csvs", nargs="+", help="CSVs dos blocos, em ordem (ex.: b1_oc.csv b2_oa.csv ...).")
+    e.add_argument("--discard", type=float, default=5.0, help="Segundos de transição descartados por bloco.")
+    e.set_defaults(func=cmd_exp_b)
 
     args = p.parse_args(argv)
     return args.func(args)
