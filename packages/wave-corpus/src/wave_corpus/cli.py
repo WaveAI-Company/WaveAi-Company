@@ -13,6 +13,7 @@ from typing import Optional, Sequence
 
 import numpy as np
 
+from .capture_csv import read_capture_frame
 from .frame import Frame
 from .gitref import current_commit
 from .index import CorpusIndex
@@ -35,12 +36,24 @@ def _load_array(path: str) -> np.ndarray:
 
 def _cmd_ingest(args: argparse.Namespace) -> int:
     montage = tuple(m.strip() for m in args.montage.split(",") if m.strip())
-    arr = _load_array(args.input)
-    if arr.shape[0] != len(montage):
-        raise SystemExit(
-            f"montagem ({len(montage)} rótulos) não bate com os canais ({arr.shape[0]})"
-        )
-    frame = Frame(channels=arr, fs=args.fs, montage=montage, kind=args.kind)
+
+    if args.from_capture:
+        # CSV de `wave-eeg capture`: condição, poor_signal e fs vêm do arquivo.
+        cap = read_capture_frame(args.input, montage=montage, kind=args.kind)
+        frame = cap.frame
+        condition = args.condition or cap.condition
+        poor_signal = args.poor_signal if args.poor_signal is not None else cap.poor_signal
+    else:
+        arr = _load_array(args.input)
+        if arr.shape[0] != len(montage):
+            raise SystemExit(
+                f"montagem ({len(montage)} rótulos) não bate com os canais ({arr.shape[0]})"
+            )
+        if not args.fs:
+            raise SystemExit("--fs é obrigatório fora do --from-capture")
+        frame = Frame(channels=arr, fs=args.fs, montage=montage, kind=args.kind)
+        condition = args.condition
+        poor_signal = args.poor_signal
 
     index = CorpusIndex(database_url=args.database_url, root=args.root)
     index.create_all()
@@ -48,8 +61,8 @@ def _cmd_ingest(args: argparse.Namespace) -> int:
         index,
         frame,
         device=args.device,
-        condition=args.condition,
-        poor_signal=args.poor_signal,
+        condition=condition,
+        poor_signal=poor_signal,
     )
     print(f"session_id={session_id}")
     print(f"dataset_version={dataset_version}")
@@ -77,7 +90,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     ing.add_argument("--input", required=True, help=".npy/.csv (1D=canal único ou canais×amostras)")
     ing.add_argument("--device", required=True)
     ing.add_argument("--montage", required=True, help="rótulos por canal, separados por vírgula (ex.: FP1)")
-    ing.add_argument("--fs", type=float, required=True)
+    ing.add_argument("--from-capture", action="store_true", dest="from_capture",
+                     help="lê um CSV de `wave-eeg capture` (condição, poor_signal e fs vêm do arquivo)")
+    ing.add_argument("--fs", type=float, default=None, help="obrigatório fora do --from-capture")
     ing.add_argument("--condition", default=None)
     ing.add_argument("--poor-signal", type=float, default=None, dest="poor_signal")
     ing.add_argument("--kind", default="raw")
