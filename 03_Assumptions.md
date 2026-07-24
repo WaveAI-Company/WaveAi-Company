@@ -68,3 +68,6 @@ Legenda de confiança: 🔴 baixa · 🟡 média · 🟢 alta.
 
 ## Atualização (2026-07-18) — H-SIG-01 (1ª evidência)
 1ª coleta piloto (n=1) com o MindWave: após pipeline correto (detrend + notch 60 Hz + alfa **relativa**), o efeito canônico **alfa(olhos fechados) > alfa(olhos abertos)** apareceu na **direção certa** (razão ~1,24–1,37), mas **sem significância** (p≈0,09), com confundidor de contato entre sessões. Confiança de **H-SIG-01 revisada de 🔴 para 🔴→🟡** (preliminar). Próximo: coleta **intercalada** (Exp. B) com ≥3 sujeitos. Detalhes em [DataScience/31 §8.1](DataScience/31_Signal_Fidelity_Study_Protocol.md).
+
+## Atualização (2026-07-23) — H-SIG-01 (pipeline intercalado pronto; recoleta pendente)
+A parte **automatizável** da N1 está entregue: o pipeline do **desenho intercalado** pré-registrado (§12) foi implementado (`wave_eeg.exp_b`), **travado** e **validado em dados sintéticos** (recupera OF>OA com 60 Hz/drift; guarda anti-falso-positivo no caso nulo; `fs` por bloco). A **recoleta real** é passo **manual do operador** (autocaptação do dev, [ADR-0028](05_Decisions.md)) e **ainda não foi executada**. Por isso **H-SIG-01 permanece 🔴→🟡** — **não avança sem dado real replicado** (≥2 sessões, ICC). Relatório em [DataScience/33](DataScience/33_Signal_Fidelity_Report.md).
