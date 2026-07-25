@@ -22,7 +22,7 @@
 - **FP1 é a pior região para artefatos**: sofre forte **EOG** (piscadas, movimento ocular) e **EMG** (testa, sobrancelha, mandíbula).
 - **ICA não é aplicável** (precisa de múltiplos canais) — a técnica-padrão de remoção de artefatos está **indisponível**.
 - **Sem localização espacial**, sem montagem 10‑20, sem a maioria dos achados clínicos.
-- **eSense é caixa-preta**: **[RECOMENDAÇÃO]** não usar como base clínica; no máximo como referência exploratória. Extrair **features próprias e transparentes** a partir do sinal bruto.
+- **eSense é caixa-preta**: **[RECOMENDAÇÃO]** não usar como base clínica; a camada primária são **features próprias e transparentes** a partir do sinal bruto. **[ATUALIZADO — [ADR-0034](../05_Decisions.md)]** o eSense (Attention/Meditation) é **incorporado como métrica exploratória, sempre rotulada** como proprietária/não-validada, **ao lado** das features transparentes (produto não-clínico; o médico arbitra).
 
 ## 3. Pipeline proposto (por estágio)
 > **[HIPÓTESE]** Pipeline candidato; cada estágio deve ser validado empiricamente na Fase 1.
