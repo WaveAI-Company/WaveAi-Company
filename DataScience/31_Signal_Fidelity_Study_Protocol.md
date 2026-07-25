@@ -230,3 +230,38 @@ Diferença na **direção prevista**, **significativa** e **replicável** em ≥
 `poor_signal`, timestamps, condição, marcações, e a **tétrade de proveniência** (ADR-0030). Raw só no corpus de pesquisa (local/descartável, ADR-0028).
 
 **[LIMITE honesto]** N=1 (operador). O Exp. C de-risca "*o sinal capta carga cognitiva?*", **não** "*generaliza entre pessoas?*" (isso exigiria voluntários — nova decisão/CEP).
+
+---
+
+## 14. Pré-registro do Exp. D — caracterização de artefatos
+> **[STATUS: RASCUNHO — NÃO TRAVADO]** Para **revisão do operador**. Nada capturado antes de travar.
+
+**Objetivo (RQ4):** mapear a **assinatura** e o **impacto** de cada artefato em FP1 → alimenta o **gate de qualidade** (ADR-0031) e, sobretudo, a feature de **"pico → contexto"** (só é honesta se distinguir **cérebro de músculo/olho**; em FP1 um "pico" cru é quase sempre artefato).
+
+**Natureza (diferente de B/C):** é **caracterização**, não um contraste com hipótese primária única — **não** há vai/não-vai binário. O entregável é uma **tabela de assinaturas** por artefato + **regras de detecção** que os separem do sinal limpo.
+
+### Desenho (a travar)
+- **Uma colocação**, blocos **rotulados** de ~60 s, estado neutro entre os artefatos deliberados:
+  - **CLEAN** (baseline): repouso, olhos abertos, imóvel — referência.
+  - **BLINK:** piscadas voluntárias cronometradas (ex.: 1 a cada ~2 s).
+  - **EOG:** movimentos oculares (olhar esquerda↔direita) sem piscar.
+  - **JAW:** apertos de mandíbula cronometrados (EMG).
+  - **BROW:** levantar a sobrancelha.
+  - **SPEAK:** contar em voz alta (EMG de fala).
+  - **HEAD:** movimento lento de cabeça.
+  - Fechar com um **CLEAN** ao final (checar deriva).
+- *(A confirmar na revisão: lista de artefatos acima; blocos de 60 s por tipo; rótulo por bloco inteiro vs. marcação de eventos individuais.)*
+
+### Medidas (por artefato, vs CLEAN)
+- **Assinatura:** forma de onda típica + espectro; **amplitude** (RMS/pico) relativa ao CLEAN.
+- **Contaminação por banda:** Δ das potências (relativas e absolutas) e do `mains_power_ratio` vs CLEAN — quais bandas cada artefato infla (ex.: EMG → beta/gama; piscada/EOG → delta/baixas freq.).
+- **Detectabilidade:** uma **regra simples** (ex.: limiar de amplitude/`signal_std`, ou % de épocas marcadas) e o quão bem separa o artefato do CLEAN (sensibilidade/especificidade **descritivas**).
+
+### Pipeline (nota)
+Ao contrário de B/C, **não** se aplica todo o pré-processamento antes de olhar — caracteriza-se no **raw** e no **band-limitado** para **ver** o artefato. A regra de detecção usa as métricas do gate de qualidade (ADR-0031: `signal_std`, faixa de amplitude, `mains_power_ratio`).
+
+### Critério de aceite (ao fechar)
+Para cada artefato principal: **assinatura reprodutível** + uma **regra que o separe do CLEAN**. Idealmente repetir em ≥1 sessão adicional. Alimenta ADR-0031 (limiares) e a estratégia de rejeição do [doc 30](30_EEG_Signal_Processing_Strategy.md) §E3.
+
+### Registro obrigatório
+`poor_signal`, timestamps, rótulo do bloco, tétrade (ADR-0030). Raw só no corpus (ADR-0028). **[LIMITE]** N=1.
