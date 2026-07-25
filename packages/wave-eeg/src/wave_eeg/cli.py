@@ -201,6 +201,24 @@ def cmd_exp_c(args) -> int:
     return 0
 
 
+def cmd_exp_d(args) -> int:
+    """Exp. D (§14): caracterização de artefatos vs CLEAN sobre CSVs/pasta."""
+    from .exp_d import characterize, load_blocks
+
+    args.csvs = expand_csv_paths(args.csvs)
+    blocks = load_blocks(args.csvs)
+    signatures, info = characterize(blocks, discard_s=args.discard)
+    print("== Exp. D — assinatura de artefatos vs CLEAN ==")
+    print(f"  limiar de detecção (RMS): {info['detect_threshold']:.0f}  "
+          f"(CLEAN médio {info['clean_rms_mean']:.0f})\n")
+    for s in signatures:
+        top = sorted(s.band_delta.items(), key=lambda kv: -abs(kv[1]))[:2]
+        bands = ", ".join(f"{k}{v*100:+.0f}pp" for k, v in top)
+        print(f"  {s.label:6s}  n={s.n_epochs:3d}  RMS×CLEAN={s.rms_ratio:5.2f}  "
+              f"detectável={s.detect_rate*100:4.0f}%  bandas: {bands}")
+    return 0
+
+
 def main(argv=None) -> int:
     p = argparse.ArgumentParser(prog="wave-eeg", description="WaveAI — spike de captação/análise EEG (NeuroSky).")
     sub = p.add_subparsers(dest="cmd", required=True)
@@ -231,6 +249,11 @@ def main(argv=None) -> int:
     ec.add_argument("csvs", nargs="+", help="CSVs dos blocos (REST/LOAD) em ordem, OU uma pasta.")
     ec.add_argument("--discard", type=float, default=5.0, help="Segundos de transição descartados por bloco.")
     ec.set_defaults(func=cmd_exp_c)
+
+    ed = sub.add_parser("exp-d", help="Exp. D (§14): assinatura de artefatos vs CLEAN; CSVs ou pasta.")
+    ed.add_argument("csvs", nargs="+", help="CSVs rotulados (CLEAN/BLINK/EOG/JAW/…), OU uma pasta.")
+    ed.add_argument("--discard", type=float, default=5.0, help="Segundos de transição descartados por bloco.")
+    ed.set_defaults(func=cmd_exp_d)
 
     args = p.parse_args(argv)
     return args.func(args)
