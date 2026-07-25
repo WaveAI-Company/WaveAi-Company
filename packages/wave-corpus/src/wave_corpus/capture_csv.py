@@ -15,17 +15,25 @@ import numpy as np
 
 from .frame import Frame
 
-# Rótulos aceitos → condição canônica (espelha os do wave_eeg.exp_b).
+# Rótulos aceitos → condição canônica (espelha os de wave_eeg.exp_b / exp_c).
 _OC = {"OC", "OF", "EYES_CLOSED", "FECHADO", "FECHADOS"}
 _OA = {"OA", "EYES_OPEN", "ABERTO", "ABERTOS"}
+_REST = {"REST", "REPOUSO", "RELAX", "RELAXADO", "R"}
+_LOAD = {"LOAD", "CARGA", "MATH", "ARITMETICA", "TASK", "L"}
+
+_CANONICAL = (
+    (_OC, "eyes_closed"),
+    (_OA, "eyes_open"),
+    (_REST, "rest"),
+    (_LOAD, "load"),
+)
 
 
 def _condition(label: str) -> str:
     u = str(label).strip().upper()
-    if u in _OC:
-        return "eyes_closed"
-    if u in _OA:
-        return "eyes_open"
+    for labels, canonical in _CANONICAL:
+        if u in labels:
+            return canonical
     raise ValueError(f"condição desconhecida no CSV: {label!r}")
 
 
