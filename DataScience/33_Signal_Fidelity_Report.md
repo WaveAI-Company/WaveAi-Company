@@ -26,7 +26,7 @@
 |---|---|---|
 | RQ1 | Qualidade/ruído, % utilizável, 60 Hz | **Bom contato:** `poor_signal` médio ~0 (d1) e ~1,3 (d2) — quase todas as amostras utilizáveis. **60 Hz alto no raw** (d1 83–89%; d2 32–87% da potência total), mas **gerenciado** pelo notch + alfa relativa (o d1 passou com 88% de 60 Hz). |
 | RQ2 | Alfa OF > OA (efeito de Berger) | **Detectado e replicado** em estado controlado: d1 razão **1,74** (d=1,79) e d2b razão **1,48** (d=1,57), ambos p≪0,001. d2 (estado violado) ausente. **Exp. B fechado.** Ver §4b. |
-| RQ3 | Reatividade repouso vs carga | Fora do escopo desta rodada (Exp. C futura). |
+| RQ3 | Reatividade repouso vs carga | **Primária (alfa↓ na carga) NÃO sustentada** (s1 razão 1,10 p=0,21; s2 1,01 p=0,93). Secundária **exploratória**: teta↑ na carga consistente nas 2 sessões — pista, não resultado. Ver §4c. |
 | RQ4 | Artefatos (EOG/EMG) | Fora do escopo desta rodada (Exp. D futura). |
 | RQ5 | Teste-reteste (replicabilidade) | **Replicou** entre as 2 sessões de estado controlado (d1, d2b) — mesmo sentido, efeito grande, todos os blocos OF>OA. ICC formal exigiria mais sessões, mas o efeito é forte e consistente. |
 | RQ6 | Concordância com referência | **Fechada por ora:** sem EEG de referência (Q-SIG-03); Nível 2 só via dataset público. |
@@ -80,6 +80,26 @@
 
 **[OPINIÃO] O que isto significa.** O pré-registro fez o trabalho dele nos dois sentidos: pegou o **falso** (d2, estado violado) e confirmou o **real** (d1 e d2b replicam). Em estado de repouso controlado, **o alfa OF>OA é mensurável e reprodutível neste setup** — consistente com a literatura de canal único seco frontal (Johnstone 2021; Rogers 2016) e com o piloto inicial do projeto. Para **este efeito específico**, não são necessárias mais sessões: **Exp. B fecha.**
 
+## 4c. Resultados do Exp. C — reatividade repouso vs carga (N=1, 2 sessões)
+Pré-registro §13 (travado): primária = `rel_alpha(REPOUSO) > rel_alpha(CARGA)` (dessincronização por engajamento), olhos abertos nas duas, aritmética silenciosa.
+
+**Primária (alfa) — NÃO sustentada, não replicada:**
+
+| Sessão | 60 Hz | alfa_rel(REP) | alfa_rel(CAR) | razão | p | d | veredito |
+|---|---|---|---|---|---|---|---|
+| **s1** | ~87% | 23,4% | 21,3% | 1,10 | 0,21 | 0,29 | inconclusivo |
+| **s2** | ~1% | 22,4% | 22,3% | 1,01 | 0,93 | 0,02 | inconclusivo |
+
+Direção fraquíssima em s1, ausente em s2. Pelo pré-registro, **a primária do Exp. C é negativa.** Não se reescreve.
+
+**Secundária (teta) — pista EXPLORATÓRIA consistente:** teta relativa **sobe na carga nas duas sessões** (s1 0,279→0,335; s2 0,182→0,317), assim como teta/beta (s1 1,56→2,94; s2 0,82→1,93). É o marcador clássico de esforço cognitivo.
+
+**[RÍGIDO] Isto é exploratório, não confirmatório** — a primária pré-registrada era o alfa. Reivindicar "teta passou" agora seria p-hacking (garden of forking paths). O caminho honesto: **um novo pré-registro** com teta↑ como primária, para confirmar em dado independente.
+
+**[FATO — bônus técnico]** s2 teve **60 Hz de ~1%** (operador afastou da rede, Q-SIG-04) vs ~87% em s1, e os resultados de alfa foram equivalentes → o **notch + alfa relativa é robusto** mesmo com rede massiva.
+
+**[OPINIÃO] Leitura.** Há **reatividade a carga cognitiva** no sinal — só **não no alfa** (fraco/ausente em FP1), e **sim no teta** (consistente, exploratório). Para o produto (não-clínico, human-in-the-loop), isso diz **quais features surfacear com honestidade** e desaconselha prometer "atenção via alfa". **Exp. C fecha** (primária negativa; teta como pista para um teste futuro).
+
 ## 5. Runbook do operador (recoleta) e critério de decisão
 **[FATO]** Raw das sessões vive **local e descartável** (ADR-0028), organizado por experimento em `packages/wave-eeg/captures/exp-b/<sessão>/` (gitignored — nunca commitado). Sequência (uma colocação; **não** ajustar o headset entre blocos; ambiente longe de carregadores para o 60 Hz — Q-SIG-04):
 
@@ -108,4 +128,5 @@ research ingest --from-capture --input captures/exp-b/d3/b1_oc.csv \
 - **Gate §12 — parte do Exp. B: ATINGIDO.** Alfa OF>OA **detectável e replicável** em estado controlado (d1, d2b). **Exp. B fecha** para este efeito.
 - **H-SIG-01: sobe para 🟡.** O sinal reproduz de forma confiável o fenômeno canônico do alfa no *nosso* setup — de-risking real da pergunta mais básica. Atualização em [03_Assumptions](../03_Assumptions.md).
 - **[RÍGIDO — limites, para não superinterpretar]** 🟡, **não** 🟢: (a) **N=1 sujeito** (não generaliza entre pessoas); (b) alfa OF/OA é o **piso** (o efeito mais fácil/estabelecido) — nada diz ainda sobre reatividade a carga (Exp. C), artefatos (Exp. D) ou **valor clínico**; (c) **sem EEG de referência** (Q-SIG-03 aberta); (d) a exclusão do d2 foi pós-hoc (mitigada pela emenda de estado no §12 e pelas duas replicações independentes).
-- **[RECOMENDAÇÃO] Próximo de-risking:** **Exp. C** (reatividade repouso vs carga cognitiva) — testa se o sinal capta estados **além** do trivial olhos-abertos/fechados, que é o cerne do valor do produto; depois **Exp. D** (artefatos). O "segue" completo do §12 pede C e D. Pré-registro permanece travado; mudanças viram versão datada.
+- **Exp. C (reatividade): FECHADO.** Primária (alfa↓ na carga) **negativa**; teta↑ na carga é **pista exploratória** (§4c) — não muda H-SIG-01, que segue **🟡** (o Exp. B sustenta). Não rebaixa: reatividade existe (teta), só não no alfa.
+- **[RECOMENDAÇÃO] Próximo de-risking: Exp. D (artefatos).** Caracterizar piscada/EOG/EMG/movimento — necessário para o gate de qualidade (ADR-0031) e, sobretudo, para a feature de **"pico → contexto"** (distinguir cérebro de músculo/olho). Depois: N3 (engine) sobre o que ficou caracterizado. Pré-registros permanecem travados; mudanças viram versão datada.
