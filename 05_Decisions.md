@@ -319,3 +319,21 @@ Recompilar, por sua vez, esbarrou num problema de ambiente da máquina de desenv
 - *Deixar 1D e só refatorar quando/se o Muse 2 entrar:* adia custo, mas **retrofitar o tipo de dado** (Result, storage, engine) depois é caro e arriscado. Rejeitada.
 - *Implementar já drivers multicanais:* desperdício — não há aparelho decidido; violaria o escopo enxuto (ADR-0003). Rejeitada; mantém-se **pronto para N canais sem drivers novos**.
 **Consequências:** N3 generaliza o modelo de dado (N=1 hoje); `Result` passa a carregar `device`+`montagem`; o design fica **pronto para multicanal** sem implementar hardware novo. **Não** decide adotar o Muse 2 (decisão futura, com datasheet). Relaciona ADR-0017, 0025, 0031 e Documentation/13.
+
+---
+
+## ADR-0034 — Incorporar eSense (Attention/Meditation) como métrica exploratória rotulada
+**Status:** Aceita (2026-07-25)
+**Contexto:** O NeuroSky expõe as métricas **eSense** (*Attention* e *Meditation*, 0–100), já decodificadas pelo parser (`packages/wave-eeg/thinkgear.py`). Até aqui a orientação era **não** usá-las ([DataScience/30](DataScience/30_EEG_Signal_Processing_Strategy.md) §2: "caixa-preta; no máximo referência exploratória") e extrair apenas features próprias e transparentes (Catálogo N2). O fundador decidiu **reconsiderar**: como o produto é **não-clínico e não-diagnóstico** ([Medical/71](Medical/71_Intended_Use_and_Regulatory_Positioning.md)) e o médico é quem arbitra, faz sentido **aproveitar** o eSense como mais um sinal exploratório em vez de descartá-lo.
+
+**[FATO — honestidade que a decisão não apaga]** eSense é um **algoritmo proprietário e fechado** da NeuroSky, **sem validação científica independente**. "Métrica válida" é alegação do fabricante, **não** fato estabelecido. Os experimentos deste estudo (B/C) medem features **transparentes**, não o eSense.
+
+**Decisão:** **Incorporar `attention` e `meditation`** ao pipeline como **métricas exploratórias, sempre rotuladas** como *"proprietária do fabricante, não validada"*, **ao lado** (nunca no lugar) das features transparentes do Catálogo N2. Guarda-corpos (rígidos):
+1. **Rótulo obrigatório** de proprietária/não-validada/exploratória onde quer que apareça (UI, relatórios, `Result`).
+2. **Nunca** base de claim, nem apresentada como diagnóstica ou como "medida de atenção" sem a ressalva — coerente com os guarda-corpos de comunicação de [Medical/71](Medical/71_Intended_Use_and_Regulatory_Positioning.md) §6.
+3. **Camada primária continua sendo as features transparentes** (interpretáveis/XAI para o médico); o eSense é complemento, não fundamento.
+4. Entra na **tétrade de proveniência** e no versionamento como qualquer feature; se um dia houver dado rotulado, pode ser **comparado** às features próprias (validação interna), não assumido.
+
+**Alternativas consideradas:** (a) **manter excluído** — mais puro, mas descarta um sinal já disponível e gratuito num produto que não fecha diagnóstico; (b) **usar eSense como métrica principal** — rejeitada: é caixa-preta, mataria a explicabilidade que o médico precisa e a honestidade do produto.
+
+**Consequências:** o `capture` passará a registrar `attention`/`meditation` (hoje grava só raw+poor_signal); o `AnalysisEngine`/N3 e o Catálogo ([DataScience/32](DataScience/32_Feature_Catalog.md)) ganham uma seção eSense marcada **proprietária/cautela**; a UI (N6) deve exibir o rótulo. **Refina** [DataScience/30](DataScience/30_EEG_Signal_Processing_Strategy.md) §2 (de "no máximo exploratória" para "exploratória, incorporada e rotulada"). Relaciona Medical/71, ADR-0030 (proveniência), ADR-0032 (evento) e o Catálogo N2.

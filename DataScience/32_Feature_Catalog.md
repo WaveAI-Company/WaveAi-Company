@@ -16,7 +16,7 @@ Formalizar cada **feature** (nome, fórmula, faixa, interpretação, confiabilid
 
 **[RÍGIDO — ADR-0032]** Este catálogo **só define features**. As **definições de evento** (contraste de estado; desvio de baseline pessoal em **N σ**) vêm **depois**, construídas sobre este catálogo — **não** aqui. O termo "anomalia" não é usado ([ADR-0032](../05_Decisions.md)).
 
-**[FATO]** Métricas **eSense** (Attention/Meditation) ficam **de fora**: são caixa-preta e não validadas ([30](30_EEG_Signal_Processing_Strategy.md) §2). Extraímos só features próprias do sinal bruto.
+**[FATO]** O `FEATURE_CATALOG` contém **só features transparentes** (interpretáveis, do sinal bruto). As métricas **eSense** (Attention/Meditation), por serem caixa-preta, **não** entram nele — mas são **incorporadas à parte** como exploratórias rotuladas ([ADR-0034](../05_Decisions.md), ver §4c).
 
 ## 2. Pré-processamento assumido
 Todas as features são extraídas do sinal **pré-processado** (detrend → passa-banda 1–45 Hz fase-zero → notch 60 Hz), a mesma cadeia do Exp. B (§12). `compute_features(x, fs)` pré-processa por padrão. Features espectrais são limitadas à banda de análise (≤ 45 Hz), então a rede em 60 Hz não as contamina.
@@ -46,6 +46,16 @@ Nomes batem com as chaves de `compute_features` (contrato coberto por teste).
 | `peak_alpha_frequency` | Hz | 8..13 | Freq. de pico na banda alfa. | defensável | válida só quando há pico alfa real. |
 | `rms` | amplitude | ≥0 | Amplitude RMS; proxy de energia/contato. | cautela | sensível a escala/contato. |
 | `total_power` | potência | ≥0 | Potência integrada do espectro. | cautela | sensível a escala/contato. |
+
+## 4c. Métricas proprietárias — eSense (exploratórias, rotuladas)
+**[ADR-0034]** O NeuroSky expõe **`attention`** e **`meditation`** (eSense, 0–100), já decodificadas pelo parser. São **incorporadas como métricas exploratórias**, **fora** do `FEATURE_CATALOG` transparente.
+
+| Métrica | Faixa | Interpretação (do fabricante) | Confiabilidade |
+|---|---|---|---|
+| `esense_attention` | 0..100 | "atenção/foco" (algoritmo proprietário) | **proprietária / não-validada** |
+| `esense_meditation` | 0..100 | "relaxamento/calma" (algoritmo proprietário) | **proprietária / não-validada** |
+
+**[RÍGIDO — guarda-corpos]** Sempre **rotuladas** como proprietárias/não-validadas; **nunca** base de claim nem apresentadas como diagnóstico; **complementam**, não substituem, a camada transparente (que é a explicável para o médico — XAI). São EEG de consumo, não medida clínica ([Medical/71](../Medical/71_Intended_Use_and_Regulatory_Positioning.md)).
 
 ## 5. Multicanal (ADR-0033)
 As features são **por canal** e **aditivas**: com N>1 canal (aparelho futuro), aplicam-se por canal sem quebrar o contrato, e features **espaciais** (entre canais) entram como novas entradas — sem alterar as existentes. O NeuroSky preenche N=1 (FP1).
