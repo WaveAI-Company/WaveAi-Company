@@ -45,6 +45,8 @@ Candidatos monocanal, a comparar em benchmark:
 - **ASR** adaptado a canal único (limitado).
 **[OPINIÃO]** Em canal único, **rejeitar** trechos contaminados costuma ser mais seguro do que tentar "limpar" e arriscar deixar artefato residual sendo interpretado como cérebro. A escolha impacta diretamente a validade clínica (risco R-03).
 
+**[FATO — Exp. D, 2026-07-25]** A caracterização real ([DataScience/33](../DataScience/33_Signal_Fidelity_Report.md) §4d) confirma no *nosso* setup: **rejeição por amplitude** pega 100% dos artefatos grandes (piscada, sobrancelha, mandíbula, cabeça); **EMG de mandíbula tem assinatura espectral em gama**, ocular/movimento em **delta** (permite classificar, não só rejeitar). Resíduo honesto: **movimento ocular sutil** escapa da amplitude (só ~17%) — precisa da pista de baixa-freq (delta). Alimenta os limiares do gate de qualidade (ADR-0031).
+
 ### E4. Janelamento (epoching)
 - Janelas curtas com sobreposição (ex.: 1–4 s, 50%). Definir formalmente no Catálogo de Features.
 
