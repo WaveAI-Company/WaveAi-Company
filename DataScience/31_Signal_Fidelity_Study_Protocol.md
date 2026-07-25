@@ -198,7 +198,7 @@ Pipeline conforme [doc 30]: PSD por Welch; potências absolutas e **relativas** 
 ---
 
 ## 13. Pré-registro do Exp. C — reatividade repouso vs carga cognitiva
-> **[STATUS: RASCUNHO — NÃO TRAVADO]** Este pré-registro é para **revisão do operador**. **Nada será capturado antes de travá-lo.** Ao travar, vira versão datada; qualquer mudança de método depois vira novo pré-registro datado (anti-p-hacking, como no §12).
+> **[STATUS: TRAVADO — 2026-07-25]** Revisado e travado pelo operador. Decisões travadas: **hipótese primária = alfa relativa MENOR na carga**; **blocos de 60 s**. Qualquer mudança de método depois vira novo pré-registro datado (anti-p-hacking, como no §12). **Nenhum dado foi capturado antes desta trava.**
 
 **Objetivo (RQ3):** testar se o sinal responde à **demanda mental** — o passo **além** do trivial olhos-abertos/fechados (Exp. B), e mais perto do valor do produto (tendências de atenção/engajamento).
 
@@ -208,16 +208,14 @@ Pipeline conforme [doc 30]: PSD por Welch; potências absolutas e **relativas** 
 - **Condições, ambas de OLHOS ABERTOS** fixando um ponto (crítico: manter os olhos iguais para **não** reintroduzir o efeito de Berger do Exp. B):
   - **REPOUSO:** relaxado, sem tarefa, apenas fixando o ponto.
   - **CARGA:** **aritmética mental contínua e SILENCIOSA** (subtrair 7 a partir de 1000; ao "errar", recomeçar). Silenciosa/subvocal **de propósito** — falar geraria EMG de fala.
-- **6 blocos intercalados** REPOUSO/CARGA/REPOUSO/CARGA/REPOUSO/CARGA de **60 s**, **uma única colocação**, **descartando ~5 s** de transição por bloco (mesmo arcabouço do Exp. B). *(Alternativa a decidir: blocos de 2–3 min como no §6 — proponho 60 s por consistência e controle de deriva.)*
+- **6 blocos intercalados** REPOUSO/CARGA/REPOUSO/CARGA/REPOUSO/CARGA de **60 s** (travado), **uma única colocação**, **descartando ~5 s** de transição por bloco (mesmo arcabouço do Exp. B).
 - **Estado de repouso neutro** (emenda §12.1): concentrado, **sem rir/falar/mastigar**; violações registradas e a sessão marcada.
 
-### Hipótese primária (TRAVAR — **uma só**, confirmatória)
-- **[PROPOSTA]** **alfa relativa MENOR em CARGA que em REPOUSO** (dessincronização do alfa com engajamento). É o efeito mais robusto e alinhado ao que já validamos medir.
-- **[ALTERNATIVA a considerar]** **teta relativa MAIOR em CARGA** (teta frontal de esforço cognitivo). Clássica, mas mais ruidosa em FP1.
-- **Só uma** é o teste confirmatório; a outra (e as de baixo) viram **secundárias/exploratórias** — reportadas, **não** contam para o veredito.
+### Hipótese primária (TRAVADA — **uma só**, confirmatória)
+**Alfa relativa MENOR em CARGA que em REPOUSO** — i.e., `rel_alpha(REPOUSO) > rel_alpha(CARGA)` — dessincronização do alfa com engajamento cognitivo. É o efeito mais robusto e alinhado ao que o Exp. B já validou medir.
 
 ### Features secundárias (exploratórias, do Catálogo N2)
-`rel_theta`, `ratio_theta_beta`, `ratio_alpha_beta`, `median_frequency`, `spectral_entropy`. Reportadas para hipótese-geração; **não** confirmatórias.
+`rel_theta` (a alternativa "teta frontal ↑ na carga" fica aqui, **exploratória**, não confirmatória), `ratio_theta_beta`, `ratio_alpha_beta`, `median_frequency`, `spectral_entropy`. Reportadas para hipótese-geração; **não** contam para o veredito.
 
 ### Pipeline (travado, = Exp. B)
 detrend → passa-banda 1–45 (fase-zero) → **notch 60** → épocas de 4 s → **PSD Welch** → **potências relativas**. `fs` por bloco pelo tempo real.
