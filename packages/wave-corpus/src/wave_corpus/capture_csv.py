@@ -20,6 +20,16 @@ _OC = {"OC", "OF", "EYES_CLOSED", "FECHADO", "FECHADOS"}
 _OA = {"OA", "EYES_OPEN", "ABERTO", "ABERTOS"}
 _REST = {"REST", "REPOUSO", "RELAX", "RELAXADO", "R"}
 _LOAD = {"LOAD", "CARGA", "MATH", "ARITMETICA", "TASK", "L"}
+# Artefatos do Exp. D (§14): cada bloco é um tipo.
+_ARTIFACTS = {
+    "CLEAN": "clean", "BASELINE": "clean", "LIMPO": "clean",
+    "BLINK": "blink", "PISCADA": "blink",
+    "EOG": "eog", "OLHOS": "eog",
+    "JAW": "jaw", "MANDIBULA": "jaw",
+    "BROW": "brow", "SOBRANCELHA": "brow",
+    "SPEAK": "speak", "FALA": "speak",
+    "HEAD": "head", "CABECA": "head",
+}
 
 _CANONICAL = (
     (_OC, "eyes_closed"),
@@ -29,11 +39,18 @@ _CANONICAL = (
 )
 
 
+def _artifact(u: str):
+    return _ARTIFACTS.get(u)
+
+
 def _condition(label: str) -> str:
     u = str(label).strip().upper()
     for labels, canonical in _CANONICAL:
         if u in labels:
             return canonical
+    artifact = _artifact(u)
+    if artifact is not None:
+        return artifact
     raise ValueError(f"condição desconhecida no CSV: {label!r}")
 
 

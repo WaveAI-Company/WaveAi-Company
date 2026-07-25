@@ -38,6 +38,14 @@ def test_condicao_rest_load_mapeada(tmp_path):
         assert read_capture_frame(str(p), montage=["FP1"]).condition == canonical
 
 
+def test_condicao_artefato_mapeada(tmp_path):
+    # Exp. D usa rótulos de artefato (CLEAN/BLINK/JAW/…).
+    for label, canonical in (("CLEAN", "clean"), ("BLINK", "blink"), ("JAW", "jaw")):
+        p = tmp_path / f"{label}.csv"
+        _write_capture(p, label)
+        assert read_capture_frame(str(p), montage=["FP1"]).condition == canonical
+
+
 def test_montagem_multicanal_recusada_na_captura(tmp_path):
     p = tmp_path / "b.csv"
     _write_capture(p, "OA")

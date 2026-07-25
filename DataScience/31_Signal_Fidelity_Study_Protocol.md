@@ -234,7 +234,7 @@ Diferença na **direção prevista**, **significativa** e **replicável** em ≥
 ---
 
 ## 14. Pré-registro do Exp. D — caracterização de artefatos
-> **[STATUS: RASCUNHO — NÃO TRAVADO]** Para **revisão do operador**. Nada capturado antes de travar.
+> **[STATUS: TRAVADO — 2026-07-25]** Revisado e travado pelo operador. Decisões: **lista de artefatos** CLEAN/BLINK/EOG/JAW/BROW/SPEAK/HEAD; **rótulo por bloco inteiro** (cada bloco de 60 s = um tipo). **Nenhum dado capturado antes desta trava.**
 
 **Objetivo (RQ4):** mapear a **assinatura** e o **impacto** de cada artefato em FP1 → alimenta o **gate de qualidade** (ADR-0031) e, sobretudo, a feature de **"pico → contexto"** (só é honesta se distinguir **cérebro de músculo/olho**; em FP1 um "pico" cru é quase sempre artefato).
 
@@ -250,7 +250,7 @@ Diferença na **direção prevista**, **significativa** e **replicável** em ≥
   - **SPEAK:** contar em voz alta (EMG de fala).
   - **HEAD:** movimento lento de cabeça.
   - Fechar com um **CLEAN** ao final (checar deriva).
-- *(A confirmar na revisão: lista de artefatos acima; blocos de 60 s por tipo; rótulo por bloco inteiro vs. marcação de eventos individuais.)*
+- **Rótulo por bloco inteiro** (travado): cada bloco de 60 s é um tipo (`--condition BLINK`, `JAW`, …); reusa a captura/carregamento do B/C.
 
 ### Medidas (por artefato, vs CLEAN)
 - **Assinatura:** forma de onda típica + espectro; **amplitude** (RMS/pico) relativa ao CLEAN.
