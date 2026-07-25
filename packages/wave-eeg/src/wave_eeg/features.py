@@ -14,7 +14,7 @@ estudo de fidelidade sustenta:
 
 **[RÍGIDO — ADR-0032]** Este módulo **só extrai features**. Definições de evento
 (contraste de estado, desvio de baseline pessoal N σ) vêm **depois**, sobre este
-catálogo — não aqui. O termo "anomalia" não é usado.
+catálogo — não aqui, e sem o rótulo clínico-sonante que a ADR-0032 abandonou.
 
 Nota de estado: features de **alfa** são fortemente sensíveis ao **estado**
 (vigilância/emoção) — ver o achado Dia 1 vs Dia 2 em DataScience/33. É sinal
