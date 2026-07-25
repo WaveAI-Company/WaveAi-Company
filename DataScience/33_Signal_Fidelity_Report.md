@@ -2,9 +2,9 @@
 
 | Campo | Valor |
 |---|---|
-| Versão | 0.3 |
-| Status | **Exp. B FECHADO — alfa OF>OA replicado em 2 sessões de estado controlado (d1, d2b); d2 (estado violado) documentado; H-SIG-01 → 🟡** |
-| Data | 2026-07-24 |
+| Versão | 0.4 |
+| Status | **Estudo Nível 1 COMPLETO — B ✓ (alfa replicado) · C ✗-primária/teta-pista · D ✓ (artefatos gerenciáveis); H-SIG-01 → 🟡; seguir para N3** |
+| Data | 2026-07-25 |
 | Dispositivo | NeuroSky MindWave Mobile 2 (canal único, FP1, 512 Hz) |
 | Documentos relacionados | [30](30_EEG_Signal_Processing_Strategy.md), [31](31_Signal_Fidelity_Study_Protocol.md) (§8.1 piloto, §12 pré-registro), [03_Assumptions](../03_Assumptions.md) (H-SIG-01), [05_Decisions](../05_Decisions.md) (ADR-0028/0030/0031) |
 
@@ -27,7 +27,7 @@
 | RQ1 | Qualidade/ruído, % utilizável, 60 Hz | **Bom contato:** `poor_signal` médio ~0 (d1) e ~1,3 (d2) — quase todas as amostras utilizáveis. **60 Hz alto no raw** (d1 83–89%; d2 32–87% da potência total), mas **gerenciado** pelo notch + alfa relativa (o d1 passou com 88% de 60 Hz). |
 | RQ2 | Alfa OF > OA (efeito de Berger) | **Detectado e replicado** em estado controlado: d1 razão **1,74** (d=1,79) e d2b razão **1,48** (d=1,57), ambos p≪0,001. d2 (estado violado) ausente. **Exp. B fechado.** Ver §4b. |
 | RQ3 | Reatividade repouso vs carga | **Primária (alfa↓ na carga) NÃO sustentada** (s1 razão 1,10 p=0,21; s2 1,01 p=0,93). Secundária **exploratória**: teta↑ na carga consistente nas 2 sessões — pista, não resultado. Ver §4c. |
-| RQ4 | Artefatos (EOG/EMG) | Fora do escopo desta rodada (Exp. D futura). |
+| RQ4 | Artefatos (EOG/EMG) | **Caracterizados** (Exp. D, N=1). Artefatos grandes (brow/blink/head/jaw) 100% detectáveis por amplitude; EMG=gamma, ocular/movimento=delta; **EOG sutil** só 17% (risco residual). Ver §4d. |
 | RQ5 | Teste-reteste (replicabilidade) | **Replicou** entre as 2 sessões de estado controlado (d1, d2b) — mesmo sentido, efeito grande, todos os blocos OF>OA. ICC formal exigiria mais sessões, mas o efeito é forte e consistente. |
 | RQ6 | Concordância com referência | **Fechada por ora:** sem EEG de referência (Q-SIG-03); Nível 2 só via dataset público. |
 
@@ -100,6 +100,27 @@ Direção fraquíssima em s1, ausente em s2. Pelo pré-registro, **a primária d
 
 **[OPINIÃO] Leitura.** Há **reatividade a carga cognitiva** no sinal — só **não no alfa** (fraco/ausente em FP1), e **sim no teta** (consistente, exploratório). Para o produto (não-clínico, human-in-the-loop), isso diz **quais features surfacear com honestidade** e desaconselha prometer "atenção via alfa". **Exp. C fecha** (primária negativa; teta como pista para um teste futuro).
 
+## 4d. Resultados do Exp. D — caracterização de artefatos (N=1, 1 sessão)
+Pré-registro §14: blocos rotulados de ~60 s, um tipo por bloco, dois CLEAN (início/fim). Assinatura vs CLEAN (limiar de detecção = RMS médio do CLEAN + 3σ):
+
+| Artefato | RMS × CLEAN | detectável | banda que **infla** |
+|---|---|---|---|
+| **brow** (sobrancelha) | 24,5 | 100% | delta +54pp |
+| **blink** (piscada) | 13,7 | 100% | delta +45pp |
+| **jaw** (mandíbula/EMG) | 6,0 | 100% | **gamma +42pp** |
+| **head** (movimento) | 3,6 | 100% | delta +28pp |
+| **speak** (fala) | 2,2 | 54% | delta +19pp |
+| **eog** (movimento ocular) | 1,8 | 17% | delta +26pp |
+| **clean** (referência) | 1,0 | 0% | — |
+
+**[FATO] Artefatos grandes são pegos.** brow/blink/head/jaw (RMS 3,6–24,5× o CLEAN) são **100% detectáveis** pela regra grossa de amplitude (ADR-0031). São exatamente os "picos" que fariam a feature "pico → contexto" disparar falso — e podem ser **rejeitados/rotulados como provável artefato antes de perguntar ao paciente**.
+
+**[FATO] As assinaturas espectrais separam os tipos** (física esperada, confirmada no *nosso* setup): ocular/movimento (blink, brow, head, eog) inflam **delta** (baixa freq.); **EMG de mandíbula infla gamma** (alta freq.). Isso permite **classificar** o artefato, não só detectá-lo.
+
+**[FATO — o resíduo] O EOG sutil escapa da amplitude:** movimento ocular puro (sem piscar) é pequeno (1,8× CLEAN) e só **17%** cruza o limiar, embora contamine delta (+26pp). Fala fica no meio (54%). → um gate **só de amplitude** não basta para movimentos oculares sutis; delta/baixa-freq é a pista complementar.
+
+**[OPINIÃO] Para o produto.** A rejeição grossa por amplitude + a assinatura espectral cobrem o que importa para o "pico → contexto": os desvios **grandes** (que enganariam o paciente/médico) são flagráveis. O EOG sutil é um limite honesto a comunicar (e a refinar com features de baixa-freq). **[LIMITE]** N=1, 1 sessão — as assinaturas são claras e coerentes com a literatura; uma 2ª sessão reforçaria, mas não é bloqueante.
+
 ## 5. Runbook do operador (recoleta) e critério de decisão
 **[FATO]** Raw das sessões vive **local e descartável** (ADR-0028), organizado por experimento em `packages/wave-eeg/captures/exp-b/<sessão>/` (gitignored — nunca commitado). Sequência (uma colocação; **não** ajustar o headset entre blocos; ambiente longe de carregadores para o 60 Hz — Q-SIG-04):
 
@@ -129,4 +150,5 @@ research ingest --from-capture --input captures/exp-b/d3/b1_oc.csv \
 - **H-SIG-01: sobe para 🟡.** O sinal reproduz de forma confiável o fenômeno canônico do alfa no *nosso* setup — de-risking real da pergunta mais básica. Atualização em [03_Assumptions](../03_Assumptions.md).
 - **[RÍGIDO — limites, para não superinterpretar]** 🟡, **não** 🟢: (a) **N=1 sujeito** (não generaliza entre pessoas); (b) alfa OF/OA é o **piso** (o efeito mais fácil/estabelecido) — nada diz ainda sobre reatividade a carga (Exp. C), artefatos (Exp. D) ou **valor clínico**; (c) **sem EEG de referência** (Q-SIG-03 aberta); (d) a exclusão do d2 foi pós-hoc (mitigada pela emenda de estado no §12 e pelas duas replicações independentes).
 - **Exp. C (reatividade): FECHADO.** Primária (alfa↓ na carga) **negativa**; teta↑ na carga é **pista exploratória** (§4c) — não muda H-SIG-01, que segue **🟡** (o Exp. B sustenta). Não rebaixa: reatividade existe (teta), só não no alfa.
-- **[RECOMENDAÇÃO] Próximo de-risking: Exp. D (artefatos).** Caracterizar piscada/EOG/EMG/movimento — necessário para o gate de qualidade (ADR-0031) e, sobretudo, para a feature de **"pico → contexto"** (distinguir cérebro de músculo/olho). Depois: N3 (engine) sobre o que ficou caracterizado. Pré-registros permanecem travados; mudanças viram versão datada.
+- **Exp. D (artefatos): FECHADO.** Artefatos grandes 100% detectáveis por amplitude; EMG=gamma, ocular=delta; EOG sutil é o resíduo (§4d). Alimenta ADR-0031 (gate grosso) e [doc 30](30_EEG_Signal_Processing_Strategy.md) §E3 (rejeição por amplitude + assinatura espectral).
+- **[CONCLUSÃO — Nível 1 do estudo completo]** B ✓ (alfa real e replicável), C ✗-primária/teta-pista, D ✓ (artefatos gerenciáveis). **H-SIG-01 fica em 🟡:** o sinal mede de forma confiável o **estado de alfa** e os **artefatos são tratáveis** — base honesta para um produto **não-clínico** de tendências/insights (não para claim clínica; Nível 2 concorrente segue aberto, Q-SIG-03). **[RECOMENDAÇÃO]** seguir para **N3** (motor sobre o caracterizado: features N2, qualidade 0..1, eSense rotulado, desvio de baseline → "pico → contexto"). Pré-registros permanecem travados.
