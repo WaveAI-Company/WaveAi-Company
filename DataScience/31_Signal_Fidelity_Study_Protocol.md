@@ -194,3 +194,41 @@ Pipeline conforme [doc 30]: PSD por Welch; potências absolutas e **relativas** 
 - **Transparência:** sessões de estado violado **não são apagadas** — ficam documentadas com a razão (evita p-hacking por exclusão silenciosa).
 
 **[RESULTADO — Exp. B FECHADO]** Em estado controlado, o alfa **OF>OA** foi **detectável e replicável** em **2 sessões independentes** (d1: razão 1,74, d=1,79; d2b: razão 1,48, d=1,57), consistente com a literatura. A sessão de estado violado (d2) não passou e está documentada. **Exp. B atinge a sua parte do gate; não requer mais sessões.** Relatório: [33_Signal_Fidelity_Report](33_Signal_Fidelity_Report.md). H-SIG-01 → 🟡 ([03_Assumptions](../03_Assumptions.md)). **Não** fecha o "segue" completo (faltam Exp. C reatividade e Exp. D artefatos).
+
+---
+
+## 13. Pré-registro do Exp. C — reatividade repouso vs carga cognitiva
+> **[STATUS: RASCUNHO — NÃO TRAVADO]** Este pré-registro é para **revisão do operador**. **Nada será capturado antes de travá-lo.** Ao travar, vira versão datada; qualquer mudança de método depois vira novo pré-registro datado (anti-p-hacking, como no §12).
+
+**Objetivo (RQ3):** testar se o sinal responde à **demanda mental** — o passo **além** do trivial olhos-abertos/fechados (Exp. B), e mais perto do valor do produto (tendências de atenção/engajamento).
+
+**Motivação do desenho:** o Exp. B mostrou que o alfa em FP1 é real mas **muito sensível ao estado**. O Exp. C explora isso de propósito: **engajamento cognitivo dessincroniza o alfa** (efeito robusto na literatura).
+
+### Desenho (a travar)
+- **Condições, ambas de OLHOS ABERTOS** fixando um ponto (crítico: manter os olhos iguais para **não** reintroduzir o efeito de Berger do Exp. B):
+  - **REPOUSO:** relaxado, sem tarefa, apenas fixando o ponto.
+  - **CARGA:** **aritmética mental contínua e SILENCIOSA** (subtrair 7 a partir de 1000; ao "errar", recomeçar). Silenciosa/subvocal **de propósito** — falar geraria EMG de fala.
+- **6 blocos intercalados** REPOUSO/CARGA/REPOUSO/CARGA/REPOUSO/CARGA de **60 s**, **uma única colocação**, **descartando ~5 s** de transição por bloco (mesmo arcabouço do Exp. B). *(Alternativa a decidir: blocos de 2–3 min como no §6 — proponho 60 s por consistência e controle de deriva.)*
+- **Estado de repouso neutro** (emenda §12.1): concentrado, **sem rir/falar/mastigar**; violações registradas e a sessão marcada.
+
+### Hipótese primária (TRAVAR — **uma só**, confirmatória)
+- **[PROPOSTA]** **alfa relativa MENOR em CARGA que em REPOUSO** (dessincronização do alfa com engajamento). É o efeito mais robusto e alinhado ao que já validamos medir.
+- **[ALTERNATIVA a considerar]** **teta relativa MAIOR em CARGA** (teta frontal de esforço cognitivo). Clássica, mas mais ruidosa em FP1.
+- **Só uma** é o teste confirmatório; a outra (e as de baixo) viram **secundárias/exploratórias** — reportadas, **não** contam para o veredito.
+
+### Features secundárias (exploratórias, do Catálogo N2)
+`rel_theta`, `ratio_theta_beta`, `ratio_alpha_beta`, `median_frequency`, `spectral_entropy`. Reportadas para hipótese-geração; **não** confirmatórias.
+
+### Pipeline (travado, = Exp. B)
+detrend → passa-banda 1–45 (fase-zero) → **notch 60** → épocas de 4 s → **PSD Welch** → **potências relativas**. `fs` por bloco pelo tempo real.
+
+### Teste estatístico (travado)
+Teste **t** (épocas REPOUSO vs CARGA) na feature primária + **tamanho de efeito (Cohen's d)**. Reprodutibilidade via **≥2 sessões de estado controlado** (como o Exp. B fechou com d1+d2b).
+
+### Critério de aceite (travado ao fechar)
+Diferença na **direção prevista**, **significativa** e **replicável** em ≥2 sessões controladas, com estado limpo. Só então o Exp. C fecha e alimenta o "segue" do gate.
+
+### Registro obrigatório por sessão
+`poor_signal`, timestamps, condição, marcações, e a **tétrade de proveniência** (ADR-0030). Raw só no corpus de pesquisa (local/descartável, ADR-0028).
+
+**[LIMITE honesto]** N=1 (operador). O Exp. C de-risca "*o sinal capta carga cognitiva?*", **não** "*generaliza entre pessoas?*" (isso exigiria voluntários — nova decisão/CEP).
