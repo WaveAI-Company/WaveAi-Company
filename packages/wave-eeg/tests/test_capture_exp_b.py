@@ -3,7 +3,7 @@ import csv
 
 import numpy as np
 
-from wave_eeg.cli import capture_rows
+from wave_eeg.cli import capture_rows, expand_csv_paths
 from wave_eeg.exp_b import (
     EYES_CLOSED,
     EYES_OPEN,
@@ -54,6 +54,10 @@ def test_load_blocks_fs_por_bloco_e_analise(tmp_path):
         p = tmp_path / f"b{i}_{cond}.csv"
         _write_capture(p, cond, alpha_amp=amp, seed=i)
         paths.append(str(p))
+    # expansão de diretório: apontar para a pasta da sessão pega os 6 blocos ordenados.
+    from_dir = expand_csv_paths([str(tmp_path)])
+    assert from_dir == sorted(paths)
+
     blocks = load_blocks(paths)
     assert blocks[0].condition == EYES_CLOSED
     assert blocks[1].condition == EYES_OPEN

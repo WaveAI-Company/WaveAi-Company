@@ -14,6 +14,8 @@ from __future__ import annotations
 
 import argparse
 import csv
+import glob
+import os
 import sys
 import time
 
@@ -134,10 +136,30 @@ def cmd_analyze(args) -> int:
     return 0
 
 
+def expand_csv_paths(paths):
+    """Expande diretórios em seus `*.csv` (ordenados). Arquivos passam direto.
+
+    Permite `wave-eeg exp-b captures/exp-b/d1` (pasta da sessão) além da lista
+    explícita de blocos. A ordenação é lexical — nomeie os blocos b1..b9 (ou com
+    zero à esquerda além de 9) para manter a ordem OF/OA.
+    """
+    out = []
+    for p in paths:
+        if os.path.isdir(p):
+            found = sorted(glob.glob(os.path.join(p, "*.csv")))
+            if not found:
+                raise SystemExit(f"sem CSVs em {p}")
+            out.extend(found)
+        else:
+            out.append(p)
+    return out
+
+
 def cmd_exp_b(args) -> int:
     """Exp. B intercalado (§12) sobre os CSVs de captura — pipeline TRAVADO."""
     from .exp_b import EYES_CLOSED, analyze_interleaved, load_blocks, read_capture_csv
 
+    args.csvs = expand_csv_paths(args.csvs)
     blocks = load_blocks(args.csvs)
     print("== Exp. B intercalado (alfa relativa OF vs OA, pipeline travado) ==")
     for path, block in zip(args.csvs, blocks):
@@ -176,8 +198,8 @@ def main(argv=None) -> int:
     a.add_argument("--fs", type=int, default=0, help="Força fs (0 = estimar pelos timestamps).")
     a.set_defaults(func=cmd_analyze)
 
-    e = sub.add_parser("exp-b", help="Exp. B intercalado (§12) sobre vários CSVs de captura.")
-    e.add_argument("csvs", nargs="+", help="CSVs dos blocos, em ordem (ex.: b1_oc.csv b2_oa.csv ...).")
+    e = sub.add_parser("exp-b", help="Exp. B intercalado (§12) sobre CSVs de captura ou uma pasta de sessão.")
+    e.add_argument("csvs", nargs="+", help="CSVs dos blocos em ordem, OU uma pasta (ex.: captures/exp-b/d1).")
     e.add_argument("--discard", type=float, default=5.0, help="Segundos de transição descartados por bloco.")
     e.set_defaults(func=cmd_exp_b)
 
