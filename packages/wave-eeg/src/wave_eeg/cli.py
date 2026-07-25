@@ -177,6 +177,30 @@ def cmd_exp_b(args) -> int:
     return 0
 
 
+def cmd_exp_c(args) -> int:
+    """Exp. C intercalado (§13) sobre CSVs de captura REPOUSO/CARGA — pipeline TRAVADO."""
+    from .exp_c import REST, analyze_interleaved, load_blocks, read_capture_csv
+
+    args.csvs = expand_csv_paths(args.csvs)
+    blocks = load_blocks(args.csvs)
+    print("== Exp. C intercalado (alfa relativa REPOUSO vs CARGA, pipeline travado) ==")
+    for path, block in zip(args.csvs, blocks):
+        cond = "REPOUSO" if block.condition == REST else "CARGA  "
+        mains_ratio = mains_power(block.samples, block.fs) / (total_power(block.samples, block.fs) or 1.0)
+        print(f"  {cond}  n={block.samples.size:6d}  fs~{block.fs:5.0f}Hz  "
+              f"60Hz/total={mains_ratio*100:4.1f}%  ({path})")
+    res = analyze_interleaved(blocks, discard_s=args.discard)
+    print(f"\n  alfa_rel(REPOUSO)={res.rest_rel_alpha*100:5.1f}%  "
+          f"alfa_rel(CARGA)={res.load_rel_alpha*100:5.1f}%  razão={res.ratio:5.2f}")
+    print(f"  épocas REP/CAR={res.n_epochs_rest}/{res.n_epochs_load}  "
+          f"t={res.t_stat:6.2f}  p={res.p_value:.2e}  d={res.cohens_d:.2f}")
+    print("  [secundárias, exploratórias]")
+    for k, v in res.secondary.items():
+        print(f"    {k}: repouso={v['rest']:.3f}  carga={v['load']:.3f}")
+    print(f"  VEREDITO: {res.verdict}")
+    return 0
+
+
 def main(argv=None) -> int:
     p = argparse.ArgumentParser(prog="wave-eeg", description="WaveAI — spike de captação/análise EEG (NeuroSky).")
     sub = p.add_subparsers(dest="cmd", required=True)
@@ -202,6 +226,11 @@ def main(argv=None) -> int:
     e.add_argument("csvs", nargs="+", help="CSVs dos blocos em ordem, OU uma pasta (ex.: captures/exp-b/d1).")
     e.add_argument("--discard", type=float, default=5.0, help="Segundos de transição descartados por bloco.")
     e.set_defaults(func=cmd_exp_b)
+
+    ec = sub.add_parser("exp-c", help="Exp. C intercalado (§13) repouso vs carga; CSVs ou pasta de sessão.")
+    ec.add_argument("csvs", nargs="+", help="CSVs dos blocos (REST/LOAD) em ordem, OU uma pasta.")
+    ec.add_argument("--discard", type=float, default=5.0, help="Segundos de transição descartados por bloco.")
+    ec.set_defaults(func=cmd_exp_c)
 
     args = p.parse_args(argv)
     return args.func(args)

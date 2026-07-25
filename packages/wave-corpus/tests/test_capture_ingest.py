@@ -30,6 +30,14 @@ def test_read_capture_frame_extrai_condicao_poor_fs(tmp_path):
     assert abs(cap.frame.fs - 512.0) < 1.0
 
 
+def test_condicao_rest_load_mapeada(tmp_path):
+    # Exp. C usa rótulos REST/LOAD no CSV de captura.
+    for label, canonical in (("REST", "rest"), ("LOAD", "load")):
+        p = tmp_path / f"{label}.csv"
+        _write_capture(p, label)
+        assert read_capture_frame(str(p), montage=["FP1"]).condition == canonical
+
+
 def test_montagem_multicanal_recusada_na_captura(tmp_path):
     p = tmp_path / "b.csv"
     _write_capture(p, "OA")
