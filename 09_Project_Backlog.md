@@ -85,3 +85,8 @@ Backlog de **alto nível** (épicos e itens estruturantes), não de sprint. Alim
 
 ## Atualização (2026-07-18) — início do MVP de plataforma (E3/E6)
 Arquitetura do MVP definida (app Expo universal web+mobile; análise no servidor; FastAPI+JWT; WS+REST). Trabalho segmentado em marcos **M0–M5** e issues no [Documentation/11](Documentation/11_MVP_Work_Breakdown.md), prontos para o Claude Code (guia em [Documentation/12](Documentation/12_Claude_Code_Guide.md); contexto em [CLAUDE.md](CLAUDE.md)). **Guarda-corpo:** análise plugável, sem claim clínica, sem dado real (paralelo aos experimentos de sinal).
+
+---
+
+## Atualização (2026-07-26) — Análise & Ciência concluída; início de Produto & UX
+Fase **Análise & Ciência** ([Documentation/13](Documentation/13_Analysis_Phase_Work_Breakdown.md)) **fechada** (N1–N6): estudo de fidelidade (H-SIG-01 🟡), Catálogo de Features, qualidade (ADR-0031), baseline pessoal (ADR-0032), relatórios longitudinais (N5), narrativa-LLM aterrada (ADR-0035), **eSense ao vivo validado no NeuroSky real** (N6-c). Próxima fase = **Produto & UX** ([Documentation/14](Documentation/14_Product_UX_Phase_Work_Breakdown.md)): UI didática e interativa para médico e paciente, depois deploy (nuvem + APK + Play Store). Primeira frente = **P1 camada didática**; **[Could] Correlação contexto × sinal** vira **P2 anotações contextuais (v1 manual por sessão)**. **P0 ainda aberta:** Q-PRD-01 (persona/público-alvo).
