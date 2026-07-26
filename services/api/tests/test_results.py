@@ -14,7 +14,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.api.deps import reset_login_limiter
+from app.api.deps import get_analysis_client, reset_login_limiter
 from app.config import get_settings
 from app.db.session import get_session
 from app.main import app
@@ -130,6 +130,46 @@ def test_persiste_device_e_montagem_em_claro(db_session: Session):
     ).one()
     assert persistido.device == "mindwave-mobile-2"
     assert persistido.montage == "FP1"  # lista serializada por vírgula
+
+
+def test_serie_longitudinal_cronologica_com_qualidade(db_session: Session):
+    """N5: série (mais antiga → mais recente) de features + qualidade; audita leitura."""
+    from datetime import UTC, datetime, timedelta
+
+    service = _service(db_session)
+    paciente = _paciente(db_session, consentiu=True)
+    base = datetime(2026, 1, 1, tzinfo=UTC)
+
+    def _seed(alpha: float, score: float, quando: datetime):
+        metrics = {
+            **METRICS_FALSAS,
+            "features": {"rel_alpha": alpha},
+            "quality": {"score": score},
+        }
+        r = service.persistir(
+            patient=paciente, session_id=_sessao(db_session, paciente).id, metrics=metrics
+        )
+        r.created_at = quando
+        db_session.flush()
+
+    # Inseridos fora de ordem cronológica de propósito.
+    _seed(0.30, 0.8, base + timedelta(minutes=1))
+    _seed(0.40, 0.7, base + timedelta(minutes=2))
+    _seed(0.20, 0.9, base)
+
+    serie = service.serie_longitudinal(titular=paciente, ator=paciente)
+    # Ordenado por tempo: 0.20 (base) → 0.30 → 0.40.
+    assert serie["sessions"] == [{"rel_alpha": 0.20}, {"rel_alpha": 0.30}, {"rel_alpha": 0.40}]
+    assert serie["quality_scores"] == [0.9, 0.8, 0.7]
+    assert serie["period"]["first"] == base.isoformat()
+
+    # Acesso humano aos dados derivados: audita como leitura.
+    acoes = [
+        e.action for e in db_session.scalars(
+            select(ResultAccessEvent).where(ResultAccessEvent.patient_user_id == paciente.id)
+        )
+    ]
+    assert ResultAccessAction.READ in acoes
 
 
 def test_historico_de_features_para_baseline(db_session: Session):
@@ -393,3 +433,103 @@ def test_medico_le_results_so_com_vinculo_ativo(client: TestClient, db_session: 
     resp = client.get(f"/patients/{paciente_id}/results", headers=cabecalho)
     assert resp.status_code == 200
     assert len(resp.json()["results"]) == 1
+
+
+# -- relatório longitudinal (N5) ----------------------------------------
+
+
+class _AnalysisReportFake:
+    """Duplo da Analysis para o relatório: registra a série recebida."""
+
+    def __init__(self) -> None:
+        self.calls: list[tuple] = []
+
+    def longitudinal_report(self, sessions, quality_scores=None):
+        self.calls.append((sessions, quality_scores))
+        return {
+            "engine_version": "fake/1.0",
+            "report": {"n_sessions": len(sessions), "features": {}},
+            "disclaimer": "Resultado exploratório. Não-clínico e não-diagnóstico.",
+        }
+
+
+@pytest.fixture
+def analysis_fake() -> _AnalysisReportFake:
+    return _AnalysisReportFake()
+
+
+@pytest.fixture
+def client_report(db_session: Session, analysis_fake: _AnalysisReportFake) -> Iterator[TestClient]:
+    app.dependency_overrides[get_session] = lambda: db_session
+    app.dependency_overrides[get_analysis_client] = lambda: analysis_fake
+    with TestClient(app, base_url="https://testserver") as c:
+        yield c
+    app.dependency_overrides.clear()
+
+
+def _seed_result_features(db_session: Session, email: str, alpha: float, score: float, quando) -> None:
+    from app.repositories.user import UserRepository
+    from app.security.password import Argon2PasswordHasher
+
+    hasher = Argon2PasswordHasher(memory_cost=8, time_cost=1, parallelism=1)
+    user = UserRepository(db_session, hasher).get_by_email(email)
+    metrics = {**METRICS_FALSAS, "features": {"rel_alpha": alpha}, "quality": {"score": score}}
+    r = _service(db_session).persistir(patient=user, session_id=_sessao(db_session, user).id, metrics=metrics)
+    r.created_at = quando
+    db_session.commit()
+
+
+def test_me_report_longitudinal(client_report, db_session: Session, analysis_fake):
+    from datetime import UTC, datetime, timedelta
+
+    base = datetime(2026, 1, 1, tzinfo=UTC)
+    p = Paciente(client_report, consentiu=True)
+    _seed_result_features(db_session, p.email, 0.40, 0.7, base + timedelta(minutes=1))
+    _seed_result_features(db_session, p.email, 0.20, 0.9, base)  # mais antigo
+
+    resp = p.get("/me/report/longitudinal")
+
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["n_sessions"] == 2
+    assert body["report"]["n_sessions"] == 2
+    assert body["period"]["first"] == base.isoformat()
+    # A Analysis recebeu a série CRONOLÓGICA (mais antiga primeiro) + qualidade.
+    sessions, quality_scores = analysis_fake.calls[-1]
+    assert sessions == [{"rel_alpha": 0.20}, {"rel_alpha": 0.40}]
+    assert quality_scores == [0.9, 0.7]
+
+
+def test_report_longitudinal_exige_autenticacao(client_report):
+    assert client_report.get("/me/report/longitudinal").status_code == 401
+
+
+def test_medico_ve_relatorio_so_com_vinculo(client_report, db_session: Session):
+    from datetime import UTC, datetime
+
+    paciente = Paciente(client_report, consentiu=True)
+    _seed_result_features(db_session, paciente.email, 0.3, 0.8, datetime(2026, 1, 1, tzinfo=UTC))
+
+    medico_email = _email()
+    client_report.post(
+        "/auth/register",
+        json={"email": medico_email, "password": SENHA, "role": "doctor", "display_name": "Dr"},
+    )
+    token = client_report.post(
+        "/auth/login", json={"email": medico_email, "password": SENHA, "client": "mobile"}
+    ).json()["access_token"]
+    cab = {"Authorization": f"Bearer {token}"}
+
+    from app.repositories.user import UserRepository
+    from app.security.password import Argon2PasswordHasher
+
+    hasher = Argon2PasswordHasher(memory_cost=8, time_cost=1, parallelism=1)
+    pid = UserRepository(db_session, hasher).get_by_email(paciente.email).id
+
+    # Sem vínculo ativo: 403.
+    assert client_report.get(f"/patients/{pid}/report/longitudinal", headers=cab).status_code == 403
+    # Com vínculo: 200.
+    paciente.post("/care-links", {"email": medico_email})
+    resp = client_report.get(f"/patients/{pid}/report/longitudinal", headers=cab)
+    assert resp.status_code == 200
+    assert resp.json()["n_sessions"] == 1

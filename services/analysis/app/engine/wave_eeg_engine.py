@@ -22,6 +22,7 @@ from wave_eeg.analysis import (
 )
 from wave_eeg.baseline import build_baseline, deviations
 from wave_eeg.devices import SignalFrame
+from wave_eeg.longitudinal import longitudinal_report as _longitudinal_report
 from wave_eeg.esense import ESENSE_CATALOG
 from wave_eeg.features import FEATURE_CATALOG, compute_features
 from wave_eeg.quality import assess_quality
@@ -69,6 +70,14 @@ class WaveEegEngine(AnalysisEngine):
         """eSense (Attention/Meditation) rotulado proprietário/não-validado
         (ADR-0034), à parte do Catálogo N2."""
         return _ESENSE_CATALOG
+
+    def longitudinal_report(
+        self,
+        sessions: Sequence[Mapping[str, float]],
+        quality_scores: Sequence[float] | None = None,
+    ) -> dict:
+        """Relatório longitudinal (N5) — delega a `wave_eeg.longitudinal`."""
+        return _longitudinal_report(list(sessions), quality_scores=quality_scores)
 
     # -- helpers ---------------------------------------------------------
 
