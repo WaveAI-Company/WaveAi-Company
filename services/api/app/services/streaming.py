@@ -51,6 +51,24 @@ class CloseCode(int, enum.Enum):
     LIMITE_EXCEDIDO = 4413
 
 
+#: Faixa do eSense (ADR-0034): a NeuroSky entrega Attention/Meditation em 0..100.
+#: Fora disso é ruído de protocolo — ignorado, nunca relayado nem fabricado.
+ESENSE_MIN, ESENSE_MAX = 0, 100
+
+
+def _esense_valido(valor: Any) -> int | None:
+    """Devolve o valor se for um eSense bem-formado (int 0..100), senão `None`.
+
+    `bool` é subclasse de `int` em Python — rejeitado de propósito para não
+    aceitar `True`/`False` como 1/0.
+    """
+    if isinstance(valor, bool):
+        return None
+    if isinstance(valor, int) and ESENSE_MIN <= valor <= ESENSE_MAX:
+        return valor
+    return None
+
+
 class StreamError(Exception):
     """Encerra o stream com um código e um motivo genérico."""
 
@@ -204,7 +222,41 @@ class StreamProtocol:
         features = self._analisar_se_completou_janela(data, sessao.sample_rate)
         if features is not None:
             resposta["features"] = features
+
+        # eSense (ADR-0034) viaja numa chave **separada** de `features`, no ritmo
+        # próprio (~1 Hz), independente do fechamento da janela: é complemento
+        # proprietário, nunca fundamento, e não pode se confundir com as features
+        # transparentes calculadas pela Analysis.
+        esense = self._esense_do_frame(message)
+        if esense is not None:
+            resposta["esense"] = esense
         return resposta
+
+    def _esense_do_frame(self, message: dict[str, Any]) -> dict[str, Any] | None:
+        """Relay do eSense **fornecido pelo aparelho** (ADR-0034).
+
+        Attention/Meditation são métricas PROPRIETÁRIAS e não-validadas da
+        NeuroSky, entregues pelo firmware em pacotes próprios (~1 Hz) — **não**
+        derivadas do raw. Por isso **não passam pela Analysis** (que fica pura):
+        o gateway só repassa o que o device mandou, marcado `proprietary` para
+        que nenhum consumidor o trate como feature transparente. O rótulo
+        legível (proprietário/não-validado/exploratório) é responsabilidade da
+        UI. Valor malformado é **ignorado**, nunca derruba a captação — perder o
+        complemento é aceitável; perder a sessão do paciente não.
+        """
+        corpo: dict[str, Any] = {}
+        attention = _esense_valido(message.get("attention"))
+        if attention is not None:
+            corpo["attention"] = attention
+        meditation = _esense_valido(message.get("meditation"))
+        if meditation is not None:
+            corpo["meditation"] = meditation
+        if not corpo:
+            return None
+        #: Marcador ADR-0034 legível por máquina: complemento proprietário,
+        #: não-validado. A UI acrescenta o rótulo textual obrigatório.
+        corpo["proprietary"] = True
+        return corpo
 
     def _analisar_se_completou_janela(
         self, data: list[float], sample_rate: int
