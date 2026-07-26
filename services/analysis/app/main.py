@@ -63,6 +63,13 @@ class SessionRequest(BaseModel):
     labels: list[str] | None = None
     #: Aparelho de origem (ADR-0033); ver `WindowRequest.device`.
     device: str | None = Field(default=None, max_length=64)
+    #: Features das sessões passadas do próprio titular (ADR-0032): habilita os
+    #: desvios do baseline pessoal. O gateway monta a partir dos `Result` já
+    #: persistidos; a Analysis não guarda estado.
+    history: list[dict[str, float]] | None = Field(default=None, max_length=100_000)
+    #: Prior populacional para o cold-start (feature → [média, desvio]). Opcional
+    #: — ausente, o cold-start fica "insuficiente" até haver baseline pessoal.
+    population_prior: dict[str, list[float]] | None = None
 
 
 @app.get("/health")
@@ -123,7 +130,8 @@ def analyze_session(payload: SessionRequest) -> dict:
         raise HTTPException(status_code=422, detail="labels e samples com tamanhos diferentes")
 
     report = engine.process_session(
-        payload.samples, payload.fs, labels=payload.labels, device=payload.device
+        payload.samples, payload.fs, labels=payload.labels, device=payload.device,
+        history=payload.history, population_prior=payload.population_prior,
     )
     comparison = report.comparison
 
@@ -131,6 +139,7 @@ def analyze_session(payload: SessionRequest) -> dict:
         "engine_version": report.engine_version,
         "device": report.device,
         "montage": list(report.montage),
+        "deviations": report.deviations,
         "fs": report.fs,
         "n_samples": report.n_samples,
         "rel_alpha": report.rel_alpha,

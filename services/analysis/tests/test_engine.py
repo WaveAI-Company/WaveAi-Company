@@ -27,8 +27,8 @@ def test_engine_version_rastreavel(engine):
 
 
 def test_engine_version_bump(engine):
-    # N3-b: o wrapper subiu para 0.3.0 ao dar veredito de qualidade (ADR-0031).
-    assert "WaveEegEngine/0.3.0" in engine.engine_version
+    # N3-c.2: o wrapper subiu para 0.4.0 ao trazer desvios de baseline (ADR-0032).
+    assert "WaveEegEngine/0.4.0" in engine.engine_version
 
 
 def test_feature_catalog_expoe_specs_com_reliability(engine):
@@ -99,6 +99,34 @@ def test_process_carimba_proveniencia_do_device(engine):
     rep = engine.process_session(samples, fs, device="mindwave-mobile-2")
     assert rep.device == "mindwave-mobile-2"
     assert rep.montage == ("FP1",)
+
+
+def test_process_session_sem_historico_nao_tem_desvios(engine):
+    samples, _, fs = synthetic_session(secs=4.0)
+    report = engine.process_session(samples, fs)
+    # Sem histórico do titular, não se inventa desvio (ADR-0032).
+    assert report.deviations == {}
+
+
+def test_process_session_com_historico_calcula_desvio_pessoal(engine):
+    from wave_eeg.baseline import MIN_OBSERVATIONS
+
+    samples, _, fs = synthetic_session(secs=4.0)
+    atual = engine.process_session(samples, fs)
+    base_alpha = atual.features["rel_alpha"]
+    # Histórico do titular (>= volume mínimo) concentrado longe do valor atual,
+    # com pequena dispersão → o rel_alpha atual vira um pico.
+    history = [
+        {"rel_alpha": base_alpha + 0.20 + 0.001 * ((i % 3) - 1)}
+        for i in range(MIN_OBSERVATIONS + 5)
+    ]
+    report = engine.process_session(samples, fs, history=history)
+
+    dev = report.deviations["rel_alpha"]
+    assert dev["source"] == "personal"
+    assert dev["confidence"] == 1.0
+    assert dev["is_peak"] is True
+    assert abs(dev["n_sigma"]) > 3.0
 
 
 def test_process_sem_device_fica_unknown(engine):

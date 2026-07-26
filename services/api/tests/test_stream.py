@@ -305,6 +305,9 @@ class AnalysisFake:
         #: Device recebido em cada analyze_session — prova que a proveniência
         #: (ADR-0033) flui do gateway para a Analysis.
         self.session_devices: list[str | None] = []
+        #: Histórico recebido (ADR-0032): prova que o baseline pessoal é
+        #: alimentado pelos Result já persistidos do titular.
+        self.session_histories: list[list | None] = []
 
     def analyze_window(self, samples, fs, device=None):
         if self.falha:
@@ -312,17 +315,20 @@ class AnalysisFake:
         self.janelas.append((len(samples), fs))
         return {"rel_alpha": 0.42, "engine_version": "fake/1.0"}
 
-    def analyze_session(self, samples, fs, labels=None, device=None):
+    def analyze_session(self, samples, fs, labels=None, device=None, history=None):
         if self.falha:
             raise AnalysisUnavailableError("fora do ar")
         self.sessoes.append((len(samples), fs))
         self.session_devices.append(device)
-        # A Analysis real carimba device+montagem; o duplo espelha isso para
-        # exercitar a persistência da proveniência em claro.
+        self.session_histories.append(history)
+        # A Analysis real carimba device+montagem e devolve as features do
+        # Catálogo; o duplo espelha o mínimo para exercitar persistência da
+        # proveniência (em claro) e a alimentação do baseline pessoal.
         return {
             "rel_alpha": 0.33,
             "engine_version": "fake/1.0",
             "relative_band_powers": {},
+            "features": {"rel_alpha": 0.33, "rel_beta": 0.10},
             "device": device,
             "montage": ["FP1"] if device else [],
         }
@@ -421,6 +427,31 @@ def test_stop_gera_result_persistido_com_consentimento(
     assert len(results) == 1
     assert results[0].device == "mindwave-mobile-2"
     assert results[0].montage == "FP1"
+
+
+def test_baseline_pessoal_alimentado_pelos_results_anteriores(
+    client_com_analysis: TestClient, analysis: AnalysisFake
+):
+    """ADR-0032 (opção 1): a 2ª sessão recebe como histórico as features da 1ª."""
+    token = _token(client_com_analysis)
+    assert client_com_analysis.post(
+        "/me/consent", headers={"Authorization": f"Bearer {token}"}
+    ).status_code == 204
+
+    def _uma_sessao():
+        with client_com_analysis.websocket_connect("/stream") as ws:
+            _abrir_sessao(ws, token)
+            ws.send_json({"type": "samples", "seq": 1, "data": [1.0] * 1024})
+            ws.receive_json()
+            ws.send_json({"type": "stop"})
+            ws.receive_json()
+
+    _uma_sessao()  # persiste o 1º Result (com features)
+    _uma_sessao()  # a 2ª deve receber o histórico do 1º
+
+    # 1ª sessão: sem histórico. 2ª: histórico com as features da 1ª.
+    assert analysis.session_histories[0] is None
+    assert analysis.session_histories[1] == [{"rel_alpha": 0.33, "rel_beta": 0.10}]
 
 
 def test_stop_devolve_o_relatorio_da_sessao(
