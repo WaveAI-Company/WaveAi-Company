@@ -54,6 +54,12 @@ class WindowResult:
     #: campos legados acima (`relative_band_powers`, `rel_alpha`) são derivados
     #: desta mesma fonte. Vazio em engines que não expõem o catálogo.
     features: dict[str, float] = field(default_factory=dict)
+    #: Proveniência (ADR-0033): aparelho e montagem que produziram o sinal.
+    #: `device` livre (ex.: "mindwave-mobile-2"); `montage` são as posições dos
+    #: canais (ex.: ("FP1",) — N=1 hoje). Rastreabilidade/comparabilidade entre
+    #: aparelhos, ao lado de `engine_version`.
+    device: str = "unknown"
+    montage: tuple[str, ...] = ()
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -87,6 +93,9 @@ class SessionReport:
     quality: QualityMetrics
     #: Features do Catálogo N2 (DataScience/32); ver `WindowResult.features`.
     features: dict[str, float] = field(default_factory=dict)
+    #: Proveniência (ADR-0033); ver `WindowResult.device`/`montage`.
+    device: str = "unknown"
+    montage: tuple[str, ...] = ()
     comparison: AlphaComparison | None = field(default=None)
 
     def to_dict(self) -> dict:
@@ -113,8 +122,17 @@ class AnalysisEngine(ABC):
         return ()
 
     @abstractmethod
-    def process_window(self, samples: Sequence[float], fs: float) -> WindowResult:
-        """Processa uma janela de amostras (ao vivo)."""
+    def process_window(
+        self,
+        samples: Sequence[float],
+        fs: float,
+        device: str | None = None,
+    ) -> WindowResult:
+        """Processa uma janela de amostras (ao vivo).
+
+        `device`, quando fornecido, carimba a proveniência (ADR-0033): o aparelho
+        e a montagem derivada dele viajam no resultado.
+        """
 
     @abstractmethod
     def process_session(
@@ -122,10 +140,11 @@ class AnalysisEngine(ABC):
         samples: Sequence[float],
         fs: float,
         labels: Sequence[str] | None = None,
+        device: str | None = None,
     ) -> SessionReport:
         """Processa uma sessão completa (batch).
 
         `labels`, quando fornecido, é paralelo a `samples` e rotula a condição
         de cada amostra (ex.: olhos fechados/abertos), habilitando a comparação
-        do Exp. B.
+        do Exp. B. `device` carimba a proveniência (ADR-0033).
         """

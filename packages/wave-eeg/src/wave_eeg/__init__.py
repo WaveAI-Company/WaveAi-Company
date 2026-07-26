@@ -12,11 +12,19 @@ from .analysis import (
     relative_band_powers,
     total_power,
 )
+from .devices import (
+    KNOWN_DEVICES,
+    UNKNOWN_CHANNEL,
+    DeviceProfile,
+    SignalFrame,
+    montage_for,
+    profile_for,
+)
 from .features import FEATURE_CATALOG, FeatureSpec, compute_features
 from .reader import DeviceReader, SerialReader, SimulatedReader
 from .thinkgear import TGPacket, ThinkGearParser, checksum, parse_payload
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 __all__ = [
     "ThinkGearParser",
     "TGPacket",
@@ -33,4 +41,10 @@ __all__ = [
     "compute_features",
     "FEATURE_CATALOG",
     "FeatureSpec",
+    "SignalFrame",
+    "DeviceProfile",
+    "KNOWN_DEVICES",
+    "UNKNOWN_CHANNEL",
+    "montage_for",
+    "profile_for",
 ]

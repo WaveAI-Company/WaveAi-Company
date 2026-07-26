@@ -20,6 +20,7 @@ from wave_eeg.analysis import (
     preprocess,
     total_power,
 )
+from wave_eeg.devices import SignalFrame
 from wave_eeg.features import FEATURE_CATALOG, compute_features
 
 from .base import (
@@ -92,6 +93,16 @@ class WaveEegEngine(AnalysisEngine):
         quality = self._quality(raw, fs)
         return raw, powers, rel, feats, quality
 
+    def _frame(self, samples: Sequence[float], fs: float, device: str | None) -> SignalFrame:
+        """Embrulha o sinal num quadro N=1 com proveniência (ADR-0033).
+
+        A montagem é resolvida pelo `device` (registro do `wave_eeg`); device
+        ausente/desconhecido cai em "unknown" + canal genérico. É aqui que o
+        modelo já fica pronto para N canais sem reescrever o DSP.
+        """
+        dev = device.strip() if isinstance(device, str) and device.strip() else "unknown"
+        return SignalFrame.single_channel(samples, fs, dev)
+
     def _split_by_condition(self, samples: Sequence[float], labels: Sequence[str]):
         raw = np.asarray(samples, dtype=float)
         tags = np.asarray([str(v).strip().upper() for v in labels])
@@ -101,8 +112,11 @@ class WaveEegEngine(AnalysisEngine):
 
     # -- contrato --------------------------------------------------------
 
-    def process_window(self, samples: Sequence[float], fs: float) -> WindowResult:
-        raw, powers, rel, feats, quality = self._features(samples, fs)
+    def process_window(
+        self, samples: Sequence[float], fs: float, device: str | None = None
+    ) -> WindowResult:
+        frame = self._frame(samples, fs, device)
+        raw, powers, rel, feats, quality = self._features(frame.mono(), fs)
         return WindowResult(
             engine_version=self.engine_version,
             fs=float(fs),
@@ -112,6 +126,8 @@ class WaveEegEngine(AnalysisEngine):
             rel_alpha=rel["alpha"],
             quality=quality,
             features=feats,
+            device=frame.device,
+            montage=frame.montage,
         )
 
     def process_session(
@@ -119,14 +135,17 @@ class WaveEegEngine(AnalysisEngine):
         samples: Sequence[float],
         fs: float,
         labels: Sequence[str] | None = None,
+        device: str | None = None,
     ) -> SessionReport:
-        raw, powers, rel, feats, quality = self._features(samples, fs)
+        frame = self._frame(samples, fs, device)
+        mono = frame.mono()
+        raw, powers, rel, feats, quality = self._features(mono, fs)
 
         comparison = None
         if labels is not None:
             if len(labels) != len(raw):
                 raise ValueError("labels deve ter o mesmo tamanho de samples")
-            closed, opened = self._split_by_condition(samples, labels)
+            closed, opened = self._split_by_condition(mono, labels)
             if closed.size and opened.size:
                 comparison = self._compare(closed, opened, fs)
 
@@ -139,6 +158,8 @@ class WaveEegEngine(AnalysisEngine):
             rel_alpha=rel["alpha"],
             quality=quality,
             features=feats,
+            device=frame.device,
+            montage=frame.montage,
             comparison=comparison,
         )
 

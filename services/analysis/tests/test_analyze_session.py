@@ -24,6 +24,20 @@ def test_relatorio_de_sessao_sem_labels():
     assert "comparison" not in corpo
 
 
+def test_relatorio_carrega_proveniencia_do_device():
+    """ADR-0033: /analyze/session ecoa device + montagem (flui p/ persistência)."""
+    samples, _, fs = synthetic_session(secs=4.0)
+    resp = client.post(
+        "/analyze/session",
+        json={"samples": samples.tolist(), "fs": fs, "device": "mindwave-mobile-2"},
+    )
+
+    assert resp.status_code == 200
+    corpo = resp.json()
+    assert corpo["device"] == "mindwave-mobile-2"
+    assert corpo["montage"] == ["FP1"]
+
+
 def test_relatorio_de_sessao_com_labels_faz_exp_b():
     samples, labels, fs = synthetic_session(secs=30.0)
     resp = client.post(
