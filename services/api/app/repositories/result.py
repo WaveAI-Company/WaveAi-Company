@@ -21,12 +21,16 @@ class ResultRepository:
         patient_user_id: uuid.UUID,
         engine_version: str,
         metrics_encrypted: bytes,
+        device: str | None = None,
+        montage: str | None = None,
     ) -> Result:
         result = Result(
             session_id=session_id,
             patient_user_id=patient_user_id,
             engine_version=engine_version,
             metrics_encrypted=metrics_encrypted,
+            device=device,
+            montage=montage,
         )
         self._session.add(result)
         self._session.flush()

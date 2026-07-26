@@ -114,6 +114,39 @@ def test_persiste_result_cifrado_quando_ha_consentimento(db_session: Session):
     assert b"0.31" not in bruto
 
 
+def test_persiste_device_e_montagem_em_claro(db_session: Session):
+    """ADR-0033: proveniência (device + montagem) fica EM CLARO no Result."""
+    service = _service(db_session)
+    paciente = _paciente(db_session, consentiu=True)
+    sessao = _sessao(db_session, paciente)
+    metrics = {**METRICS_FALSAS, "device": "mindwave-mobile-2", "montage": ["FP1"]}
+
+    result = service.persistir(patient=paciente, session_id=sessao.id, metrics=metrics)
+
+    assert result is not None
+    # Colunas em claro (consultáveis, ao lado de engine_version).
+    persistido = db_session.execute(
+        select(Result.device, Result.montage).where(Result.id == result.id)
+    ).one()
+    assert persistido.device == "mindwave-mobile-2"
+    assert persistido.montage == "FP1"  # lista serializada por vírgula
+
+
+def test_metrics_sem_device_persiste_como_nulo(db_session: Session):
+    """Result anterior à proveniência: device/montagem NULOS, não inventados."""
+    service = _service(db_session)
+    paciente = _paciente(db_session, consentiu=True)
+    sessao = _sessao(db_session, paciente)
+
+    result = service.persistir(
+        patient=paciente, session_id=sessao.id, metrics=METRICS_FALSAS
+    )
+
+    assert result is not None
+    assert result.device is None
+    assert result.montage is None
+
+
 def test_sem_consentimento_nao_persiste(db_session: Session):
     service = _service(db_session)
     paciente = _paciente(db_session, consentiu=False)

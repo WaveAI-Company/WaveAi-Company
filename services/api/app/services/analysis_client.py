@@ -23,11 +23,17 @@ class AnalysisUnavailableError(Exception):
 class AnalysisClient(Protocol):
     """Contrato do cliente — permite substituir por um duplo nos testes."""
 
-    def analyze_window(self, samples: list[float], fs: float) -> dict[str, Any]:
+    def analyze_window(
+        self, samples: list[float], fs: float, device: str | None = None
+    ) -> dict[str, Any]:
         ...
 
     def analyze_session(
-        self, samples: list[float], fs: float, labels: list[str] | None = None
+        self,
+        samples: list[float],
+        fs: float,
+        labels: list[str] | None = None,
+        device: str | None = None,
     ) -> dict[str, Any]:
         ...
 
@@ -37,16 +43,24 @@ class HttpAnalysisClient:
         self._base_url = base_url.rstrip("/")
         self._timeout = timeout_seconds
 
-    def analyze_window(self, samples: list[float], fs: float) -> dict[str, Any]:
-        return self._post("/analyze/window", {"samples": samples, "fs": fs})
+    def analyze_window(
+        self, samples: list[float], fs: float, device: str | None = None
+    ) -> dict[str, Any]:
+        return self._post(
+            "/analyze/window", {"samples": samples, "fs": fs, "device": device}
+        )
 
     def analyze_session(
-        self, samples: list[float], fs: float, labels: list[str] | None = None
+        self,
+        samples: list[float],
+        fs: float,
+        labels: list[str] | None = None,
+        device: str | None = None,
     ) -> dict[str, Any]:
         # Timeout maior: a análise de sessão inteira é mais pesada que a janela.
         return self._post(
             "/analyze/session",
-            {"samples": samples, "fs": fs, "labels": labels},
+            {"samples": samples, "fs": fs, "labels": labels, "device": device},
             timeout=self._timeout * 6,
         )
 

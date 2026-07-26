@@ -34,6 +34,14 @@ class Result(Base):
     )
     #: Em claro: rastreabilidade (que versão produziu o resultado).
     engine_version: Mapped[str] = mapped_column(String(128), nullable=False)
+    #: Proveniência em claro (ADR-0033): aparelho e montagem que produziram o
+    #: sinal — comparabilidade/rastreabilidade entre aparelhos, ao lado de
+    #: `engine_version`. São metadados de origem, não sinal, por isso não vão no
+    #: blob cifrado. `montage` é a lista de posições dos canais serializada
+    #: (ex.: "FP1"; multicanal viraria "TP9,AF7,AF8,TP10"). Nulos em Result
+    #: anteriores a esta coluna (proveniência desconhecida — não inventada).
+    device: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    montage: Mapped[str | None] = mapped_column(String(128), nullable=True)
     #: Métricas cifradas (ver security/crypto.py). Nunca em claro no banco.
     metrics_encrypted: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
     created_at: Mapped[datetime] = mapped_column(

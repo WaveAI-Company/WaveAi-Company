@@ -51,6 +51,8 @@ class ResultService:
             patient_user_id=patient.id,
             engine_version=engine_version,
             metrics_encrypted=self._cipher.encrypt(metrics),
+            device=self._device_de(metrics),
+            montage=self._montage_de(metrics),
         )
         self._repo.auditar(
             patient_user_id=patient.id,
@@ -109,11 +111,31 @@ class ResultService:
 
     # -- interno ---------------------------------------------------------
 
+    @staticmethod
+    def _device_de(metrics: dict[str, Any]) -> str | None:
+        """Aparelho de origem carimbado pela Analysis (ADR-0033), se houver."""
+        device = metrics.get("device")
+        return str(device) if device else None
+
+    @staticmethod
+    def _montage_de(metrics: dict[str, Any]) -> str | None:
+        """Montagem (lista de posições) serializada em claro, ex.: "FP1".
+
+        A Analysis devolve a montagem como lista (um rótulo por canal); aqui vira
+        uma string separada por vírgula para caber na coluna de proveniência.
+        """
+        montage = metrics.get("montage")
+        if isinstance(montage, (list, tuple)) and montage:
+            return ",".join(str(canal) for canal in montage)
+        return None
+
     def _para_dict(self, result: Result) -> dict[str, Any]:
         return {
             "id": str(result.id),
             "session_id": str(result.session_id),
             "engine_version": result.engine_version,
+            "device": result.device,
+            "montage": result.montage,
             "created_at": result.created_at.isoformat(),
             "metrics": self._cipher.decrypt(result.metrics_encrypted),
         }

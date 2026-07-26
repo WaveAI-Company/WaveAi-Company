@@ -276,7 +276,9 @@ class StreamProtocol:
 
         try:
             metrics = self._analysis.analyze_session(
-                self.state.session_samples, float(sessao.sample_rate)
+                self.state.session_samples,
+                float(sessao.sample_rate),
+                device=sessao.device,
             )
         except AnalysisUnavailableError:
             return None, {"persisted": False, "reason": "analise indisponivel"}

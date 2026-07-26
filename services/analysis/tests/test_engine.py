@@ -75,6 +75,29 @@ def test_process_session_expoe_o_catalogo_completo(engine):
     assert report.rel_alpha == report.features["rel_alpha"]
 
 
+def test_process_carimba_proveniencia_do_device(engine):
+    """ADR-0033: device conhecido → montagem resolvida no resultado."""
+    samples, _, fs = synthetic_session(secs=4.0)
+    janela = samples[: int(fs * 4)]
+
+    win = engine.process_window(janela, fs, device="mindwave-mobile-2")
+    assert win.device == "mindwave-mobile-2"
+    assert win.montage == ("FP1",)
+
+    rep = engine.process_session(samples, fs, device="mindwave-mobile-2")
+    assert rep.device == "mindwave-mobile-2"
+    assert rep.montage == ("FP1",)
+
+
+def test_process_sem_device_fica_unknown(engine):
+    """Sem device declarado, a proveniência é 'unknown' — não inventada."""
+    samples, _, fs = synthetic_session(secs=4.0)
+    win = engine.process_window(samples[: int(fs * 4)], fs)
+    assert win.device == "unknown"
+    # Um canal, posição não declarada (rótulo genérico).
+    assert win.montage == ("CH1",)
+
+
 def test_process_window_reporta_qualidade_sem_veredito(engine):
     samples, _, fs = synthetic_session(secs=4.0)
     res = engine.process_window(samples[: int(fs * 4)], fs)
