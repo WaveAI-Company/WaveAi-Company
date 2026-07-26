@@ -23,6 +23,7 @@ from wave_eeg.analysis import (
 from wave_eeg.devices import SignalFrame
 from wave_eeg.esense import ESENSE_CATALOG
 from wave_eeg.features import FEATURE_CATALOG, compute_features
+from wave_eeg.quality import assess_quality
 
 from .base import (
     AlphaComparison,
@@ -34,8 +35,9 @@ from .base import (
 
 #: Versão desta adaptação. Combinada com a versão do pacote de análise para dar
 #: rastreabilidade completa do resultado (o wrapper evolui independentemente).
-#: v0.2.0 (N3-a.1): passa a expor o Catálogo de Features N2 (DataScience/32).
-IMPL_VERSION = "0.2.0"
+#: v0.2.0 (N3-a.1): expõe o Catálogo de Features N2 (DataScience/32).
+#: v0.3.0 (N3-b): o `quality` ganha score 0..1 + rejeição grossa (ADR-0031).
+IMPL_VERSION = "0.3.0"
 
 #: Especificações do catálogo em forma serializável (metadados estáticos).
 _FEATURE_CATALOG = tuple(asdict(spec) for spec in FEATURE_CATALOG)
@@ -77,10 +79,19 @@ class WaveEegEngine(AnalysisEngine):
         """
         mains = float(mains_power(x, fs))
         total = float(total_power(x, fs))
+        std = float(np.std(x))
+        ratio = float(mains / total) if total else 0.0
+        # Veredito (ADR-0031): score 0..1 + rejeição grossa. Decisão versionada
+        # vive no pacote (`wave_eeg.quality`); aqui só se anexa ao contrato.
+        verdict = assess_quality(x, fs, mains_power_ratio=ratio, signal_std=std)
         return QualityMetrics(
-            signal_std=float(np.std(x)),
+            signal_std=std,
             mains_power=mains,
-            mains_power_ratio=float(mains / total) if total else 0.0,
+            mains_power_ratio=ratio,
+            score=verdict.score,
+            rejected=verdict.rejected,
+            reason=verdict.reason,
+            artifact_ratio=verdict.artifact_ratio,
         )
 
     def _features(self, samples: Sequence[float], fs: float):

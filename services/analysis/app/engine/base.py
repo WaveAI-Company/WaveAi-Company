@@ -17,11 +17,13 @@ from typing import Sequence
 
 @dataclass(frozen=True)
 class QualityMetrics:
-    """Métricas objetivas de qualidade do sinal.
+    """Métricas objetivas de qualidade do sinal + veredito (ADR-0031).
 
-    Deliberadamente **sem limiar e sem veredito**: o que conta como sinal
-    "bom o suficiente" ainda não está definido (ver Q-TEC-06 em
-    `04_Open_Questions.md`). Aqui só medimos; a interpretação vem depois.
+    As métricas objetivas (`signal_std`, `mains_power`, `mains_power_ratio`)
+    continuam **cruas e sem limiar** — honestidade visual (ADR-0027). Sobre elas,
+    o ADR-0031 adiciona um **score contínuo 0..1** e uma **rejeição grossa**
+    (limiares **provisórios**, versionados por `engine_version`, iterados pela
+    Exp. A). Os campos de veredito têm default (retrocompatível).
     """
 
     signal_std: float
@@ -37,6 +39,21 @@ class QualityMetrics:
     — que param em 45 Hz e deixariam os 60 Hz da rede de fora, permitindo
     razões acima de 1.
     """
+
+    score: float = 1.0
+    """Qualidade contínua 0..1 (1 = melhor), provisória (ADR-0031). Preserva o
+    dado: não é um booleano que joga fora informação."""
+
+    rejected: bool = False
+    """Rejeição **grossa**: janela claramente inutilizável (chapada, rede quase
+    total, ou amplitude de artefato na maior parte). Conservadora — não 'limpa'
+    artefato residual."""
+
+    reason: str = ""
+    """Motivos da rejeição (vazio se não rejeitada)."""
+
+    artifact_ratio: float = 0.0
+    """Fração de épocas com amplitude de artefato (transientes, gate do Exp. D)."""
 
 
 @dataclass(frozen=True)
