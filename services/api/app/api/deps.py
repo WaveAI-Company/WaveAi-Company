@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import uuid
 from collections.abc import Callable, Iterator
 
@@ -21,6 +22,7 @@ from ..security.tokens import InvalidTokenError, decode_access_token
 from ..services.analysis_client import AnalysisClient, HttpAnalysisClient
 from ..services.auth import AuthService
 from ..services.care import CareService
+from ..services.narrator import Narrator, build_narrator
 from ..services.results import ResultService
 
 _bearer = HTTPBearer(auto_error=False)
@@ -103,6 +105,16 @@ def get_analysis_client(settings: Settings = Depends(get_settings)) -> AnalysisC
     return HttpAnalysisClient(
         base_url=settings.analysis_url,
         timeout_seconds=settings.analysis_timeout_seconds,
+    )
+
+
+def get_narrator(settings: Settings = Depends(get_settings)) -> Narrator:
+    """Narrador do relatório (N6-b). Nulo por padrão: só vira LLM com a flag
+    ligada E `ANTHROPIC_API_KEY` no ambiente (lida pelo SDK, fora do prefixo)."""
+    return build_narrator(
+        enabled=settings.narrative_enabled,
+        model=settings.narrative_model,
+        api_key=os.environ.get("ANTHROPIC_API_KEY"),
     )
 
 
