@@ -43,6 +43,23 @@ Status possíveis: `Proposta` · `Aceita` · `Substituída` · `Revogada`.
 
 ---
 
+## ADR-0009 — Abordagem inicial de IA: heurística DSP + estatística; transfer learning de EEG parqueado sob gatilho
+**Status:** Aceita (2026-07-26)
+**Contexto:** Resolve **Q-AI-02** (heurística DSP × ML) e relaciona **Q-AI-01** (dados rotulados). O pipeline hoje é 100% **DSP transparente + estatística**: Catálogo de Features N2 ([DataScience/32](DataScience/32_Feature_Catalog.md)), qualidade (**ADR-0031**), baseline pessoal + desvio N σ (**ADR-0032**) e tendências longitudinais (N5). O fundador levantou se **importar modelos de EEG pré-treinados** (transfer learning) já ajudaria.
+
+**[FATO] Não faz sentido agora — e não por ser prematuro, mas por razões concretas:** (1) **montagem** — modelos pré-treinados de EEG exploram **estrutura espacial multicanal**; nós somos **1 canal (FP1)**, então a maior parte do que eles codificam não se aplica; (2) transfer learning **reduz mas não elimina** a necessidade de **dado rotulado do nosso domínio** (consumo seco FP1, o gap que o Exp. D expôs) — **Q-AI-01 segue aberta**; (3) é **caixa-preta** e briga com o **XAI** que o médico precisa (caberia só como sinal secundário rotulado, nos termos da **ADR-0034**); (4) **não há tarefa supervisionada definida** (não classificamos diagnóstico — Medical/71).
+
+**Decisão:** abordagem inicial = **heurística de DSP + estatística** (baselines pessoais, tendências). **ML / transfer learning de EEG fica parqueado** e **reentra sob QUALQUER gatilho:**
+- **(A)** upgrade para **multicanal** (ex.: Muse 2 — forward-proofing da **ADR-0033**): aí features espaciais + ICA entram e modelos channel-agnostic passam a fazer sentido;
+- **(B)** existir **dado rotulado do nosso domínio** (Q-AI-01 resolvida, com protocolo + base legal — Q-ETH-01);
+- **(C)** haver uma **tarefa supervisionada concreta** com benchmark para superar as features transparentes.
+
+Quando reentrar, **pluga atrás do `AnalysisEngine`** (novo `engine_version`), como sinal **explicável** ou **secundário rotulado** — nunca fundamento opaco de claim. Nota útil: já fazemos a **transferência que cabe em 1 canal** — transferir **conhecimento da literatura** (Berger, bandas, assinaturas de artefato do Exp. D) para features desenhadas à mão.
+**Alternativas consideradas:** (a) **adotar transfer learning já** — rejeitada (montagem + dado + caixa-preta); (b) **descartar ML de vez** — rejeitada: o gatilho multicanal é real e **parquear custa zero** (já é plugável).
+**Consequências:** **nenhuma mudança no plano atual**; a arquitetura (`AnalysisEngine`, corpus de pesquisa N4, forward-proofing multicanal) já acomoda a reentrada. Resolve **Q-AI-02**; **Q-AI-01** permanece aberta como pré-condição. Relaciona ADR-0033, ADR-0034, [DataScience/30](DataScience/30_EEG_Signal_Processing_Strategy.md) e a **ADR-0035** (camada de linguagem).
+
+---
+
 ## Decisões pendentes (a virar ADR quando maduras)
 
 | Futuro ADR | Tema | Depende de | Prioridade |
@@ -51,7 +68,6 @@ Status possíveis: `Proposta` · `Aceita` · `Substituída` · `Revogada`.
 | ADR-0006 | Stack **mobile** (React Native × Flutter × nativo) | Q-TEC-03, teste de SDK NeuroSky | P1 |
 | ADR-0007 | **Banco de série temporal** e retenção | Q-TEC-04 | P1 |
 | ADR-0008 | Provedor de **nuvem** e região (LGPD) | Q-LGP-01, ADR-0002 | P0 |
-| ADR-0009 | Abordagem inicial de **IA** (heurística DSP × ML) | Q-AI-02, dados disponíveis | P1 |
 | ADR-0010 | Estratégia de **on-ramp de bem-estar** | Q-REG-03 | P0 |
 | ADR-0011 | **Arquitetura de streaming** (WebSocket × MQTT × Kafka) | Q-TEC-01/02 | P1 |
 
@@ -337,3 +353,19 @@ Recompilar, por sua vez, esbarrou num problema de ambiente da máquina de desenv
 **Alternativas consideradas:** (a) **manter excluído** — mais puro, mas descarta um sinal já disponível e gratuito num produto que não fecha diagnóstico; (b) **usar eSense como métrica principal** — rejeitada: é caixa-preta, mataria a explicabilidade que o médico precisa e a honestidade do produto.
 
 **Consequências:** o `capture` passará a registrar `attention`/`meditation` (hoje grava só raw+poor_signal); o `AnalysisEngine`/N3 e o Catálogo ([DataScience/32](DataScience/32_Feature_Catalog.md)) ganham uma seção eSense marcada **proprietária/cautela**; a UI (N6) deve exibir o rótulo. **Refina** [DataScience/30](DataScience/30_EEG_Signal_Processing_Strategy.md) §2 (de "no máximo exploratória" para "exploratória, incorporada e rotulada"). Relaciona Medical/71, ADR-0030 (proveniência), ADR-0032 (evento) e o Catálogo N2.
+
+---
+
+## ADR-0035 — Camada de IA de linguagem: sumário determinístico primeiro, narrativa-LLM aterrada depois; RAG fora de escopo
+**Status:** Aceita (2026-07-26)
+**Contexto:** O N5 produz **relatórios longitudinais determinísticos** (níveis, extremos, tendências por feature — `wave_eeg.longitudinal`). Surge como **comunicá-los em linguagem** ao médico/paciente, e se um **RAG** sobre literatura faria sentido. Distinção-chave: um **LLM não lê o sinal cru de EEG**; onde ele ajuda é a **camada de linguagem** sobre os números que o motor determinístico já produziu.
+
+**[FATO] O risco vive na linguagem, não nos números.** Uma claim clínica alucinada, ou uma citação de literatura errada em conteúdo de saúde, é **passivo regulatório** ([Medical/71](Medical/71_Intended_Use_and_Regulatory_Positioning.md)). Por isso a base tem de ser **determinística e auditável**, e qualquer LLM entra **aterrado** nela.
+
+**Decisão:**
+1. **Começar determinístico:** a comunicação em linguagem nasce como **sumário por template** sobre o relatório determinístico (**N5-c**) — risco de alucinação **zero**, cada número **rastreável**. É a forma legível do relatório.
+2. **Narrativa por LLM é upgrade de fluência, posterior (N6):** um **sumarizador aterrado** — entra o relatório determinístico, sai prosa **estritamente derivada dele**; **proibido interpretar clinicamente**; disclaimer **não-diagnóstico** carimbado; higiene anti prompt-injection. É **"tradutor", nunca "analista"**; nunca base de claim.
+3. **RAG / contextualização contra literatura: FORA DE ESCOPO.** Maior risco (citação/alucinação em saúde) e menor urgência. Se um dia reentrar, exige **ADR próprio** e corpus curado com disciplina de citação.
+
+**Alternativas consideradas:** (a) **começar com LLM direto** — rejeitada: sem a base determinística confiável, a prosa vira risco; (b) **RAG já no N5/N6** — rejeitada: risco regulatório desproporcional à urgência; (c) **nenhuma camada de linguagem** — rejeitada: o relatório numérico sozinho é pouco acessível ao leitor final.
+**Consequências:** **N5 ganha N5-c** (sumário por template, sem LLM); **N6 ganha o item "narrativa-LLM aterrada"** com os guarda-corpos acima; **RAG sai do roadmap** (candidato futuro, gated por ADR). Relaciona **ADR-0009** (o LLM é modelo pronto, sem treino nosso), Medical/71 e o N5.

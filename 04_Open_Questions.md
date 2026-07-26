@@ -116,3 +116,14 @@ Decisões do fundador registradas como **ADR-0030/0031/0032/0033** ([05_Decision
 |---|---|---|---|
 | **Q-DAT-01 (nova)** | Qual a origem de **dados rotulados** para treinar/validar detectores e o baseline populacional (sintético parametrizado × dataset público × autocaptação)? | P1 | Detectores, cold-start (ADR-0032) |
 | **Q-SIG-04 (nova)** | O ambiente de captação consegue **reduzir a contaminação de 60 Hz** (afastar de fontes/carregadores; contato do clipe de orelha)? **A testar na recoleta.** | P1 | Qualidade do estudo de fidelidade |
+
+---
+
+## Atualizações (2026-07-26) — estratégia de IA (heurística×ML, transfer learning, camada de linguagem)
+
+| ID | Situação | Resolução |
+|---|---|---|
+| **Q-AI-02** | **Resolvida** | Início = **heurística DSP + estatística**; ML/**transfer learning de EEG parqueado** e reentra sob gatilho (multicanal / dado rotulado / tarefa supervisionada). Motivos concretos do "não agora": montagem 1-canal-FP1, dado do domínio ainda ausente, caixa-preta vs XAI, sem tarefa definida. **ADR-0009.** |
+| **Q-AI-01 / Q-DAT-01** | **Segue aberta (pré-condição)** | Transfer learning **não dispensa** dado rotulado do nosso domínio; é justamente o gatilho (B) da ADR-0009. Sem mudança de status. |
+| **Q-AI-03** (explicabilidade) | **Reforçada** | A decisão mantém a **camada primária transparente/XAI**; qualquer modelo pronto entra como sinal **secundário rotulado** (ADR-0034), nunca fundamento. |
+| **Camada de linguagem** (nova decisão) | **Resolvida** | Relatório: **sumário determinístico por template primeiro** (N5-c); **narrativa-LLM aterrada** só depois (N6), como "tradutor" rotulado não-diagnóstico; **RAG/literatura fora de escopo**. **ADR-0035.** |
