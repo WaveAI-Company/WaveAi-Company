@@ -35,6 +35,9 @@ class WindowRequest(BaseModel):
     #: CPU/memória demais — o gateway já limita o bloco, isto é a segunda rede.
     samples: list[float] = Field(min_length=16, max_length=32_768)
     fs: float = Field(gt=0, le=20_000)
+    #: Aparelho de origem (ADR-0033): carimba proveniência (device + montagem)
+    #: no resultado. Opcional — ausente vira "unknown".
+    device: str | None = Field(default=None, max_length=64)
 
 
 class SessionRequest(BaseModel):
@@ -45,6 +48,8 @@ class SessionRequest(BaseModel):
     #: Rótulos paralelos a `samples` (ex.: OC/OA). Habilita a comparação do
     #: Exp. B quando presentes; ausentes, o relatório traz só bandas/qualidade.
     labels: list[str] | None = None
+    #: Aparelho de origem (ADR-0033); ver `WindowRequest.device`.
+    device: str | None = Field(default=None, max_length=64)
 
 
 @app.get("/health")
@@ -76,9 +81,11 @@ def analyze_window(payload: WindowRequest) -> dict:
     aqui só se adapta a entrada e se serializa a saída. Quem chama não escolhe
     parâmetro de análise, apenas envia o sinal.
     """
-    resultado = engine.process_window(payload.samples, payload.fs)
+    resultado = engine.process_window(payload.samples, payload.fs, device=payload.device)
     return {
         "engine_version": resultado.engine_version,
+        "device": resultado.device,
+        "montage": list(resultado.montage),
         "fs": resultado.fs,
         "n_samples": resultado.n_samples,
         "rel_alpha": resultado.rel_alpha,
@@ -103,11 +110,15 @@ def analyze_session(payload: SessionRequest) -> dict:
     if payload.labels is not None and len(payload.labels) != len(payload.samples):
         raise HTTPException(status_code=422, detail="labels e samples com tamanhos diferentes")
 
-    report = engine.process_session(payload.samples, payload.fs, labels=payload.labels)
+    report = engine.process_session(
+        payload.samples, payload.fs, labels=payload.labels, device=payload.device
+    )
     comparison = report.comparison
 
     corpo: dict = {
         "engine_version": report.engine_version,
+        "device": report.device,
+        "montage": list(report.montage),
         "fs": report.fs,
         "n_samples": report.n_samples,
         "rel_alpha": report.rel_alpha,
@@ -141,12 +152,14 @@ def analyze_demo() -> dict:
     fictícios (`data_source: "synthetic"`).
     """
     samples, labels, fs = synthetic_session(secs=settings.demo_seconds)
-    report = engine.process_session(samples, fs, labels=labels)
+    report = engine.process_session(samples, fs, labels=labels, device="simulador")
     comparison = report.comparison
 
     return {
         "engine_version": report.engine_version,
         "data_source": "synthetic",
+        "device": report.device,
+        "montage": list(report.montage),
         "fs": report.fs,
         "n_samples": report.n_samples,
         "rel_alpha": {
