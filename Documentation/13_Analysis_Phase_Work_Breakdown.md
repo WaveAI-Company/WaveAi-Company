@@ -41,9 +41,14 @@ O **MVP (esqueleto) está concluído** (M0–M5): a plataforma capta EEG **real*
 
 ### N5 — Analytics & Relatórios sofisticados
 - Relatórios por sessão **e longitudinais** para stakeholders especializados; métricas agregadas; exportações. Base para dashboards mais aplicados.
+- **N5-a** núcleo de tendências longitudinais (`wave_eeg.longitudinal`, determinístico); **N5-b** endpoint que lê os `Result` do titular e devolve o relatório; **N5-c** **sumário por template** (linguagem legível **determinística, sem LLM** — [ADR-0035](../05_Decisions.md)).
 
 ### N6 — Adaptação da UI *(só depois de N3–N5)*
 - Adaptar o app (dashboards por papel) para exibir as novas saídas, mantendo a **honestidade visual** (ADR-0027, eixos rotulados, sem veredito inventado) e **sem claim clínica**.
+- **Narrativa-LLM aterrada** (upgrade de fluência do sumário do N5-c): sumarizador que só deriva do relatório determinístico, rotulado não-diagnóstico, com guarda-corpos — [ADR-0035](../05_Decisions.md). **RAG/literatura fica fora de escopo** (candidato futuro, ADR próprio).
+
+## Estratégia de IA/ML (transversal)
+Abordagem inicial = **heurística DSP + estatística** ([ADR-0009](../05_Decisions.md)). **ML / transfer learning de EEG está parqueado** e reentra sob gatilho (upgrade multicanal / dado rotulado do domínio / tarefa supervisionada) — plugando **atrás do `AnalysisEngine`** como sinal explicável ou secundário rotulado. Modelos **prontos de linguagem (LLM)** entram só na **camada de narrativa** (N6), aterrados; não leem o sinal cru.
 
 ## Como levar ao Claude Code
 Mesmo fluxo do MVP: **uma issue por PR**, **plano antes de codar**, **testes como contrato** (sintéticos), **ADR para cada decisão** (D1–D3 primeiro). Guia em [12_Claude_Code_Guide](12_Claude_Code_Guide.md).
