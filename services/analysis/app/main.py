@@ -53,6 +53,21 @@ def health() -> dict[str, str]:
     return {"status": "ok"}
 
 
+@app.get("/features/catalog")
+def features_catalog() -> dict:
+    """Catálogo de Features N2 (DataScience/32): metadados **estáticos** de cada
+    feature (unidade, faixa, interpretação, `reliability`, montagem).
+
+    Servido à parte dos resultados por ser metadado de catálogo (não muda por
+    sessão). A `reliability` sustenta a honestidade científica na UI/relatórios.
+    """
+    return {
+        "engine_version": engine.engine_version,
+        "features": list(engine.feature_catalog),
+        "disclaimer": DISCLAIMER,
+    }
+
+
 @app.post("/analyze/window")
 def analyze_window(payload: WindowRequest) -> dict:
     """Analisa uma janela e devolve as features ao vivo.
@@ -68,6 +83,7 @@ def analyze_window(payload: WindowRequest) -> dict:
         "n_samples": resultado.n_samples,
         "rel_alpha": resultado.rel_alpha,
         "relative_band_powers": resultado.relative_band_powers,
+        "features": resultado.features,
         "quality": {
             "signal_std": resultado.quality.signal_std,
             "mains_power": resultado.quality.mains_power,
@@ -97,6 +113,7 @@ def analyze_session(payload: SessionRequest) -> dict:
         "rel_alpha": report.rel_alpha,
         "relative_band_powers": report.relative_band_powers,
         "band_powers": report.band_powers,
+        "features": report.features,
         "quality": {
             "signal_std": report.quality.signal_std,
             "mains_power": report.quality.mains_power,
@@ -146,6 +163,7 @@ def analyze_demo() -> dict:
             "passed": comparison.passed,
         },
         "relative_band_powers": report.relative_band_powers,
+        "features": report.features,
         "quality": {
             "signal_std": report.quality.signal_std,
             "mains_power": report.quality.mains_power,
