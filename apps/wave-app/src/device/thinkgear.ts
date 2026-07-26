@@ -15,6 +15,11 @@
 const SYNC = 0xaa;
 
 const CODE_POOR_SIGNAL = 0x02;
+// eSense (ADR-0034): métricas PROPRIETÁRIAS e não-validadas da NeuroSky, 0..100,
+// entregues em pacotes próprios (1 byte). Decodificar aqui é só protocolo — o
+// rótulo obrigatório e a separação das features transparentes vivem na UI.
+const CODE_ATTENTION = 0x04;
+const CODE_MEDITATION = 0x05;
 const CODE_RAW = 0x80;
 
 /** PLENGTH válido é 0..169 (170 = 0xAA, reservado ao SYNC). */
@@ -23,6 +28,10 @@ const MAX_PLENGTH = 169;
 export type TGPacket = {
   rawSamples: number[];
   poorSignal?: number;
+  /** eSense Attention (0..100) — proprietário/não-validado (ADR-0034). */
+  attention?: number;
+  /** eSense Meditation (0..100) — proprietário/não-validado (ADR-0034). */
+  meditation?: number;
 };
 
 export function checksum(payload: Uint8Array): number {
@@ -64,6 +73,8 @@ export function parsePayload(payload: Uint8Array): TGPacket {
       const valor = payload[i];
       i += 1;
       if (code === CODE_POOR_SIGNAL) pacote.poorSignal = valor;
+      else if (code === CODE_ATTENTION) pacote.attention = valor;
+      else if (code === CODE_MEDITATION) pacote.meditation = valor;
     }
   }
   return pacote;
