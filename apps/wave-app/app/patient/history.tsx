@@ -1,8 +1,10 @@
 import { useFocusEffect } from "expo-router";
 import { useCallback, useState } from "react";
 
+import { getMyReport, type LongitudinalReport as Report } from "../../src/api/report";
 import { listMyResults, type SessionResult } from "../../src/api/results";
 import { Disclaimer } from "../../src/components/Disclaimer";
+import { LongitudinalReport } from "../../src/components/LongitudinalReport";
 import { ScreenContainer } from "../../src/components/ScreenContainer";
 import { ScreenHeading } from "../../src/components/ScreenHeading";
 import { SessionsDashboard } from "../../src/components/SessionsDashboard";
@@ -17,6 +19,7 @@ import { StateView } from "../../src/components/StateView";
  */
 export default function PatientHistoryScreen() {
   const [results, setResults] = useState<SessionResult[]>([]);
+  const [report, setReport] = useState<Report | null>(null);
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
 
@@ -29,6 +32,13 @@ export default function PatientHistoryScreen() {
       setErro("Não foi possível carregar suas sessões.");
     } finally {
       setLoading(false);
+    }
+    // O relatório depende da Analysis estar de pé; sua falha (ex.: 503) não pode
+    // esconder as sessões — por isso carrega à parte e some sem alarde.
+    try {
+      setReport(await getMyReport());
+    } catch {
+      setReport(null);
     }
   }, []);
 
@@ -58,7 +68,10 @@ export default function PatientHistoryScreen() {
       />
 
       {!loading && !erro && results.length > 0 ? (
-        <SessionsDashboard results={results} />
+        <>
+          {report && report.n_sessions > 0 ? <LongitudinalReport report={report} /> : null}
+          <SessionsDashboard results={results} />
+        </>
       ) : null}
 
       <Disclaimer variant="medidas" />
