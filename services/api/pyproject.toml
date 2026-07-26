@@ -19,6 +19,9 @@ dependencies = [
     "pyjwt>=2.8",
     "httpx>=0.27",
     "cryptography>=42.0",
+    # Narrativa-LLM aterrada (N6-b, ADR-0035). Opcional em runtime: sem
+    # ANTHROPIC_API_KEY o gateway usa o sumário determinístico (N5-c).
+    "anthropic>=0.40",
 ]
 
 [project.optional-dependencies]

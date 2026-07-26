@@ -40,7 +40,20 @@ export function LongitudinalReport({ report, accent }: Props) {
 
   return (
     <View style={styles.wrapper}>
-      {report.summary.length > 0 ? (
+      {report.narrative ? (
+        // Camada de linguagem por LLM (N6-b): prosa aterrada no sumário.
+        // Rotulada como gerada por IA e não-diagnóstica (ADR-0035 / Medical/71).
+        <Card
+          title="Resumo do período"
+          subtitle={periodo ? `${report.n_sessions} sessões · ${periodo}` : undefined}
+          accent={cor}
+        >
+          <Text style={styles.sumario}>{report.narrative}</Text>
+          <Text style={styles.aiLabel}>
+            Texto gerado por IA a partir das suas medidas — não-diagnóstico.
+          </Text>
+        </Card>
+      ) : report.summary.length > 0 ? (
         <Card
           title="Resumo do período"
           subtitle={periodo ? `${report.n_sessions} sessões · ${periodo}` : undefined}
@@ -94,6 +107,13 @@ const criarEstilos = (t: Theme) =>
       color: t.colors.text,
       fontSize: 14,
       lineHeight: 20,
+    },
+    aiLabel: {
+      ...t.typography.caption,
+      color: t.colors.textMuted,
+      fontSize: 11,
+      fontStyle: "italic",
+      marginTop: t.spacing.xs,
     },
     legenda: {
       ...t.typography.caption,

@@ -49,6 +49,12 @@ export type LongitudinalReport = {
   report: LongitudinalData;
   /** Frases do sumário determinístico (N5-c). Já vêm rotuladas não-clínicas. */
   summary: string[];
+  /**
+   * Narrativa aterrada por LLM (N6-b, ADR-0035): prosa derivada do sumário
+   * acima. `null` quando desligada/indisponível — aí o app mostra o `summary`
+   * determinístico. Sempre rotulada como gerada por IA e não-diagnóstica.
+   */
+  narrative: string | null;
   disclaimer: string | null;
 };
 
