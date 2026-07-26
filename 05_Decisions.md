@@ -369,3 +369,18 @@ Recompilar, por sua vez, esbarrou num problema de ambiente da máquina de desenv
 
 **Alternativas consideradas:** (a) **começar com LLM direto** — rejeitada: sem a base determinística confiável, a prosa vira risco; (b) **RAG já no N5/N6** — rejeitada: risco regulatório desproporcional à urgência; (c) **nenhuma camada de linguagem** — rejeitada: o relatório numérico sozinho é pouco acessível ao leitor final.
 **Consequências:** **N5 ganha N5-c** (sumário por template, sem LLM); **N6 ganha o item "narrativa-LLM aterrada"** com os guarda-corpos acima; **RAG sai do roadmap** (candidato futuro, gated por ADR). Relaciona **ADR-0009** (o LLM é modelo pronto, sem treino nosso), Medical/71 e o N5.
+
+## ADR-0036 — Persona inicial: acompanhamento de bem-estar (estresse/relaxamento), não-clínico
+**Status:** Aceita (2026-07-26)
+**Contexto:** A fase **Produto & UX** ([Documentation/14](Documentation/14_Product_UX_Phase_Work_Breakdown.md)) exige uma persona para dar linguagem "didática" à UI — e a **Q-PRD-01** (P0) estava aberta. Restrições: posicionamento **não-clínico** nesta fase (Medical/71, ADR-0012); o que o sinal **honestamente sustenta** (H-SIG-01 🟡 — tendências de estado, com o **alfa** replicável no Exp. B como âncora); o dyad já construído (paciente capta em casa → profissional revisa tendências/relatório via CareLink).
+
+**[FATO] A persona de agora é de bem-estar; a visão clínica (CDS, Fases 4–6) é futura.** Escolher a persona não pode contradizer nem o não-clínico de hoje nem o caminho clínico de amanhã.
+
+**Decisão:**
+1. **Persona primária = adulto em acompanhamento de bem-estar (gestão de estresse/relaxamento)**, acompanhando as próprias tendências de estado ao longo do tempo, com um profissional revisando. Alavanca o achado mais defensável (alfa em repouso/olhos fechados). **Nada de claim clínica** (bem-estar, tendências, exploratório).
+2. **Enquadramento do acompanhante = "profissional de bem-estar"** (psicólogo/terapeuta/coach) **na linguagem/UI** — não "médico". **O papel `doctor` no modelo de dados permanece** (autorização, CareLink, auditoria): a visão de longo prazo (CDS clínico) fica intacta; muda só a **cópia**, não a arquitetura.
+3. **Contexto de uso:** autocaptação em casa + revisão **assíncrona** do profissional pelo relatório longitudinal/narrativa (o que já está construído).
+
+**Alternativas consideradas:** (a) **foco & meditação** — mais motivador, mas apoia-se mais no eSense (proprietário/rotulado) e menos no achado defensável; fica como extensão futura da persona, não a âncora. (b) **autoconhecimento/quantified-self genérico** — rejeitada como primária: persona vaga, papel do profissional fraco, difícil ser "didático para alguém". (c) **renomear o papel `doctor` no modelo** — rejeitada: acoplaria a cópia de produto à arquitetura e complicaria a visão clínica futura.
+
+**Consequências:** resolve **Q-PRD-01** ([04_Open_Questions](04_Open_Questions.md)); a linguagem didática (P1) e o onboarding (P4) miram esta persona; textos usam "profissional de bem-estar"; o listing da Play Store (P5) segue o mesmo enquadramento não-clínico. **Q-PRD-02** (modelo de negócio) e **Q-REG-03** (on-ramp de bem-estar) permanecem, agora informadas por esta persona. Relaciona Medical/71 e ADR-0012.
