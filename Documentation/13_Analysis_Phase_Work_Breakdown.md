@@ -3,7 +3,7 @@
 | Campo | Valor |
 |---|---|
 | Versão | 0.1 |
-| Status | Vivo — fonte das issues da Fase 2 |
+| Status | **CONCLUÍDA** (2026-07-26) — N1–N6 entregues. Próxima fase: [Documentation/14 · Produto & UX](14_Product_UX_Phase_Work_Breakdown.md) |
 | Data | 2026-07-21 |
 | Documentos relacionados | [11_MVP_Work_Breakdown](11_MVP_Work_Breakdown.md), [DataScience/30](../DataScience/30_EEG_Signal_Processing_Strategy.md), [DataScience/31](../DataScience/31_Signal_Fidelity_Study_Protocol.md), [Medical/71](../Medical/71_Intended_Use_and_Regulatory_Positioning.md)/[72](../Medical/72_Consent_and_Data_Subject_Rights.md), [MASTER_PLAN](../MASTER_PLAN.md) |
 
@@ -46,6 +46,8 @@ O **MVP (esqueleto) está concluído** (M0–M5): a plataforma capta EEG **real*
 ### N6 — Adaptação da UI *(só depois de N3–N5)*
 - Adaptar o app (dashboards por papel) para exibir as novas saídas, mantendo a **honestidade visual** (ADR-0027, eixos rotulados, sem veredito inventado) e **sem claim clínica**.
 - **Narrativa-LLM aterrada** (upgrade de fluência do sumário do N5-c): sumarizador que só deriva do relatório determinístico, rotulado não-diagnóstico, com guarda-corpos — [ADR-0035](../05_Decisions.md). **RAG/literatura fica fora de escopo** (candidato futuro, ADR próprio).
+
+> **[STATUS 2026-07-26] FASE CONCLUÍDA.** N6-a (UI do relatório longitudinal, PR #72), N6-b (narrativa-LLM aterrada, PR #73) e **N6-c** (eSense ao vivo: relay no gateway PR #74 + vertical do app PR #75, **validado no NeuroSky real**) entregues. Toda a fase N1–N6 está fechada; a continuação da UI/produto passa para a fase **[Produto & UX](14_Product_UX_Phase_Work_Breakdown.md)**.
 
 ## Estratégia de IA/ML (transversal)
 Abordagem inicial = **heurística DSP + estatística** ([ADR-0009](../05_Decisions.md)). **ML / transfer learning de EEG está parqueado** e reentra sob gatilho (upgrade multicanal / dado rotulado do domínio / tarefa supervisionada) — plugando **atrás do `AnalysisEngine`** como sinal explicável ou secundário rotulado. Modelos **prontos de linguagem (LLM)** entram só na **camada de narrativa** (N6), aterrados; não leem o sinal cru.
