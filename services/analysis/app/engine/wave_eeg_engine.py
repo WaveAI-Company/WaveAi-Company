@@ -23,6 +23,7 @@ from wave_eeg.analysis import (
 from wave_eeg.baseline import build_baseline, deviations
 from wave_eeg.devices import SignalFrame
 from wave_eeg.longitudinal import longitudinal_report as _longitudinal_report
+from wave_eeg.summary import summarize_report as _summarize_report
 from wave_eeg.esense import ESENSE_CATALOG
 from wave_eeg.features import FEATURE_CATALOG, compute_features
 from wave_eeg.quality import assess_quality
@@ -78,6 +79,10 @@ class WaveEegEngine(AnalysisEngine):
     ) -> dict:
         """Relatório longitudinal (N5) — delega a `wave_eeg.longitudinal`."""
         return _longitudinal_report(list(sessions), quality_scores=quality_scores)
+
+    def summarize_report(self, report: dict) -> list[str]:
+        """Sumário por template determinístico (N5-c) — delega a `wave_eeg.summary`."""
+        return _summarize_report(report)
 
     # -- helpers ---------------------------------------------------------
 

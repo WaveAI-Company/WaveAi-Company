@@ -183,6 +183,7 @@ def _relatorio_longitudinal(
         "period": serie["period"],
         "engine_version": resposta.get("engine_version"),
         "report": resposta.get("report", {}),
+        "summary": resposta.get("summary", []),
         "disclaimer": resposta.get("disclaimer"),
     }
 

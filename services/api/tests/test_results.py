@@ -449,6 +449,7 @@ class _AnalysisReportFake:
         return {
             "engine_version": "fake/1.0",
             "report": {"n_sessions": len(sessions), "features": {}},
+            "summary": [f"Resumo de {len(sessions)} sessões."],
             "disclaimer": "Resultado exploratório. Não-clínico e não-diagnóstico.",
         }
 
@@ -493,6 +494,7 @@ def test_me_report_longitudinal(client_report, db_session: Session, analysis_fak
     body = resp.json()
     assert body["n_sessions"] == 2
     assert body["report"]["n_sessions"] == 2
+    assert body["summary"] == ["Resumo de 2 sessões."]  # N5-c: sumário passa adiante
     assert body["period"]["first"] == base.isoformat()
     # A Analysis recebeu a série CRONOLÓGICA (mais antiga primeiro) + qualidade.
     sessions, quality_scores = analysis_fake.calls[-1]

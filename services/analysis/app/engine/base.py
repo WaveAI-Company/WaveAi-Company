@@ -162,6 +162,12 @@ class AnalysisEngine(ABC):
         engines que o suportam sobrescrevem."""
         return {}
 
+    def summarize_report(self, report: dict) -> list[str]:
+        """Sumário em **linguagem** do relatório longitudinal — template
+        **determinístico**, sem LLM (ADR-0035, N5-c). Descritivo, não-clínico.
+        Default vazio; engines que o suportam sobrescrevem."""
+        return []
+
     @abstractmethod
     def process_window(
         self,
