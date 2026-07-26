@@ -22,8 +22,10 @@ from ..consent import CONSENT_TERM_VERSION
 from ..db.session import get_session
 from ..models.result import ResultAccessAction
 from ..models.user import User, UserRole
+from ..services.analysis_client import AnalysisClient, AnalysisUnavailableError
 from ..services.results import ResultService
 from .deps import (
+    get_analysis_client,
     get_current_user,
     get_result_service,
     require_active_care_link,
@@ -151,3 +153,64 @@ def results_do_paciente(
     results = service.listar(titular=paciente, ator=ator)
     session.commit()
     return {"patient_id": str(paciente.id), "results": results}
+
+
+# -- relatório longitudinal (N5) ----------------------------------------
+
+
+def _relatorio_longitudinal(
+    *, titular: User, ator: User, session: Session,
+    service: ResultService, analysis: AnalysisClient,
+) -> dict:
+    """Monta a série do titular (audita leitura) e pede o relatório à Analysis.
+
+    A ciência (tendências) vive atrás do `AnalysisEngine`; o gateway só entrega a
+    série cronológica de features + qualidade e serializa o resultado."""
+    serie = service.serie_longitudinal(titular=titular, ator=ator)
+    session.commit()
+    try:
+        resposta = analysis.longitudinal_report(
+            serie["sessions"], quality_scores=serie["quality_scores"]
+        )
+    except AnalysisUnavailableError:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="analise indisponivel",
+        ) from None
+    return {
+        "patient_id": str(titular.id),
+        "n_sessions": len(serie["sessions"]),
+        "period": serie["period"],
+        "engine_version": resposta.get("engine_version"),
+        "report": resposta.get("report", {}),
+        "disclaimer": resposta.get("disclaimer"),
+    }
+
+
+@router.get("/me/report/longitudinal")
+def meu_relatorio_longitudinal(
+    user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+    service: ResultService = Depends(get_result_service),
+    analysis: AnalysisClient = Depends(get_analysis_client),
+) -> dict:
+    """Titular vê o **relatório longitudinal** das próprias sessões (N5)."""
+    return _relatorio_longitudinal(
+        titular=user, ator=user, session=session, service=service, analysis=analysis
+    )
+
+
+@router.get("/patients/{patient_id}/report/longitudinal")
+def relatorio_longitudinal_do_paciente(
+    patient_id: uuid.UUID,
+    paciente: User = Depends(require_active_care_link),
+    ator: User = Depends(require_role(UserRole.DOCTOR)),
+    session: Session = Depends(get_session),
+    service: ResultService = Depends(get_result_service),
+    analysis: AnalysisClient = Depends(get_analysis_client),
+) -> dict:
+    """Médico vê o relatório longitudinal de um paciente. Exige CareLink `active`
+    (403 sem) e o acesso fica auditado em nome do titular."""
+    return _relatorio_longitudinal(
+        titular=paciente, ator=ator, session=session, service=service, analysis=analysis
+    )

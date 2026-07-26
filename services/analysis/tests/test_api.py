@@ -13,6 +13,31 @@ def test_health_ok():
     assert resp.json() == {"status": "ok"}
 
 
+def test_report_longitudinal_traz_tendencias():
+    """N5: relatório longitudinal sobre a série cronológica de features."""
+    sessions = [
+        {"rel_alpha": 0.20, "rel_beta": 0.10},
+        {"rel_alpha": 0.30, "rel_beta": 0.10},
+        {"rel_alpha": 0.40, "rel_beta": 0.10},
+    ]
+    resp = client.post(
+        "/report/longitudinal",
+        json={"sessions": sessions, "quality_scores": [0.9, 0.8, 0.7]},
+    )
+    assert resp.status_code == 200
+    body = resp.json()
+    assert "wave_eeg/" in body["engine_version"]
+    report = body["report"]
+    assert report["n_sessions"] == 3
+    assert report["features"]["rel_alpha"]["direction"] == "subindo"
+    assert report["quality"]["last"] == 0.7
+    assert "não-clínico" in body["disclaimer"].lower()
+
+
+def test_report_longitudinal_serie_vazia_e_recusada():
+    assert client.post("/report/longitudinal", json={"sessions": []}).status_code == 422
+
+
 def test_analyze_demo_retorna_rel_alpha_e_verdict():
     resp = client.post("/analyze/demo")
     assert resp.status_code == 200

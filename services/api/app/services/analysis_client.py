@@ -38,6 +38,13 @@ class AnalysisClient(Protocol):
     ) -> dict[str, Any]:
         ...
 
+    def longitudinal_report(
+        self,
+        sessions: list[dict[str, float]],
+        quality_scores: list[float] | None = None,
+    ) -> dict[str, Any]:
+        ...
+
 
 class HttpAnalysisClient:
     def __init__(self, *, base_url: str, timeout_seconds: float) -> None:
@@ -66,6 +73,17 @@ class HttpAnalysisClient:
                 "samples": samples, "fs": fs, "labels": labels,
                 "device": device, "history": history,
             },
+            timeout=self._timeout * 6,
+        )
+
+    def longitudinal_report(
+        self,
+        sessions: list[dict[str, float]],
+        quality_scores: list[float] | None = None,
+    ) -> dict[str, Any]:
+        return self._post(
+            "/report/longitudinal",
+            {"sessions": sessions, "quality_scores": quality_scores},
             timeout=self._timeout * 6,
         )
 
