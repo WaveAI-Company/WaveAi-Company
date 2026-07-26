@@ -127,3 +127,12 @@ Decisões do fundador registradas como **ADR-0030/0031/0032/0033** ([05_Decision
 | **Q-AI-01 / Q-DAT-01** | **Segue aberta (pré-condição)** | Transfer learning **não dispensa** dado rotulado do nosso domínio; é justamente o gatilho (B) da ADR-0009. Sem mudança de status. |
 | **Q-AI-03** (explicabilidade) | **Reforçada** | A decisão mantém a **camada primária transparente/XAI**; qualquer modelo pronto entra como sinal **secundário rotulado** (ADR-0034), nunca fundamento. |
 | **Camada de linguagem** (nova decisão) | **Resolvida** | Relatório: **sumário determinístico por template primeiro** (N5-c); **narrativa-LLM aterrada** só depois (N6), como "tradutor" rotulado não-diagnóstico; **RAG/literatura fora de escopo**. **ADR-0035.** |
+
+---
+
+## Atualização (2026-07-26) — persona/público-alvo (fase Produto & UX)
+
+| ID | Situação | Resolução |
+|---|---|---|
+| **Q-PRD-01** | **Resolvida** | Persona primária = **adulto em acompanhamento de bem-estar (estresse/relaxamento)**, tendências de estado ao longo do tempo, com um profissional revisando (assíncrono, via relatório/narrativa). Alavanca o **alfa** (achado defensável, Exp. B); **não-clínico** (Medical/71). Acompanhante enquadrado como **"profissional de bem-estar"** na UI/textos; o papel `doctor` **permanece no modelo de dados** (visão clínica futura intacta). **ADR-0036.** |
+| **Q-PRD-02 / Q-REG-03** | **Informadas, seguem abertas** | Modelo de negócio e on-ramp de bem-estar agora têm persona definida, mas não foram decididos. |
