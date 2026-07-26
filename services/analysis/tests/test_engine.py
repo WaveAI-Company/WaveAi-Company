@@ -2,9 +2,13 @@
 
 import numpy as np
 import pytest
+from wave_eeg import FEATURE_CATALOG
 
 from app.demo_data import synthetic_session
 from app.engine import AnalysisEngine, WaveEegEngine, get_engine
+
+#: Nomes esperados no resultado — a fonte de verdade é o Catálogo N2.
+CATALOG_NAMES = {spec.name for spec in FEATURE_CATALOG}
 
 
 @pytest.fixture
@@ -22,6 +26,23 @@ def test_engine_version_rastreavel(engine):
     assert "WaveEegEngine/" in engine.engine_version
 
 
+def test_engine_version_bump_v2(engine):
+    # N3-a.1: o wrapper subiu para 0.2.0 ao expor o Catálogo N2.
+    assert "WaveEegEngine/0.2.0" in engine.engine_version
+
+
+def test_feature_catalog_expoe_specs_com_reliability(engine):
+    catalogo = engine.feature_catalog
+    assert {spec["name"] for spec in catalogo} == CATALOG_NAMES
+    # A honestidade científica vive na reliability (defensável/cautela).
+    reliabilities = {spec["reliability"] for spec in catalogo}
+    assert reliabilities <= {"defensável", "cautela"}
+    # rms e total_power são sensíveis a escala/contato — devem ser "cautela".
+    por_nome = {spec["name"]: spec for spec in catalogo}
+    assert por_nome["rms"]["reliability"] == "cautela"
+    assert por_nome["total_power"]["reliability"] == "cautela"
+
+
 def test_process_window_extrai_features(engine):
     samples, _, fs = synthetic_session(secs=4.0)
     res = engine.process_window(samples[: int(fs * 4)], fs)
@@ -33,6 +54,25 @@ def test_process_window_extrai_features(engine):
     assert sum(res.relative_band_powers.values()) == pytest.approx(1.0, abs=1e-6)
     assert 0.0 <= res.rel_alpha <= 1.0
     assert res.rel_alpha == res.relative_band_powers["alpha"]
+
+
+def test_process_window_expoe_o_catalogo_completo(engine):
+    samples, _, fs = synthetic_session(secs=4.0)
+    res = engine.process_window(samples[: int(fs * 4)], fs)
+
+    # Todas as features do Catálogo N2 estão presentes.
+    assert set(res.features) == CATALOG_NAMES
+    # Retrocompat: os campos legados são derivados da MESMA fonte (o catálogo).
+    assert res.rel_alpha == res.features["rel_alpha"]
+    for banda in ("delta", "theta", "alpha", "beta", "gamma"):
+        assert res.relative_band_powers[banda] == res.features[f"rel_{banda}"]
+
+
+def test_process_session_expoe_o_catalogo_completo(engine):
+    samples, _, fs = synthetic_session(secs=4.0)
+    report = engine.process_session(samples, fs)
+    assert set(report.features) == CATALOG_NAMES
+    assert report.rel_alpha == report.features["rel_alpha"]
 
 
 def test_process_window_reporta_qualidade_sem_veredito(engine):

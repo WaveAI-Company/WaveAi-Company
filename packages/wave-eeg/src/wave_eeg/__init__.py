@@ -12,6 +12,7 @@ from .analysis import (
     relative_band_powers,
     total_power,
 )
+from .features import FEATURE_CATALOG, FeatureSpec, compute_features
 from .reader import DeviceReader, SerialReader, SimulatedReader
 from .thinkgear import TGPacket, ThinkGearParser, checksum, parse_payload
 
@@ -29,4 +30,7 @@ __all__ = [
     "total_power",
     "compare_eyes_closed_open",
     "BANDS",
+    "compute_features",
+    "FEATURE_CATALOG",
+    "FeatureSpec",
 ]
