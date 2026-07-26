@@ -21,6 +21,7 @@ from wave_eeg.analysis import (
     total_power,
 )
 from wave_eeg.devices import SignalFrame
+from wave_eeg.esense import ESENSE_CATALOG
 from wave_eeg.features import FEATURE_CATALOG, compute_features
 
 from .base import (
@@ -38,6 +39,8 @@ IMPL_VERSION = "0.2.0"
 
 #: Especificações do catálogo em forma serializável (metadados estáticos).
 _FEATURE_CATALOG = tuple(asdict(spec) for spec in FEATURE_CATALOG)
+#: eSense (proprietário/não-validado — ADR-0034), à parte do Catálogo N2.
+_ESENSE_CATALOG = tuple(asdict(spec) for spec in ESENSE_CATALOG)
 
 #: Rótulos aceitos por condição (Exp. B), espelhando o CLI do `wave_eeg`.
 EYES_CLOSED_LABELS = frozenset({"OC", "OF", "EYES_CLOSED", "FECHADO", "FECHADOS"})
@@ -56,6 +59,12 @@ class WaveEegEngine(AnalysisEngine):
         """Catálogo N2 (DataScience/32) em forma serializável — inclui a
         `reliability` de cada feature (defensável/cautela)."""
         return _FEATURE_CATALOG
+
+    @property
+    def esense_catalog(self) -> tuple[dict[str, str], ...]:
+        """eSense (Attention/Meditation) rotulado proprietário/não-validado
+        (ADR-0034), à parte do Catálogo N2."""
+        return _ESENSE_CATALOG
 
     # -- helpers ---------------------------------------------------------
 

@@ -1,11 +1,14 @@
 """
 CLI do spike:
   wave-eeg demo                       # Exp. B em dados sintéticos (sem hardware)
-  wave-eeg capture --port COMx        # captura raw+poor_signal do device -> CSV
+  wave-eeg capture --port COMx        # captura raw+poor_signal+eSense -> CSV
   wave-eeg analyze arquivo.csv        # análise (dois sinais agrupados) de 1 CSV
   wave-eeg exp-b b1.csv b2.csv ...    # Exp. B INTERCALADO (§12) sobre N blocos
 
-O `capture` grava `t, raw, poor_signal, condition`. O `exp-b` roda o pipeline
+O `capture` grava `t, raw, poor_signal, attention, meditation, condition`. O
+`attention`/`meditation` são as métricas eSense (proprietárias/não-validadas da
+NeuroSky, ADR-0034), gravadas ao lado — nunca no lugar — das features
+transparentes. O `exp-b` roda o pipeline
 TRAVADO do desenho intercalado (DataScience/31 §12): fs por bloco, descarte de
 transição, detrend + passa-banda + notch 60 Hz, alfa RELATIVA — evitando o
 falso-negativo da 1ª coleta.
@@ -54,20 +57,28 @@ def cmd_demo(args) -> int:
 
 
 def capture_rows(reader, max_seconds, clock=time.time):
-    """Coleta `(t, raw, poor_signal)` de um `DeviceReader` por até `max_seconds`.
+    """Coleta `(t, raw, poor_signal, attention, meditation)` de um `DeviceReader`.
 
-    O `poor_signal` chega em pacotes próprios (~1 Hz); cada amostra raw é pareada
-    ao **último** `poor_signal` visto (None até o 1º pacote de qualidade). Puro e
-    testável com o `SimulatedReader` (sem hardware).
+    `poor_signal` e o eSense (`attention`/`meditation`) chegam em pacotes próprios
+    (~1 Hz); cada amostra raw é pareada ao **último** valor visto de cada um (None
+    até o 1º pacote). O eSense é proprietário/não-validado (ADR-0034) — captado ao
+    lado das features transparentes, nunca no lugar delas. Puro e testável com o
+    `SimulatedReader` (sem hardware).
     """
     t0 = clock()
     poor = None
+    attention = None
+    meditation = None
     rows = []
     for pkt in reader.packets():
         if pkt.poor_signal is not None:
             poor = pkt.poor_signal
+        if pkt.attention is not None:
+            attention = pkt.attention
+        if pkt.meditation is not None:
+            meditation = pkt.meditation
         for s in pkt.raw_samples:
-            rows.append((clock() - t0, s, poor))
+            rows.append((clock() - t0, s, poor, attention, meditation))
         if clock() - t0 >= max_seconds:
             break
     return rows
@@ -79,9 +90,15 @@ def cmd_capture(args) -> int:
     rows = capture_rows(reader, args.secs)
     with open(args.out, "w", newline="") as f:
         w = csv.writer(f)
-        w.writerow(["t", "raw", "poor_signal", "condition"])
-        for t, s, poor in rows:
-            w.writerow([f"{t:.6f}", s, "" if poor is None else poor, args.condition])
+        w.writerow(["t", "raw", "poor_signal", "attention", "meditation", "condition"])
+        for t, s, poor, att, med in rows:
+            w.writerow([
+                f"{t:.6f}", s,
+                "" if poor is None else poor,
+                "" if att is None else att,
+                "" if med is None else med,
+                args.condition,
+            ])
     span = (rows[-1][0] - rows[0][0]) if len(rows) > 1 else args.secs
     fs_eff = len(rows) / span if span else 0
     print(f"{len(rows)} amostras em {span:.1f}s (fs efetivo ~{fs_eff:.0f} Hz) -> {args.out}", file=sys.stderr)

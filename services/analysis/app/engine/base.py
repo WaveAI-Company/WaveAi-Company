@@ -121,6 +121,14 @@ class AnalysisEngine(ABC):
         é o que sustenta a honestidade científica na UI/relatórios (N5/N6)."""
         return ()
 
+    @property
+    def esense_catalog(self) -> tuple[dict[str, str], ...]:
+        """Métricas **eSense** (proprietárias/não-validadas — ADR-0034), mantidas
+        **à parte** do Catálogo N2. Sempre rotuladas; a camada primária são as
+        features transparentes de `feature_catalog`. Default vazio; engines que
+        incorporam o eSense sobrescrevem."""
+        return ()
+
     @abstractmethod
     def process_window(
         self,
