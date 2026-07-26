@@ -24,9 +24,11 @@ from ..models.result import ResultAccessAction
 from ..models.user import User, UserRole
 from ..services.analysis_client import AnalysisClient, AnalysisUnavailableError
 from ..services.results import ResultService
+from ..services.narrator import Narrator
 from .deps import (
     get_analysis_client,
     get_current_user,
+    get_narrator,
     get_result_service,
     require_active_care_link,
     require_role,
@@ -160,12 +162,14 @@ def results_do_paciente(
 
 def _relatorio_longitudinal(
     *, titular: User, ator: User, session: Session,
-    service: ResultService, analysis: AnalysisClient,
+    service: ResultService, analysis: AnalysisClient, narrator: Narrator,
 ) -> dict:
     """Monta a série do titular (audita leitura) e pede o relatório à Analysis.
 
     A ciência (tendências) vive atrás do `AnalysisEngine`; o gateway só entrega a
-    série cronológica de features + qualidade e serializa o resultado."""
+    série cronológica de features + qualidade e serializa o resultado. A
+    `narrative` (N6-b) é a camada de linguagem opcional por cima do sumário
+    determinístico — `None` quando desligada ou indisponível (ADR-0035)."""
     serie = service.serie_longitudinal(titular=titular, ator=ator)
     session.commit()
     try:
@@ -177,13 +181,18 @@ def _relatorio_longitudinal(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="analise indisponivel",
         ) from None
+    report = resposta.get("report", {})
+    summary = resposta.get("summary", [])
     return {
         "patient_id": str(titular.id),
         "n_sessions": len(serie["sessions"]),
         "period": serie["period"],
         "engine_version": resposta.get("engine_version"),
-        "report": resposta.get("report", {}),
-        "summary": resposta.get("summary", []),
+        "report": report,
+        "summary": summary,
+        #: Prosa aterrada por LLM (N6-b) — só derivada dos números acima; `None`
+        #: cai no `summary` determinístico no app. Nunca quebra o relatório.
+        "narrative": narrator.narrate(report, summary),
         "disclaimer": resposta.get("disclaimer"),
     }
 
@@ -194,10 +203,12 @@ def meu_relatorio_longitudinal(
     session: Session = Depends(get_session),
     service: ResultService = Depends(get_result_service),
     analysis: AnalysisClient = Depends(get_analysis_client),
+    narrator: Narrator = Depends(get_narrator),
 ) -> dict:
     """Titular vê o **relatório longitudinal** das próprias sessões (N5)."""
     return _relatorio_longitudinal(
-        titular=user, ator=user, session=session, service=service, analysis=analysis
+        titular=user, ator=user, session=session, service=service,
+        analysis=analysis, narrator=narrator,
     )
 
 
@@ -209,9 +220,11 @@ def relatorio_longitudinal_do_paciente(
     session: Session = Depends(get_session),
     service: ResultService = Depends(get_result_service),
     analysis: AnalysisClient = Depends(get_analysis_client),
+    narrator: Narrator = Depends(get_narrator),
 ) -> dict:
     """Médico vê o relatório longitudinal de um paciente. Exige CareLink `active`
     (403 sem) e o acesso fica auditado em nome do titular."""
     return _relatorio_longitudinal(
-        titular=paciente, ator=ator, session=session, service=service, analysis=analysis
+        titular=paciente, ator=ator, session=session, service=service,
+        analysis=analysis, narrator=narrator,
     )

@@ -495,11 +495,34 @@ def test_me_report_longitudinal(client_report, db_session: Session, analysis_fak
     assert body["n_sessions"] == 2
     assert body["report"]["n_sessions"] == 2
     assert body["summary"] == ["Resumo de 2 sessões."]  # N5-c: sumário passa adiante
+    # N6-b: narrativa desligada por padrão (sem chave) → None; app usa o sumário.
+    assert body["narrative"] is None
     assert body["period"]["first"] == base.isoformat()
     # A Analysis recebeu a série CRONOLÓGICA (mais antiga primeiro) + qualidade.
     sessions, quality_scores = analysis_fake.calls[-1]
     assert sessions == [{"rel_alpha": 0.20}, {"rel_alpha": 0.40}]
     assert quality_scores == [0.9, 0.7]
+
+
+def test_me_report_longitudinal_com_narrativa(client_report, db_session: Session):
+    """N6-b: com narrador ligado, a `narrative` (prosa aterrada) acompanha o relatório."""
+    from datetime import UTC, datetime
+
+    from app.api.deps import get_narrator
+
+    class _NarratorFake:
+        def narrate(self, report, summary):
+            return "Nas 2 sessões, o alfa relativo variou pouco."
+
+    app.dependency_overrides[get_narrator] = lambda: _NarratorFake()
+    try:
+        p = Paciente(client_report, consentiu=True)
+        _seed_result_features(db_session, p.email, 0.3, 0.8, datetime(2026, 1, 1, tzinfo=UTC))
+        body = p.get("/me/report/longitudinal").json()
+    finally:
+        app.dependency_overrides.pop(get_narrator, None)
+
+    assert body["narrative"] == "Nas 2 sessões, o alfa relativo variou pouco."
 
 
 def test_report_longitudinal_exige_autenticacao(client_report):
