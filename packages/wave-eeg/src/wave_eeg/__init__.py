@@ -12,6 +12,16 @@ from .analysis import (
     relative_band_powers,
     total_power,
 )
+from .baseline import (
+    DEVIATION_SIGMA,
+    MIN_OBSERVATIONS,
+    Deviation,
+    FeatureStats,
+    build_baseline,
+    deviation,
+    deviations,
+    feature_stats,
+)
 from .devices import (
     KNOWN_DEVICES,
     UNKNOWN_CHANNEL,
@@ -31,7 +41,7 @@ from .quality import (
 from .reader import DeviceReader, SerialReader, SimulatedReader
 from .thinkgear import TGPacket, ThinkGearParser, checksum, parse_payload
 
-__version__ = "0.4.0"
+__version__ = "0.5.0"
 __all__ = [
     "ThinkGearParser",
     "TGPacket",
@@ -55,6 +65,14 @@ __all__ = [
     "amplitude_artifact_ratio",
     "QualityAssessment",
     "QUALITY_PARAMS_VERSION",
+    "build_baseline",
+    "feature_stats",
+    "deviation",
+    "deviations",
+    "FeatureStats",
+    "Deviation",
+    "MIN_OBSERVATIONS",
+    "DEVIATION_SIGMA",
     "SignalFrame",
     "DeviceProfile",
     "KNOWN_DEVICES",
