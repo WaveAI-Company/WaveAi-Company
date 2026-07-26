@@ -183,6 +183,8 @@ def report_longitudinal(payload: LongitudinalRequest) -> dict:
     return {
         "engine_version": engine.engine_version,
         "report": report,
+        #: Sumário em linguagem por template determinístico (N5-c, ADR-0035).
+        "summary": engine.summarize_report(report),
         "disclaimer": DISCLAIMER,
     }
 
