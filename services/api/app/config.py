@@ -85,6 +85,16 @@ class Settings(BaseSettings):
     #: fluxo (#29). Em dev/test, ligado — mas só com dados sintéticos.
     result_persistence_enabled: bool = True
 
+    # -- Narrativa-LLM aterrada (N6-b, ADR-0035) -----------------------------
+    #: Liga a camada de linguagem por LLM sobre o relatório longitudinal.
+    #: **Desligada por padrão.** Mesmo ligada, só age se houver `ANTHROPIC_API_KEY`
+    #: no ambiente (lida pelo SDK da Anthropic, fora do prefixo WAVEAI_API_ de
+    #: propósito). Sem os dois, o app mostra o sumário determinístico (N5-c).
+    narrative_enabled: bool = False
+    #: Modelo do sumarizador aterrado. Haiku é barato e sobra para template→prosa
+    #: (ADR-0035 pondera custo). Trocar de tier é só mudar esta constante.
+    narrative_model: str = "claude-haiku-4-5"
+
     # -- CORS ----------------------------------------------------------------
     #: Origens permitidas (separadas por vírgula) para o app web.
     #: Em produção o MVP assume **same-origin** (app e API atrás do mesmo
