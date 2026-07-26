@@ -55,10 +55,10 @@ Reduzir o "lixo entra, lixo sai" e o abandono.
 ## Decisões de kickoff (viram ADRs antes de codar)
 - **PUX-D1 — Modelo de anotação de contexto.** Forma do dado (campos livres vs estruturados), cifragem, vínculo com `CaptureSession`, e regra de leitura pelo médico (auditada, como os `Result`). → ADR próprio antes do P2.
 - **PUX-D2 — Deploy edge vs nuvem (reabre [ADR-0005](../05_Decisions.md)).** Onde roda o Analysis em produção; residência de dados. → antes do P5.
-- **PUX-D3 — Persona/claim de produto (Q-PRD-01, P0 aberta).** Público-alvo inicial molda a linguagem didática (P1/P4) e o listing (P5). Pode-se começar P1 persona-agnóstico, mas **fechar antes de P4/P5**.
+- **PUX-D3 — Persona/claim de produto (Q-PRD-01). ✅ RESOLVIDA (ADR-0036).** Persona = **acompanhamento de bem-estar (estresse/relaxamento)**, não-clínico; acompanhante = **"profissional de bem-estar"** na UI (papel `doctor` mantido no modelo). A linguagem didática (P1/P4) e o listing (P5) miram esta persona.
 
 ## Perguntas em aberto desta fase
-- **Q-PRD-01** (P0) — público-alvo/persona inicial. *Aberta.*
+- **Q-PRD-01** (P0) — público-alvo/persona inicial. **✅ Resolvida (ADR-0036):** bem-estar/estresse, não-clínico; acompanhante = profissional de bem-estar.
 - Q-PRD-02 — modelo de negócio (B2C/B2B/B2B2C).
 - Q-TEC-04 / **ADR-0005** — edge vs nuvem (reabre no P5).
 - Q-ETH-01 — CEP/base legal se algum dia envolver terceiros (não neste escopo).
