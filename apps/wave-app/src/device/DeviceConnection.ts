@@ -31,9 +31,24 @@ export type SignalQuality = {
   poorSignal: number;
 };
 
+/**
+ * Métricas **eSense** da NeuroSky (attention/meditation), 0..100.
+ *
+ * ⚠️ ADR-0034: algoritmo **proprietário e não-validado** — complemento
+ * exploratório, **nunca** fundamento nem "medida de atenção" sem a ressalva.
+ * Chega em pacotes ThinkGear próprios (~1 Hz), à parte do raw; **não** é
+ * feature transparente do Catálogo N2 e não passa pela análise do servidor.
+ */
+export type Esense = {
+  attention?: number;
+  meditation?: number;
+};
+
 export type DeviceHandlers = {
   onRawSample?(sample: RawSample): void;
   onSignalQuality?(quality: SignalQuality): void;
+  /** eSense do aparelho (ADR-0034). Opcional: nem todo pacote traz. */
+  onEsense?(esense: Esense): void;
   onStatus?(status: DeviceStatus, detail?: string): void;
 };
 
