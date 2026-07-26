@@ -47,4 +47,9 @@ def test_analyze_demo_expoe_qualidade_e_bandas():
     assert set(body["relative_band_powers"]) == {
         "delta", "theta", "alpha", "beta", "gamma",
     }
-    assert set(body["quality"]) == {"signal_std", "mains_power", "mains_power_ratio"}
+    # N3-b (ADR-0031): qualidade traz métricas cruas + veredito (score/rejeição).
+    assert set(body["quality"]) == {
+        "signal_std", "mains_power", "mains_power_ratio",
+        "score", "rejected", "reason", "artifact_ratio",
+    }
+    assert 0.0 <= body["quality"]["score"] <= 1.0
