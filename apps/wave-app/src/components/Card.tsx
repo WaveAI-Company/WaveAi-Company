@@ -8,17 +8,22 @@ type Props = {
   subtitle?: string;
   /** Faixa lateral de destaque. Sem valor, usa a borda neutra. */
   accent?: string;
+  /** Acessório à direita do título (ex.: um `InfoButton` didático). */
+  titleAccessory?: ReactNode;
   children?: ReactNode;
 };
 
 /** Bloco de conteúdo com título e faixa de destaque opcional. */
-export function Card({ title, subtitle, accent, children }: Props) {
+export function Card({ title, subtitle, accent, titleAccessory, children }: Props) {
   const t = useTheme();
   const styles = useMemo(() => criarEstilos(t), [t]);
 
   return (
     <View style={[styles.card, { borderLeftColor: accent ?? t.colors.border }]}>
-      <Text style={styles.title}>{title}</Text>
+      <View style={styles.titleRow}>
+        <Text style={styles.title}>{title}</Text>
+        {titleAccessory}
+      </View>
       {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
       {children}
     </View>
@@ -34,9 +39,15 @@ const criarEstilos = (t: Theme) =>
       gap: t.spacing.sm,
       padding: t.spacing.md,
     },
+    titleRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: t.spacing.xs,
+    },
     title: {
       ...t.typography.heading,
       color: t.colors.text,
+      flexShrink: 1,
     },
     subtitle: {
       ...t.typography.body,
