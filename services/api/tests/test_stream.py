@@ -302,18 +302,30 @@ class AnalysisFake:
         self.falha = falha
         self.janelas: list[tuple[int, float]] = []
         self.sessoes: list[tuple[int, float]] = []
+        #: Device recebido em cada analyze_session — prova que a proveniência
+        #: (ADR-0033) flui do gateway para a Analysis.
+        self.session_devices: list[str | None] = []
 
-    def analyze_window(self, samples, fs):
+    def analyze_window(self, samples, fs, device=None):
         if self.falha:
             raise AnalysisUnavailableError("fora do ar")
         self.janelas.append((len(samples), fs))
         return {"rel_alpha": 0.42, "engine_version": "fake/1.0"}
 
-    def analyze_session(self, samples, fs, labels=None):
+    def analyze_session(self, samples, fs, labels=None, device=None):
         if self.falha:
             raise AnalysisUnavailableError("fora do ar")
         self.sessoes.append((len(samples), fs))
-        return {"rel_alpha": 0.33, "engine_version": "fake/1.0", "relative_band_powers": {}}
+        self.session_devices.append(device)
+        # A Analysis real carimba device+montagem; o duplo espelha isso para
+        # exercitar a persistência da proveniência em claro.
+        return {
+            "rel_alpha": 0.33,
+            "engine_version": "fake/1.0",
+            "relative_band_powers": {},
+            "device": device,
+            "montage": ["FP1"] if device else [],
+        }
 
 
 @pytest.fixture
@@ -399,9 +411,16 @@ def test_stop_gera_result_persistido_com_consentimento(
     assert fim["result"]["persisted"] is True
     # A sessão inteira (1024) foi enviada para process_session.
     assert analysis.sessoes == [(1024, 512.0)]
-    # E o Result existe no banco.
+    # Proveniência (ADR-0033): o device declarado no start chegou à Analysis...
+    assert analysis.session_devices == ["mindwave-mobile-2"]
+    # ...e foi persistido EM CLARO no Result (device + montagem serializada).
+    from sqlalchemy import select
+
     from app.models import Result
-    assert len(db_session.scalars(__import__("sqlalchemy").select(Result)).all()) == 1
+    results = db_session.scalars(select(Result)).all()
+    assert len(results) == 1
+    assert results[0].device == "mindwave-mobile-2"
+    assert results[0].montage == "FP1"
 
 
 def test_stop_devolve_o_relatorio_da_sessao(
