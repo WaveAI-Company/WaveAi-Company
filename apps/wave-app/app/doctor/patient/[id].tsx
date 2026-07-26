@@ -3,8 +3,10 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { StyleSheet, Text } from "react-native";
 
 import { getPatient, type PatientSummary } from "../../../src/api/care";
+import { getPatientReport, type LongitudinalReport as Report } from "../../../src/api/report";
 import { listPatientResults, type SessionResult } from "../../../src/api/results";
 import { Disclaimer } from "../../../src/components/Disclaimer";
+import { LongitudinalReport } from "../../../src/components/LongitudinalReport";
 import { ScreenContainer } from "../../../src/components/ScreenContainer";
 import { ScreenHeading } from "../../../src/components/ScreenHeading";
 import { SessionsDashboard } from "../../../src/components/SessionsDashboard";
@@ -25,6 +27,7 @@ export default function PatientDetailScreen() {
 
   const [patient, setPatient] = useState<PatientSummary | null>(null);
   const [results, setResults] = useState<SessionResult[]>([]);
+  const [report, setReport] = useState<Report | null>(null);
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
 
@@ -44,6 +47,13 @@ export default function PatientDetailScreen() {
       setErro("Não foi possível abrir este paciente. O acompanhamento pode ter sido revogado.");
     } finally {
       setLoading(false);
+    }
+    // O relatório depende da Analysis; sua falha não pode blindar o resto da
+    // tela — carrega à parte e some sem alarde.
+    try {
+      setReport(await getPatientReport(id));
+    } catch {
+      setReport(null);
     }
   }, [id]);
 
@@ -67,7 +77,12 @@ export default function PatientDetailScreen() {
               Este paciente ainda não tem sessões registradas.
             </Text>
           ) : (
-            <SessionsDashboard results={results} />
+            <>
+              {report && report.n_sessions > 0 ? (
+                <LongitudinalReport report={report} />
+              ) : null}
+              <SessionsDashboard results={results} />
+            </>
           )}
 
           <Disclaimer variant="profissional" />

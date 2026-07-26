@@ -87,6 +87,12 @@ def _metricas_ficticias(indice: int) -> dict:
     escala = 120.0 + 8.0 * math.sin(indice)
     powers = {banda: valor * escala for banda, valor in rel.items()}
 
+    # Features do Catálogo N2 (N3-a.1) — o relatório longitudinal (N5) e a UI de
+    # tendências (N6) leem daqui. Sem elas, a série longitudinal ignora a sessão.
+    features = {f"rel_{banda}": valor for banda, valor in rel.items()}
+    features["spectral_entropy"] = 0.68 + 0.04 * math.sin(indice / 2.6)
+    features["median_frequency"] = 9.5 + 0.8 * math.cos(indice / 3.4)
+
     return {
         "engine_version": ENGINE_FICTICIO,
         "fs": 512.0,
@@ -94,10 +100,16 @@ def _metricas_ficticias(indice: int) -> dict:
         "band_powers": powers,
         "relative_band_powers": rel,
         "rel_alpha": rel["alpha"],
+        "features": features,
         "quality": {
             "signal_std": 38.0 + 4.0 * math.cos(indice / 1.3),
             "mains_power": 1.2 + 0.3 * math.sin(indice / 2.0),
             "mains_power_ratio": 0.012 + 0.004 * math.sin(indice / 2.0),
+            # Veredito de qualidade (N3-b): score alto/limpo nos dados fictícios.
+            "score": 0.86 - 0.05 * abs(math.sin(indice / 2.0)),
+            "rejected": False,
+            "reason": "",
+            "artifact_ratio": 0.0,
         },
         "comparison": None,
     }
