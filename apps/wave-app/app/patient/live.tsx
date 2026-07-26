@@ -5,6 +5,7 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import { formatPercent } from "../../src/api/results";
 import {
   StreamSession,
+  type LiveEsense,
   type LiveFeatures,
   type SessionClosed,
 } from "../../src/api/stream";
@@ -17,7 +18,7 @@ import { ScreenContainer } from "../../src/components/ScreenContainer";
 import { ScreenHeading } from "../../src/components/ScreenHeading";
 import { Disclaimer } from "../../src/components/Disclaimer";
 import { deviceConnection } from "../../src/device/connection";
-import type { DeviceInfo } from "../../src/device/DeviceConnection";
+import type { DeviceInfo, Esense } from "../../src/device/DeviceConnection";
 import { SignalSimulator } from "../../src/mocks/signalSimulator";
 import { useAccentFor, useRoleAccent, useTheme, type Theme } from "../../src/theme";
 
@@ -52,6 +53,8 @@ export default function PatientLiveScreen() {
 
   const [ativo, setAtivo] = useState(false);
   const [features, setFeatures] = useState<LiveFeatures | null>(null);
+  /** eSense ao vivo relayado pelo gateway (ADR-0034), à parte das features. */
+  const [esense, setEsense] = useState<LiveEsense | null>(null);
   const [janelas, setJanelas] = useState(0);
   const [erro, setErro] = useState<string | null>(null);
   const [sessionId, setSessionId] = useState<string | null>(null);
@@ -68,6 +71,8 @@ export default function PatientLiveScreen() {
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
   /** Amostras do aparelho acumuladas entre envios ao servidor. */
   const pendentes = useRef<number[]>([]);
+  /** Último eSense do aparelho, aguardando pegar carona no próximo bloco. */
+  const esensePendente = useRef<Esense>({});
 
   /** Encerra a captação local (timer + aparelho), sem tocar no socket. */
   const encerrarCaptacao = useCallback(() => {
@@ -75,6 +80,7 @@ export default function PatientLiveScreen() {
     timer.current = null;
     if (usandoAparelho) void deviceConnection.disconnect();
     pendentes.current = [];
+    esensePendente.current = {};
     setAtivo(false);
     setUsandoAparelho(false);
   }, [usandoAparelho]);
@@ -124,9 +130,11 @@ export default function PatientLiveScreen() {
   async function iniciarComAparelho(device: DeviceInfo) {
     setErro(null);
     setFeatures(null);
+    setEsense(null);
     setJanelas(0);
     setPoorSignal(null);
     setEncerrada(null);
+    esensePendente.current = {};
 
     const stream = new StreamSession({
       onSession: setSessionId,
@@ -134,6 +142,7 @@ export default function PatientLiveScreen() {
         setFeatures(f);
         setJanelas((n) => n + 1);
       },
+      onEsense: setEsense,
       onClosed: aoEncerrar,
       onError: (detalhe) => {
         setErro(detalhe);
@@ -146,6 +155,11 @@ export default function PatientLiveScreen() {
       await deviceConnection.connect(device.id, {
         onRawSample: ({ amplitude }) => pendentes.current.push(amplitude),
         onSignalQuality: ({ poorSignal: p }) => setPoorSignal(p),
+        // eSense do aparelho: guarda o último para enviar junto do próximo
+        // bloco. O que a UI exibe é o valor relayado de volta pelo gateway.
+        onEsense: (e) => {
+          esensePendente.current = e;
+        },
         onStatus: (status, detalhe) => {
           if (status === "error") setErro(detalhe ?? "falha no aparelho");
         },
@@ -160,10 +174,16 @@ export default function PatientLiveScreen() {
     setAtivo(true);
     setUsandoAparelho(true);
 
-    // Envia o que chegou do aparelho na cadência do stream.
+    // Envia o que chegou do aparelho na cadência do stream. O eSense pendente
+    // pega carona e é consumido (limpo) para não reenviar valor velho.
     timer.current = setInterval(() => {
       if (pendentes.current.length === 0) return;
-      stream.sendSamples(pendentes.current.splice(0, pendentes.current.length));
+      const esenseAgora = esensePendente.current;
+      esensePendente.current = {};
+      stream.sendSamples(
+        pendentes.current.splice(0, pendentes.current.length),
+        esenseAgora,
+      );
     }, INTERVALO_MS);
   }
 
@@ -182,6 +202,7 @@ export default function PatientLiveScreen() {
   async function iniciar() {
     setErro(null);
     setFeatures(null);
+    setEsense(null);
     setJanelas(0);
     setEncerrada(null);
 
@@ -191,6 +212,7 @@ export default function PatientLiveScreen() {
         setFeatures(f);
         setJanelas((n) => n + 1);
       },
+      onEsense: setEsense,
       onClosed: aoEncerrar,
       onError: (detalhe) => {
         setErro(detalhe);
@@ -208,9 +230,11 @@ export default function PatientLiveScreen() {
     sessao.current = stream;
     setAtivo(true);
 
+    // O simulador emite eSense sintético para exercitar o caminho sem hardware
+    // (o selo "simulado" da tela já avisa que nada aqui é medição de ninguém).
     const simulador = new SignalSimulator(SAMPLE_RATE);
     timer.current = setInterval(() => {
-      stream.sendSamples(simulador.nextBlock(BLOCO));
+      stream.sendSamples(simulador.nextBlock(BLOCO), simulador.nextEsense());
     }, INTERVALO_MS);
   }
 
@@ -313,6 +337,34 @@ export default function PatientLiveScreen() {
             />
           ))
         : null}
+
+      {/* eSense (ADR-0034): à parte das features transparentes, cor neutra
+          (nada de "bom/ruim") e com o rótulo obrigatório. Complemento
+          proprietário e não-validado — nunca fundamento. */}
+      {esense && (esense.attention !== undefined || esense.meditation !== undefined) ? (
+        <View style={styles.esenseBox}>
+          <Text style={styles.esenseTitulo}>eSense (NeuroSky)</Text>
+          <View style={styles.esenseLinha}>
+            {esense.attention !== undefined ? (
+              <View style={styles.esenseItem}>
+                <Text style={styles.esenseValor}>{esense.attention}</Text>
+                <Text style={styles.esenseRotulo}>Atenção</Text>
+              </View>
+            ) : null}
+            {esense.meditation !== undefined ? (
+              <View style={styles.esenseItem}>
+                <Text style={styles.esenseValor}>{esense.meditation}</Text>
+                <Text style={styles.esenseRotulo}>Meditação</Text>
+              </View>
+            ) : null}
+          </View>
+          <Text style={styles.esenseNota}>
+            Métrica proprietária da NeuroSky (0–100), sem validação científica
+            independente. Exploratória e não-clínica: complemento, nunca base de
+            conclusão.
+          </Text>
+        </View>
+      ) : null}
 
       {encerrando ? (
         <Card
@@ -438,6 +490,44 @@ const criarEstilos = (t: Theme) =>
     footnote: {
       ...t.typography.caption,
       color: t.colors.textMuted,
+      marginTop: t.spacing.sm,
+    },
+    // eSense: borda de cautela (não valência) e valores em cor neutra de texto
+    // — deliberadamente sem o tom do papel, para não sugerir "bom/ruim".
+    esenseBox: {
+      backgroundColor: t.colors.surface,
+      borderColor: t.colors.warningText,
+      borderWidth: 1,
+      borderRadius: t.radius.lg,
+      padding: t.spacing.md,
+      marginTop: t.spacing.sm,
+    },
+    esenseTitulo: {
+      ...t.typography.label,
+      color: t.colors.textMuted,
+      letterSpacing: 0.5,
+      textTransform: "uppercase",
+    },
+    esenseLinha: {
+      flexDirection: "row",
+      gap: t.spacing.xl,
+      marginTop: t.spacing.xs,
+    },
+    esenseItem: {
+      alignItems: "center",
+    },
+    esenseValor: {
+      color: t.colors.text,
+      fontSize: 32,
+      fontWeight: "700",
+    },
+    esenseRotulo: {
+      ...t.typography.caption,
+      color: t.colors.textMuted,
+    },
+    esenseNota: {
+      ...t.typography.caption,
+      color: t.colors.warningText,
       marginTop: t.spacing.sm,
     },
   });

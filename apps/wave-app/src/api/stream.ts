@@ -17,6 +17,20 @@ export type LiveFeatures = {
   unavailable?: boolean;
 };
 
+/**
+ * eSense ao vivo relayado pelo gateway (ADR-0034).
+ *
+ * Vem numa chave **separada** das `LiveFeatures` de propósito: é métrica
+ * proprietária/não-validada da NeuroSky, complemento e não fundamento. O
+ * `proprietary` é o marcador vindo do servidor; o rótulo textual obrigatório
+ * é responsabilidade da UI.
+ */
+export type LiveEsense = {
+  attention?: number;
+  meditation?: number;
+  proprietary?: boolean;
+};
+
 /** Onde (e se) o relatório da sessão foi guardado (gate do ADR-0026). */
 export type StorageStatus = {
   persisted: boolean;
@@ -36,6 +50,8 @@ export type SessionClosed = {
 export type StreamHandlers = {
   onSession?(sessionId: string): void;
   onFeatures?(features: LiveFeatures): void;
+  /** eSense relayado pelo gateway (ADR-0034), à parte das features. */
+  onEsense?(esense: LiveEsense): void;
   onError?(detail: string): void;
   onClosed?(closed: SessionClosed): void;
 };
@@ -81,6 +97,9 @@ export class StreamSession {
             break;
           case "ack":
             if (msg.features) this.handlers.onFeatures?.(msg.features);
+            // eSense vem em chave própria e no ritmo do device (~1 Hz),
+            // independente do fechamento da janela das features.
+            if (msg.esense) this.handlers.onEsense?.(msg.esense);
             break;
           case "closed":
             this.handlers.onClosed?.({
@@ -103,10 +122,18 @@ export class StreamSession {
     });
   }
 
-  sendSamples(data: number[]): void {
+  /**
+   * Envia um bloco de raw. O eSense (ADR-0034), quando houver, **pega carona**
+   * neste frame (opção A do protocolo): campos opcionais, retrocompatível. O
+   * gateway relaya só o que estiver bem-formado; valor ausente é omitido.
+   */
+  sendSamples(data: number[], esense?: LiveEsense): void {
     if (this.ws?.readyState !== WebSocket.OPEN) return;
     this.seq += 1;
-    this.ws.send(JSON.stringify({ type: "samples", seq: this.seq, data }));
+    const frame: Record<string, unknown> = { type: "samples", seq: this.seq, data };
+    if (typeof esense?.attention === "number") frame.attention = esense.attention;
+    if (typeof esense?.meditation === "number") frame.meditation = esense.meditation;
+    this.ws.send(JSON.stringify(frame));
   }
 
   stop(): void {
