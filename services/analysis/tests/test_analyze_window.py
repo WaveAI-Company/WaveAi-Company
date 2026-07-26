@@ -3,12 +3,14 @@
 import numpy as np
 import pytest
 from fastapi.testclient import TestClient
+from wave_eeg import FEATURE_CATALOG
 
 from app.demo_data import synthetic_session
 from app.main import app
 
 client = TestClient(app)
 FS = 512.0
+CATALOG_NAMES = {spec.name for spec in FEATURE_CATALOG}
 
 
 def _janela(alpha_amp: float, secs: float = 2.0, seed: int = 7) -> list[float]:
@@ -27,7 +29,18 @@ def test_janela_devolve_features():
     assert set(corpo["relative_band_powers"]) == {
         "delta", "theta", "alpha", "beta", "gamma",
     }
+    # N3-a.1: o Catálogo N2 completo vem na resposta, ao lado dos campos legados.
+    assert set(corpo["features"]) == CATALOG_NAMES
+    assert corpo["rel_alpha"] == corpo["features"]["rel_alpha"]
     assert set(corpo["quality"]) == {"signal_std", "mains_power", "mains_power_ratio"}
+
+
+def test_catalogo_de_features_exposto():
+    corpo = client.get("/features/catalog").json()
+    assert {spec["name"] for spec in corpo["features"]} == CATALOG_NAMES
+    # Cada spec carrega a reliability (base da honestidade visual em N5/N6).
+    assert all("reliability" in spec for spec in corpo["features"])
+    assert "não-clínico" in corpo["disclaimer"].lower()
 
 
 def test_janela_rastreia_a_versao_do_engine():

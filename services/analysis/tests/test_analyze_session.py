@@ -1,11 +1,13 @@
 """Relatório de sessão em batch (#15)."""
 
 from fastapi.testclient import TestClient
+from wave_eeg import FEATURE_CATALOG
 
 from app.demo_data import synthetic_session
 from app.main import app
 
 client = TestClient(app)
+CATALOG_NAMES = {spec.name for spec in FEATURE_CATALOG}
 
 
 def test_relatorio_de_sessao_sem_labels():
@@ -16,6 +18,8 @@ def test_relatorio_de_sessao_sem_labels():
     corpo = resp.json()
     assert "wave_eeg/" in corpo["engine_version"]
     assert set(corpo["relative_band_powers"]) == {"delta", "theta", "alpha", "beta", "gamma"}
+    # N3-a.1: relatório de sessão traz o Catálogo N2 completo.
+    assert set(corpo["features"]) == CATALOG_NAMES
     # Sem labels, não há comparação Exp. B.
     assert "comparison" not in corpo
 

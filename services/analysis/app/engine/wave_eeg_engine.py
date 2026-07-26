@@ -7,18 +7,20 @@ contrato. Nada de DSP novo neste arquivo.
 
 from __future__ import annotations
 
+from dataclasses import asdict
 from typing import Sequence
 
 import numpy as np
 import wave_eeg
 from wave_eeg.analysis import (
+    BANDS,
     band_powers,
     compare_eyes_closed_open,
     mains_power,
     preprocess,
-    relative_band_powers,
     total_power,
 )
+from wave_eeg.features import FEATURE_CATALOG, compute_features
 
 from .base import (
     AlphaComparison,
@@ -30,7 +32,11 @@ from .base import (
 
 #: Versão desta adaptação. Combinada com a versão do pacote de análise para dar
 #: rastreabilidade completa do resultado (o wrapper evolui independentemente).
-IMPL_VERSION = "0.1.0"
+#: v0.2.0 (N3-a.1): passa a expor o Catálogo de Features N2 (DataScience/32).
+IMPL_VERSION = "0.2.0"
+
+#: Especificações do catálogo em forma serializável (metadados estáticos).
+_FEATURE_CATALOG = tuple(asdict(spec) for spec in FEATURE_CATALOG)
 
 #: Rótulos aceitos por condição (Exp. B), espelhando o CLI do `wave_eeg`.
 EYES_CLOSED_LABELS = frozenset({"OC", "OF", "EYES_CLOSED", "FECHADO", "FECHADOS"})
@@ -43,6 +49,12 @@ class WaveEegEngine(AnalysisEngine):
     @property
     def engine_version(self) -> str:
         return f"WaveEegEngine/{IMPL_VERSION}+wave_eeg/{wave_eeg.__version__}"
+
+    @property
+    def feature_catalog(self) -> tuple[dict[str, str], ...]:
+        """Catálogo N2 (DataScience/32) em forma serializável — inclui a
+        `reliability` de cada feature (defensável/cautela)."""
+        return _FEATURE_CATALOG
 
     # -- helpers ---------------------------------------------------------
 
@@ -62,15 +74,23 @@ class WaveEegEngine(AnalysisEngine):
         )
 
     def _features(self, samples: Sequence[float], fs: float):
-        """Pré-processa e extrai potências de banda (absolutas e relativas)."""
+        """Extrai o Catálogo N2 e deriva os campos legados da MESMA fonte.
+
+        Pré-processa **uma vez** (detrend + passa-banda + notch) e reaproveita o
+        sinal filtrado tanto para o catálogo (`compute_features`, sem re-filtrar)
+        quanto para as potências absolutas — garantindo que `relative_band_powers`
+        e `rel_alpha` (legados) sejam exatamente as `rel_*` do catálogo.
+        """
         raw = np.asarray(samples, dtype=float)
         filtered = preprocess(raw, fs)
+        feats = {k: float(v) for k, v in
+                 compute_features(filtered, fs, preprocess_signal=False).items()}
         powers = {k: float(v) for k, v in band_powers(filtered, fs).items()}
-        rel = {k: float(v) for k, v in relative_band_powers(filtered, fs).items()}
+        rel = {name: feats[f"rel_{name}"] for name in BANDS}
         # Qualidade é medida no sinal BRUTO: o notch do pré-processamento
         # removeria justamente o 60 Hz que queremos quantificar.
         quality = self._quality(raw, fs)
-        return raw, powers, rel, quality
+        return raw, powers, rel, feats, quality
 
     def _split_by_condition(self, samples: Sequence[float], labels: Sequence[str]):
         raw = np.asarray(samples, dtype=float)
@@ -82,7 +102,7 @@ class WaveEegEngine(AnalysisEngine):
     # -- contrato --------------------------------------------------------
 
     def process_window(self, samples: Sequence[float], fs: float) -> WindowResult:
-        raw, powers, rel, quality = self._features(samples, fs)
+        raw, powers, rel, feats, quality = self._features(samples, fs)
         return WindowResult(
             engine_version=self.engine_version,
             fs=float(fs),
@@ -91,6 +111,7 @@ class WaveEegEngine(AnalysisEngine):
             relative_band_powers=rel,
             rel_alpha=rel["alpha"],
             quality=quality,
+            features=feats,
         )
 
     def process_session(
@@ -99,7 +120,7 @@ class WaveEegEngine(AnalysisEngine):
         fs: float,
         labels: Sequence[str] | None = None,
     ) -> SessionReport:
-        raw, powers, rel, quality = self._features(samples, fs)
+        raw, powers, rel, feats, quality = self._features(samples, fs)
 
         comparison = None
         if labels is not None:
@@ -117,6 +138,7 @@ class WaveEegEngine(AnalysisEngine):
             relative_band_powers=rel,
             rel_alpha=rel["alpha"],
             quality=quality,
+            features=feats,
             comparison=comparison,
         )
 
