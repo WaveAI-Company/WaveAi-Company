@@ -13,6 +13,7 @@ import { BandBars } from "./charts/BandBars";
 import { SignalQuality } from "./charts/SignalQuality";
 import { TrendChart, type TrendPoint } from "./charts/TrendChart";
 import { Card } from "./Card";
+import { InfoButton } from "./InfoButton";
 
 type Props = {
   results: SessionResult[];
@@ -50,7 +51,11 @@ export function SessionsDashboard({ results, accent }: Props) {
   return (
     <View style={styles.wrapper}>
       {tendencia.length > 0 ? (
-        <Card title="Tendência de alfa relativo" accent={cor}>
+        <Card
+          title="Tendência de alfa relativo"
+          accent={cor}
+          titleAccessory={<InfoButton term="rel_alpha" />}
+        >
           <Text style={styles.explicacao}>
             Fração da potência total do sinal na banda alfa (8–13 Hz), sessão a
             sessão.
@@ -73,14 +78,20 @@ export function SessionsDashboard({ results, accent }: Props) {
         >
           {relativas ? (
             <>
-              <Text style={styles.secao}>Composição por banda</Text>
+              <View style={styles.secaoLinha}>
+                <Text style={styles.secao}>Composição por banda</Text>
+                <InfoButton term="band_composition" />
+              </View>
               <BandBars relative={relativas} accent={cor} />
             </>
           ) : null}
 
           {qualidade ? (
             <>
-              <Text style={styles.secao}>Qualidade do sinal</Text>
+              <View style={styles.secaoLinha}>
+                <Text style={styles.secao}>Qualidade do sinal</Text>
+                <InfoButton term="signal_quality" />
+              </View>
               <SignalQuality quality={qualidade} />
             </>
           ) : null}
@@ -127,12 +138,17 @@ const criarEstilos = (t: Theme) =>
       fontSize: 13,
       lineHeight: 19,
     },
+    secaoLinha: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: t.spacing.xs,
+      marginTop: t.spacing.xs,
+    },
     secao: {
       ...t.typography.body,
       color: t.colors.text,
       fontSize: 14,
       fontWeight: "600",
-      marginTop: t.spacing.xs,
     },
     engine: {
       ...t.typography.caption,
