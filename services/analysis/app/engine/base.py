@@ -50,6 +50,10 @@ class WindowResult:
     relative_band_powers: dict[str, float]
     rel_alpha: float
     quality: QualityMetrics
+    #: Features do Catálogo N2 (DataScience/32). Aditivo e retrocompatível: os
+    #: campos legados acima (`relative_band_powers`, `rel_alpha`) são derivados
+    #: desta mesma fonte. Vazio em engines que não expõem o catálogo.
+    features: dict[str, float] = field(default_factory=dict)
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -81,6 +85,8 @@ class SessionReport:
     relative_band_powers: dict[str, float]
     rel_alpha: float
     quality: QualityMetrics
+    #: Features do Catálogo N2 (DataScience/32); ver `WindowResult.features`.
+    features: dict[str, float] = field(default_factory=dict)
     comparison: AlphaComparison | None = field(default=None)
 
     def to_dict(self) -> dict:
@@ -94,6 +100,17 @@ class AnalysisEngine(ABC):
     @abstractmethod
     def engine_version(self) -> str:
         """Versão rastreável do engine, gravada em todo resultado."""
+
+    @property
+    def feature_catalog(self) -> tuple[dict[str, str], ...]:
+        """Especificações **estáticas** das features expostas (nome, unidade,
+        faixa, interpretação, confiabilidade, montagem — DataScience/32).
+
+        Metadados de catálogo, não valores por sessão: por isso ficam aqui e não
+        dentro de cada `WindowResult`/`SessionReport`. Default vazio; engines que
+        expõem o Catálogo N2 sobrescrevem. A `reliability` ("defensável"/"cautela")
+        é o que sustenta a honestidade científica na UI/relatórios (N5/N6)."""
+        return ()
 
     @abstractmethod
     def process_window(self, samples: Sequence[float], fs: float) -> WindowResult:
