@@ -274,11 +274,15 @@ class StreamProtocol:
         if self.state.user is None or not self.state.session_samples:
             return None, {"persisted": False, "reason": "sem amostras"}
 
+        # Histórico do titular (ADR-0032): baseline pessoal a partir dos Result
+        # já persistidos. Uso interno, não audita como leitura.
+        history = self._results.historico_de_features(titular=self.state.user)
         try:
             metrics = self._analysis.analyze_session(
                 self.state.session_samples,
                 float(sessao.sample_rate),
                 device=sessao.device,
+                history=history or None,
             )
         except AnalysisUnavailableError:
             return None, {"persisted": False, "reason": "analise indisponivel"}

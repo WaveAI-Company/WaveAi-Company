@@ -132,6 +132,28 @@ def test_persiste_device_e_montagem_em_claro(db_session: Session):
     assert persistido.montage == "FP1"  # lista serializada por vírgula
 
 
+def test_historico_de_features_para_baseline(db_session: Session):
+    """ADR-0032: histórico do titular vem dos Result com features; sem auditar."""
+    service = _service(db_session)
+    paciente = _paciente(db_session, consentiu=True)
+
+    # Dois Result COM features + um sem (anterior ao Catálogo N2).
+    com = {**METRICS_FALSAS, "features": {"rel_alpha": 0.31, "rel_beta": 0.05}}
+    service.persistir(patient=paciente, session_id=_sessao(db_session, paciente).id, metrics=com)
+    service.persistir(patient=paciente, session_id=_sessao(db_session, paciente).id, metrics=com)
+    sem = {k: v for k, v in METRICS_FALSAS.items()}  # sem chave "features"
+    service.persistir(patient=paciente, session_id=_sessao(db_session, paciente).id, metrics=sem)
+
+    historico = service.historico_de_features(titular=paciente)
+    assert historico == [{"rel_alpha": 0.31, "rel_beta": 0.05}] * 2
+
+    # Uso interno: NÃO gera evento de leitura (só as três criações).
+    eventos = db_session.scalars(
+        select(ResultAccessEvent).where(ResultAccessEvent.patient_user_id == paciente.id)
+    ).all()
+    assert all(e.action == ResultAccessAction.CREATED for e in eventos)
+
+
 def test_metrics_sem_device_persiste_como_nulo(db_session: Session):
     """Result anterior à proveniência: device/montagem NULOS, não inventados."""
     service = _service(db_session)

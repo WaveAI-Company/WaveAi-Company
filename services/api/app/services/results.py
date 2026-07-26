@@ -61,6 +61,25 @@ class ResultService:
         )
         return result
 
+    # -- baseline pessoal (uso interno, ADR-0032) -----------------------
+
+    def historico_de_features(self, *, titular: User) -> list[dict[str, Any]]:
+        """Features das sessões passadas do titular, para montar o baseline
+        pessoal (ADR-0032, opção "derivar dos Result persistidos").
+
+        **Uso interno**: é derivação do próprio pipeline, não um acesso de humano
+        aos dados — por isso **não audita** como leitura (diferente de `listar`).
+        Result anteriores ao Catálogo N2 (sem `features`) são ignorados. Como só
+        lê o que já é do titular, a exclusão dos Result zera o baseline de graça.
+        """
+        historico: list[dict[str, Any]] = []
+        for result in self._repo.listar_do_paciente(titular.id):
+            metrics = self._cipher.decrypt(result.metrics_encrypted)
+            feats = metrics.get("features")
+            if isinstance(feats, dict) and feats:
+                historico.append(feats)
+        return historico
+
     # -- direito de acesso ----------------------------------------------
 
     def listar(self, *, titular: User, ator: User) -> list[dict[str, Any]]:
