@@ -32,7 +32,13 @@ def test_janela_devolve_features():
     # N3-a.1: o Catálogo N2 completo vem na resposta, ao lado dos campos legados.
     assert set(corpo["features"]) == CATALOG_NAMES
     assert corpo["rel_alpha"] == corpo["features"]["rel_alpha"]
-    assert set(corpo["quality"]) == {"signal_std", "mains_power", "mains_power_ratio"}
+    # N3-b (ADR-0031): qualidade traz métricas cruas + veredito (score/rejeição).
+    assert set(corpo["quality"]) == {
+        "signal_std", "mains_power", "mains_power_ratio",
+        "score", "rejected", "reason", "artifact_ratio",
+    }
+    assert 0.0 <= corpo["quality"]["score"] <= 1.0
+    assert corpo["quality"]["rejected"] is False
 
 
 def test_catalogo_de_features_exposto():

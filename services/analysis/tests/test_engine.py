@@ -26,9 +26,9 @@ def test_engine_version_rastreavel(engine):
     assert "WaveEegEngine/" in engine.engine_version
 
 
-def test_engine_version_bump_v2(engine):
-    # N3-a.1: o wrapper subiu para 0.2.0 ao expor o Catálogo N2.
-    assert "WaveEegEngine/0.2.0" in engine.engine_version
+def test_engine_version_bump(engine):
+    # N3-b: o wrapper subiu para 0.3.0 ao dar veredito de qualidade (ADR-0031).
+    assert "WaveEegEngine/0.3.0" in engine.engine_version
 
 
 def test_feature_catalog_expoe_specs_com_reliability(engine):
@@ -110,14 +110,18 @@ def test_process_sem_device_fica_unknown(engine):
     assert win.montage == ("CH1",)
 
 
-def test_process_window_reporta_qualidade_sem_veredito(engine):
+def test_process_window_reporta_qualidade_com_score(engine):
     samples, _, fs = synthetic_session(secs=4.0)
     res = engine.process_window(samples[: int(fs * 4)], fs)
 
+    # Métricas cruas seguem cruas (honestidade visual, ADR-0027).
     assert res.quality.signal_std > 0
     assert 0.0 <= res.quality.mains_power_ratio <= 1.0
-    # Qualidade é objetiva: nao ha limiar/aprovacao embutidos (Q-TEC-06).
-    assert not hasattr(res.quality, "passed")
+    # ADR-0031: score 0..1 + rejeição grossa. Sinal sintético limpo = bom score.
+    assert 0.0 <= res.quality.score <= 1.0
+    assert res.quality.score > 0.8
+    assert res.quality.rejected is False
+    assert res.quality.reason == ""
 
 
 def test_qualidade_com_rede_dominante_continua_sendo_fracao(engine):
@@ -141,6 +145,12 @@ def test_qualidade_com_rede_dominante_continua_sendo_fracao(engine):
     assert 0.0 <= res.quality.mains_power_ratio <= 1.0
     # E deve acusar contaminação alta — a métrica ainda precisa ser informativa.
     assert res.quality.mains_power_ratio > 0.5
+    # ADR-0031: rede pesada derruba o score. Se for praticamente todo o
+    # espectro (sinal afogado), a rejeição grossa dispara.
+    assert res.quality.score < 0.3
+    if res.quality.mains_power_ratio >= 0.98:
+        assert res.quality.rejected is True
+        assert "rede" in res.quality.reason.lower()
 
 
 def test_process_session_sem_labels_nao_compara(engine):
