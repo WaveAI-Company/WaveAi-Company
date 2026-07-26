@@ -80,6 +80,45 @@ class ResultService:
                 historico.append(feats)
         return historico
 
+    # -- relatório longitudinal (N5) ------------------------------------
+
+    def serie_longitudinal(self, *, titular: User, ator: User) -> dict[str, Any]:
+        """Série **cronológica** (mais antiga → mais recente) de features +
+        qualidade das sessões do titular, para o relatório longitudinal (N5).
+
+        Diferente de `historico_de_features` (uso interno do baseline): isto é um
+        **acesso humano** aos dados derivados do titular — o titular vê os
+        próprios, ou o médico com CareLink — então **audita como leitura** (como
+        `listar`). Result sem `features` (anteriores ao Catálogo N2) são ignorados.
+        """
+        results = list(reversed(self._repo.listar_do_paciente(titular.id)))  # ASC
+        sessions: list[dict[str, Any]] = []
+        quality_scores: list[float | None] = []
+        times: list[Any] = []
+        for result in results:
+            metrics = self._cipher.decrypt(result.metrics_encrypted)
+            feats = metrics.get("features")
+            if not isinstance(feats, dict) or not feats:
+                continue
+            sessions.append(feats)
+            quality = metrics.get("quality") if isinstance(metrics.get("quality"), dict) else {}
+            score = quality.get("score")
+            quality_scores.append(float(score) if score is not None else None)
+            times.append(result.created_at)
+
+        if sessions:
+            self._repo.auditar(
+                patient_user_id=titular.id,
+                actor_user_id=ator.id,
+                action=ResultAccessAction.READ,
+                count=len(sessions),
+            )
+
+        period = None
+        if times:
+            period = {"first": times[0].isoformat(), "last": times[-1].isoformat()}
+        return {"sessions": sessions, "quality_scores": quality_scores, "period": period}
+
     # -- direito de acesso ----------------------------------------------
 
     def listar(self, *, titular: User, ator: User) -> list[dict[str, Any]]:
