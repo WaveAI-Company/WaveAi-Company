@@ -11,6 +11,7 @@ import {
 } from "../../src/api/stream";
 import { Button } from "../../src/components/Button";
 import { Card } from "../../src/components/Card";
+import { InfoButton } from "../../src/components/InfoButton";
 import { BandBars } from "../../src/components/charts/BandBars";
 import { SignalQuality } from "../../src/components/charts/SignalQuality";
 import { MockBadge } from "../../src/components/MockBadge";
@@ -302,6 +303,7 @@ export default function PatientLiveScreen() {
           title={`Contato do sensor: ${poorSignal}`}
           subtitle="0 = bom contato · 200 = eletrodo solto (valor reportado pelo aparelho)"
           accent={poorSignal === 0 ? papel.accent : t.colors.warningText}
+          titleAccessory={<InfoButton term="poor_signal" />}
         />
       ) : null}
 
@@ -315,7 +317,10 @@ export default function PatientLiveScreen() {
 
       {alfa !== undefined ? (
         <View style={styles.destaque}>
-          <Text style={styles.destaqueRotulo}>Alfa relativa</Text>
+          <View style={styles.destaqueRotuloLinha}>
+            <Text style={styles.destaqueRotulo}>Alfa relativa</Text>
+            <InfoButton term="rel_alpha" accent={papel.accent} />
+          </View>
           <Text style={styles.destaqueValor}>{(alfa * 100).toFixed(1)}%</Text>
           <Text style={styles.destaqueNota}>janelas analisadas: {janelas}</Text>
         </View>
@@ -334,6 +339,7 @@ export default function PatientLiveScreen() {
               title={banda}
               subtitle={`${(valor * 100).toFixed(1)}% da potência total`}
               accent={papel.accent}
+              titleAccessory={<InfoButton term={`rel_${banda}`} />}
             />
           ))
         : null}
@@ -343,7 +349,10 @@ export default function PatientLiveScreen() {
           proprietário e não-validado — nunca fundamento. */}
       {esense && (esense.attention !== undefined || esense.meditation !== undefined) ? (
         <View style={styles.esenseBox}>
-          <Text style={styles.esenseTitulo}>eSense (NeuroSky)</Text>
+          <View style={styles.esenseCabecalho}>
+            <Text style={styles.esenseTitulo}>eSense (NeuroSky)</Text>
+            <InfoButton term="esense" />
+          </View>
           <View style={styles.esenseLinha}>
             {esense.attention !== undefined ? (
               <View style={styles.esenseItem}>
@@ -470,6 +479,11 @@ const criarEstilos = (t: Theme) =>
       borderRadius: t.radius.lg,
       paddingVertical: t.spacing.lg,
     },
+    destaqueRotuloLinha: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: t.spacing.xs,
+    },
     destaqueRotulo: {
       ...t.typography.label,
       color: t.colors.textMuted,
@@ -501,6 +515,11 @@ const criarEstilos = (t: Theme) =>
       borderRadius: t.radius.lg,
       padding: t.spacing.md,
       marginTop: t.spacing.sm,
+    },
+    esenseCabecalho: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: t.spacing.xs,
     },
     esenseTitulo: {
       ...t.typography.label,
