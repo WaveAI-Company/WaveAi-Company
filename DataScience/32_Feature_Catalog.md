@@ -48,20 +48,20 @@ Nomes batem com as chaves de `compute_features` (contrato coberto por teste).
 | `total_power` | potência | ≥0 | Potência integrada do espectro. | cautela | sensível a escala/contato. |
 
 ## 4c. Métricas proprietárias — eSense (exploratórias, rotuladas)
-**[ADR-0034]** O NeuroSky expõe **`attention`** e **`meditation`** (eSense, 0–100), já decodificadas pelo parser. São **incorporadas como métricas exploratórias**, **fora** do `FEATURE_CATALOG` transparente.
+**[ADR-0034]** O NeuroSky expõe **`attention`** e **`meditation`** (eSense, 0–100), já decodificadas pelo parser. São **incorporadas como métricas exploratórias**, **fora** do `FEATURE_CATALOG` transparente — num catálogo próprio (`wave_eeg.esense.ESENSE_CATALOG`), exposto à parte pelo engine (`esense_catalog`) e pela API (`GET /features/catalog`, chave `esense`). O `wave-eeg capture` grava `attention`/`meditation` ao lado do `raw`/`poor_signal`.
 
 | Métrica | Faixa | Interpretação (do fabricante) | Confiabilidade |
 |---|---|---|---|
-| `esense_attention` | 0..100 | "atenção/foco" (algoritmo proprietário) | **proprietária / não-validada** |
-| `esense_meditation` | 0..100 | "relaxamento/calma" (algoritmo proprietário) | **proprietária / não-validada** |
+| `attention` | 0..100 | "atenção/foco" (algoritmo proprietário) | **proprietária / não-validada** |
+| `meditation` | 0..100 | "relaxamento/calma" (algoritmo proprietário) | **proprietária / não-validada** |
 
-**[RÍGIDO — guarda-corpos]** Sempre **rotuladas** como proprietárias/não-validadas; **nunca** base de claim nem apresentadas como diagnóstico; **complementam**, não substituem, a camada transparente (que é a explicável para o médico — XAI). São EEG de consumo, não medida clínica ([Medical/71](../Medical/71_Intended_Use_and_Regulatory_Positioning.md)).
+**[RÍGIDO — guarda-corpos]** Sempre **rotuladas** como proprietárias/não-validadas (a própria `reliability` no código = `"proprietária/não-validada"`, distinta de defensável/cautela); **nunca** base de claim nem apresentadas como diagnóstico; **complementam**, não substituem, a camada transparente (que é a explicável para o médico — XAI). São EEG de consumo, não medida clínica ([Medical/71](../Medical/71_Intended_Use_and_Regulatory_Positioning.md)).
 
 ## 5. Multicanal (ADR-0033)
 As features são **por canal** e **aditivas**: com N>1 canal (aparelho futuro), aplicam-se por canal sem quebrar o contrato, e features **espaciais** (entre canais) entram como novas entradas — sem alterar as existentes. O NeuroSky preenche N=1 (FP1).
 
 ## 6. Testes (contrato)
-`packages/wave-eeg/tests/test_features.py`, 100% sintético: seno de 10 Hz → alfa domina, pico ≈ 10 Hz, entropia baixa; ruído branco → entropia alta; relativas somam 1 e são ≥ 0; RMS escala linear; sinal nulo não quebra (guards de divisão por zero); as chaves de `compute_features` == o catálogo.
+`packages/wave-eeg/tests/test_features.py`, 100% sintético: seno de 10 Hz → alfa domina, pico ≈ 10 Hz, entropia baixa; ruído branco → entropia alta; relativas somam 1 e são ≥ 0; RMS escala linear; sinal nulo não quebra (guards de divisão por zero); as chaves de `compute_features` == o catálogo. O eSense tem testes próprios em `test_esense.py` (catálogo separado, sempre rotulado, disjunto do transparente; roundtrip encode→decode do pacote).
 
 ## 7. Próximo (fora desta issue)
 Definições de evento sobre estas features (contraste de estado; baseline pessoal N σ; cold-start populacional→individual) — **ADR-0032**, depois do catálogo. Evolução do `AnalysisEngine` para expor as features (N3).

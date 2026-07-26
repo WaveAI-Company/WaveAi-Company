@@ -43,16 +43,34 @@ class DeviceReader(ABC):
 
 
 class SimulatedReader(DeviceReader):
-    """Lê de um stream simulado (bytes gerados a partir de `samples`)."""
+    """Lê de um stream simulado (bytes gerados a partir de `samples`).
 
-    def __init__(self, samples: Iterable[int], fs: int = 512, chunk: int = 64) -> None:
+    `attention`/`meditation` são opt-in (ADR-0034): quando informados, o stream
+    simulado passa a injetar pacotes eSense — útil para exercitar a captação
+    dessas métricas sem hardware. Default `None` = só raw + poor_signal.
+    """
+
+    def __init__(
+        self,
+        samples: Iterable[int],
+        fs: int = 512,
+        chunk: int = 64,
+        attention: int | None = None,
+        meditation: int | None = None,
+    ) -> None:
         self._samples = samples
         self.fs = fs
         self.chunk = chunk
+        self._attention = attention
+        self._meditation = meditation
 
     def packets(self) -> Iterator[TGPacket]:
         parser = ThinkGearParser()
-        for block in _chunked(simulate_stream(self._samples, self.fs), self.chunk):
+        stream = simulate_stream(
+            self._samples, self.fs,
+            attention=self._attention, meditation=self._meditation,
+        )
+        for block in _chunked(stream, self.chunk):
             yield from parser.feed(block)
 
 

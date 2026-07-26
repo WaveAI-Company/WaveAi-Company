@@ -69,6 +69,9 @@ def features_catalog() -> dict:
     return {
         "engine_version": engine.engine_version,
         "features": list(engine.feature_catalog),
+        #: eSense à parte e rotulado (ADR-0034): proprietário/não-validado, nunca
+        #: confundido com as features transparentes acima.
+        "esense": list(engine.esense_catalog),
         "disclaimer": DISCLAIMER,
     }
 
