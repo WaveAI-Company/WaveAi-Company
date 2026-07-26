@@ -32,6 +32,9 @@ def test_report_longitudinal_traz_tendencias():
     assert report["features"]["rel_alpha"]["direction"] == "subindo"
     assert report["quality"]["last"] == 0.7
     assert "não-clínico" in body["disclaimer"].lower()
+    # N5-c: sumário por template determinístico acompanha o relatório.
+    assert isinstance(body["summary"], list) and body["summary"]
+    assert any("alfa relativo" in linha for linha in body["summary"])
 
 
 def test_report_longitudinal_serie_vazia_e_recusada():
