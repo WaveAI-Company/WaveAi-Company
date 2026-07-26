@@ -43,6 +43,15 @@ def test_catalogo_de_features_exposto():
     assert "não-clínico" in corpo["disclaimer"].lower()
 
 
+def test_catalogo_expoe_esense_a_parte():
+    """ADR-0034: o catálogo traz o eSense numa seção separada e rotulada."""
+    corpo = client.get("/features/catalog").json()
+    esense = {spec["name"] for spec in corpo["esense"]}
+    assert esense == {"attention", "meditation"}
+    # Separado das features transparentes — nunca no mesmo balaio.
+    assert esense.isdisjoint({spec["name"] for spec in corpo["features"]})
+
+
 def test_janela_rastreia_a_versao_do_engine():
     corpo = client.post("/analyze/window", json={"samples": _janela(20.0), "fs": FS}).json()
     assert "wave_eeg/" in corpo["engine_version"]

@@ -8,7 +8,14 @@ from __future__ import annotations
 
 from typing import Iterable, Iterator
 
-from .thinkgear import CODE_POOR_SIGNAL, CODE_RAW, SYNC, checksum
+from .thinkgear import (
+    CODE_ATTENTION,
+    CODE_MEDITATION,
+    CODE_POOR_SIGNAL,
+    CODE_RAW,
+    SYNC,
+    checksum,
+)
 
 
 def _packet(payload: bytes) -> bytes:
@@ -28,19 +35,41 @@ def encode_poor_signal_packet(value: int) -> bytes:
     return _packet(payload)
 
 
+def encode_esense_packet(attention: int | None = None, meditation: int | None = None) -> bytes:
+    """Codifica um pacote eSense (Attention 0x04 e/ou Meditation 0x05).
+
+    eSense é métrica **proprietária** da NeuroSky (0–100); aqui só reproduzimos o
+    formato de fio para exercitar o pipeline sem hardware (ADR-0034)."""
+    payload = bytearray()
+    if attention is not None:
+        payload += bytes([CODE_ATTENTION, int(attention) & 0xFF])
+    if meditation is not None:
+        payload += bytes([CODE_MEDITATION, int(meditation) & 0xFF])
+    return _packet(bytes(payload))
+
+
 def simulate_stream(
     samples: Iterable[int],
     fs: int = 512,
     poor_signal_every_s: float = 1.0,
+    attention: int | None = None,
+    meditation: int | None = None,
 ) -> Iterator[bytes]:
     """
     Gera o fluxo de bytes de um dispositivo: um pacote raw por amostra,
     com um pacote de poor_signal inserido periodicamente (como o hardware real).
     Amostras são saturadas para o intervalo int16.
+
+    `attention`/`meditation` (opt-in): quando informados, injeta também pacotes
+    eSense na mesma cadência (~1 Hz), modelando o device real. Default `None`
+    mantém o stream idêntico ao de antes (só raw + poor_signal).
     """
     interval = max(1, int(fs * poor_signal_every_s))
+    emit_esense = attention is not None or meditation is not None
     for n, s in enumerate(samples):
         if n % interval == 0:
             yield encode_poor_signal_packet(0)
+            if emit_esense:
+                yield encode_esense_packet(attention, meditation)
         s = int(max(-32768, min(32767, int(s))))
         yield encode_raw_packet(s)

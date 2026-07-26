@@ -43,6 +43,18 @@ def test_feature_catalog_expoe_specs_com_reliability(engine):
     assert por_nome["total_power"]["reliability"] == "cautela"
 
 
+def test_esense_catalog_e_separado_e_rotulado(engine):
+    """ADR-0034: eSense exposto à parte do Catálogo N2, sempre rotulado."""
+    esense = engine.esense_catalog
+    assert {spec["name"] for spec in esense} == {"attention", "meditation"}
+    # Nunca se mistura às features transparentes.
+    n2 = {spec["name"] for spec in engine.feature_catalog}
+    assert n2.isdisjoint({"attention", "meditation"})
+    # Rótulo proprietário/não-validado em cada métrica.
+    for spec in esense:
+        assert "propriet" in spec["reliability"].lower()
+
+
 def test_process_window_extrai_features(engine):
     samples, _, fs = synthetic_session(secs=4.0)
     res = engine.process_window(samples[: int(fs * 4)], fs)

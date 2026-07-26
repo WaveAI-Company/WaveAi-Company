@@ -21,9 +21,22 @@ def test_capture_rows_pareia_poor_signal():
     # clock constante: não dispara o limite; o stream simulado é finito e termina.
     rows = capture_rows(reader, max_seconds=10.0, clock=lambda: 0.0)
     assert len(rows) == len(samples)
-    # cada linha tem (t, raw, poor_signal); poor_signal preenchido (0), não None
-    assert all(len(r) == 3 for r in rows)
+    # cada linha tem (t, raw, poor_signal, attention, meditation).
+    assert all(len(r) == 5 for r in rows)
     assert rows[-1][2] == 0
+    # Sem eSense no stream, attention/meditation ficam None (não inventados).
+    assert rows[-1][3] is None and rows[-1][4] is None
+
+
+def test_capture_rows_pareia_esense_quando_presente():
+    """ADR-0034: quando o device emite eSense, a captação o registra ao lado."""
+    samples = list(np.zeros(600, dtype=int))
+    reader = SimulatedReader(samples, fs=512, attention=57, meditation=42)
+    rows = capture_rows(reader, max_seconds=10.0, clock=lambda: 0.0)
+    assert len(rows) == len(samples)
+    # eSense proprietário pareado à última leitura (~1 Hz), como o poor_signal.
+    assert rows[-1][3] == 57  # attention
+    assert rows[-1][4] == 42  # meditation
 
 
 def _write_capture(path, condition, fs=512, secs=4.0, alpha_amp=25.0, seed=0, poor=8.0):
