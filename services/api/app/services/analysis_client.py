@@ -34,6 +34,7 @@ class AnalysisClient(Protocol):
         fs: float,
         labels: list[str] | None = None,
         device: str | None = None,
+        history: list[dict[str, float]] | None = None,
     ) -> dict[str, Any]:
         ...
 
@@ -56,11 +57,15 @@ class HttpAnalysisClient:
         fs: float,
         labels: list[str] | None = None,
         device: str | None = None,
+        history: list[dict[str, float]] | None = None,
     ) -> dict[str, Any]:
         # Timeout maior: a análise de sessão inteira é mais pesada que a janela.
         return self._post(
             "/analyze/session",
-            {"samples": samples, "fs": fs, "labels": labels, "device": device},
+            {
+                "samples": samples, "fs": fs, "labels": labels,
+                "device": device, "history": history,
+            },
             timeout=self._timeout * 6,
         )
 

@@ -8,7 +8,7 @@ contrato. Nada de DSP novo neste arquivo.
 from __future__ import annotations
 
 from dataclasses import asdict
-from typing import Sequence
+from typing import Mapping, Sequence
 
 import numpy as np
 import wave_eeg
@@ -20,6 +20,7 @@ from wave_eeg.analysis import (
     preprocess,
     total_power,
 )
+from wave_eeg.baseline import build_baseline, deviations
 from wave_eeg.devices import SignalFrame
 from wave_eeg.esense import ESENSE_CATALOG
 from wave_eeg.features import FEATURE_CATALOG, compute_features
@@ -37,7 +38,8 @@ from .base import (
 #: rastreabilidade completa do resultado (o wrapper evolui independentemente).
 #: v0.2.0 (N3-a.1): expõe o Catálogo de Features N2 (DataScience/32).
 #: v0.3.0 (N3-b): o `quality` ganha score 0..1 + rejeição grossa (ADR-0031).
-IMPL_VERSION = "0.3.0"
+#: v0.4.0 (N3-c.2): SessionReport ganha `deviations` do baseline pessoal (ADR-0032).
+IMPL_VERSION = "0.4.0"
 
 #: Especificações do catálogo em forma serializável (metadados estáticos).
 _FEATURE_CATALOG = tuple(asdict(spec) for spec in FEATURE_CATALOG)
@@ -156,6 +158,8 @@ class WaveEegEngine(AnalysisEngine):
         fs: float,
         labels: Sequence[str] | None = None,
         device: str | None = None,
+        history: Sequence[Mapping[str, float]] | None = None,
+        population_prior: Mapping[str, Sequence[float]] | None = None,
     ) -> SessionReport:
         frame = self._frame(samples, fs, device)
         mono = frame.mono()
@@ -180,8 +184,27 @@ class WaveEegEngine(AnalysisEngine):
             features=feats,
             device=frame.device,
             montage=frame.montage,
+            deviations=self._deviations(feats, history, population_prior),
             comparison=comparison,
         )
+
+    def _deviations(
+        self,
+        features: dict[str, float],
+        history: Sequence[Mapping[str, float]] | None,
+        population_prior: Mapping[str, Sequence[float]] | None,
+    ) -> dict[str, dict]:
+        """Desvios do baseline pessoal (ADR-0032) — o "pico → contexto".
+
+        Sem histórico do titular, devolve `{}`: não se inventa desvio. A ciência
+        (baseline, N σ, cold-start, confiança, fonte) vive em `wave_eeg.baseline`.
+        """
+        if not history:
+            return {}
+        baseline = build_baseline(history)
+        prior = {k: (float(v[0]), float(v[1])) for k, v in (population_prior or {}).items()}
+        devs = deviations(features, baseline, prior=prior or None)
+        return {name: asdict(dev) for name, dev in devs.items()}
 
     def _compare(self, closed: np.ndarray, opened: np.ndarray, fs: float) -> AlphaComparison:
         res = compare_eyes_closed_open(closed, opened, fs)

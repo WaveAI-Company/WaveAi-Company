@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import asdict, dataclass, field
-from typing import Sequence
+from typing import Mapping, Sequence
 
 
 @dataclass(frozen=True)
@@ -113,6 +113,11 @@ class SessionReport:
     #: Proveniência (ADR-0033); ver `WindowResult.device`/`montage`.
     device: str = "unknown"
     montage: tuple[str, ...] = ()
+    #: Desvios do baseline PESSOAL (ADR-0032): feature → {n_sigma, is_peak,
+    #: confidence, source}. O "pico → contexto". Vazio quando não há histórico do
+    #: titular (a proveniência do baseline — pessoal/populacional/insuficiente —
+    #: viaja em cada entrada, para transparência).
+    deviations: dict[str, dict] = field(default_factory=dict)
     comparison: AlphaComparison | None = field(default=None)
 
     def to_dict(self) -> dict:
@@ -166,10 +171,17 @@ class AnalysisEngine(ABC):
         fs: float,
         labels: Sequence[str] | None = None,
         device: str | None = None,
+        history: Sequence[Mapping[str, float]] | None = None,
+        population_prior: Mapping[str, Sequence[float]] | None = None,
     ) -> SessionReport:
         """Processa uma sessão completa (batch).
 
         `labels`, quando fornecido, é paralelo a `samples` e rotula a condição
         de cada amostra (ex.: olhos fechados/abertos), habilitando a comparação
         do Exp. B. `device` carimba a proveniência (ADR-0033).
+
+        `history` (ADR-0032) são as features das **sessões passadas do próprio
+        titular**; com ela, o relatório traz os **desvios do baseline pessoal**
+        (`deviations`). `population_prior` (feature → [média, desvio]) alimenta o
+        cold-start quando o histórico ainda é insuficiente.
         """
