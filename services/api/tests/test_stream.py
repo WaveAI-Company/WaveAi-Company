@@ -551,6 +551,112 @@ def test_analysis_fora_do_ar_nao_derruba_a_captacao(
     assert sessao.sample_count == 1024
 
 
+# -- eSense ao vivo (N6-c, ADR-0034) ------------------------------------
+
+
+def test_esense_do_frame_e_relayado_rotulado(client: TestClient):
+    """Attention/Meditation fornecidos pelo aparelho voltam numa chave própria,
+    marcados como proprietários (ADR-0034)."""
+    token = _token(client)
+    with client.websocket_connect("/stream") as ws:
+        _abrir_sessao(ws, token)
+        ws.send_json(
+            {"type": "samples", "seq": 1, "data": [1, 2, 3],
+             "attention": 57, "meditation": 42}
+        )
+        ack = ws.receive_json()
+
+    assert ack["type"] == "ack"
+    assert ack["esense"] == {"attention": 57, "meditation": 42, "proprietary": True}
+
+
+def test_esense_independe_do_fechamento_de_janela(
+    client_com_analysis: TestClient, analysis: AnalysisFake
+):
+    """eSense é ~1 Hz e vem do device: chega mesmo sem a janela ter fechado
+    (nenhuma feature ainda) e **não** passa pela Analysis."""
+    token = _token(client_com_analysis)
+    with client_com_analysis.websocket_connect("/stream") as ws:
+        _abrir_sessao(ws, token)
+        # Bloco curto: a janela (1024) não fecha, então não há features...
+        ws.send_json(
+            {"type": "samples", "seq": 1, "data": [1] * 10, "attention": 80}
+        )
+        ack = ws.receive_json()
+
+    assert "features" not in ack           # janela não fechou
+    assert ack["esense"] == {"attention": 80, "proprietary": True}
+    assert analysis.janelas == []          # eSense nunca foi à Analysis
+
+
+def test_esense_ausente_nao_inclui_a_chave(client: TestClient):
+    token = _token(client)
+    with client.websocket_connect("/stream") as ws:
+        _abrir_sessao(ws, token)
+        ws.send_json({"type": "samples", "seq": 1, "data": [1, 2, 3]})
+        ack = ws.receive_json()
+
+    assert ack["type"] == "ack"
+    assert "esense" not in ack
+
+
+def test_esense_parcial_relaya_so_o_que_veio(client: TestClient):
+    token = _token(client)
+    with client.websocket_connect("/stream") as ws:
+        _abrir_sessao(ws, token)
+        ws.send_json(
+            {"type": "samples", "seq": 1, "data": [1, 2], "meditation": 30}
+        )
+        ack = ws.receive_json()
+
+    assert ack["esense"] == {"meditation": 30, "proprietary": True}
+
+
+@pytest.mark.parametrize(
+    "esense",
+    [
+        {"attention": 101},        # acima da faixa
+        {"attention": -1},         # abaixo da faixa
+        {"attention": "alto"},     # tipo errado
+        {"attention": 50.0},       # float não é eSense (int 0..100)
+        {"meditation": True},      # bool não conta como 1
+    ],
+)
+def test_esense_malformado_e_ignorado_sem_derrubar(client: TestClient, esense: dict):
+    """eSense é complemento: valor inválido some do relay, mas **não** encerra
+    a captação (perder o complemento é aceitável; perder a sessão não)."""
+    token = _token(client)
+    with client.websocket_connect("/stream") as ws:
+        _abrir_sessao(ws, token)
+        ws.send_json({"type": "samples", "seq": 1, "data": [1, 2], **esense})
+        ack = ws.receive_json()
+        assert ack["type"] == "ack"        # não virou erro
+        assert "esense" not in ack         # o valor inválido não foi relayado
+        # A sessão segue viva: o próximo bloco é aceito normalmente.
+        ws.send_json({"type": "samples", "seq": 2, "data": [3, 4]})
+        assert ws.receive_json()["type"] == "ack"
+
+
+def test_esense_nao_se_mistura_as_features(
+    client_com_analysis: TestClient, analysis: AnalysisFake
+):
+    """Mesmo quando a janela fecha, o eSense fica fora de `features` — as
+    features transparentes vêm da Analysis; o eSense é complemento à parte."""
+    token = _token(client_com_analysis)
+    with client_com_analysis.websocket_connect("/stream") as ws:
+        _abrir_sessao(ws, token)
+        ws.send_json(
+            {"type": "samples", "seq": 1, "data": [1.0] * 1024, "attention": 60}
+        )
+        ack = ws.receive_json()
+
+    # A janela fechou: há features da Analysis...
+    assert ack["features"]["rel_alpha"] == 0.42
+    assert "attention" not in ack["features"]
+    # ...e o eSense veio separado, marcado como proprietário.
+    assert ack["esense"] == {"attention": 60, "proprietary": True}
+
+
 def test_erro_nao_detalha_o_motivo_da_recusa(client: TestClient):
     """A mensagem não distingue token expirado, inválido ou de outro papel."""
     with client.websocket_connect("/stream") as ws:
