@@ -151,6 +151,17 @@ class AnalysisEngine(ABC):
         incorporam o eSense sobrescrevem."""
         return ()
 
+    def longitudinal_report(
+        self,
+        sessions: Sequence[Mapping[str, float]],
+        quality_scores: Sequence[float] | None = None,
+    ) -> dict:
+        """Relatório **longitudinal** (N5) sobre as features das sessões passadas
+        do titular, em ordem **cronológica**. Estatística descritiva (níveis,
+        extremos, tendências), **sem interpretação clínica**. Default vazio;
+        engines que o suportam sobrescrevem."""
+        return {}
+
     @abstractmethod
     def process_window(
         self,

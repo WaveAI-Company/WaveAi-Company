@@ -72,6 +72,16 @@ class SessionRequest(BaseModel):
     population_prior: dict[str, list[float]] | None = None
 
 
+class LongitudinalRequest(BaseModel):
+    """Série cronológica de features das sessões do titular para o relatório N5."""
+
+    #: Features por sessão, da mais antiga à mais recente. O gateway monta a
+    #: partir dos `Result` já persistidos; a Analysis não guarda estado.
+    sessions: list[dict[str, float]] = Field(min_length=1, max_length=100_000)
+    #: Score de qualidade paralelo às sessões (opcional) — contexto de confiança.
+    quality_scores: list[float] | None = None
+
+
 @app.get("/health")
 def health() -> dict[str, str]:
     """Health check do serviço. Não expõe dado sensível."""
@@ -159,6 +169,22 @@ def analyze_session(payload: SessionRequest) -> dict:
             "passed": comparison.passed,
         }
     return corpo
+
+
+@app.post("/report/longitudinal")
+def report_longitudinal(payload: LongitudinalRequest) -> dict:
+    """Relatório longitudinal (N5): tendências por feature ao longo das sessões.
+
+    Estatística **descritiva** (níveis, extremos, direção) — sem interpretação
+    clínica (Medical/71). Toda a matemática vive no `AnalysisEngine`/`wave_eeg`;
+    aqui só se adapta a entrada e se serializa a saída.
+    """
+    report = engine.longitudinal_report(payload.sessions, quality_scores=payload.quality_scores)
+    return {
+        "engine_version": engine.engine_version,
+        "report": report,
+        "disclaimer": DISCLAIMER,
+    }
 
 
 @app.post("/analyze/demo")
