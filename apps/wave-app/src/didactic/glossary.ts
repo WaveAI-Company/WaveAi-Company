@@ -119,6 +119,90 @@ export const GLOSSARY: Record<string, GlossaryEntry> = {
     reliabilityNote: NOTA_ESENSE,
     source: FONTE_ESENSE,
   },
+
+  ratio_theta_beta: {
+    label: "Razão teta/beta",
+    plain:
+      "Razão entre as energias de teta e beta. Aparece na literatura de " +
+      "atenção — aqui, uso exploratório.",
+    reliability: "defensável",
+    reliabilityNote: NOTA_DEFENSAVEL,
+    source: FONTE_CATALOGO,
+  },
+  ratio_alpha_beta: {
+    label: "Razão alfa/beta",
+    plain: "Razão entre alfa e beta — um contraste entre repouso e engajamento.",
+    reliability: "defensável",
+    reliabilityNote:
+      "Sensível ao estado — compare em condições parecidas.",
+    source: FONTE_CATALOGO,
+  },
+  spectral_edge_95: {
+    label: "Frequência de borda (95%)",
+    plain:
+      "Frequência abaixo da qual está 95% da energia do sinal — indica quanto " +
+      "há de conteúdo em frequências mais altas.",
+    reliability: "defensável",
+    reliabilityNote: NOTA_DEFENSAVEL,
+    source: FONTE_CATALOGO,
+  },
+  median_frequency: {
+    label: "Frequência mediana",
+    plain: "A frequência que divide a energia do espectro ao meio.",
+    reliability: "defensável",
+    reliabilityNote: NOTA_DEFENSAVEL,
+    source: FONTE_CATALOGO,
+  },
+  spectral_entropy: {
+    label: "Entropia espectral",
+    plain:
+      "Quão 'espalhado' é o espectro: perto de 0, a energia se concentra numa " +
+      "frequência; perto de 1, fica espalhada/ruidosa.",
+    reliability: "defensável",
+    reliabilityNote: NOTA_DEFENSAVEL,
+    source: FONTE_CATALOGO,
+  },
+  peak_alpha_frequency: {
+    label: "Frequência de pico alfa",
+    plain: "A frequência de maior energia dentro da faixa alfa (8–13 Hz).",
+    reliability: "defensável",
+    reliabilityNote: "Válida só quando existe um pico alfa de verdade.",
+    source: FONTE_CATALOGO,
+  },
+  rms: {
+    label: "Amplitude RMS",
+    plain:
+      "Amplitude média do sinal (uma medida de energia). Serve como proxy de " +
+      "contato/energia, não como medida do cérebro.",
+    reliability: "cautela",
+    reliabilityNote: NOTA_CAUTELA,
+    source: FONTE_CATALOGO,
+  },
+  total_power: {
+    label: "Potência total",
+    plain: "A energia total somada do espectro.",
+    reliability: "cautela",
+    reliabilityNote: NOTA_CAUTELA,
+    source: FONTE_CATALOGO,
+  },
+
+  band_composition: {
+    label: "Composição por banda",
+    plain:
+      "Como a energia do sinal se reparte entre as faixas (delta, teta, alfa, " +
+      "beta, gama), em % do total. Toque em cada banda para ver o que significa.",
+    reliability: "defensável",
+    reliabilityNote: NOTA_DEFENSAVEL,
+    source: FONTE_CATALOGO,
+  },
+  trend_direction: {
+    label: "Tendência",
+    plain:
+      "A direção de uma medida ao longo das suas sessões: ↑ subindo, ↓ " +
+      "descendo, → estável, com a variação em %. É direção numérica — sem " +
+      "juízo de 'bom' ou 'ruim'.",
+    source: "Motor de análise (relatório longitudinal, N5)",
+  },
 };
 
 export function glossaryEntry(term: string): GlossaryEntry | undefined {

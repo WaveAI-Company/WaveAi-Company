@@ -9,6 +9,7 @@ import {
 } from "../api/report";
 import { useRoleAccent, useTheme, type Theme } from "../theme";
 import { Card } from "./Card";
+import { InfoButton } from "./InfoButton";
 
 type Props = {
   report: Report;
@@ -68,7 +69,11 @@ export function LongitudinalReport({ report, accent }: Props) {
       ) : null}
 
       {trends.length > 0 ? (
-        <Card title="Tendências por medida" accent={cor}>
+        <Card
+          title="Tendências por medida"
+          accent={cor}
+          titleAccessory={<InfoButton term="trend_direction" />}
+        >
           <Text style={styles.legenda}>
             Direção da medida ao longo das sessões — descrição, não diagnóstico.
           </Text>
@@ -85,6 +90,8 @@ export function LongitudinalReport({ report, accent }: Props) {
                   ? "estável"
                   : `${tr.delta_pct >= 0 ? "+" : ""}${formatNumber(tr.delta_pct, 0)}%`}
               </Text>
+              {/* ⓘ por medida: reusa o verbete da própria feature (glossário). */}
+              <InfoButton term={chave} />
             </View>
           ))}
         </Card>
