@@ -34,4 +34,20 @@ export class SignalSimulator {
     }
     return bloco;
   }
+
+  /**
+   * eSense **simulado** (attention/meditation), 0..100, derivando devagar.
+   *
+   * Existe só para exercitar o caminho do eSense (device → gateway → UI) sem
+   * hardware. **Não é medição de ninguém** — a tela que o usa já rotula o sinal
+   * como simulado, e o eSense real carrega o rótulo proprietário/não-validado
+   * (ADR-0034). Os valores acompanham a "fase alfa" para dar um movimento
+   * plausível, sem qualquer pretensão de significado.
+   */
+  nextEsense(): { attention: number; meditation: number } {
+    const t = this.amostra / this.sampleRate;
+    const onda = (freq: number, fase: number) =>
+      Math.round(50 + 30 * Math.sin(2 * Math.PI * freq * t + fase));
+    return { attention: onda(0.05, 0), meditation: onda(0.03, Math.PI / 2) };
+  }
 }

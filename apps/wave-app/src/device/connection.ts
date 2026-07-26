@@ -119,6 +119,14 @@ export const deviceConnection: DeviceConnection = {
         if (pacote.poorSignal !== undefined) {
           handlers.onSignalQuality?.({ poorSignal: pacote.poorSignal });
         }
+        // eSense (ADR-0034): repassado como veio do aparelho; a UI rotula e
+        // separa das features transparentes. Complemento, não fundamento.
+        if (pacote.attention !== undefined || pacote.meditation !== undefined) {
+          handlers.onEsense?.({
+            attention: pacote.attention,
+            meditation: pacote.meditation,
+          });
+        }
         const agora = Date.now();
         for (const amplitude of pacote.rawSamples) {
           handlers.onRawSample?.({ t: agora, amplitude });
