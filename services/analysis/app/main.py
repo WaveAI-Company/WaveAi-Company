@@ -28,6 +28,19 @@ DISCLAIMER = (
 )
 
 
+def _quality_dict(q) -> dict:
+    """Serializa a qualidade: métricas cruas + veredito (score/rejeição, ADR-0031)."""
+    return {
+        "signal_std": q.signal_std,
+        "mains_power": q.mains_power,
+        "mains_power_ratio": q.mains_power_ratio,
+        "score": q.score,
+        "rejected": q.rejected,
+        "reason": q.reason,
+        "artifact_ratio": q.artifact_ratio,
+    }
+
+
 class WindowRequest(BaseModel):
     """Uma janela de sinal bruto para análise ao vivo (#14)."""
 
@@ -94,11 +107,7 @@ def analyze_window(payload: WindowRequest) -> dict:
         "rel_alpha": resultado.rel_alpha,
         "relative_band_powers": resultado.relative_band_powers,
         "features": resultado.features,
-        "quality": {
-            "signal_std": resultado.quality.signal_std,
-            "mains_power": resultado.quality.mains_power,
-            "mains_power_ratio": resultado.quality.mains_power_ratio,
-        },
+        "quality": _quality_dict(resultado.quality),
         "disclaimer": DISCLAIMER,
     }
 
@@ -128,11 +137,7 @@ def analyze_session(payload: SessionRequest) -> dict:
         "relative_band_powers": report.relative_band_powers,
         "band_powers": report.band_powers,
         "features": report.features,
-        "quality": {
-            "signal_std": report.quality.signal_std,
-            "mains_power": report.quality.mains_power,
-            "mains_power_ratio": report.quality.mains_power_ratio,
-        },
+        "quality": _quality_dict(report.quality),
         "disclaimer": DISCLAIMER,
     }
     if comparison is not None:
@@ -180,10 +185,6 @@ def analyze_demo() -> dict:
         },
         "relative_band_powers": report.relative_band_powers,
         "features": report.features,
-        "quality": {
-            "signal_std": report.quality.signal_std,
-            "mains_power": report.quality.mains_power,
-            "mains_power_ratio": report.quality.mains_power_ratio,
-        },
+        "quality": _quality_dict(report.quality),
         "disclaimer": DISCLAIMER,
     }

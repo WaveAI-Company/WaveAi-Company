@@ -22,10 +22,16 @@ from .devices import (
 )
 from .esense import ESENSE_CATALOG, ESENSE_NAMES, ESENSE_RELIABILITY
 from .features import FEATURE_CATALOG, FeatureSpec, compute_features
+from .quality import (
+    QUALITY_PARAMS_VERSION,
+    QualityAssessment,
+    amplitude_artifact_ratio,
+    assess_quality,
+)
 from .reader import DeviceReader, SerialReader, SimulatedReader
 from .thinkgear import TGPacket, ThinkGearParser, checksum, parse_payload
 
-__version__ = "0.3.0"
+__version__ = "0.4.0"
 __all__ = [
     "ThinkGearParser",
     "TGPacket",
@@ -45,6 +51,10 @@ __all__ = [
     "ESENSE_CATALOG",
     "ESENSE_NAMES",
     "ESENSE_RELIABILITY",
+    "assess_quality",
+    "amplitude_artifact_ratio",
+    "QualityAssessment",
+    "QUALITY_PARAMS_VERSION",
     "SignalFrame",
     "DeviceProfile",
     "KNOWN_DEVICES",
