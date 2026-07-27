@@ -48,9 +48,16 @@ Reduzir o "lixo entra, lixo sai" e o abandono.
 - Onboarding de captação: **como conseguir bom contato do sensor**, o que é poorSignal, e protocolos simples (olhos abertos/fechados como no Exp. B) para dar contraste de estado interpretável.
 - Leitura ao vivo mais clara (o que esperar, quando confiar), reusando o gate de qualidade.
 
+### P6 — Casca do app, navegação e identidade *(frente cross-cutting; plano/ADR próprio antes de codar)*
+Reformulação da **moldura** (não do conteúdo das telas — esse é P1–P4). Adicionada em 2026-07-27 a pedido do fundador; **não estava no plano original**.
+- **Casca/navegação:** header persistente; navegação **lateral (sidebar) no web** e **drawer + hambúrguer no mobile**, no lugar do fluxo de telas empilhadas com "voltar". Provavelmente sobre o Expo Router (grupos/layout), sem reescrever o conteúdo das telas.
+- **Identidade:** conjunto de **ícones**, **splash screen**, **ícone do app** (adaptive icon Android/iOS).
+- **Polimento:** estados vazios, densidade, microinterações — reusando os tokens/tema já existentes (o design system em si já está de pé).
+- **[NOTA]** Ortogonal ao conteúdo: pode entrar depois de P3/P4 sem retrabalhá-los (a casca é o entorno). Exige um **plano/ADR próprio** (arquitetura de navegação + assets de marca) antes de codar.
+
 ### P5 — Deploy & distribuição *(a cauda — só com produto bom)*
 - **Hospedagem em nuvem** do serviço de Analysis + banco de produção — **revisita [ADR-0005](../05_Decisions.md)** (edge vs nuvem), residência de dados/LGPD, segredos por ambiente.
-- **Build do APK:** sair do fluxo *managed* para **EAS build** (ou prebuild local) — o módulo SPP nativo já exige dev-client; formalizar o pipeline de build assinado.
+- **Build do APK:** sair do fluxo *managed* para **EAS build** (ou prebuild local) — o módulo SPP nativo já exige dev-client; formalizar o pipeline de build assinado. **Inclui um passo de migração no deploy** (o container da API hoje não roda `alembic upgrade` no boot).
 - **Play Store:** listing com posicionamento **não-clínico** rigoroso (Medical/71), política de privacidade (LGPD), e o fluxo de consentimento real.
 
 ## Decisões de kickoff (viram ADRs antes de codar)
