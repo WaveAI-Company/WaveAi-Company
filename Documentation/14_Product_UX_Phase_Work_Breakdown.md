@@ -31,11 +31,12 @@ Tornar compreensível o que já existe, **persona-agnóstico** e de baixo risco.
 - Componente de dica/glossário reutilizável (acessível, contrastado — gate `check:contrast`), aplicado nas telas ao vivo, histórico e relatório.
 - Entregável: usuário consegue **ler** um número sem saber DSP, sem que a UI afirme mais do que o dado sustenta.
 
-### P2 — Anotações contextuais (o "pop-up de contexto") — v1 manual
+### P2 — Anotações contextuais (o "pop-up de contexto") — v1 manual *(ADR-0037)*
 Retoma a ideia da Visão ([00_Project_Vision](../00_Project_Vision.md)), adiada no esqueleto.
-- **v1 = manual por sessão:** o paciente adiciona uma **nota de contexto** à sessão (o que estava fazendo/sentindo). Novo modelo de dados (`annotation`/nota ligada à `CaptureSession`), cifrado como o `Result`; migration própria; auditoria de leitura pelo médico como nos `Result`.
-- O médico vê a anotação **ao lado do sinal/relatório** — correlação contexto × sinal, marcada **[HIPÓTESE]** (o valor com canal único ainda não está demonstrado).
-- **Gancho futuro (v2, fora do escopo agora):** disparo por **evento de interesse** (desvio Nσ, ADR-0032). Depende do **baseline pessoal amadurecer** (hoje "insuficiente" até ~20 sessões), então não dispara de verdade ainda — preparar o encaixe, não prometer o comportamento.
+- **v1 = manual por sessão:** o paciente adiciona uma **nota de texto livre** à sessão. Modelo `SessionAnnotation` (1 por sessão, upsert), **cifrado** como o `Result`; migration 0008; leitura pelo profissional via **CareLink** e **auditada** (`annotation_access_events`). Entra em export/erasure.
+- O profissional vê a anotação **ao lado do sinal/relatório**, rotulada **"autorrelato do paciente"** e read-only — correlação contexto × sinal, marcada **[HIPÓTESE]** (valor com canal único ainda não demonstrado).
+- **Split:** **P2-a** = backend (modelo + migration + serviço + rotas + testes sintéticos). **P2-b** = UI (captura no fim da sessão + edição no histórico; exibição rotulada).
+- **Gancho futuro (v2, fora do escopo):** disparo por **evento de interesse** (desvio Nσ, ADR-0032). Depende do **baseline amadurecer** (~20 sessões) — preparar o encaixe, não prometer o comportamento; sem o termo "anomalia".
 
 ### P3 — Cockpit do médico
 Consolidar o que ajuda o profissional a arbitrar.
@@ -53,7 +54,7 @@ Reduzir o "lixo entra, lixo sai" e o abandono.
 - **Play Store:** listing com posicionamento **não-clínico** rigoroso (Medical/71), política de privacidade (LGPD), e o fluxo de consentimento real.
 
 ## Decisões de kickoff (viram ADRs antes de codar)
-- **PUX-D1 — Modelo de anotação de contexto.** Forma do dado (campos livres vs estruturados), cifragem, vínculo com `CaptureSession`, e regra de leitura pelo médico (auditada, como os `Result`). → ADR próprio antes do P2.
+- **PUX-D1 — Modelo de anotação de contexto. ✅ RESOLVIDA (ADR-0037).** `SessionAnnotation` = **nota livre** (v1; tags = v2), **1 por sessão** (upsert), **cifrada** (Fernet), escrita só pelo titular, **visível ao profissional via CareLink** e auditada (`annotation_access_events`); entra em export/erasure. Split: **P2-a** (backend) → **P2-b** (UI).
 - **PUX-D2 — Deploy edge vs nuvem (reabre [ADR-0005](../05_Decisions.md)).** Onde roda o Analysis em produção; residência de dados. → antes do P5.
 - **PUX-D3 — Persona/claim de produto (Q-PRD-01). ✅ RESOLVIDA (ADR-0036).** Persona = **acompanhamento de bem-estar (estresse/relaxamento)**, não-clínico; acompanhante = **"profissional de bem-estar"** na UI (papel `doctor` mantido no modelo). A linguagem didática (P1/P4) e o listing (P5) miram esta persona.
 
