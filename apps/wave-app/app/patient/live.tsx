@@ -18,6 +18,7 @@ import { SignalQuality } from "../../src/components/charts/SignalQuality";
 import { MockBadge } from "../../src/components/MockBadge";
 import { ScreenContainer } from "../../src/components/ScreenContainer";
 import { ScreenHeading } from "../../src/components/ScreenHeading";
+import { SessionAnnotation } from "../../src/components/SessionAnnotation";
 import { Disclaimer } from "../../src/components/Disclaimer";
 import { deviceConnection } from "../../src/device/connection";
 import type { DeviceInfo, Esense } from "../../src/device/DeviceConnection";
@@ -457,6 +458,12 @@ export default function PatientLiveScreen() {
             }
             accent={encerrada.storage.persisted ? papel.accent : t.colors.warningText}
           />
+
+          {/* Versão manual do "pop-up de contexto" (P2, ADR-0037): logo após
+              captar, o paciente pode anotar o contexto da sessão. */}
+          {sessionId ? (
+            <SessionAnnotation sessionId={sessionId} mode="edit" accent={papel.accent} />
+          ) : null}
         </>
       ) : null}
 
