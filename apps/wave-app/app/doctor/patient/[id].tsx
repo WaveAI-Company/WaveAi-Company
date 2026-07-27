@@ -7,11 +7,13 @@ import { getPatientReport, type LongitudinalReport as Report } from "../../../sr
 import { listPatientResults, type SessionResult } from "../../../src/api/results";
 import { Disclaimer } from "../../../src/components/Disclaimer";
 import { LongitudinalReport } from "../../../src/components/LongitudinalReport";
+import { PatientOverview } from "../../../src/components/PatientOverview";
 import { ScreenContainer } from "../../../src/components/ScreenContainer";
 import { ScreenHeading } from "../../../src/components/ScreenHeading";
 import { SessionAnnotation } from "../../../src/components/SessionAnnotation";
 import { SessionsDashboard } from "../../../src/components/SessionsDashboard";
 import { StateView } from "../../../src/components/StateView";
+import { useTheme, type Theme } from "../../../src/theme";
 
 /** Sessão mais recente (por data) — alvo da anotação lida na tela do médico. */
 function maisRecente(results: SessionResult[]): SessionResult | null {
@@ -20,7 +22,6 @@ function maisRecente(results: SessionResult[]): SessionResult | null {
     null,
   );
 }
-import { useTheme, type Theme } from "../../../src/theme";
 
 /**
  * Detalhe do paciente com dashboards (#16).
@@ -87,10 +88,15 @@ export default function PatientDetailScreen() {
             </Text>
           ) : (
             <>
+              {/* Cockpit (P3): visão geral de relance → relatório → contexto da
+                  sessão → detalhe das sessões. O contexto (autorrelato) sobe
+                  para perto da análise, para o profissional cruzar os dois. */}
+              <PatientOverview results={results} report={report} />
+
               {report && report.n_sessions > 0 ? (
                 <LongitudinalReport report={report} />
               ) : null}
-              <SessionsDashboard results={results} />
+
               {/* Autorrelato do paciente (P2, ADR-0037): read-only, da sessão
                   mais recente. A API exige CareLink ativo e audita a leitura. */}
               {(() => {
@@ -99,6 +105,8 @@ export default function PatientDetailScreen() {
                   <SessionAnnotation sessionId={alvo.session_id} mode="read" patientId={id} />
                 ) : null;
               })()}
+
+              <SessionsDashboard results={results} />
             </>
           )}
 
