@@ -9,8 +9,17 @@ import { Disclaimer } from "../../../src/components/Disclaimer";
 import { LongitudinalReport } from "../../../src/components/LongitudinalReport";
 import { ScreenContainer } from "../../../src/components/ScreenContainer";
 import { ScreenHeading } from "../../../src/components/ScreenHeading";
+import { SessionAnnotation } from "../../../src/components/SessionAnnotation";
 import { SessionsDashboard } from "../../../src/components/SessionsDashboard";
 import { StateView } from "../../../src/components/StateView";
+
+/** Sessão mais recente (por data) — alvo da anotação lida na tela do médico. */
+function maisRecente(results: SessionResult[]): SessionResult | null {
+  return results.reduce<SessionResult | null>(
+    (mr, r) => (mr === null || r.created_at > mr.created_at ? r : mr),
+    null,
+  );
+}
 import { useTheme, type Theme } from "../../../src/theme";
 
 /**
@@ -82,6 +91,14 @@ export default function PatientDetailScreen() {
                 <LongitudinalReport report={report} />
               ) : null}
               <SessionsDashboard results={results} />
+              {/* Autorrelato do paciente (P2, ADR-0037): read-only, da sessão
+                  mais recente. A API exige CareLink ativo e audita a leitura. */}
+              {(() => {
+                const alvo = maisRecente(results);
+                return alvo && id ? (
+                  <SessionAnnotation sessionId={alvo.session_id} mode="read" patientId={id} />
+                ) : null;
+              })()}
             </>
           )}
 
