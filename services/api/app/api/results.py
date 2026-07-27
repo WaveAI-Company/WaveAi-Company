@@ -23,10 +23,12 @@ from ..db.session import get_session
 from ..models.result import ResultAccessAction
 from ..models.user import User, UserRole
 from ..services.analysis_client import AnalysisClient, AnalysisUnavailableError
+from ..services.annotation import AnnotationService
 from ..services.results import ResultService
 from ..services.narrator import Narrator
 from .deps import (
     get_analysis_client,
+    get_annotation_service,
     get_current_user,
     get_narrator,
     get_result_service,
@@ -120,9 +122,15 @@ def exportar_meus_dados(
     session: Session = Depends(get_session),
     user: User = Depends(get_current_user),
     service: ResultService = Depends(get_result_service),
+    annotations: AnnotationService = Depends(get_annotation_service),
 ) -> dict:
-    """Direito de **portabilidade**: exporta tudo do titular em JSON aberto."""
+    """Direito de **portabilidade**: exporta tudo do titular em JSON aberto.
+
+    Inclui as **anotações de contexto** (ADR-0037) ao lado dos Result — a
+    portabilidade é de tudo o que é do titular, não só do dado derivado.
+    """
     export = service.exportar(titular=user)
+    export["annotations"] = annotations.exportar(titular=user)
     session.commit()
     return export
 
@@ -132,11 +140,18 @@ def apagar_meus_dados(
     session: Session = Depends(get_session),
     user: User = Depends(get_current_user),
     service: ResultService = Depends(get_result_service),
+    annotations: AnnotationService = Depends(get_annotation_service),
 ) -> dict:
-    """Direito de **exclusão**: apaga TODOS os Result do titular."""
+    """Direito de **exclusão**: apaga TODOS os Result **e anotações** do titular.
+
+    A nota de contexto é dado do titular (ADR-0037); o erasure a alcança junto
+    com os Result — o `DELETE /me/results` não apaga sessões, então a nota não
+    sairia pelo `CASCADE` de sessão. Apagar por titular fecha esse buraco.
+    """
     apagados = service.apagar_tudo(titular=user)
+    notas_apagadas = annotations.apagar_tudo(titular=user)
     session.commit()
-    return {"deleted": apagados}
+    return {"deleted": apagados, "annotations_deleted": notas_apagadas}
 
 
 # -- leitura pelo médico (RBAC + CareLink ativo + auditoria) -------------
