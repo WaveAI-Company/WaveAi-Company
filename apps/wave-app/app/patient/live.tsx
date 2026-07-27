@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useMemo } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
-import { formatPercent } from "../../src/api/results";
+import { formatPercent, type BandKey } from "../../src/api/results";
 import {
   StreamSession,
   type LiveEsense,
@@ -13,6 +13,7 @@ import { Button } from "../../src/components/Button";
 import { Card } from "../../src/components/Card";
 import { InfoButton } from "../../src/components/InfoButton";
 import { BandBars } from "../../src/components/charts/BandBars";
+import { LiveBandTrend } from "../../src/components/charts/LiveBandTrend";
 import { SignalQuality } from "../../src/components/charts/SignalQuality";
 import { MockBadge } from "../../src/components/MockBadge";
 import { ScreenContainer } from "../../src/components/ScreenContainer";
@@ -38,6 +39,8 @@ const SAMPLE_RATE = 512;
 /** Cadência de envio: blocos de 256 amostras a cada 500 ms (≈ tempo real). */
 const BLOCO = 256;
 const INTERVALO_MS = 500;
+/** Janelas mantidas no gráfico ao vivo (janela ~2 s → ~80 s de histórico). */
+const MAX_PONTOS = 40;
 
 /**
  * Estado ao vivo a partir de um stream **simulado** (#14).
@@ -57,6 +60,8 @@ export default function PatientLiveScreen() {
   /** eSense ao vivo relayado pelo gateway (ADR-0034), à parte das features. */
   const [esense, setEsense] = useState<LiveEsense | null>(null);
   const [janelas, setJanelas] = useState(0);
+  /** Histórico de composição por banda para o gráfico ao vivo (P1-c). */
+  const [bandHistory, setBandHistory] = useState<Array<Record<string, number>>>([]);
   const [erro, setErro] = useState<string | null>(null);
   const [sessionId, setSessionId] = useState<string | null>(null);
 
@@ -116,6 +121,14 @@ export default function PatientLiveScreen() {
     sessao.current = null;
   }, []);
 
+  /** Features de uma janela: atualiza o destaque e alimenta o gráfico ao vivo. */
+  const aoReceberFeatures = useCallback((f: LiveFeatures) => {
+    setFeatures(f);
+    setJanelas((n) => n + 1);
+    const rbp = f.relative_band_powers;
+    if (rbp) setBandHistory((h) => [...h, rbp].slice(-MAX_PONTOS));
+  }, []);
+
   async function procurarAparelhos() {
     setErro(null);
     try {
@@ -133,16 +146,14 @@ export default function PatientLiveScreen() {
     setFeatures(null);
     setEsense(null);
     setJanelas(0);
+    setBandHistory([]);
     setPoorSignal(null);
     setEncerrada(null);
     esensePendente.current = {};
 
     const stream = new StreamSession({
       onSession: setSessionId,
-      onFeatures: (f) => {
-        setFeatures(f);
-        setJanelas((n) => n + 1);
-      },
+      onFeatures: aoReceberFeatures,
       onEsense: setEsense,
       onClosed: aoEncerrar,
       onError: (detalhe) => {
@@ -205,14 +216,12 @@ export default function PatientLiveScreen() {
     setFeatures(null);
     setEsense(null);
     setJanelas(0);
+    setBandHistory([]);
     setEncerrada(null);
 
     const stream = new StreamSession({
       onSession: setSessionId,
-      onFeatures: (f) => {
-        setFeatures(f);
-        setJanelas((n) => n + 1);
-      },
+      onFeatures: aoReceberFeatures,
       onEsense: setEsense,
       onClosed: aoEncerrar,
       onError: (detalhe) => {
@@ -343,6 +352,18 @@ export default function PatientLiveScreen() {
             />
           ))
         : null}
+
+      {/* Gráfico ao vivo (P1-c): uma banda por vez, oscilando ao longo da
+          sessão. Alimentado pelas features do servidor — sem DSP no cliente. */}
+      {bandHistory.length > 0 ? (
+        <Card
+          title="Ondas ao vivo"
+          accent={papel.accent}
+          titleAccessory={<InfoButton term="live_band_trend" />}
+        >
+          <LiveBandTrend history={bandHistory} accent={papel.accent} />
+        </Card>
+      ) : null}
 
       {/* eSense (ADR-0034): à parte das features transparentes, cor neutra
           (nada de "bom/ruim") e com o rótulo obrigatório. Complemento
