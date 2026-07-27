@@ -203,6 +203,16 @@ export const GLOSSARY: Record<string, GlossaryEntry> = {
       "juízo de 'bom' ou 'ruim'.",
     source: "Motor de análise (relatório longitudinal, N5)",
   },
+  live_band_trend: {
+    label: "Ondas ao vivo",
+    plain:
+      "A proporção da banda escolhida ao longo desta sessão, atualizada a cada " +
+      "leitura (~2 s). Mostra como o seu sinal varia em tempo real. Toque numa " +
+      "banda para trocar; uma de cada vez para não sugerir que alguma é a 'certa'.",
+    reliability: "defensável",
+    reliabilityNote: NOTA_DEFENSAVEL,
+    source: FONTE_CATALOGO,
+  },
 };
 
 export function glossaryEntry(term: string): GlossaryEntry | undefined {
