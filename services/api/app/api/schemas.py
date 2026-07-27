@@ -74,6 +74,16 @@ class ConsentRequest(BaseModel):
     version: str | None = Field(default=None, max_length=32)
 
 
+#: Teto de tamanho da nota de contexto (ADR-0037). Contexto curto, não prontuário.
+ANNOTATION_MAX_LENGTH = 2000
+
+
+class AnnotationRequest(BaseModel):
+    """Nota de contexto de uma sessão (autorrelato do titular, ADR-0037)."""
+
+    note: str = Field(min_length=1, max_length=ANNOTATION_MAX_LENGTH)
+
+
 class CareLinkRequest(BaseModel):
     """E-mail da contraparte (paciente, se quem pede é médico — e vice-versa)."""
 

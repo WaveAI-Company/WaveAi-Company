@@ -1,5 +1,10 @@
 """Modelos do domínio."""
 
+from .annotation import (
+    AnnotationAccessAction,
+    AnnotationAccessEvent,
+    SessionAnnotation,
+)
 from .care_link import (
     CareLink,
     CareLinkEvent,
@@ -23,6 +28,9 @@ __all__ = [
     "Result",
     "ResultAccessEvent",
     "ResultAccessAction",
+    "SessionAnnotation",
+    "AnnotationAccessEvent",
+    "AnnotationAccessAction",
     "CareLink",
     "CareLinkStatus",
     "CareLinkParty",
