@@ -384,3 +384,22 @@ Recompilar, por sua vez, esbarrou num problema de ambiente da máquina de desenv
 **Alternativas consideradas:** (a) **foco & meditação** — mais motivador, mas apoia-se mais no eSense (proprietário/rotulado) e menos no achado defensável; fica como extensão futura da persona, não a âncora. (b) **autoconhecimento/quantified-self genérico** — rejeitada como primária: persona vaga, papel do profissional fraco, difícil ser "didático para alguém". (c) **renomear o papel `doctor` no modelo** — rejeitada: acoplaria a cópia de produto à arquitetura e complicaria a visão clínica futura.
 
 **Consequências:** resolve **Q-PRD-01** ([04_Open_Questions](04_Open_Questions.md)); a linguagem didática (P1) e o onboarding (P4) miram esta persona; textos usam "profissional de bem-estar"; o listing da Play Store (P5) segue o mesmo enquadramento não-clínico. **Q-PRD-02** (modelo de negócio) e **Q-REG-03** (on-ramp de bem-estar) permanecem, agora informadas por esta persona. Relaciona Medical/71 e ADR-0012.
+
+## ADR-0037 — Anotações contextuais de sessão: nota livre cifrada, por sessão, visível ao profissional via CareLink (PUX-D1)
+**Status:** Aceita (2026-07-26)
+**Contexto:** A fase **Produto & UX** vai construir a **P2** (o "pop-up de contexto"): a [Visão](00_Project_Vision.md) previa que o paciente adicione **contexto a um momento** para correlacionar com o sinal — nunca implementado (não há tabela de anotação). **PUX-D1** ([Documentation/14](Documentation/14_Product_UX_Phase_Work_Breakdown.md)) pede o modelo. Persona = bem-estar/estresse (ADR-0036). A **v1 é manual** (o disparo por evento/desvio Nσ depende de baseline maduro — ADR-0032 — e fica para v2, sem o termo "anomalia").
+
+**[FATO] O padrão de dado sensível do titular já existe.** O `Result` cifra em repouso (ADR-0026), audita acesso por titular (`ResultAccessEvent`) e a leitura pelo profissional exige **CareLink ativo** (ADR-0024). A anotação **espelha** isso em vez de inventar um caminho novo.
+
+**Decisão:**
+1. **Modelo `SessionAnnotation`:** **uma nota por `capture_session`** (`session_id` único, editável = upsert), com `patient_user_id` redundante (exclusão/portabilidade em massa) e `CASCADE` na exclusão de sessão/usuário — como o `Result`.
+2. **Formato v1 = nota de texto livre** (tamanho limitado). **Tags estruturadas ficam para v2** — exigem decidir um vocabulário controlado, que não deve bloquear a v1.
+3. **Cifrada em repouso** (Fernet, o mesmo `MetricsCipher` do `Result`): contexto autorrelatado é **dado pessoal**. Só ids/timestamps ficam em claro.
+4. **Quem escreve:** apenas o **titular**, na própria sessão. O profissional **nunca** autora contexto do paciente (é autorrelato).
+5. **Quem lê + auditoria:** o titular lê a própria; o profissional lê via **CareLink ativo**, e a leitura é **auditada** numa tabela dedicada **`annotation_access_events`** (espelho do `ResultAccessEvent`) — trilha LGPD **precisa**, sem confundir "leu suas notas" com "leu seus resultados".
+6. **Visibilidade = ao profissional via CareLink** (como o `Result`). **Não** há "privada por padrão / opt-in por nota" nesta versão: esvaziaria o valor de correlação, e o compartilhamento já é governado pelo CareLink (ADR-0024) + consentimento (ADR-0026).
+7. **Direitos do titular:** a nota entra no **export** (portabilidade) e é apagada pela **exclusão** (erasure), junto com os `Result`.
+
+**Alternativas consideradas:** (a) **tags estruturadas já na v1** — adiada (exige vocabulário); (b) **privada por padrão, opt-in por nota** — rejeitada (esvazia a correlação; compartilhamento já governado por CareLink+consentimento); (c) **reusar `ResultAccessEvent`** para auditar as notas — preterida (misturaria "leu notas" com "leu resultados" na trilha); (d) **texto em claro** — rejeitada (dado pessoal; cifra como o `Result`); (e) **múltiplas notas por sessão (log)** — adiada (a v1 é "o contexto daquela sessão" = uma coisa, editável).
+
+**Consequências:** nova **migration 0008** (`session_annotations` + `annotation_access_events`); um `AnnotationService` no padrão do `ResultService`; rotas do titular (`PUT/GET/DELETE /sessions/{id}/annotation`) e do profissional (`GET /patients/{id}/sessions/{id}/annotation`, CareLink + auditada); export/erasure estendidos. **P2-b** traz a UI (captura manual no fim da sessão + edição no histórico; leitura rotulada "autorrelato" e read-only para o profissional). Relaciona ADR-0026, ADR-0024, ADR-0032 (evento = v2) e Medical/72.
