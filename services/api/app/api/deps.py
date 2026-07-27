@@ -22,6 +22,7 @@ from ..security.tokens import InvalidTokenError, decode_access_token
 from ..services.analysis_client import AnalysisClient, HttpAnalysisClient
 from ..services.auth import AuthService
 from ..services.care import CareService
+from ..services.annotation import AnnotationService
 from ..services.narrator import Narrator, build_narrator
 from ..services.results import ResultService
 
@@ -128,6 +129,13 @@ def get_result_service(
     cipher: MetricsCipher = Depends(get_metrics_cipher),
 ) -> ResultService:
     return ResultService(session=session, settings=settings, cipher=cipher)
+
+
+def get_annotation_service(
+    session: Session = Depends(get_session),
+    cipher: MetricsCipher = Depends(get_metrics_cipher),
+) -> AnnotationService:
+    return AnnotationService(session=session, cipher=cipher)
 
 
 def get_care_service(
