@@ -7,8 +7,17 @@ import { Disclaimer } from "../../src/components/Disclaimer";
 import { LongitudinalReport } from "../../src/components/LongitudinalReport";
 import { ScreenContainer } from "../../src/components/ScreenContainer";
 import { ScreenHeading } from "../../src/components/ScreenHeading";
+import { SessionAnnotation } from "../../src/components/SessionAnnotation";
 import { SessionsDashboard } from "../../src/components/SessionsDashboard";
 import { StateView } from "../../src/components/StateView";
+
+/** Sessão mais recente (por data) — alvo da anotação editável no histórico. */
+function maisRecente(results: SessionResult[]): SessionResult | null {
+  return results.reduce<SessionResult | null>(
+    (mr, r) => (mr === null || r.created_at > mr.created_at ? r : mr),
+    null,
+  );
+}
 
 /**
  * Histórico e tendências do paciente (#16).
@@ -71,6 +80,13 @@ export default function PatientHistoryScreen() {
         <>
           {report && report.n_sessions > 0 ? <LongitudinalReport report={report} /> : null}
           <SessionsDashboard results={results} />
+          {/* Anotação de contexto (P2, ADR-0037) da sessão mais recente. */}
+          {(() => {
+            const alvo = maisRecente(results);
+            return alvo ? (
+              <SessionAnnotation sessionId={alvo.session_id} mode="edit" />
+            ) : null;
+          })()}
         </>
       ) : null}
 
