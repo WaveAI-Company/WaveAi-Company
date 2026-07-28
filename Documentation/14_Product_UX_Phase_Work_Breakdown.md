@@ -48,12 +48,13 @@ Reduzir o "lixo entra, lixo sai" e o abandono.
 - Onboarding de captação: **como conseguir bom contato do sensor**, o que é poorSignal, e protocolos simples (olhos abertos/fechados como no Exp. B) para dar contraste de estado interpretável.
 - Leitura ao vivo mais clara (o que esperar, quando confiar), reusando o gate de qualidade.
 
-### P6 — Casca do app, navegação e identidade *(frente cross-cutting; plano/ADR próprio antes de codar)*
-Reformulação da **moldura** (não do conteúdo das telas — esse é P1–P4). Adicionada em 2026-07-27 a pedido do fundador; **não estava no plano original**.
-- **Casca/navegação:** header persistente; navegação **lateral (sidebar) no web** e **drawer + hambúrguer no mobile**, no lugar do fluxo de telas empilhadas com "voltar". Provavelmente sobre o Expo Router (grupos/layout), sem reescrever o conteúdo das telas.
-- **Identidade:** conjunto de **ícones**, **splash screen**, **ícone do app** (adaptive icon Android/iOS).
-- **Polimento:** estados vazios, densidade, microinterações — reusando os tokens/tema já existentes (o design system em si já está de pé).
-- **[NOTA]** Ortogonal ao conteúdo: pode entrar depois de P3/P4 sem retrabalhá-los (a casca é o entorno). Exige um **plano/ADR próprio** (arquitetura de navegação + assets de marca) antes de codar.
+### P6 — Casca do app, navegação e identidade *(frente cross-cutting; **ADR-0038**)*
+Reformulação da **moldura** (não do conteúdo das telas — esse é P1–P4). Adicionada em 2026-07-27 a pedido do fundador; **não estava no plano original**. Arquitetura decidida em **[ADR-0038](../05_Decisions.md)** (casca própria responsiva, **sem dep nativa nova**; superfície por plataforma; gate do simulador). Fatias:
+- **P6-a · Casca responsiva** — `AppShell` com **header persistente** + **sidebar no web / drawer + hambúrguer no mobile** (Expo Router `Slot` + `Animated` built-in, sem `@react-navigation/drawer`), no lugar do fluxo empilhado com "voltar". Guarda por papel preservada; conteúdo das telas intacto.
+- **P6-b · Superfície por plataforma + gate do simulador** — o web mostra o que **consegue** (histórico/tendências/relatório/cockpit/anotações) e sinaliza que a captação é no celular; a **captação simulada** some do produto (fica atrás de `__DEV__`/`EXPO_PUBLIC_ENABLE_SIMULATOR` para smoke/teste).
+- **P6-c · Identidade** — **wordmark/logo, splash e adaptive icon derivados dos tokens** (turquesa paciente / azul médico), substituindo os placeholders default do Expo; trocáveis por design profissional depois.
+- **Polimento:** estados vazios, densidade, microinterações — reusando os tokens/tema (o design system já está de pé).
+- **[FORA DE ESCOPO]** **Espectador ao vivo** (celular capta → navegador assiste em tempo real) = **frente própria, ADR próprio, perto da P5** — hoje o gateway `/stream` é 1:1 (sem fan-out); exige fan-out + endpoint de assinatura + auth CareLink/LGPD + barramento na nuvem.
 
 ### P5 — Deploy & distribuição *(a cauda — só com produto bom)*
 - **Hospedagem em nuvem** do serviço de Analysis + banco de produção — **revisita [ADR-0005](../05_Decisions.md)** (edge vs nuvem), residência de dados/LGPD, segredos por ambiente.
