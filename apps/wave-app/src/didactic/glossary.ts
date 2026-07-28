@@ -213,6 +213,19 @@ export const GLOSSARY: Record<string, GlossaryEntry> = {
     reliabilityNote: NOTA_DEFENSAVEL,
     source: FONTE_CATALOGO,
   },
+  protocolo_contraste: {
+    label: "Protocolo olhos abertos/fechados",
+    plain:
+      "Uma rotina curta em duas fases — olhos abertos e depois fechados — para " +
+      "dar um contraste de estado interpretável na mesma sessão. Com os olhos " +
+      "fechados, a atividade alfa costuma aumentar; comparar as duas fases é mais " +
+      "informativo que um número isolado. Exploratório e não-clínico.",
+    reliability: "defensável",
+    reliabilityNote:
+      "O aumento de alfa de olhos fechados é um efeito bem conhecido — aqui, " +
+      "uso exploratório de bem-estar, não medida de diagnóstico.",
+    source: "Protocolo de captação (P4)",
+  },
 };
 
 export function glossaryEntry(term: string): GlossaryEntry | undefined {

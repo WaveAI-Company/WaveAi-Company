@@ -18,8 +18,17 @@ export class SignalSimulator {
   constructor(
     private readonly sampleRate: number,
     /** Amplitude do componente alfa — mais alto simula "olhos fechados". */
-    private readonly alphaAmplitude = 20,
+    private alphaAmplitude = 20,
   ) {}
+
+  /**
+   * Ajusta a amplitude alfa em tempo real — usado pelo protocolo guiado (P4-c)
+   * para tornar visível o contraste olhos abertos↔fechados no simulador. É só
+   * cosmético do sinal de teste; nada disso é análise nem medição de ninguém.
+   */
+  setAlphaAmplitude(v: number): void {
+    this.alphaAmplitude = v;
+  }
 
   /** Próximo bloco de `n` amostras. */
   nextBlock(n: number): number[] {
