@@ -12,6 +12,7 @@ import {
 import { Button } from "../../src/components/Button";
 import { Card } from "../../src/components/Card";
 import { InfoButton } from "../../src/components/InfoButton";
+import { LiveReadingConfidence } from "../../src/components/LiveReadingConfidence";
 import { BandBars } from "../../src/components/charts/BandBars";
 import { LiveBandTrend } from "../../src/components/charts/LiveBandTrend";
 import { SignalQuality } from "../../src/components/charts/SignalQuality";
@@ -340,6 +341,12 @@ export default function PatientLiveScreen() {
           })()
         : null}
 
+      {/* Quando confiar na leitura (P4-b): elo entre o contato acima e as
+          features abaixo. Qualificador de confiabilidade, não juízo de estado. */}
+      {ativo && poorSignal !== null ? (
+        <LiveReadingConfidence poorSignal={poorSignal} accent={papel.accent} />
+      ) : null}
+
       {features?.unavailable ? (
         <Card
           title="Análise indisponível"
@@ -360,7 +367,7 @@ export default function PatientLiveScreen() {
       ) : ativo ? (
         <Card
           title="Coletando…"
-          subtitle="A primeira leitura aparece quando a janela fecha (~2 s)."
+          subtitle="A primeira leitura aparece quando a janela fecha (~2 s). É normal os valores oscilarem no começo — eles se acomodam conforme a captação segue."
           accent={papel.accent}
         />
       ) : null}
