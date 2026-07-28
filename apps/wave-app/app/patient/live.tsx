@@ -18,8 +18,10 @@ import { SignalQuality } from "../../src/components/charts/SignalQuality";
 import { MockBadge } from "../../src/components/MockBadge";
 import { ScreenContainer } from "../../src/components/ScreenContainer";
 import { ScreenHeading } from "../../src/components/ScreenHeading";
+import { SensorPrepGuide } from "../../src/components/SensorPrepGuide";
 import { SessionAnnotation } from "../../src/components/SessionAnnotation";
 import { Disclaimer } from "../../src/components/Disclaimer";
+import { describeContact } from "../../src/device/contactQuality";
 import { deviceConnection } from "../../src/device/connection";
 import type { DeviceInfo, Esense } from "../../src/device/DeviceConnection";
 import { SignalSimulator } from "../../src/mocks/signalSimulator";
@@ -218,6 +220,7 @@ export default function PatientLiveScreen() {
     setEsense(null);
     setJanelas(0);
     setBandHistory([]);
+    setPoorSignal(null);
     setEncerrada(null);
 
     const stream = new StreamSession({
@@ -246,6 +249,8 @@ export default function PatientLiveScreen() {
     const simulador = new SignalSimulator(SAMPLE_RATE);
     timer.current = setInterval(() => {
       stream.sendSamples(simulador.nextBlock(BLOCO), simulador.nextEsense());
+      // Contato simulado: exercita a leitura de bom contato (P4-a) sem aparelho.
+      setPoorSignal(simulador.nextPoorSignal());
     }, INTERVALO_MS);
   }
 
@@ -265,6 +270,11 @@ export default function PatientLiveScreen() {
           rotularia dado verdadeiro como fictício — enganoso na direção
           oposta, e igualmente errado. */}
       {!usandoAparelho ? <MockBadge /> : null}
+
+      {/* Preparação do sensor (P4-a): antes de captar, como conseguir bom
+          contato — reduz "lixo entra, lixo sai". Some durante a captação e ao
+          ver o relatório, para não competir com a leitura ao vivo. */}
+      {!ativo && !encerrada ? <SensorPrepGuide accent={papel.accent} /> : null}
 
       {!ativo && deviceConnection.supported ? (
         <>
@@ -308,14 +318,27 @@ export default function PatientLiveScreen() {
 
       {erro ? <Text style={styles.erro}>{erro}</Text> : null}
 
-      {poorSignal !== null ? (
-        <Card
-          title={`Contato do sensor: ${poorSignal}`}
-          subtitle="0 = bom contato · 200 = eletrodo solto (valor reportado pelo aparelho)"
-          accent={poorSignal === 0 ? papel.accent : t.colors.warningText}
-          titleAccessory={<InfoButton term="poor_signal" />}
-        />
-      ) : null}
+      {poorSignal !== null
+        ? (() => {
+            // Faixa em linguagem simples sobre o número cru (P4-a). Contato tem
+            // valência legítima, então a cor de alerta aqui é honesta.
+            const contato = describeContact(poorSignal);
+            const cor =
+              contato.level === "bom"
+                ? papel.accent
+                : contato.level === "solto"
+                  ? t.colors.dangerText
+                  : t.colors.warningText;
+            return (
+              <Card
+                title={`${contato.label} · ${poorSignal}`}
+                subtitle={`${contato.hint} (0 = bom contato · 200 = eletrodo solto, valor do aparelho)`}
+                accent={cor}
+                titleAccessory={<InfoButton term="poor_signal" />}
+              />
+            );
+          })()
+        : null}
 
       {features?.unavailable ? (
         <Card
