@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 
+import { protocolCues } from "../audio/protocolCues";
 import { useTheme, type Theme } from "../theme";
 import { Button } from "./Button";
 import { InfoButton } from "./InfoButton";
@@ -65,10 +66,19 @@ export function GuidedProtocol({ accent, onPhaseChange }: Props) {
   const styles = useMemo(() => criarEstilos(t), [t]);
   const [indice, setIndice] = useState(OCIOSO);
   const [restante, setRestante] = useState(0);
+  /** Guia por voz/vibração ligada (P4-d). É o ponto do protocolo, mas dá p/ calar. */
+  const [somLigado, setSomLigado] = useState(true);
 
   const rodando = indice >= 0 && indice < FASES.length;
   const concluido = indice === FASES.length;
   const fase = rodando ? FASES[indice] : null;
+
+  function alternarSom() {
+    setSomLigado((s) => {
+      if (s) protocolCues.stop();
+      return !s;
+    });
+  }
 
   function iniciar() {
     setIndice(0);
@@ -84,29 +94,66 @@ export function GuidedProtocol({ accent, onPhaseChange }: Props) {
     setRestante(0);
   }
 
-  // Avisa o pai da fase atual (null quando ocioso/concluído).
+  // Avisa o pai da fase atual (null quando ocioso/concluído) e dá a pista de
+  // áudio na entrada de cada fase / na conclusão (P4-d) — essencial de olhos
+  // fechados, quando não há pista visual.
   useEffect(() => {
     onPhaseChange?.(fase ? fase.key : null);
-    // Ao desmontar (fim da captação), garante que o sinal volte ao normal.
+    if (somLigado) {
+      if (fase) {
+        protocolCues.transition();
+        protocolCues.announce(
+          fase.key === "aberto"
+            ? "Olhos abertos. Olhe para um ponto fixo à frente."
+            : "Feche os olhos agora.",
+        );
+      } else if (concluido) {
+        protocolCues.transition();
+        protocolCues.announce("Pode abrir os olhos. Protocolo concluído.");
+      }
+    }
+    // Ao desmontar (fim da captação), volta o sinal ao normal e cala a voz.
     return () => onPhaseChange?.(null);
   }, [indice]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Contagem regressiva: cada segundo agenda o próximo; ao zerar, avança.
+  // Contagem regressiva: cada segundo agenda o próximo; ao zerar, avança. Nos
+  // 3 s finais, uma batida por segundo (beep/vibra) marca o fim da fase.
   useEffect(() => {
     if (!rodando) return;
     if (restante <= 0) {
       proxima();
       return;
     }
+    if (somLigado && restante <= 3) protocolCues.tick();
     const id = setTimeout(() => setRestante((r) => r - 1), 1000);
     return () => clearTimeout(id);
   }, [indice, restante]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Cala qualquer fala pendente ao desmontar.
+  useEffect(() => () => protocolCues.stop(), []);
 
   return (
     <View style={[styles.card, { borderLeftColor: accent }]}>
       <View style={styles.cabecalho}>
         <Text style={styles.titulo}>Protocolo guiado</Text>
-        <InfoButton term="protocolo_contraste" accent={accent} />
+        <View style={styles.cabecalhoAcoes}>
+          {/* Silenciar a guia por voz/vibração. Irmão do InfoButton (nunca
+              button aninhado). */}
+          <Pressable
+            accessibilityRole="button"
+            accessibilityState={{ selected: somLigado }}
+            accessibilityLabel={
+              somLigado ? "Silenciar guia por voz" : "Ativar guia por voz"
+            }
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+            onPress={alternarSom}
+          >
+            <Text style={[styles.somIcone, { color: accent }]}>
+              {somLigado ? "🔊" : "🔇"}
+            </Text>
+          </Pressable>
+          <InfoButton term="protocolo_contraste" accent={accent} />
+        </View>
       </View>
 
       {!rodando && !concluido ? (
@@ -165,6 +212,14 @@ const criarEstilos = (t: Theme) =>
       alignItems: "center",
       justifyContent: "space-between",
       gap: t.spacing.sm,
+    },
+    cabecalhoAcoes: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: t.spacing.md,
+    },
+    somIcone: {
+      ...t.typography.bodyStrong,
     },
     titulo: {
       ...t.typography.heading,
