@@ -22,6 +22,7 @@ import { ScreenHeading } from "../../src/components/ScreenHeading";
 import { SensorPrepGuide } from "../../src/components/SensorPrepGuide";
 import { SessionAnnotation } from "../../src/components/SessionAnnotation";
 import { Disclaimer } from "../../src/components/Disclaimer";
+import { GuidedProtocol, type ProtocolPhase } from "../../src/components/GuidedProtocol";
 import { describeContact } from "../../src/device/contactQuality";
 import { deviceConnection } from "../../src/device/connection";
 import type { DeviceInfo, Esense } from "../../src/device/DeviceConnection";
@@ -79,6 +80,9 @@ export default function PatientLiveScreen() {
 
   const sessao = useRef<StreamSession | null>(null);
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
+  /** Simulador ativo (só no caminho web/simulado) — o protocolo guiado o usa
+   *  para tornar visível o contraste olhos abertos/fechados. */
+  const simuladorRef = useRef<SignalSimulator | null>(null);
   /** Amostras do aparelho acumuladas entre envios ao servidor. */
   const pendentes = useRef<number[]>([]);
   /** Último eSense do aparelho, aguardando pegar carona no próximo bloco. */
@@ -91,6 +95,7 @@ export default function PatientLiveScreen() {
     if (usandoAparelho) void deviceConnection.disconnect();
     pendentes.current = [];
     esensePendente.current = {};
+    simuladorRef.current = null;
     setAtivo(false);
     setUsandoAparelho(false);
   }, [usandoAparelho]);
@@ -123,6 +128,15 @@ export default function PatientLiveScreen() {
     setEncerrando(false);
     sessao.current?.close();
     sessao.current = null;
+  }, []);
+
+  /**
+   * Fase do protocolo guiado (P4-c). No simulador, eleva o alfa de "olhos
+   * fechados" para o contraste ficar visível; em aparelho real é só a guia
+   * (não há simulador, então isto não toca no sinal).
+   */
+  const aoMudarFaseProtocolo = useCallback((fase: ProtocolPhase | null) => {
+    simuladorRef.current?.setAlphaAmplitude(fase === "fechado" ? 45 : 20);
   }, []);
 
   /** Features de uma janela: atualiza o destaque e alimenta o gráfico ao vivo. */
@@ -248,6 +262,7 @@ export default function PatientLiveScreen() {
     // O simulador emite eSense sintético para exercitar o caminho sem hardware
     // (o selo "simulado" da tela já avisa que nada aqui é medição de ninguém).
     const simulador = new SignalSimulator(SAMPLE_RATE);
+    simuladorRef.current = simulador;
     timer.current = setInterval(() => {
       stream.sendSamples(simulador.nextBlock(BLOCO), simulador.nextEsense());
       // Contato simulado: exercita a leitura de bom contato (P4-a) sem aparelho.
@@ -345,6 +360,13 @@ export default function PatientLiveScreen() {
           features abaixo. Qualificador de confiabilidade, não juízo de estado. */}
       {ativo && poorSignal !== null ? (
         <LiveReadingConfidence poorSignal={poorSignal} accent={papel.accent} />
+      ) : null}
+
+      {/* Protocolo guiado olhos abertos/fechados (P4-c): contraste de estado na
+          mesma captação. Client-only — não persiste fase; contexto vai na
+          anotação (P2). Some ao encerrar (desmonta e limpa o timer). */}
+      {ativo ? (
+        <GuidedProtocol accent={papel.accent} onPhaseChange={aoMudarFaseProtocolo} />
       ) : null}
 
       {features?.unavailable ? (
