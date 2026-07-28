@@ -83,6 +83,8 @@ export function LiveBandTrend({ history, accent }: Props) {
           data={data}
           accent={cor}
           formatValue={formatPercent}
+          smooth
+          showDots={false}
           accessibilityLabel={`Variação ao vivo da banda selecionada ao longo de ${data.length} leituras.`}
         />
       ) : (
