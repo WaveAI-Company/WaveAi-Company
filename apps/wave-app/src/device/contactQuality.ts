@@ -48,3 +48,43 @@ export function describeContact(poorSignal: number): ContactDescription {
     hint: "O eletrodo está firme na pele.",
   };
 }
+
+/**
+ * Qualifica **quanto confiar** na leitura ao vivo (P4-b), a partir do mesmo
+ * contato (uma só fonte de limiar: reusa `describeContact`).
+ *
+ * É um qualificador de **confiabilidade da medida**, não um juízo sobre o estado
+ * mental: contato ruim significa que os números refletem mais ruído que cérebro.
+ * Por isso a valência aqui é legítima (ADR-0027) — diferente de bandas/estados,
+ * onde não há "bom/ruim".
+ */
+export type ReadingReliability = {
+  level: ContactLevel;
+  /** Rótulo curto de confiança. */
+  label: string;
+  /** O que isso significa para os números logo abaixo. */
+  note: string;
+};
+
+export function readingReliability(poorSignal: number): ReadingReliability {
+  const { level } = describeContact(poorSignal);
+  if (level === "solto") {
+    return {
+      level,
+      label: "Sem leitura confiável",
+      note: "Sem contato, os números abaixo não refletem sinal cerebral.",
+    };
+  }
+  if (level === "ajuste") {
+    return {
+      level,
+      label: "Leitura instável",
+      note: "O contato oscila; os números abaixo podem variar bastante enquanto você ajusta o sensor.",
+    };
+  }
+  return {
+    level,
+    label: "Leitura confiável",
+    note: "O contato está estável. É normal os valores oscilarem um pouco entre janelas.",
+  };
+}
