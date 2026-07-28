@@ -50,4 +50,19 @@ export class SignalSimulator {
       Math.round(50 + 30 * Math.sin(2 * Math.PI * freq * t + fase));
     return { attention: onda(0.05, 0), meditation: onda(0.03, Math.PI / 2) };
   }
+
+  /**
+   * `poorSignal` **simulado** (0..200), para exercitar a leitura de contato
+   * (P4-a) sem aparelho. Começa alto (contato ainda se acomodando) e cai para
+   * bom, passando pela faixa "ajuste" — assim a UI de contato mostra os três
+   * estados no web. **Não é medição de ninguém**: a tela já rotula como simulado.
+   */
+  nextPoorSignal(): number {
+    const t = this.amostra / this.sampleRate;
+    // Decaimento suave de ~200 para ~0 nos primeiros segundos, com leve
+    // ondulação para não travar exatamente em um valor.
+    const base = 200 * Math.exp(-t / 6);
+    const ondulacao = 6 * (Math.sin(2 * Math.PI * 0.2 * t) + 1);
+    return Math.min(200, Math.max(0, Math.round(base + ondulacao)));
+  }
 }
