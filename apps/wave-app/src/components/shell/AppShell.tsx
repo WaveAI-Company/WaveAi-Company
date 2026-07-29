@@ -13,6 +13,7 @@ import {
 import { useAuth } from "../../auth/AuthContext";
 import { activeHref, routeTitle } from "../../navigation/navItems";
 import { useRoleAccent, useTheme, type Theme } from "../../theme";
+import { Logo } from "../brand/Logo";
 import { Button } from "../Button";
 import { NavList } from "./NavList";
 
@@ -125,13 +126,7 @@ function PainelLateral({
   return (
     <View style={styles.painel}>
       <View style={styles.marca}>
-        <View style={[styles.marcaGlifo, { backgroundColor: accent }]}>
-          <Text style={styles.marcaGlifoTexto}>◠</Text>
-        </View>
-        <View style={styles.marcaTextos}>
-          <Text style={styles.marcaNome}>WaveAI</Text>
-          <Text style={styles.marcaSub}>análise de bem-estar</Text>
-        </View>
+        <Logo size={36} tint={accent} withWordmark tagline="análise de bem-estar" />
       </View>
 
       <NavList role={user.role} pathname={pathname} onNavigate={onNavigate} />
@@ -245,33 +240,7 @@ const criarEstilos = (t: Theme) =>
       padding: t.spacing.md,
     },
     marca: {
-      alignItems: "center",
-      flexDirection: "row",
-      gap: t.spacing.sm,
       paddingVertical: t.spacing.xs,
-    },
-    marcaGlifo: {
-      alignItems: "center",
-      borderRadius: t.radius.md,
-      height: 36,
-      justifyContent: "center",
-      width: 36,
-    },
-    marcaGlifoTexto: {
-      color: t.colors.onAccent,
-      fontSize: 20,
-      fontWeight: "700",
-    },
-    marcaTextos: {
-      flexShrink: 1,
-    },
-    marcaNome: {
-      ...t.typography.heading,
-      color: t.colors.text,
-    },
-    marcaSub: {
-      ...t.typography.caption,
-      color: t.colors.textMuted,
     },
     rodape: {
       borderTopColor: t.colors.border,
