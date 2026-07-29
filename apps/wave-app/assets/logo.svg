@@ -1,0 +1,13 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="WaveAI">
+  <!-- Marca WaveAI (P6-c): waveform de barras sobre ladrilho de destaque.
+       Fonte de vetor para gerar os PNGs de ícone/splash/favicon (P5/EAS).
+       Cores derivadas dos tokens: ladrilho = accentPatient, barras = onAccent. -->
+  <rect x="0" y="0" width="512" height="512" rx="112" fill="#4FD1C5"/>
+  <g fill="#0B1220">
+    <rect x="90"  y="188.5" width="44" height="135" rx="22"/>
+    <rect x="162" y="136"   width="44" height="240" rx="22"/>
+    <rect x="234" y="166"   width="44" height="180" rx="22"/>
+    <rect x="306" y="106"   width="44" height="300" rx="22"/>
+    <rect x="378" y="173.5" width="44" height="165" rx="22"/>
+  </g>
+</svg>
