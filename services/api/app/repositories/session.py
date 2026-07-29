@@ -27,6 +27,18 @@ class CaptureSessionRepository:
         )
         return list(self._session.scalars(stmt))
 
+    def ativa_do_paciente(self, patient_id: uuid.UUID) -> CaptureSession | None:
+        """Sessão de captação em andamento do paciente (para o espectador ao vivo)."""
+        stmt = (
+            select(CaptureSession)
+            .where(
+                CaptureSession.patient_user_id == patient_id,
+                CaptureSession.status == SessionStatus.ACTIVE,
+            )
+            .order_by(CaptureSession.started_at.desc())
+        )
+        return self._session.scalars(stmt).first()
+
     def abrir(self, *, patient: User, device: str, sample_rate: int) -> CaptureSession:
         sessao = CaptureSession(
             patient_user_id=patient.id,
