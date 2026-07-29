@@ -3,9 +3,12 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { StyleSheet, Text } from "react-native";
 
 import { getPatient, type PatientSummary } from "../../../src/api/care";
+import { watchPatientLive } from "../../../src/api/liveWatch";
 import { getPatientReport, type LongitudinalReport as Report } from "../../../src/api/report";
 import { listPatientResults, type SessionResult } from "../../../src/api/results";
+import { Button } from "../../../src/components/Button";
 import { Disclaimer } from "../../../src/components/Disclaimer";
+import { LiveSpectator } from "../../../src/components/LiveSpectator";
 import { LongitudinalReport } from "../../../src/components/LongitudinalReport";
 import { PatientOverview } from "../../../src/components/PatientOverview";
 import { ScreenContainer } from "../../../src/components/ScreenContainer";
@@ -13,7 +16,7 @@ import { ScreenHeading } from "../../../src/components/ScreenHeading";
 import { SessionAnnotation } from "../../../src/components/SessionAnnotation";
 import { SessionsDashboard } from "../../../src/components/SessionsDashboard";
 import { StateView } from "../../../src/components/StateView";
-import { useTheme, type Theme } from "../../../src/theme";
+import { useRoleAccent, useTheme, type Theme } from "../../../src/theme";
 
 /** Sessão mais recente (por data) — alvo da anotação lida na tela do médico. */
 function maisRecente(results: SessionResult[]): SessionResult | null {
@@ -33,6 +36,7 @@ function maisRecente(results: SessionResult[]): SessionResult | null {
 export default function PatientDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const t = useTheme();
+  const { accent } = useRoleAccent();
   const styles = useMemo(() => criarEstilos(t), [t]);
 
   const [patient, setPatient] = useState<PatientSummary | null>(null);
@@ -40,6 +44,8 @@ export default function PatientDetailScreen() {
   const [report, setReport] = useState<Report | null>(null);
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
+  /** Assistir ao vivo é opt-in: só ao ativar é que se assina (e audita). */
+  const [assistindo, setAssistindo] = useState(false);
 
   const carregar = useCallback(async () => {
     if (!id) return;
@@ -81,6 +87,20 @@ export default function PatientDetailScreen() {
             title={patient.display_name ?? "Paciente"}
             lead="Sessões registradas e tendências, com autorização deste paciente."
           />
+
+          {/* Ao vivo (ADR-0039): opt-in. Ao ativar, assina a transmissão via
+              CareLink e a visualização é auditada. Aparece mesmo sem sessões
+              guardadas — o paciente pode estar captando agora. */}
+          <Text style={styles.secao}>Ao vivo</Text>
+          {assistindo && id ? (
+            <LiveSpectator
+              subscribe={(h) => watchPatientLive(id, h)}
+              accent={accent}
+              semCaptacaoTexto="O paciente não está captando agora."
+            />
+          ) : (
+            <Button label="Assistir ao vivo" onPress={() => setAssistindo(true)} accent={accent} />
+          )}
 
           {results.length === 0 ? (
             <Text style={styles.vazio}>
@@ -124,5 +144,10 @@ const criarEstilos = (t: Theme) =>
       color: t.colors.textMuted,
       fontSize: 14,
       lineHeight: 20,
+    },
+    secao: {
+      ...t.typography.heading,
+      color: t.colors.text,
+      marginTop: t.spacing.sm,
     },
   });
