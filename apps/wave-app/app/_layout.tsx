@@ -1,9 +1,10 @@
-import { Stack, useRouter, useSegments } from "expo-router";
+import { Slot, useRouter, useSegments } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
 import { ActivityIndicator, StyleSheet, View } from "react-native";
 
 import { AuthProvider, homeForRole, useAuth } from "../src/auth/AuthContext";
+import { AppShell } from "../src/components/shell/AppShell";
 import { ThemeProvider, useRoleAccent, useTheme } from "../src/theme";
 
 /** Rotas acessíveis sem sessão. */
@@ -46,27 +47,18 @@ function RouteGuard() {
     );
   }
 
-  return (
-    <Stack
-      screenOptions={{
-        headerStyle: { backgroundColor: t.colors.surface },
-        headerTintColor: t.colors.text,
-        contentStyle: { backgroundColor: t.colors.background },
-      }}
-    >
-      <Stack.Screen name="index" options={{ title: "WaveAI" }} />
-      <Stack.Screen name="login" options={{ title: "Entrar" }} />
-      <Stack.Screen name="register" options={{ title: "Criar conta" }} />
-      <Stack.Screen name="patient/index" options={{ title: "Área do paciente" }} />
-      <Stack.Screen name="patient/live" options={{ title: "Estado ao vivo" }} />
-      <Stack.Screen name="patient/history" options={{ title: "Histórico" }} />
-      <Stack.Screen name="patient/profile" options={{ title: "Meu perfil" }} />
-      <Stack.Screen name="patient/consent" options={{ title: "Consentimento" }} />
-      <Stack.Screen name="patient/invites" options={{ title: "Convites" }} />
-      <Stack.Screen name="doctor/index" options={{ title: "Área do médico" }} />
-      <Stack.Screen name="doctor/invite" options={{ title: "Convidar paciente" }} />
-      <Stack.Screen name="doctor/patient/[id]" options={{ title: "Paciente" }} />
-    </Stack>
+  // Rotas públicas (login/registro/landing) rodam **sem** a casca; a área
+  // logada de cada papel ganha o AppShell (header + navegação lateral/drawer).
+  const raiz = segments[0];
+  const emRotaPublica = raiz === undefined || ROTAS_PUBLICAS.has(raiz);
+  const comCasca = Boolean(user) && !emRotaPublica;
+
+  return comCasca ? (
+    <AppShell>
+      <Slot />
+    </AppShell>
+  ) : (
+    <Slot />
   );
 }
 
