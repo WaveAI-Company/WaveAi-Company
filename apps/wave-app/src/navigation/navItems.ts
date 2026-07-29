@@ -1,0 +1,68 @@
+/**
+ * Itens de navegação por papel (P6-a).
+ *
+ * Fonte única do que aparece na sidebar/drawer e do título do header por rota.
+ * Espelha as rotas de `app/` e **respeita a separação de papéis** — a guarda de
+ * `app/_layout.tsx` continua sendo a autoridade; isto só decide o que mostrar.
+ */
+
+import type { UserRole } from "../auth/api";
+
+export type NavItem = {
+  label: string;
+  href: string;
+  /** Glifo monocromático (identidade fina; ícones de marca vêm na P6-c). */
+  icon: string;
+};
+
+const PATIENT: NavItem[] = [
+  { label: "Início", href: "/patient", icon: "⌂" },
+  { label: "Estado ao vivo", href: "/patient/live", icon: "◉" },
+  { label: "Histórico", href: "/patient/history", icon: "≡" },
+  { label: "Convites", href: "/patient/invites", icon: "✉" },
+  { label: "Perfil", href: "/patient/profile", icon: "◔" },
+];
+
+const DOCTOR: NavItem[] = [
+  { label: "Início", href: "/doctor", icon: "⌂" },
+  { label: "Convidar paciente", href: "/doctor/invite", icon: "✚" },
+];
+
+export function navItemsFor(role: UserRole): NavItem[] {
+  return role === "doctor" ? DOCTOR : PATIENT;
+}
+
+/** Títulos de rotas de detalhe, que não são itens de navegação. */
+const TITULOS_EXTRA: Array<{ prefixo: string; titulo: string }> = [
+  { prefixo: "/patient/consent", titulo: "Consentimento" },
+  { prefixo: "/doctor/patient", titulo: "Paciente" },
+];
+
+/**
+ * Casa a rota com um item. A **raiz do papel** (ex.: `/patient`, 1 segmento)
+ * casa só exatamente — senão engoliria toda `/patient/*`; itens mais fundos
+ * (`/patient/live`) casam também suas sub-rotas.
+ */
+function combina(pathname: string, href: string): boolean {
+  if (pathname === href) return true;
+  const segmentos = href.split("/").filter(Boolean);
+  return segmentos.length >= 2 && pathname.startsWith(`${href}/`);
+}
+
+/** Href do item de navegação ativo (para destacar na lista). `null` = detalhe. */
+export function activeHref(pathname: string, role: UserRole): string | null {
+  const item = [...navItemsFor(role)]
+    .sort((a, b) => b.href.length - a.href.length)
+    .find((i) => combina(pathname, i.href));
+  return item?.href ?? null;
+}
+
+/** Título da seção atual para o header, a partir do pathname resolvido. */
+export function routeTitle(pathname: string, role: UserRole): string {
+  const item = [...navItemsFor(role)]
+    .sort((a, b) => b.href.length - a.href.length)
+    .find((i) => combina(pathname, i.href));
+  if (item) return item.label;
+  const extra = TITULOS_EXTRA.find((e) => pathname.startsWith(e.prefixo));
+  return extra?.titulo ?? "WaveAI";
+}
