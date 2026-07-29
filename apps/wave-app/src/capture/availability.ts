@@ -1,3 +1,5 @@
+import { Platform } from "react-native";
+
 import { deviceConnection } from "../device/connection";
 
 /**
@@ -22,4 +24,13 @@ export const SIMULADOR_HABILITADO =
  */
 export function capturaDisponivel(): boolean {
   return deviceConnection.supported || SIMULADOR_HABILITADO;
+}
+
+/**
+ * Assistir ao vivo (espectador, ADR-0039) faz sentido no **web**: o celular
+ * capta e o navegador acompanha. No próprio aparelho que capta é redundante, e o
+ * `fetch` do RN não expõe o corpo em stream — então é capability de web.
+ */
+export function espectadorDisponivel(): boolean {
+  return Platform.OS === "web";
 }
