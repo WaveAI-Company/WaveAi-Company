@@ -12,6 +12,7 @@ from .care_link import (
     CareLinkParty,
     CareLinkStatus,
 )
+from .live_view import LiveViewAccessEvent
 from .refresh_token import RefreshToken
 from .result import Result, ResultAccessAction, ResultAccessEvent
 from .session import CaptureSession, SessionStatus
@@ -36,5 +37,6 @@ __all__ = [
     "CareLinkParty",
     "CareLinkEvent",
     "CareLinkEventType",
+    "LiveViewAccessEvent",
     "normalize_email",
 ]

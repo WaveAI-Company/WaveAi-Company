@@ -19,11 +19,35 @@ from ..config import Settings, get_settings
 from ..db.session import get_session
 from ..security.password import PasswordHasher
 from ..services.analysis_client import AnalysisClient
+from ..services.live_bus import (
+    LiveBus,
+    get_live_bus,
+    publicar_encerrada,
+    publicar_janela,
+)
 from ..services.results import ResultService
 from ..services.streaming import CloseCode, StreamError, StreamProtocol
 from .deps import get_analysis_client, get_hasher, get_result_service
 
 router = APIRouter(tags=["stream"])
+
+
+def _publicar_ao_vivo(bus: LiveBus, protocolo: StreamProtocol, resposta: dict) -> None:
+    """Espelha a resposta do gateway para os espectadores ao vivo (ADR-0039)."""
+    user = protocolo.state.user
+    sessao = protocolo.state.session
+    if user is None or sessao is None:
+        return
+    publicar_janela(bus, user.id, sessao.id, resposta)
+
+
+def _publicar_encerrada_se_ativa(bus: LiveBus, protocolo: StreamProtocol) -> None:
+    """Avisa os espectadores que a captação parou (queda sem `stop`)."""
+    user = protocolo.state.user
+    sessao = protocolo.state.session
+    if user is None or sessao is None:
+        return
+    publicar_encerrada(bus, user.id, sessao.id)
 
 
 @router.websocket("/stream")
@@ -34,6 +58,7 @@ async def stream(
     hasher: PasswordHasher = Depends(get_hasher),
     analysis: AnalysisClient = Depends(get_analysis_client),
     results: ResultService = Depends(get_result_service),
+    bus: LiveBus = Depends(get_live_bus),
 ) -> None:
     """Recebe blocos de sinal bruto de um paciente autenticado.
 
@@ -64,6 +89,8 @@ async def stream(
 
             resposta = protocolo.handle(mensagem)
             await websocket.send_json(resposta)
+            # Espelha a janela (features/eSense) ou o `closed` aos espectadores.
+            _publicar_ao_vivo(bus, protocolo, resposta)
 
             if protocolo.state.encerrada:
                 await websocket.close()
@@ -74,11 +101,14 @@ async def stream(
         await websocket.send_json({"type": "error", "detail": erro.reason})
         await websocket.close(code=erro.code.value, reason=erro.reason)
         protocolo.abortar()
+        _publicar_encerrada_se_ativa(bus, protocolo)
     except asyncio.TimeoutError:
         await websocket.close(
             code=CloseCode.NAO_AUTENTICADO.value, reason="autenticacao expirou"
         )
         protocolo.abortar()
+        _publicar_encerrada_se_ativa(bus, protocolo)
     except WebSocketDisconnect:
         # Queda no meio da captação: a sessão não pode ficar ativa para sempre.
         protocolo.abortar()
+        _publicar_encerrada_se_ativa(bus, protocolo)
