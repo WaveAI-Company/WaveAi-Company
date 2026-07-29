@@ -7,7 +7,7 @@
  */
 
 import type { UserRole } from "../auth/api";
-import { capturaDisponivel } from "../capture/availability";
+import { capturaDisponivel, espectadorDisponivel } from "../capture/availability";
 
 export type NavItem = {
   label: string;
@@ -17,10 +17,12 @@ export type NavItem = {
 };
 
 const LIVE_ITEM: NavItem = { label: "Estado ao vivo", href: "/patient/live", icon: "◉" };
+const WATCH_ITEM: NavItem = { label: "Assistir ao vivo", href: "/patient/watch", icon: "◉" };
 
 const PATIENT: NavItem[] = [
   { label: "Início", href: "/patient", icon: "⌂" },
   LIVE_ITEM,
+  WATCH_ITEM,
   { label: "Histórico", href: "/patient/history", icon: "≡" },
   { label: "Convites", href: "/patient/invites", icon: "✉" },
   { label: "Perfil", href: "/patient/profile", icon: "◔" },
@@ -33,9 +35,13 @@ const DOCTOR: NavItem[] = [
 
 export function navItemsFor(role: UserRole): NavItem[] {
   if (role === "doctor") return DOCTOR;
-  // Superfície por plataforma (P6-b): sem captação (web de produção), "Estado
-  // ao vivo" não é função do produto — some da navegação.
-  return capturaDisponivel() ? PATIENT : PATIENT.filter((i) => i !== LIVE_ITEM);
+  // Superfície por plataforma: "Estado ao vivo" (captação) só onde se capta
+  // (P6-b); "Assistir ao vivo" (espectador) só no web (ADR-0039).
+  const capta = capturaDisponivel();
+  const assiste = espectadorDisponivel();
+  return PATIENT.filter(
+    (i) => (i !== LIVE_ITEM || capta) && (i !== WATCH_ITEM || assiste),
+  );
 }
 
 /** Títulos de rotas de detalhe, que não são itens de navegação. */
