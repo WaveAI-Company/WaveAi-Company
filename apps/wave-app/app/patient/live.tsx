@@ -23,6 +23,7 @@ import { SensorPrepGuide } from "../../src/components/SensorPrepGuide";
 import { SessionAnnotation } from "../../src/components/SessionAnnotation";
 import { Disclaimer } from "../../src/components/Disclaimer";
 import { GuidedProtocol, type ProtocolPhase } from "../../src/components/GuidedProtocol";
+import { SIMULADOR_HABILITADO } from "../../src/capture/availability";
 import { describeContact } from "../../src/device/contactQuality";
 import { deviceConnection } from "../../src/device/connection";
 import type { DeviceInfo, Esense } from "../../src/device/DeviceConnection";
@@ -278,14 +279,16 @@ export default function PatientLiveScreen() {
         title="Estado ao vivo"
         lead={
           deviceConnection.supported
-            ? "Conecte o MindWave pareado, ou use o sinal simulado. As features são calculadas no servidor."
-            : "Sinal simulado — a captação do aparelho existe no app do celular. As features são calculadas no servidor."
+            ? SIMULADOR_HABILITADO
+              ? "Conecte o MindWave pareado, ou use o sinal simulado. As features são calculadas no servidor."
+              : "Conecte o MindWave pareado. As features são calculadas no servidor."
+            : "A captação do aparelho acontece no app do celular. As features são calculadas no servidor."
         }
       />
-      {/* O selo vale só para o sinal simulado: exibi-lo sobre captação real
-          rotularia dado verdadeiro como fictício — enganoso na direção
+      {/* O selo vale só para o sinal simulado (dev): exibi-lo sobre captação
+          real rotularia dado verdadeiro como fictício — enganoso na direção
           oposta, e igualmente errado. */}
-      {!usandoAparelho ? <MockBadge /> : null}
+      {SIMULADOR_HABILITADO && !usandoAparelho ? <MockBadge /> : null}
 
       {/* Preparação do sensor (P4-a): antes de captar, como conseguir bom
           contato — reduz "lixo entra, lixo sai". Some durante a captação e ao
@@ -314,23 +317,31 @@ export default function PatientLiveScreen() {
 
       {!ativo && !deviceConnection.supported ? (
         <Card
-          title="Captura indisponível neste dispositivo"
-          subtitle="A conexão com o MindWave existe no app do celular. Aqui você pode usar o sinal simulado."
+          title="Captação no app do celular"
+          subtitle={
+            SIMULADOR_HABILITADO
+              ? "A conexão com o MindWave existe no app do celular. Aqui você pode usar o sinal simulado."
+              : "A conexão com o MindWave existe no app do celular. Neste dispositivo você acompanha seu histórico e suas tendências."
+          }
           accent={t.colors.warningText}
         />
       ) : null}
 
-      <Button
-        label={
-          ativo
-            ? "Parar captação"
-            : deviceConnection.supported
-              ? "Ou usar sinal simulado"
-              : "Iniciar captação simulada"
-        }
-        onPress={ativo ? parar : iniciar}
-        accent={ativo ? t.colors.warningText : papel.accent}
-      />
+      {/* Botão de captação: "Parar" sempre aparece durante a sessão; iniciar
+          pelo simulador só quando o gate está ligado (dev/teste — P6-b). */}
+      {ativo || SIMULADOR_HABILITADO ? (
+        <Button
+          label={
+            ativo
+              ? "Parar captação"
+              : deviceConnection.supported
+                ? "Ou usar sinal simulado"
+                : "Iniciar captação simulada"
+          }
+          onPress={ativo ? parar : iniciar}
+          accent={ativo ? t.colors.warningText : papel.accent}
+        />
+      ) : null}
 
       {erro ? <Text style={styles.erro}>{erro}</Text> : null}
 

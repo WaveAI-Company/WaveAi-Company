@@ -12,6 +12,7 @@ import {
   type SessionResult,
 } from "../../src/api/results";
 import { useAuth } from "../../src/auth/AuthContext";
+import { capturaDisponivel } from "../../src/capture/availability";
 import { Card } from "../../src/components/Card";
 import { Disclaimer } from "../../src/components/Disclaimer";
 import { NavAction } from "../../src/components/NavAction";
@@ -120,7 +121,11 @@ export default function PatientHomeScreen() {
         ))
       )}
 
-      <NavAction label="Estado ao vivo" onPress={() => router.push("/patient/live")} />
+      {/* Superfície por plataforma (P6-b): sem captação aqui (web de produção),
+          "Estado ao vivo" não é função do produto — só histórico/tendências. */}
+      {capturaDisponivel() ? (
+        <NavAction label="Estado ao vivo" onPress={() => router.push("/patient/live")} />
+      ) : null}
       <NavAction
         label="Ver histórico completo"
         onPress={() => router.push("/patient/history")}
