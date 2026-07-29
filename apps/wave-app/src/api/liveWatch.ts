@@ -32,23 +32,39 @@ type EventoSSE = {
 };
 
 /**
- * Assina a própria transmissão ao vivo. Devolve uma função que **encerra** a
- * assinatura (chamar ao desmontar a tela).
+ * Assina a **própria** transmissão ao vivo (titular). Devolve uma função que
+ * **encerra** a assinatura (chamar ao desmontar a tela).
  */
 export function watchMyLive(handlers: WatchHandlers): () => void {
+  return assinar("/me/live", handlers);
+}
+
+/**
+ * Assina a transmissão ao vivo de um **paciente vinculado** (profissional). O
+ * servidor exige CareLink ativo e audita a visualização (ADR-0039).
+ */
+export function watchPatientLive(patientId: string, handlers: WatchHandlers): () => void {
+  return assinar(`/patients/${patientId}/live`, handlers);
+}
+
+function assinar(path: string, handlers: WatchHandlers): () => void {
   const controller = new AbortController();
-  void consumir(controller, handlers);
+  void consumir(path, controller, handlers);
   return () => controller.abort();
 }
 
-async function consumir(controller: AbortController, h: WatchHandlers): Promise<void> {
+async function consumir(
+  path: string,
+  controller: AbortController,
+  h: WatchHandlers,
+): Promise<void> {
   const token = getAccessToken();
   if (!token) {
     h.onError?.("sem sessao autenticada");
     return;
   }
   try {
-    const resp = await fetch(`${API_URL}/me/live`, {
+    const resp = await fetch(`${API_URL}${path}`, {
       headers: { Authorization: `Bearer ${token}`, Accept: "text/event-stream" },
       credentials: "include",
       signal: controller.signal,
