@@ -1,5 +1,6 @@
 import { useRouter } from "expo-router";
 
+import { Logo } from "../src/components/brand/Logo";
 import { Button } from "../src/components/Button";
 import { Disclaimer } from "../src/components/Disclaimer";
 import { ScreenContainer } from "../src/components/ScreenContainer";
@@ -14,6 +15,7 @@ export default function HomeScreen() {
 
   return (
     <ScreenContainer>
+      <Logo size={64} />
       <ScreenHeading
         title="WaveAI"
         size="display"

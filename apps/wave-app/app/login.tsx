@@ -2,6 +2,7 @@ import { useRouter } from "expo-router";
 import { useState } from "react";
 
 import { useAuth } from "../src/auth/AuthContext";
+import { Logo } from "../src/components/brand/Logo";
 import { Button } from "../src/components/Button";
 import { Field } from "../src/components/Field";
 import { ScreenContainer } from "../src/components/ScreenContainer";
@@ -33,6 +34,7 @@ export default function LoginScreen() {
 
   return (
     <ScreenContainer>
+      <Logo size={40} withWordmark tagline="análise de bem-estar" />
       <ScreenHeading title="Entrar" />
 
       <Field
