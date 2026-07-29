@@ -14,6 +14,7 @@ from .api import (
     annotations_router,
     auth_router,
     care_links_router,
+    live_router,
     results_router,
     stream_router,
 )
@@ -39,6 +40,7 @@ app.include_router(care_links_router)
 app.include_router(results_router)
 app.include_router(annotations_router)
 app.include_router(stream_router)
+app.include_router(live_router)
 
 
 @app.get("/health")
