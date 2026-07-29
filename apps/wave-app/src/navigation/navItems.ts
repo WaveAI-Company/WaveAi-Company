@@ -7,6 +7,7 @@
  */
 
 import type { UserRole } from "../auth/api";
+import { capturaDisponivel } from "../capture/availability";
 
 export type NavItem = {
   label: string;
@@ -15,9 +16,11 @@ export type NavItem = {
   icon: string;
 };
 
+const LIVE_ITEM: NavItem = { label: "Estado ao vivo", href: "/patient/live", icon: "◉" };
+
 const PATIENT: NavItem[] = [
   { label: "Início", href: "/patient", icon: "⌂" },
-  { label: "Estado ao vivo", href: "/patient/live", icon: "◉" },
+  LIVE_ITEM,
   { label: "Histórico", href: "/patient/history", icon: "≡" },
   { label: "Convites", href: "/patient/invites", icon: "✉" },
   { label: "Perfil", href: "/patient/profile", icon: "◔" },
@@ -29,13 +32,18 @@ const DOCTOR: NavItem[] = [
 ];
 
 export function navItemsFor(role: UserRole): NavItem[] {
-  return role === "doctor" ? DOCTOR : PATIENT;
+  if (role === "doctor") return DOCTOR;
+  // Superfície por plataforma (P6-b): sem captação (web de produção), "Estado
+  // ao vivo" não é função do produto — some da navegação.
+  return capturaDisponivel() ? PATIENT : PATIENT.filter((i) => i !== LIVE_ITEM);
 }
 
 /** Títulos de rotas de detalhe, que não são itens de navegação. */
 const TITULOS_EXTRA: Array<{ prefixo: string; titulo: string }> = [
   { prefixo: "/patient/consent", titulo: "Consentimento" },
   { prefixo: "/doctor/patient", titulo: "Paciente" },
+  // Título estável mesmo quando o item sai da nav (captação gated — P6-b).
+  { prefixo: "/patient/live", titulo: "Estado ao vivo" },
 ];
 
 /**
