@@ -54,7 +54,13 @@ Reformulação da **moldura** (não do conteúdo das telas — esse é P1–P4).
 - **P6-b · Superfície por plataforma + gate do simulador** — o web mostra o que **consegue** (histórico/tendências/relatório/cockpit/anotações) e sinaliza que a captação é no celular; a **captação simulada** some do produto (fica atrás de `__DEV__`/`EXPO_PUBLIC_ENABLE_SIMULATOR` para smoke/teste).
 - **P6-c · Identidade** — **wordmark/logo, splash e adaptive icon derivados dos tokens** (turquesa paciente / azul médico), substituindo os placeholders default do Expo; trocáveis por design profissional depois.
 - **Polimento:** estados vazios, densidade, microinterações — reusando os tokens/tema (o design system já está de pé).
-- **[FORA DE ESCOPO]** **Espectador ao vivo** (celular capta → navegador assiste em tempo real) = **frente própria, ADR próprio, perto da P5** — hoje o gateway `/stream` é 1:1 (sem fan-out); exige fan-out + endpoint de assinatura + auth CareLink/LGPD + barramento na nuvem.
+- **[FORA DE ESCOPO da P6]** **Espectador ao vivo** — ver a seção própria abaixo (**ADR-0039**).
+
+### Espectador ao vivo *(frente própria — **ADR-0039**)*
+Celular **capta** → navegador **assiste** em tempo real (o web não capta, mas assiste — capability por plataforma). Decidido em **[ADR-0039](../05_Decisions.md)**: **fan-out** do gateway num barramento por sessão (in-process agora, Redis com a nuvem/P5), assinatura **SSE autenticada por cookie** (web-first), **titular** assiste à própria sessão e **profissional** via **CareLink auditado** (`live_view_access_events`); só features/eSense rotulado, **nunca raw**, sem veredito. Fatias:
+- **Backend** — `LiveBus` + publicação no gateway + registro de sessão ativa + endpoints SSE (titular e profissional) + auditoria + migration.
+- **UI web do titular** — assistir à própria captação de outra tela.
+- **UI web do profissional** — assistir ao vivo na tela do paciente (CareLink).
 
 ### P5 — Deploy & distribuição *(a cauda — só com produto bom)*
 - **Hospedagem em nuvem** do serviço de Analysis + banco de produção — **revisita [ADR-0005](../05_Decisions.md)** (edge vs nuvem), residência de dados/LGPD, segredos por ambiente.
