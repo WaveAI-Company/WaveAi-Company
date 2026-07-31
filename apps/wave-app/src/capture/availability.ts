@@ -18,6 +18,20 @@ export const SIMULADOR_HABILITADO =
   flag === "true" ? true : flag === "false" ? false : __DEV__;
 
 /**
+ * Diagnóstico BLE (fatia iOS da ADR-0040): ferramenta de **dev** para ler os
+ * UUIDs de serviço/característica do headset físico — o GATT do MindWave Mobile
+ * 2 no iOS não é documentado. **Nativo-only** (módulo BLE) e atrás de flag de
+ * dev; **não** é função do produto.
+ *
+ * `EXPO_PUBLIC_ENABLE_BLE_DIAG`: "true"/"false" força; ausente = segue `__DEV__`.
+ */
+const flagBleDiag = process.env.EXPO_PUBLIC_ENABLE_BLE_DIAG;
+
+export const DIAGNOSTICO_BLE_HABILITADO =
+  Platform.OS !== "web" &&
+  (flagBleDiag === "true" ? true : flagBleDiag === "false" ? false : __DEV__);
+
+/**
  * Captação é possível nesta superfície? Verdadeiro no mobile (aparelho) e onde
  * o simulador está ligado (dev). No web de produção é falso — a captação
  * acontece no app do celular, e o web mostra só o que consegue.
