@@ -50,6 +50,8 @@ const TITULOS_EXTRA: Array<{ prefixo: string; titulo: string }> = [
   { prefixo: "/doctor/patient", titulo: "Paciente" },
   // Título estável mesmo quando o item sai da nav (captação gated — P6-b).
   { prefixo: "/patient/live", titulo: "Estado ao vivo" },
+  // Ferramenta de dev fora da nav (gated — ADR-0040).
+  { prefixo: "/patient/ble-diag", titulo: "Diagnóstico BLE" },
 ];
 
 /**

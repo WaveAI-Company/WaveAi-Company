@@ -33,7 +33,15 @@
     },
     "plugins": [
       "expo-router",
-      "expo-secure-store"
+      "expo-secure-store",
+      [
+        "react-native-ble-plx",
+        {
+          "isBackgroundEnabled": false,
+          "neverForLocation": true,
+          "bluetoothAlwaysPermission": "O WaveAI conecta ao sensor de EEG (MindWave) por Bluetooth para captar o sinal."
+        }
+      ]
     ],
     "extra": {
       "router": {},

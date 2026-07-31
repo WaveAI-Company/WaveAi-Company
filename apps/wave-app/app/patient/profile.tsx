@@ -4,6 +4,7 @@ import { useCallback, useState } from "react";
 import { listCareLinks, revokeCareLink, type CareLink } from "../../src/api/care";
 import { getConsentStatus, type ConsentStatus } from "../../src/api/consent";
 import { useAuth } from "../../src/auth/AuthContext";
+import { DIAGNOSTICO_BLE_HABILITADO } from "../../src/capture/availability";
 import { Button } from "../../src/components/Button";
 import { Card } from "../../src/components/Card";
 import { Disclaimer } from "../../src/components/Disclaimer";
@@ -140,6 +141,16 @@ export default function PatientProfileScreen() {
 
       <ScreenHeading title="Aparência" />
       <ThemeSelector />
+
+      {/* Ferramenta de dev (ADR-0040): descoberta dos UUIDs BLE do headset. */}
+      {DIAGNOSTICO_BLE_HABILITADO ? (
+        <NavAction
+          label="Diagnóstico BLE (dev)"
+          description="Enumera serviços/características do sensor para descobrir os UUIDs (iOS)."
+          tone="neutral"
+          onPress={() => router.push("/patient/ble-diag")}
+        />
+      ) : null}
 
       <Disclaimer />
 
