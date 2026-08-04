@@ -41,3 +41,28 @@ def test_ttls_seguem_o_adr_0021():
     assert s.access_token_ttl_minutes == 15
     assert s.refresh_token_ttl_days == 7
     assert s.jwt_algorithm == "HS256"
+
+
+def test_cookie_secure_desliga_em_dev_por_padrao(monkeypatch: pytest.MonkeyPatch):
+    # Sem override, dev roda sobre http local: cookie Secure não persiste e
+    # derrubava a sessão no reload. O default passa a desligar sozinho.
+    monkeypatch.delenv("WAVEAI_API_REFRESH_COOKIE_SECURE", raising=False)
+    s = Settings(jwt_secret=VALIDO, app_env="development", _env_file=None)
+    assert s.refresh_cookie_secure is False
+
+
+def test_cookie_secure_liga_fora_de_dev_por_padrao(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.delenv("WAVEAI_API_REFRESH_COOKIE_SECURE", raising=False)
+    s = Settings(jwt_secret=VALIDO, app_env="production", _env_file=None)
+    assert s.refresh_cookie_secure is True
+
+
+def test_cookie_secure_override_explicito_sempre_vence(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.delenv("WAVEAI_API_REFRESH_COOKIE_SECURE", raising=False)
+    s = Settings(
+        jwt_secret=VALIDO,
+        app_env="development",
+        refresh_cookie_secure=True,
+        _env_file=None,
+    )
+    assert s.refresh_cookie_secure is True
