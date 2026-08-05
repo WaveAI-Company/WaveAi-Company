@@ -23,6 +23,11 @@ os.environ.setdefault("WAVEAI_API_JWT_SECRET", "segredo-de-teste-" + "0" * 40)
 os.environ.setdefault(
     "WAVEAI_API_RESULT_ENCRYPTION_KEY", "sRzpGGMSAff35dzYCgpeXTyI2rMfVLkVtN_nu5bhwTE="
 )
+# Os testes de integração exercem o cookie **de produção** (Secure), como a
+# fixture https assume. O default de `Secure` passou a seguir o ambiente
+# (dev→false), então fixamos aqui — o comportamento por ambiente é coberto,
+# isolado, em test_config_secret.py (que faz `delenv` explícito).
+os.environ.setdefault("WAVEAI_API_REFRESH_COOKIE_SECURE", "true")
 
 import pytest
 from alembic import command
