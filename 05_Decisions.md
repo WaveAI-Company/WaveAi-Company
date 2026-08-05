@@ -464,3 +464,29 @@ Recompilar, por sua vez, esbarrou num problema de ambiente da máquina de desenv
 **Alternativas consideradas:** (a) **SDK proprietário NeuroSky (caminho A)** — preterido: dependência proprietária/licenciada (R-07), calcula banda no device (fricção com o `AnalysisEngine`), custo/procura de licença; fica de **reserva** se B não conectar. (b) **Bluetooth Classic/SPP no iOS** — rejeitado: o MindWave não é MFi por essa via e apps de terceiros no iOS não abrem SPP sem External Accessory. (c) **Web Bluetooth / capturar no web** — fora de escopo: já decidido que o **web não capta** (ADR-0038/P6-b). (d) **Aguardar UUID/SDK documentado antes de codar** — preterido: os UUIDs se obtêm no aparelho; instrumentar e iterar é mais rápido que esperar doc inexistente.
 
 **Consequências:** nova dependência nativa **`react-native-ble-plx`** + config plugin; novo `connection.ios.ts` implementando `DeviceConnection` (scan BLE → connect → subscribe *notify* → `paraBytes` → `ThinkGearParser` → handlers, espelhando o Android). **Fecha a parte de transporte mobile** que a **ADR-0006** mantinha aberta (o stack já é RN/Expo de fato); informa **Q-TEC-03/Q-TEC-05**. Fatias: **(1)** este ADR (docs-only); **(2)** dependência + config iOS + **diagnóstico BLE de UUID** (build para o fundador ler os UUIDs do headset); **(3)** `connection.ios.ts` com os UUIDs travados + `supported` no iOS. Após validado, o iOS deixa de ser questão aberta quanto à captação; a **não-captação** (auth/histórico/tendências/relatório/cockpit/anotações/espectador ao vivo) já rodaria no iOS se buildado. **Não** toca Android, web, modelo de dados nem o `Result`. Relaciona ADR-0006, ADR-0025 (raw não persistido), ADR-0027 (sem veredito), ADR-0034 (eSense rotulado), ADR-0038 (superfície por plataforma), [Architecture/21](Architecture/21_NeuroSky_Integration_and_Capture.md) §2.1 e Q-TEC-03/05.
+
+## ADR-0041 — Cadastro de profissional: sem verificação de credencial (KYC/CRM) nesta fase; a fronteira de confiança é o consentimento (CareLink)
+**Status:** Proposta (2026-08-04) — vira Aceita no merge.
+**Contexto:** No teste em grupo (2026-08-04) levantou-se se **qualquer pessoa** deveria poder se cadastrar como "médico"/profissional, e cogitou-se **validar CRM por foto** (estilo validação de RG usada por bancos). O fundador pediu a avaliação de impacto **LGPD** + regras do projeto e os argumentos caso seja inadequado.
+
+**[FATO] O posicionamento já reposicionou isto.** Pela **ADR-0036**, na fase atual o produto é **não-clínico/não-diagnóstico** (Medical/71); o acompanhante é **"profissional de bem-estar"** na UI, **não** "médico" — o papel `doctor` sobrevive só no **modelo de dados** para uma visão clínica futura.
+
+**Decisão:**
+1. **Sem KYC/validação de credencial (CRM) nesta fase.** Não coletar foto de documento nem biometria/face-match no cadastro.
+2. **A fronteira de confiança é o consentimento** (consent-first/CareLink, ADR-0024/0026): o profissional só acessa dados de quem **o convidou e autorizou**, e o titular **revoga** quando quiser (efeito imediato), com **auditoria** (ResultAccessEvent/AnnotationAccessEvent/LiveViewAccessEvent). O risco de cadastro aberto é de **apresentação** (chamar-se "médico"), **não de acesso** — e a UI já diz "profissional de bem-estar" (ADR-0036), sem alegar médico verificado.
+3. **Atrito leve opcional, sem dado sensível** (se/quando desejável): onboarding do profissional por **convite/código** e/ou **atestação declarada + termos**. Não construir agora sem necessidade.
+4. **Validação real de credencial fica para a fase clínica futura**, onde é necessária e onde se faz **KYC + cruzamento com o registro do CFM/CRM + DPIA** direito (base legal, minimização, retenção, anti-fraude). Reabre com **Q-REG-03** (on-ramp) e a persona clínica.
+
+**Argumentos (por que não agora):**
+- (a) Validar CRM e apresentar como médico verificado = **claim clínica**, proibida na fase (Medical/71) e contra ADR-0036.
+- (b) **LGPD:** foto de documento é **dado pessoal**; face-match é **dado pessoal sensível** (Art. 5º, II) → exige base legal específica, minimização, DPIA e guarda segura — desproporcional para um app de bem-estar exploratório e contra a postura atual (**sem dado real de pessoa em dev**; consent-first).
+- (c) **Foto não valida nada** (forjável); validação real é KYC completo (provedor terceiro, cruzamento CFM, prova de vida) — custo e compliance contínuos.
+- (d) A salvaguarda que **importa** (acesso a dado sensível) **já existe**: CareLink + consentimento + auditoria.
+
+**Itens correlatos DEFERIDOS (registrados aqui para não se perderem):**
+- **"Esqueci minha senha"** e **verificação de e-mail (código de confirmação)** dependem de **envio de e-mail** (provedor SMTP) + endpoints + segurança (TTL de token, rate limit e **anti-enumeração** de usuário). Entram junto do **P5/infra**. **Não telar sem função** no produto (UI morta engana o teste e fere a honestidade); **desenhar** no processo de design (Fable) e **fiar** quando o backend existir.
+- **Exigir e-mail verificado** é **decisão de política** (muda o fluxo de cadastro; atrito leve que conversa com este ADR). Decidir de propósito perto do P5, com Q-REG-03.
+
+**Alternativas consideradas:** (a) **KYC/CRM por foto agora** — rejeitado (a/b/c acima). (b) **Cadastro de profissional só por convite/código** — preterido para agora (atrito extra sem necessidade; reabrível como item 3). (c) **Bloquear o auto-cadastro de `doctor`** — desnecessário: o CareLink já governa o acesso, e a persona atual é bem-estar.
+
+**Consequências:** **nenhuma mudança de código agora** — o cadastro segue como está (mais as validações de UX do lote de correções). A cópia mantém "profissional de bem-estar" (ADR-0036). Os fluxos de e-mail (reset/verificação) ficam **no radar do P5/infra**, com a decisão de exigir verificação em aberto. Relaciona ADR-0036, ADR-0024, ADR-0026, Medical/71 e Q-REG-03.
