@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useAuth } from "../src/auth/AuthContext";
 import { Logo } from "../src/components/brand/Logo";
 import { Button } from "../src/components/Button";
+import { Disclaimer } from "../src/components/Disclaimer";
 import { Field } from "../src/components/Field";
 import { ScreenContainer } from "../src/components/ScreenContainer";
 import { ScreenHeading } from "../src/components/ScreenHeading";
@@ -62,6 +63,8 @@ export default function LoginScreen() {
         onPress={() => router.push("/register")}
         variant="secondary"
       />
+
+      <Disclaimer />
     </ScreenContainer>
   );
 }
