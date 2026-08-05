@@ -1,5 +1,12 @@
 import { useMemo, useState } from "react";
-import { StyleSheet, Text, TextInput, View, type TextInputProps } from "react-native";
+import {
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+  type TextInputProps,
+} from "react-native";
 
 import { useRoleAccent, useTheme, type Theme } from "../theme";
 
@@ -7,39 +14,66 @@ type Props = TextInputProps & {
   label: string;
   /** Mensagem de erro do campo; também marca o input para leitores de tela. */
   error?: string | null;
+  /**
+   * Mostra um botão **Mostrar/Ocultar** para campos de senha. Controla o
+   * `secureTextEntry` internamente — passe também `secureTextEntry` para o
+   * estado inicial oculto.
+   */
+  revealable?: boolean;
 };
 
-/** Campo de formulário rotulado, com foco visível. */
-export function Field({ label, error, ...input }: Props) {
+/** Campo de formulário rotulado, com foco visível e revelar-senha opcional. */
+export function Field({ label, error, revealable, ...input }: Props) {
   const t = useTheme();
   const { accent } = useRoleAccent();
   const styles = useMemo(() => criarEstilos(t), [t]);
   const [focado, setFocado] = useState(false);
+  const [revelado, setRevelado] = useState(false);
+
+  // Com o toggle, a visibilidade é controlada aqui; sem ele, respeita a prop.
+  const oculto = revealable ? !revelado : input.secureTextEntry;
 
   return (
     <View style={styles.wrapper}>
       <Text style={styles.label}>{label}</Text>
-      <TextInput
-        {...input}
-        accessibilityLabel={input.accessibilityLabel ?? label}
-        // Foco visível é requisito de acessibilidade e, no web, o contorno
-        // padrão do navegador não aparece sobre fundo escuro.
-        onFocus={(e) => {
-          setFocado(true);
-          input.onFocus?.(e);
-        }}
-        onBlur={(e) => {
-          setFocado(false);
-          input.onBlur?.(e);
-        }}
-        style={[
-          styles.input,
-          focado && { borderColor: accent, borderWidth: 2 },
-          Boolean(error) && { borderColor: t.colors.danger },
-        ]}
-        placeholderTextColor={t.colors.textMuted}
-        autoCapitalize={input.autoCapitalize ?? "none"}
-      />
+      <View style={styles.inputRow}>
+        <TextInput
+          {...input}
+          secureTextEntry={oculto}
+          accessibilityLabel={input.accessibilityLabel ?? label}
+          // Foco visível é requisito de acessibilidade e, no web, o contorno
+          // padrão do navegador não aparece sobre fundo escuro.
+          onFocus={(e) => {
+            setFocado(true);
+            input.onFocus?.(e);
+          }}
+          onBlur={(e) => {
+            setFocado(false);
+            input.onBlur?.(e);
+          }}
+          style={[
+            styles.input,
+            revealable && styles.inputComBotao,
+            focado && { borderColor: accent, borderWidth: 2 },
+            Boolean(error) && { borderColor: t.colors.danger },
+          ]}
+          placeholderTextColor={t.colors.textMuted}
+          autoCapitalize={input.autoCapitalize ?? "none"}
+        />
+        {revealable ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={revelado ? "Ocultar senha" : "Mostrar senha"}
+            onPress={() => setRevelado((v) => !v)}
+            style={styles.revelar}
+            hitSlop={8}
+          >
+            <Text style={[styles.revelarTexto, { color: accent }]}>
+              {revelado ? "Ocultar" : "Mostrar"}
+            </Text>
+          </Pressable>
+        ) : null}
+      </View>
       {error ? <Text style={styles.erro}>{error}</Text> : null}
     </View>
   );
@@ -54,6 +88,9 @@ const criarEstilos = (t: Theme) =>
       ...t.typography.label,
       color: t.colors.textMuted,
     },
+    inputRow: {
+      justifyContent: "center",
+    },
     input: {
       ...t.typography.body,
       backgroundColor: t.colors.surface,
@@ -64,6 +101,21 @@ const criarEstilos = (t: Theme) =>
       minHeight: t.minTouch,
       paddingHorizontal: t.spacing.md,
       paddingVertical: t.spacing.sm + 2,
+    },
+    // Espaço à direita para o texto não correr sob o botão Mostrar/Ocultar.
+    inputComBotao: {
+      paddingRight: 92,
+    },
+    revelar: {
+      position: "absolute",
+      right: t.spacing.sm,
+      justifyContent: "center",
+      minHeight: t.minTouch,
+      paddingHorizontal: t.spacing.sm,
+    },
+    revelarTexto: {
+      ...t.typography.bodyStrong,
+      fontSize: 14,
     },
     erro: {
       ...t.typography.caption,
