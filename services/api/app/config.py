@@ -6,7 +6,7 @@ Ver `.env.example` para as variáveis suportadas.
 
 from __future__ import annotations
 
-from pydantic import Field, field_validator
+from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 #: Tamanho mínimo do segredo de assinatura, em bytes (ADR-0023).
@@ -51,7 +51,9 @@ class Settings(BaseSettings):
 
     # -- Cookie do refresh no web (ADR-0021) ---------------------------------
     refresh_cookie_name: str = "waveai_refresh"
-    #: `False` apenas para desenvolvimento local sem TLS.
+    #: Se **não** vier explícito, segue o ambiente (ver validador abaixo):
+    #: `False` em `development` (http local sem TLS recusa cookie `Secure`),
+    #: `True` fora dele. Override por env sempre vence.
     refresh_cookie_secure: bool = True
     refresh_cookie_samesite: str = "lax"
 
@@ -105,6 +107,20 @@ class Settings(BaseSettings):
     @property
     def cors_origin_list(self) -> list[str]:
         return [origem.strip() for origem in self.cors_origins.split(",") if origem.strip()]
+
+    @model_validator(mode="after")
+    def _default_cookie_secure_por_ambiente(self) -> "Settings":
+        """Sem override explícito, o cookie `Secure` segue o ambiente.
+
+        Em `development` o app roda sobre **http** local, e navegadores recusam
+        guardar cookie `Secure` sem TLS — o que derrubava a sessão no reload
+        (o refresh não voltava). Aqui isso passa a ser automático em vez de
+        depender de lembrar `WAVEAI_API_REFRESH_COOKIE_SECURE=false`. Em produção
+        (same-origin sob TLS) o default continua `True`.
+        """
+        if "refresh_cookie_secure" not in self.model_fields_set:
+            self.refresh_cookie_secure = self.app_env != "development"
+        return self
 
     @field_validator("jwt_secret")
     @classmethod
