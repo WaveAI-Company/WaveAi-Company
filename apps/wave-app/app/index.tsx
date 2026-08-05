@@ -1,31 +1,13 @@
-import { useRouter } from "expo-router";
-
-import { Logo } from "../src/components/brand/Logo";
-import { Button } from "../src/components/Button";
-import { Disclaimer } from "../src/components/Disclaimer";
-import { ScreenContainer } from "../src/components/ScreenContainer";
-import { ScreenHeading } from "../src/components/ScreenHeading";
+import LoginScreen from "./login";
 
 /**
- * Tela inicial (pública). Quem já tem sessão é levado pela guarda de rota
- * direto para a área do seu papel.
+ * Tela inicial (pública) = **login**. A antiga tela de escolha (login/cadastro)
+ * foi removida a pedido do teste em grupo: a porta de entrada é o login, e o
+ * cadastro fica a um toque no próprio login ("Não tem conta? Criar conta").
+ *
+ * Quem já tem sessão é levado pela guarda de rota (`_layout.tsx`) direto para a
+ * área do seu papel, sem passar por aqui.
  */
 export default function HomeScreen() {
-  const router = useRouter();
-
-  return (
-    <ScreenContainer>
-      <Logo size={64} />
-      <ScreenHeading
-        title="WaveAI"
-        size="display"
-        lead="Plataforma de captação e análise de EEG de consumo, com acompanhamento de bem-estar."
-      />
-
-      <Button label="Entrar" onPress={() => router.push("/login")} />
-      <Button label="Criar conta" onPress={() => router.push("/register")} variant="secondary" />
-
-      <Disclaimer />
-    </ScreenContainer>
-  );
+  return <LoginScreen />;
 }
