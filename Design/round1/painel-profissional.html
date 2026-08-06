@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WaveAI · Painel do profissional</title>
+<script>
+  (function(){
+    var t = localStorage.getItem('waveai-theme');
+    if(!t){ t = window.matchMedia && matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark'; }
+    document.documentElement.dataset.theme = t;
+  })();
+</script>
+<style>
+/* ============================================================
+   WaveAI · Design "Maré" · tokens (papel: profissional → azul)
+   ============================================================ */
+:root{
+  color-scheme: dark;
+  --bg:#0B1220; --surface:#151E32; --surface-2:#1C2740; --surface-3:#233152;
+  --ink:#F5F7FA; --ink-2:#B6C1D4; --ink-3:#8291A9;
+  --line:rgba(245,247,250,.10); --line-2:rgba(245,247,250,.055);
+  --accent:#7AA2F7; --accent-ink:#0A1430; --accent-soft:rgba(122,162,247,.13);
+  --ok:#0ca30c; --warn:#fab219; --bad:#ec835a;
+  --band-delta:#5C7CFA; --band-theta:#B24468; --band-alpha:#1FA695; --band-beta:#C98500; --band-gamma:#9085E9;
+  --shadow:0 10px 30px rgba(2,6,16,.45), 0 2px 8px rgba(2,6,16,.35);
+  --r-s:8px; --r-m:12px; --r-l:16px;
+}
+:root[data-theme="light"]{
+  color-scheme: light;
+  --bg:#F5F7FA; --surface:#FFFFFF; --surface-2:#EDF1F6; --surface-3:#E2E8F1;
+  --ink:#0F1726; --ink-2:#44526A; --ink-3:#68778F;
+  --line:rgba(15,23,38,.12); --line-2:rgba(15,23,38,.06);
+  --accent:#2A5BC7; --accent-ink:#FFFFFF; --accent-soft:rgba(42,91,199,.10);
+  --band-delta:#3E63DD; --band-theta:#963061; --band-alpha:#009184; --band-beta:#B87500; --band-gamma:#6D5AC4;
+  --shadow:0 10px 30px rgba(15,23,38,.08), 0 2px 8px rgba(15,23,38,.06);
+}
+*{box-sizing:border-box; margin:0; padding:0}
+html,body{height:100%}
+body{
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  background:var(--bg); color:var(--ink); font-size:15px; line-height:1.5;
+  -webkit-font-smoothing:antialiased;
+}
+button,input,select{font:inherit; color:inherit}
+a{color:var(--accent); text-decoration:none}
+a:hover{text-decoration:underline}
+:focus-visible{outline:2px solid var(--accent); outline-offset:2px; border-radius:4px}
+.eyebrow{font-size:12px; font-weight:650; letter-spacing:.09em; text-transform:uppercase; color:var(--ink-3)}
+.t-small{font-size:13px; color:var(--ink-3)}
+
+.btn{display:inline-flex; align-items:center; justify-content:center; gap:8px; min-height:44px; padding:0 20px;
+  border:none; border-radius:var(--r-m); font-weight:600; font-size:15px; cursor:pointer;
+  transition:transform .15s ease, box-shadow .2s ease, background .2s ease}
+.btn-primary{background:var(--accent); color:var(--accent-ink)}
+.btn-primary:hover{transform:translateY(-1px); box-shadow:0 6px 18px var(--accent-soft)}
+.btn-ghost{background:transparent; color:var(--ink-2); border:1px solid var(--line)}
+.btn-ghost:hover{background:var(--surface-2); color:var(--ink)}
+.card{background:var(--surface); border:1px solid var(--line-2); border-radius:var(--r-l); box-shadow:var(--shadow)}
+.card-h{display:flex; align-items:baseline; justify-content:space-between; gap:12px; padding:20px 20px 0}
+.card-h h3{font-size:15px; font-weight:650}
+.card-b{padding:16px 20px 20px}
+.chip{display:inline-flex; align-items:center; gap:6px; min-height:26px; padding:2px 11px; border-radius:999px;
+  border:1px solid var(--line); background:var(--surface-2); font-size:12px; font-weight:600; color:var(--ink-2)}
+.chip .dot{width:7px; height:7px; border-radius:50%; background:var(--accent); flex:none}
+.chip-exp{color:var(--ink-3)}
+.chip-live .dot{background:#4FD1C5}
+@media (prefers-reduced-motion: no-preference){
+  .chip-live .dot{animation:pulse 1.6s ease-in-out infinite}
+  @keyframes pulse{0%,100%{opacity:1} 50%{opacity:.35}}
+}
+.status-chip{display:inline-flex; align-items:center; gap:7px; min-height:28px; padding:3px 12px; border-radius:999px;
+  font-size:12.5px; font-weight:650; border:1px solid var(--line); background:var(--surface-2); color:var(--ink)}
+.status-ok svg{color:var(--ok)}
+
+/* ---------- casca do app ---------- */
+.app{min-height:100vh; display:grid; grid-template-columns:240px 1fr; grid-template-rows:64px 1fr;
+  grid-template-areas:"side head" "side main"}
+.app-head{grid-area:head; display:flex; align-items:center; gap:16px; padding:0 24px;
+  border-bottom:1px solid var(--line-2); background:var(--bg); position:sticky; top:0; z-index:30}
+.app-head .title{font-size:17px; font-weight:650; letter-spacing:-.01em; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.app-head .sp{flex:1}
+.iconbtn{width:44px; height:44px; border-radius:50%; border:1px solid var(--line); background:var(--surface);
+  color:var(--ink-2); cursor:pointer; display:grid; place-items:center}
+.iconbtn:hover{color:var(--ink); background:var(--surface-2)}
+.avatar{width:36px; height:36px; border-radius:50%; display:grid; place-items:center; font-size:13px; font-weight:700;
+  background:var(--accent-soft); color:var(--accent); border:1px solid var(--line); flex:none}
+.app-head .avatar{width:44px; height:44px; font-size:14px}
+a.avatar{text-decoration:none}
+a.avatar:hover{box-shadow:0 0 0 3px var(--accent-soft); text-decoration:none}
+.burger{display:none}
+.side{grid-area:side; display:flex; flex-direction:column; gap:8px; padding:16px 12px;
+  border-right:1px solid var(--line-2); background:var(--surface); position:sticky; top:0; height:100vh}
+.side .wordmark{display:flex; align-items:center; gap:10px; font-weight:700; font-size:17px; padding:8px 10px 16px}
+.side .mark{width:32px; height:32px; border-radius:9px; display:grid; place-items:center; flex:none;
+  background:linear-gradient(135deg,#4FD1C5,#7AA2F7); color:#06231F}
+.nav{display:flex; flex-direction:column; gap:2px}
+.nav a{display:flex; align-items:center; gap:12px; min-height:44px; padding:0 12px; border-radius:var(--r-m);
+  color:var(--ink-2); font-weight:600; font-size:14px}
+.nav a svg{flex:none; opacity:.8}
+.nav a:hover{background:var(--surface-2); color:var(--ink); text-decoration:none}
+.nav a.on{background:var(--accent-soft); color:var(--accent)}
+.side .sp{flex:1}
+.role-chip{margin:0 10px 10px; align-self:flex-start}
+.side-foot{font-size:11.5px; color:var(--ink-3); padding:0 12px 8px; line-height:1.45}
+.main{grid-area:main; padding:24px 32px 64px; max-width:1720px; width:100%}
+.scrim{display:none}
+
+/* ---------- layout: trilho de pessoas + conteúdo ---------- */
+.pro-wrap{display:grid; gap:24px; grid-template-columns:280px minmax(0,1fr); align-items:start}
+.people{position:sticky; top:88px; display:flex; flex-direction:column; gap:6px; padding:14px}
+.people .search{display:flex; align-items:center; gap:8px; min-height:42px; padding:0 12px; margin-bottom:8px;
+  border-radius:var(--r-m); border:1px solid var(--line); background:var(--surface-2); color:var(--ink-3); font-size:13.5px}
+.people .search input{border:none; background:none; outline:none; width:100%; color:var(--ink)}
+.person{display:flex; align-items:center; gap:12px; padding:10px 12px; border-radius:var(--r-m); cursor:pointer;
+  border:1px solid transparent; text-align:left; background:none; width:100%}
+.person:hover{background:var(--surface-2)}
+.person.on{background:var(--accent-soft); border-color:color-mix(in srgb, var(--accent) 30%, transparent)}
+.person .who{flex:1; min-width:0}
+.person .who b{display:block; font-size:14px; font-weight:650}
+.person .who span{display:block; font-size:12px; color:var(--ink-3)}
+.person .live-dot{width:8px; height:8px; border-radius:50%; background:#4FD1C5; margin-left:auto; flex:none}
+@media (prefers-reduced-motion: no-preference){ .person .live-dot{animation:pulse 1.6s ease-in-out infinite} }
+.person.pending{opacity:.75}
+.person.pending .avatar{background:var(--surface-2); color:var(--ink-3)}
+.people-strip{display:flex; flex-direction:column; gap:6px}
+.people .see-all{display:block; text-align:center; margin-top:10px; font-size:12.5px; font-weight:600; color:var(--ink-3); padding:8px; border-radius:var(--r-s)}
+.people .see-all:hover{background:var(--surface-2); color:var(--ink); text-decoration:none}
+
+/* cabeçalho da pessoa */
+.person-head{display:flex; align-items:center; gap:16px; flex-wrap:wrap; margin-bottom:20px}
+.person-head .avatar{width:52px; height:52px; font-size:17px}
+.person-head h1{font-size:26px; font-weight:650; letter-spacing:-.015em}
+.person-head p{font-size:13px; color:var(--ink-3)}
+.person-head .sp{flex:1}
+
+/* banner ao vivo */
+.live-banner{display:flex; align-items:center; gap:16px; flex-wrap:wrap; padding:18px 22px; margin-bottom:20px;
+  position:relative; overflow:hidden}
+.live-banner .wavefield{position:absolute; inset:0; width:100%; height:100%; pointer-events:none; opacity:.5}
+.live-banner > *{position:relative; z-index:2}
+.live-banner b{font-size:15px}
+.live-banner .meta{font-size:13px; color:var(--ink-3)}
+.live-banner .sp{flex:1}
+
+/* tiles */
+.dash{display:grid; gap:20px; grid-template-columns:repeat(4, minmax(0,1fr))}
+.tile{padding:18px 20px}
+.tile .lb{font-size:12.5px; font-weight:650; color:var(--ink-3); margin-bottom:6px}
+.tile .v{font-size:26px; font-weight:650; letter-spacing:-.015em; font-variant-numeric:tabular-nums}
+.tile .sub{font-size:12.5px; color:var(--ink-3); margin-top:4px}
+.tile select{border:none; background:var(--surface-2); border-radius:var(--r-s); padding:6px 10px; font-size:13.5px;
+  font-weight:600; color:var(--ink); cursor:pointer; margin-top:2px}
+.g-alpha{grid-column:span 2} .g-comp{grid-column:span 2}
+.g-sum{grid-column:span 2} .g-notes{grid-column:span 2}
+
+/* gráficos */
+.axis{font-size:10.5px; fill:var(--ink-3)}
+.gridline{stroke:var(--line-2)}
+figure svg{width:100%; height:auto; display:block}
+.cols{display:flex; align-items:flex-end; gap:8px; height:150px; padding-top:8px}
+.cols .col{flex:1; display:flex; flex-direction:column-reverse; border-radius:4px; overflow:hidden; min-width:14px}
+.cols .col i{width:100%}
+.cols-x{display:flex; gap:8px; margin-top:6px}
+.cols-x span{flex:1; text-align:center; font-size:10.5px; color:var(--ink-3)}
+.legend{display:flex; gap:12px; flex-wrap:wrap; font-size:12px; color:var(--ink-3)}
+.legend .k{display:inline-flex; align-items:center; gap:6px}
+.legend .k::before{content:""; width:9px; height:9px; border-radius:3px; background:var(--c)}
+
+/* resumo */
+.sum-body{font-size:14.5px; color:var(--ink-2); line-height:1.65}
+.sum-body b{color:var(--ink)}
+.sum-disc{margin-top:14px; padding:12px 14px; border-radius:var(--r-m); background:var(--surface-2);
+  font-size:12.5px; color:var(--ink-3); line-height:1.5}
+
+/* notas */
+.note-item{padding:14px 0; border-bottom:1px solid var(--line-2)}
+.note-item:last-child{border-bottom:none; padding-bottom:0}
+.note-item .nm{display:flex; align-items:center; gap:10px; margin-bottom:6px; flex-wrap:wrap}
+.note-item .nm time{font-size:12.5px; color:var(--ink-3); font-variant-numeric:tabular-nums}
+.note-item p{font-size:14px; color:var(--ink-2); font-style:italic}
+
+/* rodapé de rastreabilidade */
+.trace{margin-top:24px; font-size:12px; color:var(--ink-3); display:flex; gap:8px; flex-wrap:wrap; align-items:center}
+.trace .sep{opacity:.5}
+
+/* ---------- estados ---------- */
+.stv{display:none}
+.state-filled  .stv-filled{display:block}
+.state-loading .stv-loading{display:block}
+.state-empty   .stv-empty{display:block}
+
+.skl{position:relative; overflow:hidden; border-radius:var(--r-s); background:var(--surface-2)}
+@media (prefers-reduced-motion: no-preference){
+  .skl::after{content:""; position:absolute; inset:0; transform:translateX(-100%);
+    background:linear-gradient(90deg, transparent, var(--surface-3), transparent);
+    animation:shimmer 1.5s infinite}
+  @keyframes shimmer{100%{transform:translateX(100%)}}
+}
+.skl-card{padding:22px; display:flex; flex-direction:column; gap:12px}
+.load-note{display:flex; align-items:center; gap:10px; margin:0 0 20px; color:var(--ink-3); font-size:13px}
+.load-note .breath{width:26px; height:26px; border-radius:50%; border:2px solid var(--accent); flex:none}
+@media (prefers-reduced-motion: no-preference){
+  .load-note .breath{animation:br 2.8s ease-in-out infinite}
+  @keyframes br{0%,100%{transform:scale(.9)} 50%{transform:scale(1.08)}}
+}
+
+/* vazio */
+.empty-hero{position:relative; overflow:hidden; padding:56px 32px 72px; text-align:center}
+.empty-hero .wavefield{position:absolute; inset:auto 0 0 0; height:110px; width:100%; pointer-events:none}
+.empty-hero h2{font-size:26px; font-weight:650; letter-spacing:-.015em; margin-top:6px}
+.empty-hero > p{color:var(--ink-2); max-width:500px; margin:10px auto 0}
+.invite{display:flex; gap:10px; max-width:440px; margin:28px auto 0; position:relative; z-index:2}
+.invite input{flex:1; min-height:46px; padding:0 14px; border-radius:var(--r-m); border:1px solid var(--line);
+  background:var(--surface-2); color:var(--ink-2); font-size:14px}
+.hands{width:120px; height:120px; margin:0 auto; border-radius:50%; display:grid; place-items:center;
+  background:var(--accent-soft); color:var(--accent)}
+
+/* controle de demonstração */
+.demo{position:fixed; right:16px; bottom:16px; z-index:60; display:flex; align-items:center; gap:6px;
+  background:var(--surface); border:1px solid var(--line); border-radius:999px; padding:6px 8px; box-shadow:var(--shadow)}
+.demo .lb{font-size:11px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-3); padding:0 6px}
+.demo button{min-height:34px; padding:0 12px; border-radius:999px; border:none; background:transparent;
+  font-size:12.5px; font-weight:650; color:var(--ink-3); cursor:pointer}
+.demo button.on{background:var(--accent-soft); color:var(--accent)}
+
+/* ---------- tablet ---------- */
+@media (max-width: 1280px){
+  .dash{grid-template-columns:repeat(2, minmax(0,1fr))}
+  .g-alpha,.g-comp,.g-sum,.g-notes{grid-column:span 2}
+}
+@media (max-width: 1199px){
+  .app{grid-template-columns:76px 1fr}
+  .side{padding:16px 10px}
+  .side .wordmark span.wtxt, .nav a .ntxt, .side-foot, .role-chip{display:none}
+  .side .wordmark{justify-content:center; padding:8px 0 16px}
+  .nav a{justify-content:center; padding:0}
+  .main{padding:24px 24px 64px}
+  .pro-wrap{grid-template-columns:minmax(0,1fr)}
+  .pro-wrap > *{min-width:0}
+  .people{position:static; flex-direction:column; gap:10px; padding:10px}
+  .people .search{display:flex}
+  .people-strip{flex-direction:row; overflow-x:auto; gap:10px; padding-bottom:2px; -webkit-overflow-scrolling:touch}
+  .person{width:auto; flex:none; border:1px solid var(--line); padding:8px 14px 8px 10px}
+  .person .who span{display:none}
+  .person .who b{white-space:nowrap}
+  .person.on{border-color:var(--accent)}
+}
+/* ---------- mobile ---------- */
+@media (max-width: 767px){
+  .app{grid-template-columns:1fr; grid-template-areas:"head" "main"}
+  .side{position:fixed; inset:0 84px 0 0; z-index:70; height:100vh; transform:translateX(-102%);
+    transition:transform .25s ease; box-shadow:var(--shadow); border-right:none}
+  .side.open{transform:none}
+  .side .wordmark span.wtxt, .nav a .ntxt, .side-foot, .role-chip{display:initial}
+  .side .wordmark{justify-content:flex-start; padding:8px 10px 16px}
+  .nav a{justify-content:flex-start; padding:0 12px}
+  .scrim{display:block; position:fixed; inset:0; z-index:65; background:rgba(2,6,16,.5); opacity:0;
+    pointer-events:none; transition:opacity .25s}
+  .scrim.on{opacity:1; pointer-events:auto}
+  .burger{display:grid}
+  .main{padding:16px 16px 96px}
+  .app-head{gap:10px; padding:0 12px}
+  .app-head .title{font-size:16px}
+  .dash{grid-template-columns:1fr}
+  .g-alpha,.g-comp,.g-sum,.g-notes{grid-column:span 1}
+  .live-banner .btn{width:100%}
+  .person-head h1{font-size:22px}
+}
+</style>
+</head>
+<body class="state-filled" id="page">
+
+<div class="app">
+  <!-- ===== sidebar ===== -->
+  <aside class="side" id="side">
+    <div class="wordmark">
+      <span class="mark">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M2 12c2.5 0 2.5-5 5-5s2.5 8 5 8 2.5-8 5-8 2.5 5 5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+      </span>
+      <span class="wtxt">WaveAI</span>
+    </div>
+    <span class="chip role-chip"><span class="dot"></span> Profissional de bem-estar</span>
+    <nav class="nav" aria-label="Navegação principal">
+      <a href="inicio-profissional.html">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11 12 3l9 8"/><path d="M5 10v10h14V10"/></svg>
+        <span class="ntxt">Início</span></a>
+      <a href="painel-profissional.html" class="on" aria-current="page">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><rect x="3" y="3" width="8" height="8" rx="2"/><rect x="13" y="3" width="8" height="8" rx="2"/><rect x="3" y="13" width="8" height="8" rx="2"/><rect x="13" y="13" width="8" height="8" rx="2"/></svg>
+        <span class="ntxt">Painel</span></a>
+      <a href="convidar.html">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c1.2-3.4 3.7-5 6.5-5s5.3 1.6 6.5 5"/><path d="M17.5 6.5v6M14.5 9.5h6"/></svg>
+        <span class="ntxt">Convidar</span></a>
+      <a href="#">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><rect x="3" y="4" width="18" height="17" rx="3"/><path d="M3 9h18M8 2.5V6M16 2.5V6"/></svg>
+        <span class="ntxt">Sessões</span></a>
+      <a href="#">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg>
+        <span class="ntxt">Perfil</span></a>
+    </nav>
+    <div class="sp"></div>
+    <p class="side-foot">Acesso concedido pelas pessoas — e revogável por elas. Leituras exploratórias de bem-estar; nada aqui é laudo.</p>
+  </aside>
+  <div class="scrim" id="scrim"></div>
+
+  <!-- ===== header ===== -->
+  <header class="app-head">
+    <button class="iconbtn burger" id="burger" aria-label="Abrir menu">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+    </button>
+    <span class="title">Painel</span>
+    <span class="sp"></span>
+    <button class="iconbtn" id="themeToggle" aria-label="Alternar tema claro/escuro" title="Alternar tema">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true">
+        <path class="ic-moon" d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5Z"/>
+        <g class="ic-sun" style="display:none"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M4.9 4.9l1.6 1.6M17.5 17.5l1.6 1.6M19.1 4.9l-1.6 1.6M6.5 17.5l-1.6 1.6"/></g>
+      </svg>
+    </button>
+    <a class="avatar" href="perfil.html" title="Beatriz Nunes · abrir perfil (dados fictícios)" aria-label="Abrir perfil">BN</a>
+  </header>
+
+  <!-- ===== conteúdo ===== -->
+  <main class="main">
+
+    <!-- ========== estado: carregando ========== -->
+    <div class="stv stv-loading" aria-label="Carregando">
+      <p class="load-note"><span class="breath" aria-hidden="true"></span> Carregando as pessoas que autorizaram seu acompanhamento…</p>
+      <div class="dash">
+        <div class="card skl-card"><div class="skl" style="width:60%; height:14px"></div><div class="skl" style="width:40%; height:28px"></div></div>
+        <div class="card skl-card"><div class="skl" style="width:60%; height:14px"></div><div class="skl" style="width:40%; height:28px"></div></div>
+        <div class="card skl-card"><div class="skl" style="width:60%; height:14px"></div><div class="skl" style="width:40%; height:28px"></div></div>
+        <div class="card skl-card"><div class="skl" style="width:60%; height:14px"></div><div class="skl" style="width:40%; height:28px"></div></div>
+        <div class="card skl-card g-alpha"><div class="skl" style="width:35%; height:18px"></div><div class="skl" style="width:100%; height:170px"></div></div>
+        <div class="card skl-card g-comp"><div class="skl" style="width:45%; height:18px"></div><div class="skl" style="width:100%; height:170px"></div></div>
+      </div>
+    </div>
+
+    <!-- ========== estado: nenhuma pessoa ========== -->
+    <div class="stv stv-empty">
+      <section class="card empty-hero" id="emptyHost">
+        <div class="hands" aria-hidden="true">
+          <svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true">
+            <circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c1.2-3.4 3.7-5 6.5-5s5.3 1.6 6.5 5"/>
+            <path d="M17.5 6.5v6M14.5 9.5h6"/>
+          </svg>
+        </div>
+        <h2>Ninguém por aqui — ainda</h2>
+        <p>Convide uma pessoa por e-mail ou código. O acompanhamento só começa quando ela aceitar — e ela pode revogar o acesso a qualquer momento, com efeito imediato.</p>
+        <div class="invite" style="justify-content:center">
+          <a class="btn btn-primary" href="convidar.html">Convidar uma pessoa</a>
+        </div>
+        <p class="t-small" style="margin-top:18px; position:relative; z-index:2">Quando alguém autorizar, as tendências dela aparecem aqui — leitura, nunca edição.</p>
+        <canvas class="wavefield" id="waveEmpty" aria-hidden="true"></canvas>
+      </section>
+    </div>
+
+    <!-- ========== estado: preenchido ========== -->
+    <div class="stv stv-filled">
+      <div class="pro-wrap">
+        <!-- trilho de pessoas -->
+        <aside class="card people" aria-label="Pessoas que autorizaram">
+          <label class="search">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.8-3.8"/></svg>
+            <input type="search" placeholder="Buscar pessoa" aria-label="Buscar pessoa">
+          </label>
+          <div class="people-strip">
+          <button class="person on" type="button" aria-pressed="true">
+            <span class="avatar">AM</span>
+            <span class="who"><b>Ana Martins</b><span>em sessão agora · 12 sessões</span></span>
+            <span class="live-dot" title="Em sessão agora"></span>
+          </button>
+          <button class="person" type="button" aria-pressed="false">
+            <span class="avatar">CS</span>
+            <span class="who"><b>Carlos Souza</b><span>última sessão: 29 jul</span></span>
+          </button>
+          <button class="person" type="button" aria-pressed="false">
+            <span class="avatar">ML</span>
+            <span class="who"><b>Marina Lopes</b><span>última sessão: 14 jul</span></span>
+          </button>
+          <button class="person pending" type="button" aria-pressed="false">
+            <span class="avatar">PH</span>
+            <span class="who"><b>Paulo Herrera</b><span>convite pendente — aguarda a pessoa</span></span>
+          </button>
+          </div>
+        </aside>
+
+        <!-- conteúdo da pessoa selecionada -->
+        <div>
+          <div class="person-head">
+            <span class="avatar">AM</span>
+            <div>
+              <h1>Ana Martins</h1>
+              <p>autorizou seu acesso em 12 jul 2026 · pode revogar a qualquer momento</p>
+            </div>
+            <span class="sp"></span>
+            <span class="chip chip-exp">leitura · nunca edição</span>
+          </div>
+
+          <!-- banner ao vivo (opt-in) -->
+          <section class="card live-banner" id="liveHost" aria-label="Sessão em andamento">
+            <span class="chip chip-live"><span class="dot"></span> AO VIVO</span>
+            <div>
+              <b>Ana está em sessão agora</b>
+              <div class="meta">07:42 · qualidade do sinal 94% · protocolo guiado</div>
+            </div>
+            <span class="sp"></span>
+            <button class="btn btn-primary" type="button">Acompanhar ao vivo</button>
+            <span class="t-small" style="flex-basis:100%">Disponível porque Ana ativou o compartilhamento ao vivo — você vê apenas as métricas, e ela pode desligar isso a qualquer momento.</span>
+            <canvas class="wavefield" id="waveLive" aria-hidden="true"></canvas>
+          </section>
+
+          <div class="dash">
+            <!-- tiles -->
+            <section class="card tile"><div class="lb">Sessões no período</div><div class="v">12</div><div class="sub">10 com boa qualidade de sinal</div></section>
+            <section class="card tile"><div class="lb">Qualidade média do sinal</div><div class="v">88%</div><div class="sub">contato médio das sessões</div></section>
+            <section class="card tile"><div class="lb">Última sessão</div><div class="v">ontem</div><div class="sub">2 ago · 09:14 · 12 min</div></section>
+            <section class="card tile"><div class="lb">Período</div>
+              <select aria-label="Selecionar período">
+                <option selected>últimos 30 dias</option>
+                <option>últimos 90 dias</option>
+                <option>tudo</option>
+              </select>
+              <div class="sub">6 jul – 2 ago 2026</div>
+            </section>
+
+            <!-- tendência de alfa -->
+            <section class="card g-alpha" aria-label="Tendência de alfa">
+              <div class="card-h"><h3>Alfa · % do espectro por sessão</h3><span class="eyebrow">olhos fechados · exploratório</span></div>
+              <div class="card-b">
+                <figure>
+                  <svg viewBox="0 0 560 200" role="img" aria-label="Linha do alfa nas últimas 8 sessões, entre 26% e 34% do espectro">
+                    <line class="gridline" x1="40" y1="170" x2="540" y2="170"/>
+                    <line class="gridline" x1="40" y1="95"  x2="540" y2="95"/>
+                    <line class="gridline" x1="40" y1="20"  x2="540" y2="20"/>
+                    <text class="axis" x="34" y="174" text-anchor="end">0%</text>
+                    <text class="axis" x="34" y="99"  text-anchor="end">25%</text>
+                    <text class="axis" x="34" y="24"  text-anchor="end">50%</text>
+                    <defs>
+                      <linearGradient id="alphaFill" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0" stop-color="var(--band-alpha)" stop-opacity=".22"/>
+                        <stop offset="1" stop-color="var(--band-alpha)" stop-opacity="0"/>
+                      </linearGradient>
+                    </defs>
+                    <path d="M40 92 L111 83 L183 77 L254 86 L326 71 L397 80 L469 68 L540 68 L540 170 L40 170 Z" fill="url(#alphaFill)"/>
+                    <path class="trendline" d="M40 92 L111 83 L183 77 L254 86 L326 71 L397 80 L469 68 L540 68"
+                      fill="none" stroke="var(--band-alpha)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+                    <g fill="var(--band-alpha)">
+                      <circle cx="40" cy="92" r="3.4"/><circle cx="111" cy="83" r="3.4"/><circle cx="183" cy="77" r="3.4"/>
+                      <circle cx="254" cy="86" r="3.4"/><circle cx="326" cy="71" r="3.4"/><circle cx="397" cy="80" r="3.4"/>
+                      <circle cx="469" cy="68" r="3.4"/><circle cx="540" cy="68" r="4.4"/>
+                    </g>
+                    <text class="axis" x="40"  y="190" text-anchor="middle">12 jul</text>
+                    <text class="axis" x="183" y="190" text-anchor="middle">19 jul</text>
+                    <text class="axis" x="326" y="190" text-anchor="middle">26 jul</text>
+                    <text class="axis" x="469" y="190" text-anchor="middle">1 ago</text>
+                    <text class="axis" x="540" y="190" text-anchor="middle">2 ago</text>
+                  </svg>
+                </figure>
+                <p class="t-small" style="margin-top:10px">Proporção do alfa no espectro, sessão a sessão. Sem valência — descreve, não avalia.</p>
+              </div>
+            </section>
+
+            <!-- composição por sessão -->
+            <section class="card g-comp" aria-label="Composição por banda por sessão">
+              <div class="card-h"><h3>Composição por banda · % por sessão</h3><span class="eyebrow">categórica · sem valência</span></div>
+              <div class="card-b">
+                <div class="cols" role="img" aria-label="Colunas empilhadas da composição por banda nas últimas 8 sessões">
+                  <div class="col"><i style="height:24%; background:var(--band-delta)"></i><i style="height:19%; background:var(--band-theta)"></i><i style="height:26%; background:var(--band-alpha)"></i><i style="height:23%; background:var(--band-beta)"></i><i style="height:8%; background:var(--band-gamma)"></i></div>
+                  <div class="col"><i style="height:23%; background:var(--band-delta)"></i><i style="height:18%; background:var(--band-theta)"></i><i style="height:29%; background:var(--band-alpha)"></i><i style="height:22%; background:var(--band-beta)"></i><i style="height:8%; background:var(--band-gamma)"></i></div>
+                  <div class="col"><i style="height:22%; background:var(--band-delta)"></i><i style="height:18%; background:var(--band-theta)"></i><i style="height:31%; background:var(--band-alpha)"></i><i style="height:21%; background:var(--band-beta)"></i><i style="height:8%; background:var(--band-gamma)"></i></div>
+                  <div class="col"><i style="height:23%; background:var(--band-delta)"></i><i style="height:19%; background:var(--band-theta)"></i><i style="height:28%; background:var(--band-alpha)"></i><i style="height:22%; background:var(--band-beta)"></i><i style="height:8%; background:var(--band-gamma)"></i></div>
+                  <div class="col"><i style="height:21%; background:var(--band-delta)"></i><i style="height:17%; background:var(--band-theta)"></i><i style="height:33%; background:var(--band-alpha)"></i><i style="height:21%; background:var(--band-beta)"></i><i style="height:8%; background:var(--band-gamma)"></i></div>
+                  <div class="col"><i style="height:22%; background:var(--band-delta)"></i><i style="height:18%; background:var(--band-theta)"></i><i style="height:30%; background:var(--band-alpha)"></i><i style="height:22%; background:var(--band-beta)"></i><i style="height:8%; background:var(--band-gamma)"></i></div>
+                  <div class="col"><i style="height:21%; background:var(--band-delta)"></i><i style="height:17%; background:var(--band-theta)"></i><i style="height:34%; background:var(--band-alpha)"></i><i style="height:20%; background:var(--band-beta)"></i><i style="height:8%; background:var(--band-gamma)"></i></div>
+                  <div class="col"><i style="height:21%; background:var(--band-delta)"></i><i style="height:17%; background:var(--band-theta)"></i><i style="height:34%; background:var(--band-alpha)"></i><i style="height:20%; background:var(--band-beta)"></i><i style="height:8%; background:var(--band-gamma)"></i></div>
+                </div>
+                <div class="cols-x"><span>12 jul</span><span></span><span>19 jul</span><span></span><span>26 jul</span><span></span><span>1 ago</span><span>2 ago</span></div>
+                <div class="legend" style="margin-top:10px">
+                  <span class="k" style="--c:var(--band-delta)">delta</span>
+                  <span class="k" style="--c:var(--band-theta)">teta</span>
+                  <span class="k" style="--c:var(--band-alpha)">alfa</span>
+                  <span class="k" style="--c:var(--band-beta)">beta</span>
+                  <span class="k" style="--c:var(--band-gamma)">gama</span>
+                </div>
+              </div>
+            </section>
+
+            <!-- resumo em texto -->
+            <section class="card g-sum" aria-label="Resumo em texto">
+              <div class="card-h">
+                <h3>Resumo do período</h3>
+                <span class="chip chip-exp">exploratório · gerado no servidor</span>
+              </div>
+              <div class="card-b">
+                <p class="sum-body">
+                  Entre <b>6 de julho e 2 de agosto</b>, Ana completou <b>12 sessões</b> — 10 delas com boa qualidade de sinal.
+                  A proporção de <b>alfa</b> na fase de olhos fechados moveu-se de <b>26% para 34%</b> do espectro, com as demais
+                  bandas estáveis. Nos autorrelatos, as sessões com mais alfa coincidem com dias em que ela meditou antes de captar.
+                  A sessão de 19 jul teve contato instável e pesa menos nas tendências.
+                </p>
+                <div class="sum-disc">
+                  Leitura exploratória de bem-estar gerada pelo servidor WaveAI (engine wave_eeg v0.4.2). Não é laudo,
+                  não descreve saúde e não fundamenta decisões clínicas.
+                </div>
+              </div>
+            </section>
+
+            <!-- notas de contexto -->
+            <section class="card g-notes" aria-label="Notas de contexto">
+              <div class="card-h"><h3>Notas de contexto</h3><span class="eyebrow">escritas pela pessoa</span></div>
+              <div class="card-b">
+                <div class="note-item">
+                  <div class="nm"><span class="chip chip-exp">autorrelato da pessoa</span><time>2 ago · 09:14</time></div>
+                  <p>“Sessão logo depois de meditar. Dormi bem.”</p>
+                </div>
+                <div class="note-item">
+                  <div class="nm"><span class="chip chip-exp">autorrelato da pessoa</span><time>26 jul · 18:40</time></div>
+                  <p>“Dia agitado no trabalho, tomei café antes.”</p>
+                </div>
+                <div class="note-item">
+                  <div class="nm"><span class="chip chip-exp">autorrelato da pessoa</span><time>19 jul · 08:02</time></div>
+                  <p>“Estava cansada, a faixa ficou incômoda.”</p>
+                </div>
+              </div>
+            </section>
+          </div>
+
+          <p class="trace">
+            <span>engine wave_eeg v0.4.2</span><span class="sep">·</span>
+            <span>métricas calculadas no servidor WaveAI</span><span class="sep">·</span>
+            <span>dados fictícios para demonstração</span>
+          </p>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- ===== alternador de estados (só na demonstração) ===== -->
+<div class="demo" role="group" aria-label="Estados de demonstração">
+  <span class="lb">demo</span>
+  <button type="button" data-state="loading">Carregando</button>
+  <button type="button" data-state="empty">Sem pessoas</button>
+  <button type="button" data-state="filled" class="on">Preenchido</button>
+</div>
+
+<script>
+/* ---------- tema ---------- */
+(function(){
+  const btn = document.getElementById('themeToggle');
+  const sync = ()=>{
+    const light = document.documentElement.dataset.theme === 'light';
+    btn.querySelector('.ic-moon').style.display = light ? '' : 'none';
+    btn.querySelector('.ic-sun').style.display  = light ? 'none' : '';
+  };
+  btn.addEventListener('click', ()=>{
+    const t = document.documentElement.dataset.theme === 'light' ? 'dark' : 'light';
+    document.documentElement.dataset.theme = t;
+    localStorage.setItem('waveai-theme', t);
+    sync();
+  });
+  sync();
+})();
+
+/* ---------- drawer mobile ---------- */
+(function(){
+  const side = document.getElementById('side'), scrim = document.getElementById('scrim');
+  document.getElementById('burger').addEventListener('click', ()=>{ side.classList.add('open'); scrim.classList.add('on'); });
+  scrim.addEventListener('click', ()=>{ side.classList.remove('open'); scrim.classList.remove('on'); });
+})();
+
+/* ---------- estados de demonstração ---------- */
+document.querySelectorAll('.demo button').forEach(b=>{
+  b.addEventListener('click', ()=>{
+    document.getElementById('page').className = 'state-' + b.dataset.state;
+    document.querySelectorAll('.demo button').forEach(x=>x.classList.toggle('on', x===b));
+    setTimeout(()=>{ if(typeof waveFields !== 'undefined') waveFields.forEach(f=>f.resize()); }, 0);
+  });
+});
+
+/* ---------- seleção de pessoa (visual) ---------- */
+document.querySelectorAll('.person').forEach(p=>{
+  p.addEventListener('click', ()=>{
+    document.querySelectorAll('.person').forEach(x=>{ x.classList.toggle('on', x===p); x.setAttribute('aria-pressed', String(x===p)); });
+  });
+});
+
+/* ---------- Maré: campo de ondas ---------- */
+class WaveField{
+  constructor(canvas, opts={}){
+    this.c = canvas; this.ctx = canvas.getContext('2d');
+    this.colors = opts.colors || ['#7AA2F7','#4FD1C5','#7AA2F7'];
+    this.alpha  = opts.alpha  ?? .35;
+    this.lines  = opts.lines  ?? 3;
+    this.speed  = opts.speed  ?? 1;
+    this.amp    = opts.amp    ?? 12;
+    this.t = 0; this.px = -1e4; this.boost = 0;
+    this.reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    new ResizeObserver(()=>this.resize()).observe(canvas);
+    this.resize();
+    const host = opts.pointerHost || canvas.parentElement;
+    host.addEventListener('pointermove', e=>{
+      const r = this.c.getBoundingClientRect();
+      this.px = e.clientX - r.left;
+    });
+    host.addEventListener('pointerleave', ()=>{ this.px = -1e4; });
+    if(this.reduced){ this.draw(); } else { this.loop = this.loop.bind(this); requestAnimationFrame(this.loop); }
+  }
+  resize(){
+    const d = Math.min(devicePixelRatio||1, 2);
+    this.w = this.c.clientWidth; this.h = this.c.clientHeight;
+    this.c.width = this.w*d; this.c.height = this.h*d;
+    this.ctx.setTransform(d,0,0,d,0,0);
+    if(this.reduced) this.draw();
+  }
+  wave(y0, k, seed){
+    const {ctx,w} = this; ctx.beginPath();
+    for(let x=0; x<=w; x+=4){
+      const near = Math.exp(-Math.pow((x-this.px)/140,2)) * this.boost;
+      const y = y0
+        + Math.sin(x*0.008 + this.t*0.9  + seed)     * this.amp * k
+        + Math.sin(x*0.017 + this.t*0.55 + seed*2.1) * this.amp * .45 * k
+        + Math.sin(x*0.004 - this.t*0.3  + seed*3.7) * this.amp * .8  * k
+        - near * 10;
+      x===0 ? ctx.moveTo(x,y) : ctx.lineTo(x,y);
+    }
+  }
+  draw(){
+    const {ctx,w,h} = this; ctx.clearRect(0,0,w,h);
+    for(let i=0;i<this.lines;i++){
+      const g = ctx.createLinearGradient(0,0,w,0);
+      const col = this.colors[i % this.colors.length];
+      g.addColorStop(0, col+'00'); g.addColorStop(.5, col); g.addColorStop(1, col+'00');
+      ctx.strokeStyle = g;
+      ctx.globalAlpha = this.alpha * (1 - i*0.22);
+      ctx.lineWidth = 1.6;
+      this.wave(h*(.45 + i*.16), 1 - i*.18, i*7.3);
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+  }
+  loop(){
+    this.t += 0.012 * this.speed;
+    this.boost += ((this.px > -1e3 ? 1 : 0) - this.boost) * .04;
+    this.draw();
+    requestAnimationFrame(this.loop);
+  }
+}
+const waveFields = [
+  new WaveField(document.getElementById('waveLive'),  {pointerHost: document.getElementById('liveHost'), colors:['#4FD1C5','#7AA2F7','#4FD1C5']}),
+  new WaveField(document.getElementById('waveEmpty'), {pointerHost: document.getElementById('emptyHost'), alpha:.4})
+];
+
+/* ---------- entrada da linha de tendência ---------- */
+(function(){
+  if(matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const line = document.querySelector('.trendline');
+  if(!line) return;
+  const len = line.getTotalLength();
+  line.style.strokeDasharray = len;
+  line.style.strokeDashoffset = len;
+  requestAnimationFrame(()=>{
+    line.style.transition = 'stroke-dashoffset 1.1s cubic-bezier(.2,.7,.3,1) .15s';
+    line.style.strokeDashoffset = '0';
+  });
+})();
+</script>
+</body>
+</html>

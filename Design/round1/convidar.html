@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WaveAI · Convidar uma pessoa</title>
+<script>
+  (function(){
+    var t = localStorage.getItem('waveai-theme');
+    if(!t){ t = window.matchMedia && matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark'; }
+    document.documentElement.dataset.theme = t;
+  })();
+</script>
+<style>
+/* ============================================================
+   WaveAI · Design "Maré" · tokens (papel: profissional → azul)
+   ============================================================ */
+:root{
+  color-scheme: dark;
+  --bg:#0B1220; --surface:#151E32; --surface-2:#1C2740; --surface-3:#233152;
+  --ink:#F5F7FA; --ink-2:#B6C1D4; --ink-3:#8291A9;
+  --line:rgba(245,247,250,.10); --line-2:rgba(245,247,250,.055);
+  --accent:#7AA2F7; --accent-ink:#0A1430; --accent-soft:rgba(122,162,247,.13);
+  --ok:#0ca30c; --warn:#fab219; --bad:#ec835a;
+  --shadow:0 10px 30px rgba(2,6,16,.45), 0 2px 8px rgba(2,6,16,.35);
+  --r-s:8px; --r-m:12px; --r-l:16px;
+}
+:root[data-theme="light"]{
+  color-scheme: light;
+  --bg:#F5F7FA; --surface:#FFFFFF; --surface-2:#EDF1F6; --surface-3:#E2E8F1;
+  --ink:#0F1726; --ink-2:#44526A; --ink-3:#68778F;
+  --line:rgba(15,23,38,.12); --line-2:rgba(15,23,38,.06);
+  --accent:#2A5BC7; --accent-ink:#FFFFFF; --accent-soft:rgba(42,91,199,.10);
+  --shadow:0 10px 30px rgba(15,23,38,.08), 0 2px 8px rgba(15,23,38,.06);
+}
+*{box-sizing:border-box; margin:0; padding:0}
+html,body{height:100%}
+body{
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  background:var(--bg); color:var(--ink); font-size:15px; line-height:1.5;
+  -webkit-font-smoothing:antialiased;
+}
+button,input,textarea{font:inherit; color:inherit}
+a{color:var(--accent); text-decoration:none}
+a:hover{text-decoration:underline}
+:focus-visible{outline:2px solid var(--accent); outline-offset:2px; border-radius:4px}
+.eyebrow{font-size:12px; font-weight:650; letter-spacing:.09em; text-transform:uppercase; color:var(--ink-3)}
+.t-small{font-size:13px; color:var(--ink-3)}
+
+.btn{display:inline-flex; align-items:center; justify-content:center; gap:8px; min-height:44px; padding:0 22px;
+  border:none; border-radius:var(--r-m); font-weight:600; font-size:15px; cursor:pointer;
+  transition:transform .15s ease, box-shadow .2s ease, background .2s ease}
+.btn-primary{background:var(--accent); color:var(--accent-ink)}
+.btn-primary:hover{transform:translateY(-1px); box-shadow:0 6px 18px var(--accent-soft)}
+.btn-primary[disabled]{opacity:.5; cursor:not-allowed; transform:none; box-shadow:none}
+.btn-ghost{background:transparent; color:var(--ink-2); border:1px solid var(--line)}
+.btn-ghost:hover{background:var(--surface-2); color:var(--ink)}
+.card{background:var(--surface); border:1px solid var(--line-2); border-radius:var(--r-l); box-shadow:var(--shadow)}
+.card-h{display:flex; align-items:baseline; justify-content:space-between; gap:12px; padding:20px 20px 0}
+.card-h h3{font-size:15px; font-weight:650}
+.card-b{padding:16px 20px 20px}
+.chip{display:inline-flex; align-items:center; gap:6px; min-height:26px; padding:2px 11px; border-radius:999px;
+  border:1px solid var(--line); background:var(--surface-2); font-size:12px; font-weight:600; color:var(--ink-2)}
+.chip .dot{width:7px; height:7px; border-radius:50%; background:var(--accent); flex:none}
+.chip-exp{color:var(--ink-3)}
+.field{display:flex; flex-direction:column; gap:6px}
+.field label{font-size:13px; font-weight:600; color:var(--ink-2)}
+.field input, .field textarea{width:100%; min-height:46px; padding:12px 14px; border-radius:var(--r-m);
+  border:1px solid var(--line); background:var(--surface-2); color:var(--ink);
+  transition:border-color .15s, box-shadow .15s}
+.field input{padding:0 14px}
+.field textarea{resize:vertical; min-height:88px}
+.field input:focus, .field textarea:focus{outline:none; border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-soft); background:var(--surface)}
+.field input::placeholder, .field textarea::placeholder{color:var(--ink-3)}
+.field .hint{font-size:12px; color:var(--ink-3)}
+
+/* ---------- casca do app ---------- */
+.app{min-height:100vh; display:grid; grid-template-columns:240px 1fr; grid-template-rows:64px 1fr;
+  grid-template-areas:"side head" "side main"}
+.app-head{grid-area:head; display:flex; align-items:center; gap:16px; padding:0 24px;
+  border-bottom:1px solid var(--line-2); background:var(--bg); position:sticky; top:0; z-index:30}
+.app-head .title{font-size:17px; font-weight:650; letter-spacing:-.01em; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.app-head .sp{flex:1}
+.iconbtn{width:44px; height:44px; border-radius:50%; border:1px solid var(--line); background:var(--surface);
+  color:var(--ink-2); cursor:pointer; display:grid; place-items:center}
+.iconbtn:hover{color:var(--ink); background:var(--surface-2)}
+.avatar{width:36px; height:36px; border-radius:50%; display:grid; place-items:center; font-size:13px; font-weight:700;
+  background:var(--accent-soft); color:var(--accent); border:1px solid var(--line); flex:none}
+.app-head .avatar{width:44px; height:44px; font-size:14px}
+a.avatar{text-decoration:none}
+a.avatar:hover{box-shadow:0 0 0 3px var(--accent-soft); text-decoration:none}
+.burger{display:none}
+.side{grid-area:side; display:flex; flex-direction:column; gap:8px; padding:16px 12px;
+  border-right:1px solid var(--line-2); background:var(--surface); position:sticky; top:0; height:100vh}
+.side .wordmark{display:flex; align-items:center; gap:10px; font-weight:700; font-size:17px; padding:8px 10px 16px}
+.side .mark{width:32px; height:32px; border-radius:9px; display:grid; place-items:center; flex:none;
+  background:linear-gradient(135deg,#4FD1C5,#7AA2F7); color:#06231F}
+.nav{display:flex; flex-direction:column; gap:2px}
+.nav a{display:flex; align-items:center; gap:12px; min-height:44px; padding:0 12px; border-radius:var(--r-m);
+  color:var(--ink-2); font-weight:600; font-size:14px}
+.nav a svg{flex:none; opacity:.8}
+.nav a:hover{background:var(--surface-2); color:var(--ink); text-decoration:none}
+.nav a.on{background:var(--accent-soft); color:var(--accent)}
+.side .sp{flex:1}
+.role-chip{margin:0 10px 10px; align-self:flex-start}
+.side-foot{font-size:11.5px; color:var(--ink-3); padding:0 12px 8px; line-height:1.45}
+.main{grid-area:main; padding:24px 32px 64px; width:100%}
+.scrim{display:none}
+
+/* ---------- layout ---------- */
+.inv-wrap{max-width:1100px; margin:0 auto}
+.page-top{margin:8px 0 20px}
+.page-top h1{font-size:26px; font-weight:650; letter-spacing:-.015em}
+.page-top p{font-size:13.5px; color:var(--ink-3); max-width:600px; margin-top:4px}
+.inv-grid{display:grid; gap:24px; grid-template-columns:1.25fr 1fr; align-items:start}
+.col{display:flex; flex-direction:column; gap:24px}
+
+/* views do formulário */
+.view{display:none; animation:vin .28s ease}
+.view.on{display:block}
+@keyframes vin{from{opacity:0; transform:translateY(8px)} to{opacity:1; transform:none}}
+@media (prefers-reduced-motion: reduce){ .view{animation:none} }
+
+/* confirmação */
+.sent-box{text-align:center; padding:14px 8px 6px}
+.big-ic{width:72px; height:72px; border-radius:50%; display:grid; place-items:center; margin:0 auto 18px;
+  background:var(--accent-soft); color:var(--accent); position:relative}
+.big-ic::after{content:""; position:absolute; inset:-2px; border-radius:50%; border:2px solid var(--accent); opacity:.4}
+@media (prefers-reduced-motion: no-preference){
+  .big-ic::after{animation:bigh 2.8s ease-in-out infinite}
+  @keyframes bigh{0%,100%{transform:scale(1); opacity:.4} 50%{transform:scale(1.28); opacity:0}}
+}
+.sent-box h2{font-size:22px; font-weight:650; letter-spacing:-.015em}
+.sent-box p{color:var(--ink-2); max-width:400px; margin:8px auto 0; font-size:14px}
+
+/* código */
+.code-box{display:flex; align-items:center; gap:10px; margin-top:4px}
+.code-box .code{flex:1; display:flex; align-items:center; justify-content:center; min-height:52px;
+  border:1.5px dashed var(--line); border-radius:var(--r-m); background:var(--surface-2);
+  font-size:20px; font-weight:650; letter-spacing:.14em; font-variant-numeric:tabular-nums}
+.copied{color:var(--accent); font-size:12.5px; font-weight:650; opacity:0; transition:opacity .25s}
+.copied.on{opacity:1}
+
+/* o que a pessoa autoriza */
+.scope-list{display:flex; flex-direction:column; gap:9px}
+.scope-list li{position:relative; padding-left:18px; font-size:13.5px; color:var(--ink-2); line-height:1.5; list-style:none}
+.scope-list li::before{content:""; position:absolute; left:0; top:8px; width:6px; height:6px; border-radius:50%; background:var(--accent)}
+
+/* convites enviados */
+.sent-item{display:flex; align-items:center; gap:12px; padding:14px 0; border-bottom:1px solid var(--line-2)}
+.sent-item:last-child{border-bottom:none; padding-bottom:0}
+.sent-item .avatar{width:42px; height:42px; font-size:14px}
+.sent-item .who{flex:1; min-width:0}
+.sent-item .who b{display:block; font-size:14px; font-weight:650; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.sent-item .who span{display:block; font-size:12px; color:var(--ink-3); white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.sent-item .acts{display:flex; gap:6px}
+.sent-item .acts button{min-height:36px; padding:0 12px; border-radius:var(--r-s); border:1px solid var(--line);
+  background:none; font-size:12.5px; font-weight:600; color:var(--ink-3); cursor:pointer}
+.sent-item .acts button:hover{color:var(--ink); background:var(--surface-2)}
+.st-ok{display:inline-flex; align-items:center; gap:6px; font-size:12px; font-weight:650; color:var(--accent)}
+
+/* ---------- tablet ---------- */
+@media (max-width: 1199px){
+  .app{grid-template-columns:76px 1fr}
+  .side{padding:16px 10px}
+  .side .wordmark span.wtxt, .nav a .ntxt, .side-foot, .role-chip{display:none}
+  .side .wordmark{justify-content:center; padding:8px 0 16px}
+  .nav a{justify-content:center; padding:0}
+  .main{padding:24px 24px 64px}
+}
+@media (max-width: 960px){
+  .inv-grid{grid-template-columns:1fr}
+}
+/* ---------- mobile ---------- */
+@media (max-width: 767px){
+  .app{grid-template-columns:1fr; grid-template-areas:"head" "main"}
+  .side{position:fixed; inset:0 84px 0 0; z-index:70; height:100vh; transform:translateX(-102%);
+    transition:transform .25s ease; box-shadow:var(--shadow); border-right:none}
+  .side.open{transform:none}
+  .side .wordmark span.wtxt, .nav a .ntxt, .side-foot, .role-chip{display:initial}
+  .side .wordmark{justify-content:flex-start; padding:8px 10px 16px}
+  .nav a{justify-content:flex-start; padding:0 12px}
+  .scrim{display:block; position:fixed; inset:0; z-index:65; background:rgba(2,6,16,.5); opacity:0;
+    pointer-events:none; transition:opacity .25s}
+  .scrim.on{opacity:1; pointer-events:auto}
+  .burger{display:grid}
+  .main{padding:16px 16px 96px}
+  .app-head{gap:10px; padding:0 12px}
+  .app-head .title{font-size:16px}
+  .page-top h1{font-size:22px}
+  .sent-item{display:grid; grid-template-columns:42px minmax(0,1fr) auto; align-items:center; gap:6px 12px}
+  .sent-item .acts{grid-column:2 / -1; justify-self:start}
+  .sent-box > div{flex-direction:column}
+  .sent-box .btn{width:100%}
+}
+</style>
+</head>
+<body>
+
+<div class="app">
+  <!-- ===== sidebar ===== -->
+  <aside class="side" id="side">
+    <div class="wordmark">
+      <span class="mark">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M2 12c2.5 0 2.5-5 5-5s2.5 8 5 8 2.5-8 5-8 2.5 5 5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+      </span>
+      <span class="wtxt">WaveAI</span>
+    </div>
+    <span class="chip role-chip"><span class="dot"></span> Profissional de bem-estar</span>
+    <nav class="nav" aria-label="Navegação principal">
+      <a href="inicio-profissional.html">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11 12 3l9 8"/><path d="M5 10v10h14V10"/></svg>
+        <span class="ntxt">Início</span></a>
+      <a href="painel-profissional.html">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><rect x="3" y="3" width="8" height="8" rx="2"/><rect x="13" y="3" width="8" height="8" rx="2"/><rect x="3" y="13" width="8" height="8" rx="2"/><rect x="13" y="13" width="8" height="8" rx="2"/></svg>
+        <span class="ntxt">Painel</span></a>
+      <a href="convidar.html" class="on" aria-current="page">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c1.2-3.4 3.7-5 6.5-5s5.3 1.6 6.5 5"/><path d="M17.5 6.5v6M14.5 9.5h6"/></svg>
+        <span class="ntxt">Convidar</span></a>
+      <a href="#">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg>
+        <span class="ntxt">Perfil</span></a>
+    </nav>
+    <div class="sp"></div>
+    <p class="side-foot">Acesso concedido pelas pessoas — e revogável por elas. Leituras exploratórias de bem-estar; nada aqui é laudo.</p>
+  </aside>
+  <div class="scrim" id="scrim"></div>
+
+  <!-- ===== header ===== -->
+  <header class="app-head">
+    <button class="iconbtn burger" id="burger" aria-label="Abrir menu">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+    </button>
+    <span class="title">Convidar</span>
+    <span class="sp"></span>
+    <button class="iconbtn" id="themeToggle" aria-label="Alternar tema claro/escuro" title="Alternar tema">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true">
+        <path class="ic-moon" d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5Z"/>
+        <g class="ic-sun" style="display:none"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M4.9 4.9l1.6 1.6M17.5 17.5l1.6 1.6M19.1 4.9l-1.6 1.6M6.5 17.5l-1.6 1.6"/></g>
+      </svg>
+    </button>
+    <a class="avatar" href="perfil.html" title="Beatriz Nunes · abrir perfil (dados fictícios)" aria-label="Abrir perfil">BN</a>
+  </header>
+
+  <!-- ===== conteúdo ===== -->
+  <main class="main">
+    <div class="inv-wrap">
+      <div class="page-top">
+        <h1>Convidar uma pessoa</h1>
+        <p>O convite é só o primeiro passo: o acompanhamento começa apenas quando a pessoa aceitar — e ela pode revogar o acesso a qualquer momento, com efeito imediato.</p>
+      </div>
+
+      <div class="inv-grid">
+        <!-- ============ coluna principal ============ -->
+        <div class="col">
+          <section class="card" aria-label="Convite por e-mail">
+            <!-- view: formulário -->
+            <div class="view on" id="view-form">
+              <div class="card-h"><h3>Por e-mail</h3><span class="eyebrow">recomendado</span></div>
+              <div class="card-b" style="display:flex; flex-direction:column; gap:18px">
+                <div class="field">
+                  <label for="invMail">E-mail da pessoa</label>
+                  <input id="invMail" type="email" inputmode="email" placeholder="pessoa@exemplo.com.br">
+                </div>
+                <div class="field">
+                  <label for="invMsg">Mensagem (opcional)</label>
+                  <textarea id="invMsg" placeholder="Ex.: Oi! Posso acompanhar suas tendências entre os nossos encontros?"></textarea>
+                  <span class="hint">A pessoa vê essa mensagem junto do convite, com o seu nome.</span>
+                </div>
+                <div>
+                  <button class="btn btn-primary" type="button" id="sendBtn" disabled onclick="sendInvite()">Enviar convite</button>
+                </div>
+              </div>
+            </div>
+            <!-- view: enviado -->
+            <div class="view" id="view-sent">
+              <div class="card-b sent-box">
+                <div class="big-ic" aria-hidden="true">
+                  <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <rect x="3" y="5" width="18" height="14" rx="3"/><path d="m3.5 7 8.5 6 8.5-6"/>
+                  </svg>
+                </div>
+                <h2>Convite enviado</h2>
+                <p>Enviamos o convite para <b style="color:var(--ink)" id="sentTo">pessoa@exemplo.com.br</b>. Assim que a pessoa aceitar, ela aparece no seu início — avisamos você.</p>
+                <div style="display:flex; gap:10px; justify-content:center; margin-top:22px; flex-wrap:wrap">
+                  <button class="btn btn-ghost" type="button" onclick="resetInvite()">Enviar outro convite</button>
+                  <a class="btn btn-primary" href="inicio-profissional.html">Voltar ao início</a>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section class="card" aria-label="Convite por código">
+            <div class="card-h"><h3>Ou por código</h3><span class="eyebrow">presencial</span></div>
+            <div class="card-b">
+              <p class="t-small" style="margin-bottom:12px">Bom para quando a pessoa está com você: ela digita o código no app dela, em Convites.</p>
+              <div class="code-box">
+                <span class="code" id="invCode">WAVE-7Q2F</span>
+                <button class="btn btn-ghost" type="button" id="copyBtn" onclick="copyCode()">Copiar</button>
+              </div>
+              <p class="copied" id="copiedMsg" role="status">Código copiado!</p>
+              <p class="t-small" style="margin-top:8px">O código vale por 7 dias e pode ser usado uma única vez.</p>
+            </div>
+          </section>
+        </div>
+
+        <!-- ============ coluna lateral ============ -->
+        <div class="col">
+          <section class="card" aria-label="O que a pessoa autoriza">
+            <div class="card-h"><h3>O que a pessoa autoriza</h3><span class="chip chip-exp">leitura · nunca edição</span></div>
+            <div class="card-b">
+              <ul class="scope-list">
+                <li>Tendências e composição por banda ao longo das sessões.</li>
+                <li>Resumos em texto — sempre exploratórios, nunca laudo.</li>
+                <li>Autorrelatos que ela escrever nas sessões.</li>
+                <li>Acompanhar ao vivo <b style="color:var(--ink)">só se ela ligar</b> esse aceite separado, sessão a sessão.</li>
+              </ul>
+              <p class="t-small" style="margin-top:14px">Você nunca vê a sessão bruta nem edita nada. A pessoa pode revogar tudo quando quiser.</p>
+            </div>
+          </section>
+
+          <section class="card" aria-label="Convites enviados">
+            <div class="card-h"><h3>Convites enviados</h3><span class="eyebrow">últimos 30 dias</span></div>
+            <div class="card-b">
+              <div class="sent-item">
+                <span class="avatar">PH</span>
+                <div class="who">
+                  <b>Paulo Herrera</b>
+                  <span>paulo.herrera@exemplo.com.br · há 5 dias</span>
+                </div>
+                <span class="chip chip-exp">pendente</span>
+                <div class="acts">
+                  <button type="button">Reenviar</button>
+                  <button type="button">Cancelar</button>
+                </div>
+              </div>
+              <div class="sent-item">
+                <span class="avatar">ML</span>
+                <div class="who">
+                  <b>Marina Lopes</b>
+                  <span>marina.lopes@exemplo.com.br · 2 jul</span>
+                </div>
+                <span class="st-ok">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 12.5 10 18 19.5 7"/></svg>
+                  aceito
+                </span>
+              </div>
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script>
+/* ---------- tema ---------- */
+(function(){
+  const btn = document.getElementById('themeToggle');
+  const sync = ()=>{
+    const light = document.documentElement.dataset.theme === 'light';
+    btn.querySelector('.ic-moon').style.display = light ? '' : 'none';
+    btn.querySelector('.ic-sun').style.display  = light ? 'none' : '';
+  };
+  btn.addEventListener('click', ()=>{
+    const t = document.documentElement.dataset.theme === 'light' ? 'dark' : 'light';
+    document.documentElement.dataset.theme = t;
+    localStorage.setItem('waveai-theme', t);
+    sync();
+  });
+  sync();
+})();
+/* ---------- drawer mobile ---------- */
+(function(){
+  const side = document.getElementById('side'), scrim = document.getElementById('scrim');
+  document.getElementById('burger').addEventListener('click', ()=>{ side.classList.add('open'); scrim.classList.add('on'); });
+  scrim.addEventListener('click', ()=>{ side.classList.remove('open'); scrim.classList.remove('on'); });
+})();
+/* ---------- validação e envio ---------- */
+const invMail = document.getElementById('invMail');
+invMail.addEventListener('input', ()=>{
+  document.getElementById('sendBtn').disabled = !/.+@.+\..+/.test(invMail.value);
+});
+function sendInvite(){
+  document.getElementById('sentTo').textContent = invMail.value;
+  document.getElementById('view-form').classList.remove('on');
+  document.getElementById('view-sent').classList.add('on');
+}
+function resetInvite(){
+  invMail.value = '';
+  document.getElementById('invMsg').value = '';
+  document.getElementById('sendBtn').disabled = true;
+  document.getElementById('view-sent').classList.remove('on');
+  document.getElementById('view-form').classList.add('on');
+  setTimeout(()=> invMail.focus(), 80);
+}
+/* ---------- copiar código ---------- */
+function copyCode(){
+  const code = document.getElementById('invCode').textContent;
+  const done = ()=>{
+    const m = document.getElementById('copiedMsg');
+    m.classList.add('on');
+    setTimeout(()=> m.classList.remove('on'), 2200);
+  };
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(code).then(done, done);
+  } else { done(); }
+}
+</script>
+</body>
+</html>

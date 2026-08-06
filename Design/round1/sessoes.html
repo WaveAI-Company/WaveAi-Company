@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WaveAI · Sessões</title>
+<script>
+  (function(){
+    var t = localStorage.getItem('waveai-theme');
+    if(!t){ t = window.matchMedia && matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark'; }
+    document.documentElement.dataset.theme = t;
+  })();
+</script>
+<style>
+/* ============================================================
+   WaveAI · Design "Maré" · tokens
+   ============================================================ */
+:root{
+  color-scheme: dark;
+  --bg:#0B1220; --surface:#151E32; --surface-2:#1C2740; --surface-3:#233152;
+  --ink:#F5F7FA; --ink-2:#B6C1D4; --ink-3:#8291A9;
+  --line:rgba(245,247,250,.10); --line-2:rgba(245,247,250,.055);
+  --accent:#4FD1C5; --accent-ink:#06231F; --accent-soft:rgba(79,209,197,.12);
+  --ok:#0ca30c; --warn:#fab219; --bad:#ec835a;
+  --band-delta:#5C7CFA; --band-theta:#B24468; --band-alpha:#1FA695; --band-beta:#C98500; --band-gamma:#9085E9;
+  --shadow:0 10px 30px rgba(2,6,16,.45), 0 2px 8px rgba(2,6,16,.35);
+  --r-s:8px; --r-m:12px; --r-l:16px;
+}
+:root[data-theme="light"]{
+  color-scheme: light;
+  --bg:#F5F7FA; --surface:#FFFFFF; --surface-2:#EDF1F6; --surface-3:#E2E8F1;
+  --ink:#0F1726; --ink-2:#44526A; --ink-3:#68778F;
+  --line:rgba(15,23,38,.12); --line-2:rgba(15,23,38,.06);
+  --accent:#0F7A70; --accent-ink:#FFFFFF; --accent-soft:rgba(15,122,112,.10);
+  --band-delta:#3E63DD; --band-theta:#963061; --band-alpha:#009184; --band-beta:#B87500; --band-gamma:#6D5AC4;
+  --shadow:0 10px 30px rgba(15,23,38,.08), 0 2px 8px rgba(15,23,38,.06);
+}
+*{box-sizing:border-box; margin:0; padding:0}
+html,body{height:100%}
+body{
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  background:var(--bg); color:var(--ink); font-size:15px; line-height:1.5;
+  -webkit-font-smoothing:antialiased;
+}
+button,input{font:inherit; color:inherit}
+a{color:var(--accent); text-decoration:none}
+a:hover{text-decoration:underline}
+:focus-visible{outline:2px solid var(--accent); outline-offset:2px; border-radius:4px}
+.eyebrow{font-size:12px; font-weight:650; letter-spacing:.09em; text-transform:uppercase; color:var(--ink-3)}
+.t-small{font-size:13px; color:var(--ink-3)}
+
+.btn{display:inline-flex; align-items:center; justify-content:center; gap:8px; min-height:44px; padding:0 20px;
+  border:none; border-radius:var(--r-m); font-weight:600; font-size:15px; cursor:pointer;
+  transition:transform .15s ease, box-shadow .2s ease, background .2s ease}
+.btn-primary{background:var(--accent); color:var(--accent-ink)}
+.btn-primary:hover{transform:translateY(-1px); box-shadow:0 6px 18px var(--accent-soft)}
+.btn-ghost{background:transparent; color:var(--ink-2); border:1px solid var(--line)}
+.btn-ghost:hover{background:var(--surface-2); color:var(--ink)}
+.card{background:var(--surface); border:1px solid var(--line-2); border-radius:var(--r-l); box-shadow:var(--shadow)}
+.card-h{display:flex; align-items:baseline; justify-content:space-between; gap:12px; padding:20px 20px 0}
+.card-h h3{font-size:15px; font-weight:650}
+.card-b{padding:16px 20px 20px}
+.chip{display:inline-flex; align-items:center; gap:6px; min-height:26px; padding:2px 11px; border-radius:999px;
+  border:1px solid var(--line); background:var(--surface-2); font-size:12px; font-weight:600; color:var(--ink-2)}
+.chip .dot{width:7px; height:7px; border-radius:50%; background:var(--accent); flex:none}
+.chip-exp{color:var(--ink-3)}
+.status-chip{display:inline-flex; align-items:center; gap:7px; min-height:28px; padding:3px 12px; border-radius:999px;
+  font-size:12.5px; font-weight:650; border:1px solid var(--line); background:var(--surface-2); color:var(--ink)}
+.status-ok svg{color:var(--ok)} .status-warn svg{color:var(--warn)}
+
+/* ---------- casca do app ---------- */
+.app{min-height:100vh; display:grid; grid-template-columns:240px 1fr; grid-template-rows:64px 1fr;
+  grid-template-areas:"side head" "side main"}
+.app-head{grid-area:head; display:flex; align-items:center; gap:16px; padding:0 24px;
+  border-bottom:1px solid var(--line-2); background:var(--bg); position:sticky; top:0; z-index:30}
+.app-head .title{font-size:17px; font-weight:650; letter-spacing:-.01em; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.app-head .sp{flex:1}
+.iconbtn{width:44px; height:44px; border-radius:50%; border:1px solid var(--line); background:var(--surface);
+  color:var(--ink-2); cursor:pointer; display:grid; place-items:center}
+.iconbtn:hover{color:var(--ink); background:var(--surface-2)}
+.avatar{width:36px; height:36px; border-radius:50%; display:grid; place-items:center; font-size:13px; font-weight:700;
+  background:var(--accent-soft); color:var(--accent); border:1px solid var(--line)}
+.app-head .avatar{width:44px; height:44px; font-size:14px}
+a.avatar{text-decoration:none}
+a.avatar:hover{box-shadow:0 0 0 3px var(--accent-soft); text-decoration:none}
+.burger{display:none}
+.side{grid-area:side; display:flex; flex-direction:column; gap:8px; padding:16px 12px;
+  border-right:1px solid var(--line-2); background:var(--surface); position:sticky; top:0; height:100vh}
+.side .wordmark{display:flex; align-items:center; gap:10px; font-weight:700; font-size:17px; padding:8px 10px 16px}
+.side .mark{width:32px; height:32px; border-radius:9px; display:grid; place-items:center; flex:none;
+  background:linear-gradient(135deg,#4FD1C5,#7AA2F7); color:#06231F}
+.nav{display:flex; flex-direction:column; gap:2px}
+.nav a{display:flex; align-items:center; gap:12px; min-height:44px; padding:0 12px; border-radius:var(--r-m);
+  color:var(--ink-2); font-weight:600; font-size:14px; position:relative}
+.nav a svg{flex:none; opacity:.8}
+.nav a:hover{background:var(--surface-2); color:var(--ink); text-decoration:none}
+.nav a.on{background:var(--accent-soft); color:var(--accent)}
+.nav .badge{margin-left:auto; min-width:20px; height:20px; border-radius:999px; background:var(--accent-soft);
+  color:var(--accent); font-size:11.5px; font-weight:700; display:grid; place-items:center; padding:0 6px}
+.side .sp{flex:1}
+.role-chip{margin:0 10px 10px; align-self:flex-start}
+.side-foot{font-size:11.5px; color:var(--ink-3); padding:0 12px 8px; line-height:1.45}
+.main{grid-area:main; padding:24px 32px 64px; max-width:1600px; width:100%}
+.scrim{display:none}
+
+/* ---------- cabeçalho da página ---------- */
+.page-top{display:flex; align-items:flex-end; gap:16px; flex-wrap:wrap; margin:8px 0 20px}
+.page-top h1{font-size:26px; font-weight:650; letter-spacing:-.015em}
+.page-top p{font-size:13.5px; color:var(--ink-3)}
+.page-top .sp{flex:1}
+.filters{display:flex; gap:8px; flex-wrap:wrap}
+.filters button{min-height:36px; padding:0 14px; border-radius:999px; border:1px solid var(--line);
+  background:transparent; font-size:13px; font-weight:600; color:var(--ink-3); cursor:pointer}
+.filters button.on{background:var(--accent-soft); color:var(--accent); border-color:transparent}
+.filters button:hover{color:var(--ink)}
+
+/* ---------- layout ---------- */
+.sess-grid{display:grid; gap:24px; grid-template-columns:minmax(0,1fr) 320px; align-items:start}
+.rail{display:flex; flex-direction:column; gap:20px; position:sticky; top:88px}
+
+/* linha do tempo */
+.tl-month{margin:26px 0 10px; display:flex; align-items:center; gap:12px}
+.tl-month:first-child{margin-top:0}
+.tl-month h2{font-size:13px; font-weight:650; letter-spacing:.06em; text-transform:uppercase; color:var(--ink-3)}
+.tl-month .rule{flex:1; height:1px; background:var(--line-2)}
+.tl{display:flex; flex-direction:column; gap:12px}
+.sess{display:grid; align-items:center; gap:16px; padding:16px 18px; cursor:pointer;
+  grid-template-columns:52px minmax(140px,1.1fr) minmax(150px,1.3fr) 72px 128px 40px;
+  transition:transform .15s ease, border-color .2s ease}
+.sess:hover{transform:translateY(-1px); border-color:var(--accent)}
+.sess .date{display:flex; flex-direction:column; align-items:center; justify-content:center; width:52px; height:56px;
+  border-radius:var(--r-m); background:var(--surface-2)}
+.sess .date b{font-size:17px; font-weight:650; line-height:1.1}
+.sess .date span{font-size:11px; color:var(--ink-3); text-transform:uppercase; letter-spacing:.05em}
+.sess .meta b{display:block; font-size:14.5px; font-weight:650}
+.sess .meta span{font-size:12.5px; color:var(--ink-3)}
+.sess .meta .note-tag{display:inline-flex; align-items:center; gap:5px; margin-top:5px; font-size:11.5px;
+  color:var(--ink-3); border:1px solid var(--line); border-radius:999px; padding:1px 9px; font-weight:600}
+.sess .meta .note-tag svg{flex:none; opacity:.8}
+.mini{display:flex; flex-direction:column; gap:5px}
+.mini .stack{height:14px; border-radius:4px; overflow:hidden; display:flex}
+.mini .stack i{height:100%}
+.mini span{font-size:11px; color:var(--ink-3)}
+.alpha-cell{text-align:right}
+.alpha-cell b{font-size:17px; font-weight:650; color:var(--band-alpha); font-variant-numeric:tabular-nums; display:block}
+.alpha-cell span{font-size:11px; color:var(--ink-3)}
+.qual-cell{display:flex; justify-content:flex-start}
+.sess .chev{color:var(--ink-3); display:grid; place-items:center}
+
+/* resumo do período */
+.sum-rows{display:flex; flex-direction:column; gap:12px}
+.sum-row{display:flex; align-items:baseline; justify-content:space-between; gap:12px}
+.sum-row .k{font-size:13px; color:var(--ink-3)}
+.sum-row .v{font-size:17px; font-weight:650; font-variant-numeric:tabular-nums}
+.sum-row .v small{font-size:12px; color:var(--ink-3); font-weight:500}
+
+/* ---------- estados ---------- */
+.stv{display:none}
+.state-filled  .stv-filled{display:block}
+.state-loading .stv-loading{display:block}
+.state-empty   .stv-empty{display:block}
+.skl{position:relative; overflow:hidden; border-radius:var(--r-s); background:var(--surface-2)}
+@media (prefers-reduced-motion: no-preference){
+  .skl::after{content:""; position:absolute; inset:0; transform:translateX(-100%);
+    background:linear-gradient(90deg, transparent, var(--surface-3), transparent);
+    animation:shimmer 1.5s infinite}
+  @keyframes shimmer{100%{transform:translateX(100%)}}
+}
+.load-note{display:flex; align-items:center; gap:10px; margin:0 0 20px; color:var(--ink-3); font-size:13px}
+.load-note .breath{width:26px; height:26px; border-radius:50%; border:2px solid var(--accent); flex:none}
+@media (prefers-reduced-motion: no-preference){
+  .load-note .breath{animation:br 2.8s ease-in-out infinite}
+  @keyframes br{0%,100%{transform:scale(.9)} 50%{transform:scale(1.08)}}
+}
+.empty-hero{position:relative; overflow:hidden; padding:56px 32px 72px; text-align:center}
+.empty-hero .wavefield{position:absolute; inset:auto 0 0 0; height:110px; width:100%; pointer-events:none}
+.empty-hero h2{font-size:26px; font-weight:650; letter-spacing:-.015em; margin-top:10px}
+.empty-hero > p{color:var(--ink-2); max-width:460px; margin:8px auto 0}
+.headfig{width:180px; margin:0 auto; display:block; overflow:visible}
+.headfig .silhouette{fill:none; stroke:var(--ink-3); stroke-width:1.6; stroke-linecap:round; opacity:.55}
+.headfig .dome{fill:none; stroke:#7AA2F7; stroke-width:1; opacity:.4}
+.headfig .node circle.core{fill:var(--accent)}
+.headfig .node circle.halo{fill:none; stroke:var(--accent); stroke-width:1.2; opacity:.6}
+@media (prefers-reduced-motion: no-preference){
+  .headfig .node circle.halo{animation:halo 3.2s ease-in-out infinite; transform-origin:center; transform-box:fill-box}
+  @keyframes halo{0%,100%{transform:scale(1); opacity:.6} 50%{transform:scale(1.55); opacity:0}}
+}
+
+/* controle de demonstração */
+.demo{position:fixed; right:16px; bottom:16px; z-index:60; display:flex; align-items:center; gap:6px;
+  background:var(--surface); border:1px solid var(--line); border-radius:999px; padding:6px 8px; box-shadow:var(--shadow)}
+.demo .lb{font-size:11px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-3); padding:0 6px}
+.demo button{min-height:34px; padding:0 12px; border-radius:999px; border:none; background:transparent;
+  font-size:12.5px; font-weight:650; color:var(--ink-3); cursor:pointer}
+.demo button.on{background:var(--accent-soft); color:var(--accent)}
+
+/* ---------- tablet ---------- */
+@media (max-width: 1199px){
+  .app{grid-template-columns:76px 1fr}
+  .side{padding:16px 10px}
+  .side .wordmark span.wtxt, .nav a .ntxt, .side-foot, .role-chip, .nav .badge{display:none}
+  .side .wordmark{justify-content:center; padding:8px 0 16px}
+  .nav a{justify-content:center; padding:0}
+  .main{padding:24px 24px 64px}
+  .sess-grid{grid-template-columns:1fr}
+  .rail{position:static}
+  .sess{grid-template-columns:52px minmax(140px,1.2fr) minmax(150px,1.3fr) 72px 40px}
+  .qual-cell{display:none}
+}
+/* ---------- mobile ---------- */
+@media (max-width: 767px){
+  .app{grid-template-columns:1fr; grid-template-areas:"head" "main"}
+  .side{position:fixed; inset:0 84px 0 0; z-index:70; height:100vh; transform:translateX(-102%);
+    transition:transform .25s ease; box-shadow:var(--shadow); border-right:none}
+  .side.open{transform:none}
+  .side .wordmark span.wtxt, .nav a .ntxt, .side-foot, .role-chip, .nav .badge{display:initial}
+  .side .wordmark{justify-content:flex-start; padding:8px 10px 16px}
+  .nav a{justify-content:flex-start; padding:0 12px}
+  .nav .badge{display:grid}
+  .scrim{display:block; position:fixed; inset:0; z-index:65; background:rgba(2,6,16,.5); opacity:0;
+    pointer-events:none; transition:opacity .25s}
+  .scrim.on{opacity:1; pointer-events:auto}
+  .burger{display:grid}
+  .main{padding:16px 16px 96px}
+  .app-head{gap:10px; padding:0 12px}
+  .app-head .title{font-size:16px}
+  .rail{flex-direction:column}
+  .sess{grid-template-columns:52px 1fr 40px; grid-template-areas:"date meta chev" "mini mini mini" "alpha alpha alpha"; row-gap:12px}
+  .sess .date{grid-area:date} .sess .meta{grid-area:meta} .sess .chev{grid-area:chev}
+  .sess .mini{grid-area:mini}
+  .alpha-cell{grid-area:alpha; display:flex; align-items:baseline; gap:8px; text-align:left}
+  .qual-cell{display:none}
+  .page-top h1{font-size:22px}
+}
+</style>
+</head>
+<body class="state-filled" id="page">
+
+<div class="app">
+  <!-- ===== sidebar ===== -->
+  <aside class="side" id="side">
+    <div class="wordmark">
+      <span class="mark">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M2 12c2.5 0 2.5-5 5-5s2.5 8 5 8 2.5-8 5-8 2.5 5 5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+      </span>
+      <span class="wtxt">WaveAI</span>
+    </div>
+    <span class="chip role-chip"><span class="dot"></span> Paciente</span>
+    <nav class="nav" aria-label="Navegação principal">
+      <a href="inicio-paciente.html">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11 12 3l9 8"/><path d="M5 10v10h14V10"/></svg>
+        <span class="ntxt">Início</span></a>
+      <a href="estado-ao-vivo.html">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M2 12c2.5 0 2.5-5 5-5s2.5 8 5 8 2.5-8 5-8 2.5 5 5 5"/></svg>
+        <span class="ntxt">Estado ao vivo</span></a>
+      <a href="sessoes.html" class="on" aria-current="page">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><rect x="3" y="4" width="18" height="17" rx="3"/><path d="M3 9h18M8 2.5V6M16 2.5V6"/></svg>
+        <span class="ntxt">Sessões</span></a>
+      <a href="convites.html">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="m3.5 7 8.5 6 8.5-6"/></svg>
+        <span class="ntxt">Convites</span><span class="badge">2</span></a>
+      <a href="perfil.html">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg>
+        <span class="ntxt">Perfil</span></a>
+    </nav>
+    <div class="sp"></div>
+    <p class="side-foot">Plataforma exploratória de bem-estar. Não realiza diagnóstico.</p>
+  </aside>
+  <div class="scrim" id="scrim"></div>
+
+  <!-- ===== header ===== -->
+  <header class="app-head">
+    <button class="iconbtn burger" id="burger" aria-label="Abrir menu">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+    </button>
+    <span class="title">Sessões</span>
+    <span class="sp"></span>
+    <button class="iconbtn" id="themeToggle" aria-label="Alternar tema claro/escuro" title="Alternar tema">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true">
+        <path class="ic-moon" d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5Z"/>
+        <g class="ic-sun" style="display:none"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M4.9 4.9l1.6 1.6M17.5 17.5l1.6 1.6M19.1 4.9l-1.6 1.6M6.5 17.5l-1.6 1.6"/></g>
+      </svg>
+    </button>
+    <a class="avatar" href="perfil.html" title="Ana Martins · abrir perfil (dados fictícios)" aria-label="Abrir perfil">AM</a>
+  </header>
+
+  <!-- ===== conteúdo ===== -->
+  <main class="main">
+
+    <!-- ========== carregando ========== -->
+    <div class="stv stv-loading" aria-label="Carregando">
+      <p class="load-note"><span class="breath" aria-hidden="true"></span> Buscando suas sessões no servidor…</p>
+      <div style="display:flex; flex-direction:column; gap:12px">
+        <div class="card" style="padding:18px; display:flex; gap:16px; align-items:center">
+          <div class="skl" style="width:52px; height:56px; border-radius:12px"></div>
+          <div style="flex:1; display:flex; flex-direction:column; gap:8px"><div class="skl" style="width:40%; height:16px"></div><div class="skl" style="width:65%; height:12px"></div></div>
+          <div class="skl" style="width:140px; height:14px"></div>
+        </div>
+        <div class="card" style="padding:18px; display:flex; gap:16px; align-items:center">
+          <div class="skl" style="width:52px; height:56px; border-radius:12px"></div>
+          <div style="flex:1; display:flex; flex-direction:column; gap:8px"><div class="skl" style="width:45%; height:16px"></div><div class="skl" style="width:60%; height:12px"></div></div>
+          <div class="skl" style="width:140px; height:14px"></div>
+        </div>
+        <div class="card" style="padding:18px; display:flex; gap:16px; align-items:center">
+          <div class="skl" style="width:52px; height:56px; border-radius:12px"></div>
+          <div style="flex:1; display:flex; flex-direction:column; gap:8px"><div class="skl" style="width:35%; height:16px"></div><div class="skl" style="width:70%; height:12px"></div></div>
+          <div class="skl" style="width:140px; height:14px"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========== vazio ========== -->
+    <div class="stv stv-empty">
+      <section class="card empty-hero" id="emptyHost">
+        <svg class="headfig" viewBox="60 20 320 330" role="img" aria-label="Perfil com sensores">
+          <path class="silhouette" d="M208 46 C 158 50 122 92 116 148 C 114 170 117 186 112 200 C 108 212 100 222 104 232 C 107 240 116 240 118 246 C 120 252 114 258 116 266 C 118 274 126 272 128 280 C 130 290 122 300 130 312 C 138 324 158 322 172 328"/>
+          <path class="silhouette" d="M208 46 C 268 44 318 92 324 158 C 330 224 316 268 302 316"/>
+          <path class="dome" d="M120 160 C 130 74 288 60 318 168"/>
+          <g class="node"><circle class="halo" cx="118" cy="152" r="9"/><circle class="core" cx="118" cy="152" r="5"/></g>
+          <g class="node"><circle class="halo" cx="208" cy="58" r="9"/><circle class="core" cx="208" cy="58" r="5"/></g>
+          <g class="node"><circle class="halo" cx="316" cy="164" r="9"/><circle class="core" cx="316" cy="164" r="5"/></g>
+        </svg>
+        <h2>Seu histórico começa na primeira onda</h2>
+        <p>Cada sessão que você fizer aparece aqui, com composição por banda, qualidade do sinal e as suas notas de contexto — uma linha do tempo do seu bem-estar.</p>
+        <div style="margin-top:26px; position:relative; z-index:2">
+          <a class="btn btn-primary" href="estado-ao-vivo.html">Iniciar primeira sessão</a>
+        </div>
+        <canvas class="wavefield" id="waveEmpty" aria-hidden="true"></canvas>
+      </section>
+    </div>
+
+    <!-- ========== preenchido ========== -->
+    <div class="stv stv-filled">
+      <div class="page-top">
+        <div>
+          <h1>Suas sessões</h1>
+          <p>mostrando 8 de 12 · dados fictícios para demonstração</p>
+        </div>
+        <span class="sp"></span>
+        <div class="filters" role="group" aria-label="Período">
+          <button type="button" class="on">30 dias</button>
+          <button type="button">90 dias</button>
+          <button type="button">Tudo</button>
+        </div>
+      </div>
+
+      <div class="sess-grid">
+        <div>
+          <!-- agosto -->
+          <div class="tl-month"><h2>Agosto 2026</h2><span class="rule"></span></div>
+          <div class="tl">
+            <article class="card sess" tabindex="0" aria-label="Sessão de 2 de agosto">
+              <div class="date"><b>2</b><span>ago</span></div>
+              <div class="meta">
+                <b>Sessão guiada · 09:14</b>
+                <span>12 min · 2 × 60 s olhos abertos/fechados</span>
+                <span class="note-tag"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M5 4h11l3 3v13H5z"/><path d="M9 10h6M9 14h4"/></svg> autorrelato</span>
+              </div>
+              <div class="mini">
+                <div class="stack" role="img" aria-label="Composição: delta 21%, teta 17%, alfa 34%, beta 20%, gama 8%">
+                  <i style="width:21%; background:var(--band-delta)"></i><i style="width:17%; background:var(--band-theta)"></i><i style="width:34%; background:var(--band-alpha)"></i><i style="width:20%; background:var(--band-beta)"></i><i style="width:8%; background:var(--band-gamma)"></i>
+                </div>
+                <span>composição por banda · % do espectro</span>
+              </div>
+              <div class="alpha-cell"><b>34%</b><span>alfa</span></div>
+              <div class="qual-cell">
+                <span class="status-chip status-ok"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 12.5 10 18 19.5 7"/></svg> 92%</span>
+              </div>
+              <span class="chev"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></span>
+            </article>
+
+            <article class="card sess" tabindex="0" aria-label="Sessão de 1 de agosto">
+              <div class="date"><b>1</b><span>ago</span></div>
+              <div class="meta">
+                <b>Sessão livre · 21:40</b>
+                <span>10 min</span>
+              </div>
+              <div class="mini">
+                <div class="stack" role="img" aria-label="Composição: delta 21%, teta 17%, alfa 34%, beta 20%, gama 8%">
+                  <i style="width:21%; background:var(--band-delta)"></i><i style="width:17%; background:var(--band-theta)"></i><i style="width:34%; background:var(--band-alpha)"></i><i style="width:20%; background:var(--band-beta)"></i><i style="width:8%; background:var(--band-gamma)"></i>
+                </div>
+                <span>composição por banda · % do espectro</span>
+              </div>
+              <div class="alpha-cell"><b>34%</b><span>alfa</span></div>
+              <div class="qual-cell">
+                <span class="status-chip status-ok"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 12.5 10 18 19.5 7"/></svg> 96%</span>
+              </div>
+              <span class="chev"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></span>
+            </article>
+          </div>
+
+          <!-- julho -->
+          <div class="tl-month"><h2>Julho 2026</h2><span class="rule"></span></div>
+          <div class="tl">
+            <article class="card sess" tabindex="0" aria-label="Sessão de 29 de julho">
+              <div class="date"><b>29</b><span>jul</span></div>
+              <div class="meta">
+                <b>Sessão guiada · 08:20</b>
+                <span>12 min · 2 × 60 s olhos abertos/fechados</span>
+              </div>
+              <div class="mini">
+                <div class="stack" role="img" aria-label="Composição: delta 22%, teta 18%, alfa 30%, beta 22%, gama 8%">
+                  <i style="width:22%; background:var(--band-delta)"></i><i style="width:18%; background:var(--band-theta)"></i><i style="width:30%; background:var(--band-alpha)"></i><i style="width:22%; background:var(--band-beta)"></i><i style="width:8%; background:var(--band-gamma)"></i>
+                </div>
+                <span>composição por banda · % do espectro</span>
+              </div>
+              <div class="alpha-cell"><b>30%</b><span>alfa</span></div>
+              <div class="qual-cell">
+                <span class="status-chip status-ok"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 12.5 10 18 19.5 7"/></svg> 89%</span>
+              </div>
+              <span class="chev"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></span>
+            </article>
+
+            <article class="card sess" tabindex="0" aria-label="Sessão de 26 de julho">
+              <div class="date"><b>26</b><span>jul</span></div>
+              <div class="meta">
+                <b>Sessão guiada · 18:40</b>
+                <span>13 min · 2 × 60 s olhos abertos/fechados</span>
+                <span class="note-tag"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M5 4h11l3 3v13H5z"/><path d="M9 10h6M9 14h4"/></svg> autorrelato</span>
+              </div>
+              <div class="mini">
+                <div class="stack" role="img" aria-label="Composição: delta 21%, teta 17%, alfa 33%, beta 21%, gama 8%">
+                  <i style="width:21%; background:var(--band-delta)"></i><i style="width:17%; background:var(--band-theta)"></i><i style="width:33%; background:var(--band-alpha)"></i><i style="width:21%; background:var(--band-beta)"></i><i style="width:8%; background:var(--band-gamma)"></i>
+                </div>
+                <span>composição por banda · % do espectro</span>
+              </div>
+              <div class="alpha-cell"><b>33%</b><span>alfa</span></div>
+              <div class="qual-cell">
+                <span class="status-chip status-ok"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 12.5 10 18 19.5 7"/></svg> 93%</span>
+              </div>
+              <span class="chev"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></span>
+            </article>
+
+            <article class="card sess" tabindex="0" aria-label="Sessão de 22 de julho">
+              <div class="date"><b>22</b><span>jul</span></div>
+              <div class="meta">
+                <b>Sessão livre · 07:55</b>
+                <span>11 min</span>
+              </div>
+              <div class="mini">
+                <div class="stack" role="img" aria-label="Composição: delta 23%, teta 19%, alfa 28%, beta 22%, gama 8%">
+                  <i style="width:23%; background:var(--band-delta)"></i><i style="width:19%; background:var(--band-theta)"></i><i style="width:28%; background:var(--band-alpha)"></i><i style="width:22%; background:var(--band-beta)"></i><i style="width:8%; background:var(--band-gamma)"></i>
+                </div>
+                <span>composição por banda · % do espectro</span>
+              </div>
+              <div class="alpha-cell"><b>28%</b><span>alfa</span></div>
+              <div class="qual-cell">
+                <span class="status-chip status-ok"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 12.5 10 18 19.5 7"/></svg> 91%</span>
+              </div>
+              <span class="chev"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></span>
+            </article>
+
+            <article class="card sess" tabindex="0" aria-label="Sessão de 19 de julho">
+              <div class="date"><b>19</b><span>jul</span></div>
+              <div class="meta">
+                <b>Sessão guiada · 08:02</b>
+                <span>9 min · interrompida pelo contato</span>
+                <span class="note-tag"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M5 4h11l3 3v13H5z"/><path d="M9 10h6M9 14h4"/></svg> autorrelato</span>
+              </div>
+              <div class="mini">
+                <div class="stack" role="img" aria-label="Composição: delta 22%, teta 18%, alfa 31%, beta 21%, gama 8%">
+                  <i style="width:22%; background:var(--band-delta)"></i><i style="width:18%; background:var(--band-theta)"></i><i style="width:31%; background:var(--band-alpha)"></i><i style="width:21%; background:var(--band-beta)"></i><i style="width:8%; background:var(--band-gamma)"></i>
+                </div>
+                <span>composição por banda · % do espectro</span>
+              </div>
+              <div class="alpha-cell"><b>31%</b><span>alfa</span></div>
+              <div class="qual-cell">
+                <span class="status-chip status-warn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 7v6"/><circle cx="12" cy="16.8" r=".6" fill="currentColor"/><circle cx="12" cy="12" r="9.2"/></svg> 62%</span>
+              </div>
+              <span class="chev"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></span>
+            </article>
+
+            <article class="card sess" tabindex="0" aria-label="Sessão de 15 de julho">
+              <div class="date"><b>15</b><span>jul</span></div>
+              <div class="meta">
+                <b>Sessão livre · 22:10</b>
+                <span>10 min</span>
+              </div>
+              <div class="mini">
+                <div class="stack" role="img" aria-label="Composição: delta 23%, teta 18%, alfa 29%, beta 22%, gama 8%">
+                  <i style="width:23%; background:var(--band-delta)"></i><i style="width:18%; background:var(--band-theta)"></i><i style="width:29%; background:var(--band-alpha)"></i><i style="width:22%; background:var(--band-beta)"></i><i style="width:8%; background:var(--band-gamma)"></i>
+                </div>
+                <span>composição por banda · % do espectro</span>
+              </div>
+              <div class="alpha-cell"><b>29%</b><span>alfa</span></div>
+              <div class="qual-cell">
+                <span class="status-chip status-ok"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 12.5 10 18 19.5 7"/></svg> 88%</span>
+              </div>
+              <span class="chev"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></span>
+            </article>
+
+            <article class="card sess" tabindex="0" aria-label="Sessão de 12 de julho">
+              <div class="date"><b>12</b><span>jul</span></div>
+              <div class="meta">
+                <b>Primeira sessão · 09:30</b>
+                <span>12 min · sessão guiada</span>
+              </div>
+              <div class="mini">
+                <div class="stack" role="img" aria-label="Composição: delta 24%, teta 19%, alfa 26%, beta 23%, gama 8%">
+                  <i style="width:24%; background:var(--band-delta)"></i><i style="width:19%; background:var(--band-theta)"></i><i style="width:26%; background:var(--band-alpha)"></i><i style="width:23%; background:var(--band-beta)"></i><i style="width:8%; background:var(--band-gamma)"></i>
+                </div>
+                <span>composição por banda · % do espectro</span>
+              </div>
+              <div class="alpha-cell"><b>26%</b><span>alfa</span></div>
+              <div class="qual-cell">
+                <span class="status-chip status-ok"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 12.5 10 18 19.5 7"/></svg> 95%</span>
+              </div>
+              <span class="chev"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></span>
+            </article>
+          </div>
+        </div>
+
+        <!-- trilho lateral -->
+        <aside class="rail">
+          <section class="card" aria-label="Resumo do período">
+            <div class="card-h"><h3>Resumo do período</h3><span class="eyebrow">30 dias</span></div>
+            <div class="card-b">
+              <div class="sum-rows">
+                <div class="sum-row"><span class="k">Sessões</span><span class="v">12</span></div>
+                <div class="sum-row"><span class="k">Tempo captado</span><span class="v">2h 16 <small>min</small></span></div>
+                <div class="sum-row"><span class="k">Qualidade média do sinal</span><span class="v">88%</span></div>
+                <div class="sum-row"><span class="k">Alfa médio (olhos fechados)</span><span class="v" style="color:var(--band-alpha)">31%</span></div>
+                <div class="sum-row"><span class="k">Sessões com autorrelato</span><span class="v">3</span></div>
+              </div>
+              <p class="t-small" style="margin-top:16px">Médias descritivas do período — sem veredito. As bandas não têm valência.</p>
+            </div>
+          </section>
+          <a class="btn btn-primary" href="estado-ao-vivo.html">Iniciar nova sessão</a>
+        </aside>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- ===== alternador de estados (só na demonstração) ===== -->
+<div class="demo" role="group" aria-label="Estados de demonstração">
+  <span class="lb">demo</span>
+  <button type="button" data-state="loading">Carregando</button>
+  <button type="button" data-state="empty">Primeira vez</button>
+  <button type="button" data-state="filled" class="on">Preenchido</button>
+</div>
+
+<script>
+/* ---------- tema ---------- */
+(function(){
+  const btn = document.getElementById('themeToggle');
+  const sync = ()=>{
+    const light = document.documentElement.dataset.theme === 'light';
+    btn.querySelector('.ic-moon').style.display = light ? '' : 'none';
+    btn.querySelector('.ic-sun').style.display  = light ? 'none' : '';
+  };
+  btn.addEventListener('click', ()=>{
+    const t = document.documentElement.dataset.theme === 'light' ? 'dark' : 'light';
+    document.documentElement.dataset.theme = t;
+    localStorage.setItem('waveai-theme', t);
+    sync();
+  });
+  sync();
+})();
+/* ---------- drawer mobile ---------- */
+(function(){
+  const side = document.getElementById('side'), scrim = document.getElementById('scrim');
+  document.getElementById('burger').addEventListener('click', ()=>{ side.classList.add('open'); scrim.classList.add('on'); });
+  scrim.addEventListener('click', ()=>{ side.classList.remove('open'); scrim.classList.remove('on'); });
+})();
+/* ---------- filtros (visual) ---------- */
+document.querySelectorAll('.filters button').forEach(b=>{
+  b.addEventListener('click', ()=>{
+    document.querySelectorAll('.filters button').forEach(x=>x.classList.toggle('on', x===b));
+  });
+});
+/* ---------- estados de demonstração ---------- */
+document.querySelectorAll('.demo button').forEach(b=>{
+  b.addEventListener('click', ()=>{
+    document.getElementById('page').className = 'state-' + b.dataset.state;
+    document.querySelectorAll('.demo button').forEach(x=>x.classList.toggle('on', x===b));
+    setTimeout(()=>{ if(typeof waveFields !== 'undefined') waveFields.forEach(f=>f.resize()); }, 0);
+  });
+});
+/* ---------- Maré ---------- */
+class WaveField{
+  constructor(canvas, opts={}){
+    this.c = canvas; this.ctx = canvas.getContext('2d');
+    this.colors = opts.colors || ['#4FD1C5','#7AA2F7','#4FD1C5'];
+    this.alpha  = opts.alpha  ?? .4;
+    this.lines  = opts.lines  ?? 3;
+    this.speed  = opts.speed  ?? 1;
+    this.amp    = opts.amp    ?? 14;
+    this.t = 0; this.px = -1e4; this.boost = 0;
+    this.reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    new ResizeObserver(()=>this.resize()).observe(canvas);
+    this.resize();
+    const host = opts.pointerHost || canvas.parentElement;
+    host.addEventListener('pointermove', e=>{
+      const r = this.c.getBoundingClientRect();
+      this.px = e.clientX - r.left;
+    });
+    host.addEventListener('pointerleave', ()=>{ this.px = -1e4; });
+    if(this.reduced){ this.draw(); } else { this.loop = this.loop.bind(this); requestAnimationFrame(this.loop); }
+  }
+  resize(){
+    const d = Math.min(devicePixelRatio||1, 2);
+    this.w = this.c.clientWidth; this.h = this.c.clientHeight;
+    this.c.width = this.w*d; this.c.height = this.h*d;
+    this.ctx.setTransform(d,0,0,d,0,0);
+    if(this.reduced) this.draw();
+  }
+  wave(y0, k, seed){
+    const {ctx,w} = this; ctx.beginPath();
+    for(let x=0; x<=w; x+=4){
+      const near = Math.exp(-Math.pow((x-this.px)/140,2)) * this.boost;
+      const y = y0
+        + Math.sin(x*0.008 + this.t*0.9  + seed)     * this.amp * k
+        + Math.sin(x*0.017 + this.t*0.55 + seed*2.1) * this.amp * .45 * k
+        + Math.sin(x*0.004 - this.t*0.3  + seed*3.7) * this.amp * .8  * k
+        - near * 14;
+      x===0 ? ctx.moveTo(x,y) : ctx.lineTo(x,y);
+    }
+  }
+  draw(){
+    const {ctx,w,h} = this; ctx.clearRect(0,0,w,h);
+    for(let i=0;i<this.lines;i++){
+      const g = ctx.createLinearGradient(0,0,w,0);
+      const col = this.colors[i % this.colors.length];
+      g.addColorStop(0, col+'00'); g.addColorStop(.5, col); g.addColorStop(1, col+'00');
+      ctx.strokeStyle = g;
+      ctx.globalAlpha = this.alpha * (1 - i*0.22);
+      ctx.lineWidth = 1.6;
+      this.wave(h*(.4 + i*.18), 1 - i*.18, i*7.3);
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+  }
+  loop(){
+    this.t += 0.012 * this.speed;
+    this.boost += ((this.px > -1e3 ? 1 : 0) - this.boost) * .04;
+    this.draw();
+    requestAnimationFrame(this.loop);
+  }
+}
+const waveFields = [
+  new WaveField(document.getElementById('waveEmpty'), {pointerHost: document.getElementById('emptyHost')})
+];
+</script>
+</body>
+</html>
