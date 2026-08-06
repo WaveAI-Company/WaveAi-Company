@@ -1,0 +1,742 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WaveAI · Entrar</title>
+<script>
+  (function(){
+    var t = localStorage.getItem('waveai-theme');
+    if(!t){ t = window.matchMedia && matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark'; }
+    document.documentElement.dataset.theme = t;
+  })();
+</script>
+<style>
+/* ============================================================
+   WaveAI · Design "Maré" · tokens
+   ============================================================ */
+:root{
+  color-scheme: dark;
+  --bg:#0B1220; --surface:#151E32; --surface-2:#1C2740; --surface-3:#233152;
+  --ink:#F5F7FA; --ink-2:#B6C1D4; --ink-3:#8291A9;
+  --line:rgba(245,247,250,.10); --line-2:rgba(245,247,250,.055);
+  --accent:#4FD1C5; --accent-ink:#06231F; --accent-soft:rgba(79,209,197,.12);
+  --accent-pro:#7AA2F7;
+  --ok:#0ca30c; --warn:#fab219; --bad:#ec835a;
+  --shadow:0 10px 30px rgba(2,6,16,.45), 0 2px 8px rgba(2,6,16,.35);
+  --r-s:8px; --r-m:12px; --r-l:16px;
+}
+:root[data-theme="light"]{
+  color-scheme: light;
+  --bg:#F5F7FA; --surface:#FFFFFF; --surface-2:#EDF1F6; --surface-3:#E2E8F1;
+  --ink:#0F1726; --ink-2:#44526A; --ink-3:#68778F;
+  --line:rgba(15,23,38,.12); --line-2:rgba(15,23,38,.06);
+  --accent:#0F7A70; --accent-ink:#FFFFFF; --accent-soft:rgba(15,122,112,.10);
+  --accent-pro:#2A5BC7;
+  --shadow:0 10px 30px rgba(15,23,38,.08), 0 2px 8px rgba(15,23,38,.06);
+}
+*{box-sizing:border-box; margin:0; padding:0}
+html,body{height:100%}
+body{
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  background:var(--bg); color:var(--ink);
+  font-size:15px; line-height:1.5;
+  -webkit-font-smoothing:antialiased;
+}
+button,input{font:inherit; color:inherit}
+a{color:var(--accent); text-decoration:none}
+a:hover{text-decoration:underline}
+:focus-visible{outline:2px solid var(--accent); outline-offset:2px; border-radius:4px}
+::selection{background:var(--accent-soft)}
+
+/* ---------- tipografia ---------- */
+.t-display{font-size:32px; font-weight:650; letter-spacing:-.02em; line-height:1.15}
+.t-title{font-size:26px; font-weight:650; letter-spacing:-.015em; line-height:1.2}
+.t-body{font-size:15px; color:var(--ink-2)}
+.t-small{font-size:13px; color:var(--ink-3)}
+.eyebrow{font-size:12px; font-weight:650; letter-spacing:.09em; text-transform:uppercase; color:var(--ink-3)}
+
+/* ---------- componentes ---------- */
+.btn{
+  display:inline-flex; align-items:center; justify-content:center; gap:8px;
+  min-height:44px; padding:0 24px; border:none; border-radius:var(--r-m);
+  font-weight:600; font-size:15px; cursor:pointer;
+  transition:transform .15s ease, box-shadow .2s ease, background .2s ease;
+}
+.btn-primary{background:var(--accent); color:var(--accent-ink)}
+.btn-primary:hover{transform:translateY(-1px); box-shadow:0 6px 18px var(--accent-soft), 0 2px 6px rgba(0,0,0,.15)}
+.btn-primary:active{transform:translateY(0)}
+.btn-ghost{background:transparent; color:var(--ink-2); border:1px solid var(--line)}
+.btn-ghost:hover{background:var(--surface-2); color:var(--ink)}
+.btn-block{width:100%}
+
+.field{display:flex; flex-direction:column; gap:6px; text-align:left}
+.field label{font-size:13px; font-weight:600; color:var(--ink-2)}
+.field .control{position:relative; display:flex}
+.field input{
+  width:100%; min-height:46px; padding:0 14px; border-radius:var(--r-m);
+  border:1px solid var(--line); background:var(--surface-2); color:var(--ink);
+  transition:border-color .15s ease, box-shadow .15s ease, background .15s ease;
+}
+.field input::placeholder{color:var(--ink-3)}
+.field input:focus{outline:none; border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-soft); background:var(--surface)}
+.field .hint{font-size:12px; color:var(--ink-3)}
+.reveal{
+  position:absolute; right:4px; top:50%; transform:translateY(-50%);
+  width:44px; height:38px; display:grid; place-items:center;
+  background:none; border:none; border-radius:var(--r-s); cursor:pointer; color:var(--ink-3);
+}
+.reveal:hover{color:var(--ink); background:var(--surface-3)}
+
+.chip{
+  display:inline-flex; align-items:center; gap:6px; min-height:28px; padding:3px 12px;
+  border-radius:999px; border:1px solid var(--line); background:var(--surface-2);
+  font-size:12px; font-weight:600; color:var(--ink-2); letter-spacing:.02em;
+}
+.chip .dot{width:7px; height:7px; border-radius:50%; background:var(--accent)}
+
+/* ---------- casca da página ---------- */
+.stage{min-height:100vh; display:grid; grid-template-columns: minmax(0,1.15fr) minmax(0,1fr)}
+
+/* painel de marca */
+.brand-panel{
+  position:relative; overflow:hidden; display:flex; flex-direction:column;
+  padding:40px 48px; background:
+    radial-gradient(1200px 600px at 15% -10%, rgba(79,209,197,.14), transparent 60%),
+    radial-gradient(900px 500px at 90% 110%, rgba(122,162,247,.12), transparent 60%),
+    #0B1220;
+  color:#F5F7FA;
+}
+:root[data-theme="light"] .brand-panel{
+  background:
+    radial-gradient(1200px 600px at 15% -10%, rgba(15,122,112,.16), transparent 60%),
+    radial-gradient(900px 500px at 90% 110%, rgba(42,91,199,.13), transparent 60%),
+    #0E1830;
+}
+.brand-panel .wavefield{position:absolute; inset:auto 0 0 0; height:46%; width:100%; pointer-events:none}
+.wordmark{display:flex; align-items:center; gap:10px; font-size:20px; font-weight:700; letter-spacing:-.01em}
+.wordmark .mark{width:34px; height:34px; border-radius:10px; display:grid; place-items:center;
+  background:linear-gradient(135deg, #4FD1C5, #7AA2F7); color:#06231F}
+.wordmark small{font-weight:500; color:rgba(245,247,250,.55); font-size:12px; letter-spacing:.08em; text-transform:uppercase; margin-left:6px}
+
+.brand-center{flex:1; display:grid; place-items:center; position:relative; z-index:2}
+.brand-copy{max-width:480px; text-align:center}
+.brand-copy h1{font-size:32px; font-weight:650; letter-spacing:-.02em; line-height:1.18; margin-bottom:12px}
+.brand-copy h1 em{font-style:normal; background:linear-gradient(90deg,#4FD1C5,#7AA2F7); -webkit-background-clip:text; background-clip:text; color:transparent}
+.brand-copy p{color:rgba(245,247,250,.72); font-size:15px; max-width:400px; margin:0 auto}
+.brand-chips{display:flex; gap:8px; justify-content:center; flex-wrap:wrap; margin-top:20px}
+.brand-chips .chip{background:rgba(245,247,250,.06); border-color:rgba(245,247,250,.14); color:rgba(245,247,250,.8)}
+.brand-chips .chip .dot{background:#4FD1C5}
+.brand-foot{position:relative; z-index:2; font-size:12px; color:rgba(245,247,250,.45); text-align:center; max-width:440px; margin:0 auto}
+
+/* cabeça-constelação */
+.headfig{width:min(300px,58vw); margin:0 auto 8px; display:block; overflow:visible}
+.headfig .silhouette{fill:none; stroke:rgba(245,247,250,.28); stroke-width:1.6; stroke-linecap:round}
+.headfig .dome{fill:none; stroke:rgba(122,162,247,.30); stroke-width:1}
+.headfig .link-line{stroke:rgba(79,209,197,.35); stroke-width:1}
+.headfig .node circle.core{fill:#4FD1C5; transition:r .2s ease}
+.headfig .node circle.halo{fill:none; stroke:rgba(79,209,197,.5); stroke-width:1.2; opacity:.7}
+.headfig .node circle.hit{fill:transparent; cursor:pointer}
+.headfig .node text{
+  font-size:11.5px; font-weight:600; fill:rgba(245,247,250,.95); letter-spacing:.02em;
+  opacity:0; transition:opacity .2s ease; pointer-events:none;
+}
+.headfig .node rect.tag{fill:rgba(11,18,32,.85); stroke:rgba(79,209,197,.4); stroke-width:1; rx:7;
+  opacity:0; transition:opacity .2s ease; pointer-events:none}
+.headfig .node:hover text, .headfig .node:focus-within text,
+.headfig .node:hover rect.tag, .headfig .node:focus-within rect.tag{opacity:1}
+.headfig .node:hover circle.core{r:6.5}
+@media (prefers-reduced-motion: no-preference){
+  .headfig .node circle.halo{animation:halo 3.2s ease-in-out infinite}
+  @keyframes halo{0%,100%{transform:scale(1); opacity:.65} 50%{transform:scale(1.55); opacity:0}}
+  .headfig .node circle.halo{transform-origin:center; transform-box:fill-box}
+}
+
+/* painel de autenticação */
+.auth-panel{display:flex; flex-direction:column; align-items:center; justify-content:center; padding:48px 32px; position:relative}
+.auth-card{width:min(400px,100%)}
+.auth-head{margin-bottom:28px}
+.auth-head .eyebrow{margin-bottom:8px}
+.auth-head h2{font-size:26px; font-weight:650; letter-spacing:-.015em}
+.auth-head p{color:var(--ink-3); font-size:14px; margin-top:6px}
+.auth-form{display:flex; flex-direction:column; gap:18px}
+.auth-aux{display:flex; justify-content:space-between; align-items:center; font-size:13px}
+.auth-alt{margin-top:26px; padding-top:20px; border-top:1px solid var(--line-2); text-align:center; font-size:14px; color:var(--ink-3)}
+
+/* passos do fluxo (esqueci senha) */
+.steps{display:flex; align-items:center; gap:8px; margin-bottom:20px}
+.steps .s{width:8px; height:8px; border-radius:50%; background:var(--line); transition:background .2s}
+.steps .s.on{background:var(--accent)}
+.steps .bar{flex:1; height:1px; background:var(--line-2)}
+
+/* código de 6 dígitos */
+.code-row{display:flex; gap:8px; justify-content:space-between}
+.code-row input{
+  width:100%; max-width:52px; min-height:56px; text-align:center; font-size:22px; font-weight:650;
+  border:1px solid var(--line); border-radius:var(--r-m); background:var(--surface-2); color:var(--ink);
+  transition:border-color .15s, box-shadow .15s;
+}
+.code-row input:focus{outline:none; border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-soft)}
+.resend{font-size:13px; color:var(--ink-3); text-align:center}
+.resend b{color:var(--ink-2); font-variant-numeric:tabular-nums}
+
+/* medidor de força (bom/ruim existe aqui → cor permitida) */
+.pw-meter{display:flex; align-items:center; gap:6px; margin-top:8px}
+.pw-meter .seg{flex:1; height:4px; border-radius:999px; background:var(--surface-3); transition:background .25s ease}
+.pw-meter .lvl{font-size:12px; color:var(--ink-3); min-width:56px; text-align:right; transition:color .25s ease}
+.reqs{display:flex; flex-direction:column; gap:5px; margin-top:8px}
+.req{display:flex; align-items:center; gap:8px; font-size:12.5px; color:var(--ink-3); transition:color .2s ease}
+.req .ri{width:16px; height:16px; border-radius:50%; border:1px solid var(--line); display:grid; place-items:center; flex:none;
+  transition:background .2s ease, border-color .2s ease}
+.req .ri svg{opacity:0; transition:opacity .2s ease}
+.req.ok{color:var(--ink-2)}
+.req.ok .ri{background:var(--ok); border-color:var(--ok); color:#fff}
+.req.ok .ri svg{opacity:1}
+.match-hint{font-size:12px; margin-top:6px; display:none}
+.match-hint.ok{display:block; color:var(--ok)}
+.match-hint.bad{display:block; color:var(--bad)}
+
+/* ícone grande (enviado / sucesso) */
+.big-ic{width:72px; height:72px; border-radius:50%; display:grid; place-items:center; margin:0 auto 18px;
+  background:var(--accent-soft); color:var(--accent); position:relative}
+.big-ic::after{content:""; position:absolute; inset:-2px; border-radius:50%; border:2px solid var(--accent); opacity:.4}
+@media (prefers-reduced-motion: no-preference){
+  .big-ic::after{animation:bigh 2.8s ease-in-out infinite}
+  @keyframes bigh{0%,100%{transform:scale(1); opacity:.4} 50%{transform:scale(1.28); opacity:0}}
+}
+
+/* troca de views */
+.view{display:none; animation:vin .28s ease}
+.view.on{display:block}
+@keyframes vin{from{opacity:0; transform:translateY(8px)} to{opacity:1; transform:none}}
+@media (prefers-reduced-motion: reduce){ .view{animation:none} }
+
+/* alternador de tema */
+.theme-toggle{
+  position:absolute; top:20px; right:20px; z-index:5;
+  width:44px; height:44px; border-radius:50%; border:1px solid var(--line);
+  background:var(--surface); color:var(--ink-2); cursor:pointer; display:grid; place-items:center;
+  box-shadow:var(--shadow);
+}
+.theme-toggle:hover{color:var(--ink)}
+
+.page-foot{position:absolute; bottom:14px; left:0; right:0; text-align:center; font-size:12px; color:var(--ink-3); padding:0 24px}
+
+/* mini onda no topo (mobile) */
+.brand-mini{display:none}
+
+/* ---------- tablet ---------- */
+@media (max-width: 1100px){
+  .stage{grid-template-columns:1fr; grid-template-rows:auto 1fr}
+  .brand-panel{padding:32px; min-height:380px}
+  .brand-center{padding:8px 0}
+  .headfig{width:200px}
+  .brand-copy h1{font-size:26px}
+  .auth-panel{padding:40px 32px 64px}
+}
+/* ---------- mobile ---------- */
+@media (max-width: 640px){
+  .brand-panel{display:none}
+  .brand-mini{
+    display:flex; flex-direction:column; gap:4px; align-items:center;
+    padding:28px 24px 0; position:relative; overflow:hidden;
+  }
+  .brand-mini .wavefield{position:absolute; inset:auto 0 0 0; height:64px; width:100%; opacity:.5; pointer-events:none}
+  .brand-mini .wordmark{color:var(--ink)}
+  .brand-mini .wordmark small{color:var(--ink-3)}
+  .brand-mini p{font-size:13px; color:var(--ink-3); text-align:center}
+  .stage{grid-template-rows:auto 1fr}
+  .auth-panel{padding:28px 20px 72px; justify-content:flex-start}
+  .code-row input{max-width:none}
+}
+</style>
+</head>
+<body>
+
+<div class="stage">
+  <!-- ===================== painel de marca ===================== -->
+  <aside class="brand-panel" id="brandPanel" aria-hidden="true">
+    <div class="wordmark">
+      <span class="mark">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M2 12c2.5 0 2.5-5 5-5s2.5 8 5 8 2.5-8 5-8 2.5 5 5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+      </span>
+      WaveAI <small>bem-estar exploratório</small>
+    </div>
+
+    <div class="brand-center">
+      <div class="brand-copy">
+        <svg class="headfig" id="headfig" viewBox="0 0 420 500" role="img" aria-label="Ilustração: perfil com sensores e pontos de funcionalidades">
+          <g id="headParallax">
+            <!-- silhueta de perfil (abstrata) -->
+            <path class="silhouette" d="M208 46
+              C 158 50 122 92 116 148
+              C 114 170 117 186 112 200
+              C 108 212 100 222 104 232
+              C 107 240 116 240 118 246
+              C 120 252 114 258 116 266
+              C 118 274 126 272 128 280
+              C 130 290 122 300 130 312
+              C 138 324 158 322 172 328
+              C 186 334 190 348 192 366
+              L 196 458"/>
+            <path class="silhouette" d="M208 46
+              C 268 44 318 92 324 158
+              C 330 224 316 268 302 316
+              C 292 352 290 400 292 458"/>
+            <!-- domo de sensores -->
+            <path class="dome" d="M120 160 C 130 74 288 60 318 168"/>
+            <path class="dome" d="M112 190 C 118 60 300 42 330 200" opacity=".55"/>
+            <path class="dome" d="M126 136 C 148 92 272 82 306 140" opacity=".8"/>
+            <!-- constelação -->
+            <g class="link-lines">
+              <line class="link-line" x1="118" y1="152" x2="208" y2="58"/>
+              <line class="link-line" x1="208" y1="58" x2="316" y2="164"/>
+              <line class="link-line" x1="316" y1="164" x2="298" y2="300"/>
+              <line class="link-line" x1="118" y1="152" x2="222" y2="118"/>
+              <line class="link-line" x1="222" y1="118" x2="316" y2="164"/>
+            </g>
+            <!-- nós interativos -->
+            <g class="node" tabindex="0" data-label="Estado ao vivo · sensor frontal">
+              <circle class="halo" cx="118" cy="152" r="9"/>
+              <circle class="core" cx="118" cy="152" r="5.5"/>
+              <circle class="hit" cx="118" cy="152" r="24"/>
+              <rect class="tag" x="8" y="108" width="196" height="26" rx="7"/>
+              <text x="18" y="125">Estado ao vivo · sensor frontal</text>
+            </g>
+            <g class="node" tabindex="0" data-label="Tendências ao longo do tempo">
+              <circle class="halo" cx="208" cy="58" r="9"/>
+              <circle class="core" cx="208" cy="58" r="5.5"/>
+              <circle class="hit" cx="208" cy="58" r="24"/>
+              <rect class="tag" x="222" y="40" width="190" height="26" rx="7"/>
+              <text x="232" y="57">Tendências ao longo do tempo</text>
+            </g>
+            <g class="node" tabindex="0" data-label="Sessões e histórico">
+              <circle class="halo" cx="316" cy="164" r="9"/>
+              <circle class="core" cx="316" cy="164" r="5.5"/>
+              <circle class="hit" cx="316" cy="164" r="24"/>
+              <rect class="tag" x="278" y="120" width="132" height="26" rx="7"/>
+              <text x="288" y="137">Sessões e histórico</text>
+            </g>
+            <g class="node" tabindex="0" data-label="Composição por banda">
+              <circle class="halo" cx="222" cy="118" r="7.5"/>
+              <circle class="core" cx="222" cy="118" r="4.5"/>
+              <circle class="hit" cx="222" cy="118" r="24"/>
+              <rect class="tag" x="236" y="100" width="158" height="26" rx="7"/>
+              <text x="246" y="117">Composição por banda</text>
+            </g>
+            <g class="node" tabindex="0" data-label="Protocolo guiado por voz">
+              <circle class="halo" cx="298" cy="300" r="7.5"/>
+              <circle class="core" cx="298" cy="300" r="4.5"/>
+              <circle class="hit" cx="298" cy="300" r="24"/>
+              <rect class="tag" x="146" y="326" width="170" height="26" rx="7"/>
+              <text x="156" y="343">Protocolo guiado por voz</text>
+            </g>
+          </g>
+        </svg>
+        <h1>A calma tem um <em>ritmo</em>. Acompanhe o seu.</h1>
+        <p>Tendências e estados mentais do seu EEG de consumo, analisados no servidor WaveAI — exploratório, transparente, seu.</p>
+        <div class="brand-chips">
+          <span class="chip"><span class="dot"></span> composição por banda</span>
+          <span class="chip"><span class="dot"></span> qualidade do sinal</span>
+          <span class="chip"><span class="dot"></span> tendências</span>
+        </div>
+      </div>
+    </div>
+
+    <p class="brand-foot">Plataforma exploratória de bem-estar. Não realiza diagnóstico e não substitui acompanhamento de saúde.</p>
+    <canvas class="wavefield" id="waveBrand" aria-hidden="true"></canvas>
+  </aside>
+
+  <!-- ===================== painel de autenticação ===================== -->
+  <main class="auth-panel">
+    <button class="theme-toggle" id="themeToggle" aria-label="Alternar tema claro/escuro" title="Alternar tema">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true">
+        <path class="ic-moon" d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5Z"/>
+        <g class="ic-sun" style="display:none">
+          <circle cx="12" cy="12" r="4.2"/>
+          <path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M4.9 4.9l1.6 1.6M17.5 17.5l1.6 1.6M19.1 4.9l-1.6 1.6M6.5 17.5l-1.6 1.6"/>
+        </g>
+      </svg>
+    </button>
+
+    <!-- marca compacta (só mobile) -->
+    <header class="brand-mini">
+      <div class="wordmark">
+        <span class="mark">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M2 12c2.5 0 2.5-5 5-5s2.5 8 5 8 2.5-8 5-8 2.5 5 5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+        </span>
+        WaveAI <small>bem-estar exploratório</small>
+      </div>
+      <p>Tendências do seu EEG, analisadas no servidor. Exploratório.</p>
+      <canvas class="wavefield" id="waveMini" aria-hidden="true"></canvas>
+    </header>
+
+    <div class="auth-card">
+
+      <!-- ========== view: entrar ========== -->
+      <section class="view on" id="view-login" aria-labelledby="h-login">
+        <div class="auth-head">
+          <p class="eyebrow">Bem-vindo(a) de volta</p>
+          <h2 id="h-login">Entrar na sua conta</h2>
+          <p>Acesse suas sessões, tendências e estados mentais.</p>
+        </div>
+        <form class="auth-form" onsubmit="event.preventDefault(); location.href='inicio-paciente.html'">
+          <div class="field">
+            <label for="email">E-mail</label>
+            <div class="control">
+              <input id="email" type="email" inputmode="email" autocomplete="email" placeholder="voce@exemplo.com.br">
+            </div>
+          </div>
+          <div class="field">
+            <label for="senha">Senha</label>
+            <div class="control">
+              <input id="senha" type="password" autocomplete="current-password" placeholder="Sua senha">
+              <button type="button" class="reveal" aria-label="Mostrar senha" aria-pressed="false" onclick="toggleReveal(this,'senha')">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true">
+                  <path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z"/><circle cx="12" cy="12" r="2.8"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+          <div class="auth-aux">
+            <label style="display:flex;align-items:center;gap:8px;color:var(--ink-3);cursor:pointer;min-height:44px">
+              <input type="checkbox" style="accent-color:var(--accent);width:16px;height:16px"> Manter conectado
+            </label>
+            <a href="#" onclick="showView('view-forgot');return false">Esqueci minha senha</a>
+          </div>
+          <button class="btn btn-primary btn-block" type="submit">Entrar</button>
+        </form>
+        <p class="auth-alt">Primeiro acesso? <a href="criar-conta.html">Criar conta</a></p>
+      </section>
+
+      <!-- ========== view: esqueci minha senha ========== -->
+      <section class="view" id="view-forgot" aria-labelledby="h-forgot">
+        <div class="steps" aria-hidden="true"><span class="s on"></span><span class="bar"></span><span class="s"></span><span class="bar"></span><span class="s"></span></div>
+        <div class="auth-head">
+          <p class="eyebrow">Recuperar acesso · passo 1 de 3</p>
+          <h2 id="h-forgot">Esqueceu a senha?</h2>
+          <p>Sem problema. Informe seu e-mail e enviaremos um código de verificação.</p>
+        </div>
+        <form class="auth-form" onsubmit="event.preventDefault(); sendReset()">
+          <div class="field">
+            <label for="email2">E-mail cadastrado</label>
+            <div class="control">
+              <input id="email2" type="email" inputmode="email" autocomplete="email" placeholder="voce@exemplo.com.br">
+            </div>
+            <span class="hint">Enviaremos um link e um código de 6 dígitos válidos por 10 minutos.</span>
+          </div>
+          <button class="btn btn-primary btn-block" type="submit">Enviar link e código</button>
+          <button class="btn btn-ghost btn-block" type="button" onclick="showView('view-login')">Voltar para o login</button>
+        </form>
+      </section>
+
+      <!-- ========== view: enviamos um link/código ========== -->
+      <section class="view" id="view-sent" aria-labelledby="h-sent">
+        <div class="steps" aria-hidden="true"><span class="s on"></span><span class="bar"></span><span class="s"></span><span class="bar"></span><span class="s"></span></div>
+        <div class="auth-head" style="text-align:center">
+          <div class="big-ic" aria-hidden="true">
+            <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <rect x="3" y="5" width="18" height="14" rx="3"/><path d="m3.5 7 8.5 6 8.5-6"/>
+            </svg>
+          </div>
+          <p class="eyebrow">Recuperar acesso · passo 1 de 3</p>
+          <h2 id="h-sent">Enviamos um link e um código</h2>
+          <p>Confira <b style="color:var(--ink-2)" id="sentMail">vo•••@exemplo.com.br</b>. Você pode abrir o link do e-mail ou digitar o código de 6 dígitos aqui. Vale por 10 minutos.</p>
+        </div>
+        <div class="auth-form">
+          <button class="btn btn-primary btn-block" type="button" onclick="showView('view-code')">Inserir código</button>
+          <button class="btn btn-ghost btn-block" type="button" onclick="showView('view-forgot')">Usar outro e-mail</button>
+          <p class="t-small" style="text-align:center; font-size:12px">Não chegou? Veja a caixa de spam ou reenvie a partir da próxima tela.</p>
+        </div>
+      </section>
+
+      <!-- ========== view: verificação por código ========== -->
+      <section class="view" id="view-code" aria-labelledby="h-code">
+        <div class="steps" aria-hidden="true"><span class="s on"></span><span class="bar"></span><span class="s on"></span><span class="bar"></span><span class="s"></span></div>
+        <div class="auth-head">
+          <p class="eyebrow">Recuperar acesso · passo 2 de 3</p>
+          <h2 id="h-code">Verifique seu e-mail</h2>
+          <p>Digite o código de 6 dígitos que enviamos para <b style="color:var(--ink-2)" id="codeMail">vo•••@exemplo.com.br</b>.</p>
+        </div>
+        <form class="auth-form" onsubmit="event.preventDefault(); showView('view-newpass')">
+          <div class="code-row" id="codeRow" role="group" aria-label="Código de verificação de 6 dígitos">
+            <input inputmode="numeric" maxlength="1" aria-label="Dígito 1">
+            <input inputmode="numeric" maxlength="1" aria-label="Dígito 2">
+            <input inputmode="numeric" maxlength="1" aria-label="Dígito 3">
+            <input inputmode="numeric" maxlength="1" aria-label="Dígito 4">
+            <input inputmode="numeric" maxlength="1" aria-label="Dígito 5">
+            <input inputmode="numeric" maxlength="1" aria-label="Dígito 6">
+          </div>
+          <p class="resend">Não chegou? <a href="#" id="resendLink" style="display:none" onclick="restartResend();return false">Reenviar código</a><span id="resendWait">Reenviar em <b id="resendTimer">00:42</b></span></p>
+          <button class="btn btn-primary btn-block" type="submit">Verificar código</button>
+          <button class="btn btn-ghost btn-block" type="button" onclick="showView('view-forgot')">Usar outro e-mail</button>
+        </form>
+      </section>
+
+      <!-- ========== view: nova senha ========== -->
+      <section class="view" id="view-newpass" aria-labelledby="h-newpass">
+        <div class="steps" aria-hidden="true"><span class="s on"></span><span class="bar"></span><span class="s on"></span><span class="bar"></span><span class="s on"></span></div>
+        <div class="auth-head">
+          <p class="eyebrow">Recuperar acesso · passo 3 de 3</p>
+          <h2 id="h-newpass">Crie uma nova senha</h2>
+          <p>Escolha uma senha que você ainda não usou por aqui.</p>
+        </div>
+        <form class="auth-form" onsubmit="event.preventDefault(); showView('view-done')">
+          <div class="field">
+            <label for="novaSenha">Nova senha</label>
+            <div class="control">
+              <input id="novaSenha" type="password" autocomplete="new-password" placeholder="Crie uma senha">
+              <button type="button" class="reveal" aria-label="Mostrar senha" aria-pressed="false" onclick="toggleReveal(this,'novaSenha')">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true">
+                  <path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z"/><circle cx="12" cy="12" r="2.8"/>
+                </svg>
+              </button>
+            </div>
+            <div class="pw-meter" aria-hidden="true">
+              <i class="seg" id="seg1"></i><i class="seg" id="seg2"></i><i class="seg" id="seg3"></i>
+              <span class="lvl" id="pwLvl">—</span>
+            </div>
+            <div class="reqs" id="reqs" aria-label="Requisitos da senha">
+              <span class="req" data-req="len"><span class="ri"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 12.5 10 18 19.5 7"/></svg></span> ao menos 8 caracteres</span>
+              <span class="req" data-req="letter"><span class="ri"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 12.5 10 18 19.5 7"/></svg></span> uma letra</span>
+              <span class="req" data-req="digit"><span class="ri"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 12.5 10 18 19.5 7"/></svg></span> um número</span>
+            </div>
+          </div>
+          <div class="field">
+            <label for="novaSenha2">Confirmar nova senha</label>
+            <div class="control">
+              <input id="novaSenha2" type="password" autocomplete="new-password" placeholder="Repita a senha">
+              <button type="button" class="reveal" aria-label="Mostrar senha" aria-pressed="false" onclick="toggleReveal(this,'novaSenha2')">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true">
+                  <path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z"/><circle cx="12" cy="12" r="2.8"/>
+                </svg>
+              </button>
+            </div>
+            <span class="match-hint" id="matchHint" role="status"></span>
+          </div>
+          <button class="btn btn-primary btn-block" type="submit" id="newpassBtn" disabled>Salvar nova senha</button>
+        </form>
+      </section>
+
+      <!-- ========== view: senha atualizada ========== -->
+      <section class="view" id="view-done" aria-labelledby="h-done">
+        <div class="auth-head" style="text-align:center">
+          <div class="big-ic" aria-hidden="true">
+            <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M4.5 12.5 10 18 19.5 7"/>
+            </svg>
+          </div>
+          <p class="eyebrow">Recuperar acesso</p>
+          <h2 id="h-done">Senha atualizada</h2>
+          <p>Tudo certo. Entre com a sua nova senha.</p>
+        </div>
+        <div class="auth-form">
+          <button class="btn btn-primary btn-block" type="button" onclick="showView('view-login')">Voltar para o login</button>
+        </div>
+      </section>
+
+    </div>
+    <p class="page-foot">WaveAI · plataforma exploratória de bem-estar · dados fictícios para demonstração</p>
+  </main>
+</div>
+
+<script>
+/* ---------- troca de views ---------- */
+function showView(id){
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('on'));
+  document.getElementById(id).classList.add('on');
+  const first = document.querySelector('#'+id+' input');
+  if(first) setTimeout(()=>first.focus(), 80);
+}
+/* ---------- revelar senha ---------- */
+function toggleReveal(btn, id){
+  const inp = document.getElementById(id);
+  const showing = inp.type === 'text';
+  inp.type = showing ? 'password' : 'text';
+  btn.setAttribute('aria-pressed', String(!showing));
+  btn.setAttribute('aria-label', showing ? 'Mostrar senha' : 'Ocultar senha');
+}
+/* ---------- código: auto-avanço + colar ---------- */
+(function(){
+  const row = document.getElementById('codeRow');
+  if(!row) return;
+  const inputs = [...row.querySelectorAll('input')];
+  inputs.forEach((inp,i)=>{
+    inp.addEventListener('input', ()=>{
+      inp.value = inp.value.replace(/\D/g,'').slice(0,1);
+      if(inp.value && inputs[i+1]) inputs[i+1].focus();
+    });
+    inp.addEventListener('keydown', e=>{
+      if(e.key==='Backspace' && !inp.value && inputs[i-1]) inputs[i-1].focus();
+    });
+    inp.addEventListener('paste', e=>{
+      const digits = (e.clipboardData.getData('text').match(/\d/g) || []).slice(0, 6);
+      if(!digits.length) return;
+      e.preventDefault();
+      digits.forEach((d,j)=>{ if(inputs[j]) inputs[j].value = d; });
+      (inputs[Math.min(digits.length, 5)]).focus();
+    });
+  });
+})();
+/* ---------- envio do e-mail de recuperação ---------- */
+function maskMail(v){
+  const at = v.indexOf('@');
+  if(at < 1) return 'seu e-mail';
+  return v.slice(0, Math.min(2, at)) + '•••' + v.slice(at);
+}
+function sendReset(){
+  const m = maskMail(document.getElementById('email2').value);
+  document.getElementById('sentMail').textContent = m;
+  document.getElementById('codeMail').textContent = m;
+  restartResend();
+  showView('view-sent');
+}
+/* ---------- contador de reenvio ---------- */
+let resendS = 42, resendInt = null;
+function tickResend(){
+  const el = document.getElementById('resendTimer');
+  const wait = document.getElementById('resendWait'), link = document.getElementById('resendLink');
+  if(resendS <= 0){ wait.style.display = 'none'; link.style.display = ''; clearInterval(resendInt); return; }
+  resendS--;
+  el.textContent = '00:' + String(resendS).padStart(2,'0');
+}
+function restartResend(){
+  resendS = 42;
+  document.getElementById('resendWait').style.display = '';
+  document.getElementById('resendLink').style.display = 'none';
+  document.getElementById('resendTimer').textContent = '00:42';
+  clearInterval(resendInt);
+  resendInt = setInterval(tickResend, 1000);
+}
+resendInt = setInterval(tickResend, 1000);
+/* ---------- nova senha: medidor + confirmação ---------- */
+(function(){
+  const pw = document.getElementById('novaSenha'), pw2 = document.getElementById('novaSenha2');
+  const btn = document.getElementById('newpassBtn');
+  if(!pw) return;
+  function update(){
+    const c = { len: pw.value.length >= 8, letter: /[a-zA-ZÀ-ÿ]/.test(pw.value), digit: /\d/.test(pw.value) };
+    const met = Object.values(c).filter(Boolean).length;
+    document.querySelectorAll('#reqs .req').forEach(el=> el.classList.toggle('ok', c[el.dataset.req]));
+    const segs = [document.getElementById('seg1'), document.getElementById('seg2'), document.getElementById('seg3')];
+    const colors = ['var(--bad)','var(--warn)','var(--ok)'];
+    const labels = ['fraca','quase lá','forte'];
+    segs.forEach((s,i)=>{ s.style.background = pw.value && i < met ? colors[met-1] : 'var(--surface-3)'; });
+    const lvl = document.getElementById('pwLvl');
+    lvl.textContent = pw.value ? labels[met-1] || 'fraca' : '—';
+    lvl.style.color = pw.value ? colors[met-1] || 'var(--bad)' : 'var(--ink-3)';
+    const hint = document.getElementById('matchHint');
+    if(!pw2.value){ hint.className = 'match-hint'; hint.textContent = ''; }
+    else if(pw.value === pw2.value){ hint.className = 'match-hint ok'; hint.textContent = 'As senhas coincidem.'; }
+    else { hint.className = 'match-hint bad'; hint.textContent = 'As senhas ainda não coincidem.'; }
+    btn.disabled = !(met === 3 && pw.value === pw2.value);
+  }
+  [pw, pw2].forEach(i=> i.addEventListener('input', update));
+})();
+/* ---------- tema ---------- */
+(function(){
+  const btn = document.getElementById('themeToggle');
+  const sync = ()=>{
+    const light = document.documentElement.dataset.theme === 'light';
+    btn.querySelector('.ic-moon').style.display = light ? '' : 'none';
+    btn.querySelector('.ic-sun').style.display  = light ? 'none' : '';
+  };
+  btn.addEventListener('click', ()=>{
+    const t = document.documentElement.dataset.theme === 'light' ? 'dark' : 'light';
+    document.documentElement.dataset.theme = t;
+    localStorage.setItem('waveai-theme', t);
+    sync();
+  });
+  sync();
+})();
+
+/* ============================================================
+   "Maré" — campo de ondas em canvas (assinatura)
+   Ondas lentas em camadas; a proximidade do cursor eleva
+   suavemente a amplitude local. Respeita reduced-motion.
+   ============================================================ */
+class WaveField{
+  constructor(canvas, opts={}){
+    this.c = canvas; this.ctx = canvas.getContext('2d');
+    this.colors = opts.colors || ['#4FD1C5','#7AA2F7','#4FD1C5'];
+    this.alpha  = opts.alpha  ?? .55;
+    this.lines  = opts.lines  ?? 3;
+    this.speed  = opts.speed  ?? 1;
+    this.amp    = opts.amp    ?? 18;
+    this.t = 0; this.px = -1e4; this.py = 0; this.boost = 0;
+    this.reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const ro = new ResizeObserver(()=>this.resize()); ro.observe(canvas);
+    this.resize();
+    const host = opts.pointerHost || canvas.parentElement;
+    host.addEventListener('pointermove', e=>{
+      const r = canvas.getBoundingClientRect();
+      this.px = e.clientX - r.left; this.py = e.clientY - r.top;
+    });
+    host.addEventListener('pointerleave', ()=>{ this.px = -1e4; });
+    if(this.reduced){ this.draw(); } else { this.loop = this.loop.bind(this); requestAnimationFrame(this.loop); }
+  }
+  resize(){
+    const d = Math.min(devicePixelRatio||1, 2);
+    this.w = this.c.clientWidth; this.h = this.c.clientHeight;
+    this.c.width = this.w*d; this.c.height = this.h*d;
+    this.ctx.setTransform(d,0,0,d,0,0);
+    if(this.reduced) this.draw();
+  }
+  wave(y0, k, seed){
+    const {ctx,w,h} = this; ctx.beginPath();
+    for(let x=0; x<=w; x+=4){
+      const near = Math.exp(-Math.pow((x-this.px)/140,2)) * this.boost;
+      const y = y0
+        + Math.sin(x*0.008 + this.t*0.9  + seed)     * this.amp * k
+        + Math.sin(x*0.017 + this.t*0.55 + seed*2.1) * this.amp * .45 * k
+        + Math.sin(x*0.004 - this.t*0.3  + seed*3.7) * this.amp * .8  * k
+        - near * 16;
+      x===0 ? ctx.moveTo(x,y) : ctx.lineTo(x,y);
+    }
+  }
+  draw(){
+    const {ctx,w,h} = this; ctx.clearRect(0,0,w,h);
+    for(let i=0;i<this.lines;i++){
+      const g = ctx.createLinearGradient(0,0,w,0);
+      const col = this.colors[i % this.colors.length];
+      g.addColorStop(0, col+'00'); g.addColorStop(.5, col); g.addColorStop(1, col+'00');
+      ctx.strokeStyle = g;
+      ctx.globalAlpha = this.alpha * (1 - i*0.22);
+      ctx.lineWidth = 1.6;
+      this.wave(h*(.35 + i*.18), 1 - i*.18, i*7.3);
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+  }
+  loop(){
+    this.t += 0.012 * this.speed;
+    const target = this.px > -1e3 ? 1 : 0;
+    this.boost += (target - this.boost) * .04;
+    this.draw();
+    requestAnimationFrame(this.loop);
+  }
+}
+new WaveField(document.getElementById('waveBrand'), {pointerHost: document.getElementById('brandPanel')});
+new WaveField(document.getElementById('waveMini'), {lines:2, alpha:.4, amp:10});
+
+/* ---------- parallax sutil da cabeça ---------- */
+(function(){
+  if(matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const panel = document.getElementById('brandPanel');
+  const layer = document.getElementById('headParallax');
+  if(!panel || !layer) return;
+  panel.addEventListener('pointermove', e=>{
+    const r = panel.getBoundingClientRect();
+    const dx = (e.clientX - r.left)/r.width - .5;
+    const dy = (e.clientY - r.top)/r.height - .5;
+    layer.style.transform = `translate(${dx*8}px, ${dy*6}px)`;
+  });
+  panel.addEventListener('pointerleave', ()=>{ layer.style.transform=''; });
+})();
+</script>
+</body>
+</html>

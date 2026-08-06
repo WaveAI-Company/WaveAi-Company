@@ -1,0 +1,729 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WaveAI · Estado ao vivo</title>
+<script>
+  (function(){
+    var t = localStorage.getItem('waveai-theme');
+    if(!t){ t = window.matchMedia && matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark'; }
+    document.documentElement.dataset.theme = t;
+  })();
+</script>
+<style>
+/* ============================================================
+   WaveAI · Design "Maré" · tokens
+   ============================================================ */
+:root{
+  color-scheme: dark;
+  --bg:#0B1220; --surface:#151E32; --surface-2:#1C2740; --surface-3:#233152;
+  --ink:#F5F7FA; --ink-2:#B6C1D4; --ink-3:#8291A9;
+  --line:rgba(245,247,250,.10); --line-2:rgba(245,247,250,.055);
+  --accent:#4FD1C5; --accent-ink:#06231F; --accent-soft:rgba(79,209,197,.12);
+  --ok:#0ca30c; --warn:#fab219; --bad:#ec835a;
+  --band-delta:#5C7CFA; --band-theta:#B24468; --band-alpha:#1FA695; --band-beta:#C98500; --band-gamma:#9085E9;
+  --esense:#8291A9;
+  --shadow:0 10px 30px rgba(2,6,16,.45), 0 2px 8px rgba(2,6,16,.35);
+  --r-s:8px; --r-m:12px; --r-l:16px;
+}
+:root[data-theme="light"]{
+  color-scheme: light;
+  --bg:#F5F7FA; --surface:#FFFFFF; --surface-2:#EDF1F6; --surface-3:#E2E8F1;
+  --ink:#0F1726; --ink-2:#44526A; --ink-3:#68778F;
+  --line:rgba(15,23,38,.12); --line-2:rgba(15,23,38,.06);
+  --accent:#0F7A70; --accent-ink:#FFFFFF; --accent-soft:rgba(15,122,112,.10);
+  --band-delta:#3E63DD; --band-theta:#963061; --band-alpha:#009184; --band-beta:#B87500; --band-gamma:#6D5AC4;
+  --esense:#68778F;
+  --shadow:0 10px 30px rgba(15,23,38,.08), 0 2px 8px rgba(15,23,38,.06);
+}
+*{box-sizing:border-box; margin:0; padding:0}
+html,body{height:100%}
+body{
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  background:var(--bg); color:var(--ink); font-size:15px; line-height:1.5;
+  -webkit-font-smoothing:antialiased;
+}
+button,input,textarea{font:inherit; color:inherit}
+a{color:var(--accent); text-decoration:none}
+:focus-visible{outline:2px solid var(--accent); outline-offset:2px; border-radius:4px}
+.eyebrow{font-size:12px; font-weight:650; letter-spacing:.09em; text-transform:uppercase; color:var(--ink-3)}
+.t-small{font-size:13px; color:var(--ink-3)}
+
+/* ---------- componentes ---------- */
+.btn{display:inline-flex; align-items:center; justify-content:center; gap:8px; min-height:44px; padding:0 20px;
+  border:none; border-radius:var(--r-m); font-weight:600; font-size:15px; cursor:pointer;
+  transition:transform .15s ease, box-shadow .2s ease, background .2s ease}
+.btn-primary{background:var(--accent); color:var(--accent-ink)}
+.btn-primary:hover{transform:translateY(-1px); box-shadow:0 6px 18px var(--accent-soft)}
+.btn-ghost{background:transparent; color:var(--ink-2); border:1px solid var(--line)}
+.btn-ghost:hover{background:var(--surface-2); color:var(--ink)}
+.card{background:var(--surface); border:1px solid var(--line-2); border-radius:var(--r-l); box-shadow:var(--shadow)}
+.card-h{display:flex; align-items:baseline; justify-content:space-between; gap:12px; padding:20px 20px 0}
+.card-h h3{font-size:15px; font-weight:650}
+.card-b{padding:16px 20px 20px}
+.chip{display:inline-flex; align-items:center; gap:6px; min-height:26px; padding:2px 11px; border-radius:999px;
+  border:1px solid var(--line); background:var(--surface-2); font-size:12px; font-weight:600; color:var(--ink-2)}
+.chip .dot{width:7px; height:7px; border-radius:50%; background:var(--accent); flex:none}
+.chip-exp{border-color:var(--line); color:var(--ink-3); font-weight:600}
+.chip-live .dot{background:var(--accent)}
+@media (prefers-reduced-motion: no-preference){
+  .chip-live .dot{animation:pulse 1.6s ease-in-out infinite}
+  @keyframes pulse{0%,100%{opacity:1} 50%{opacity:.35}}
+}
+.status-chip{display:inline-flex; align-items:center; gap:7px; min-height:28px; padding:3px 12px; border-radius:999px;
+  font-size:12.5px; font-weight:650; border:1px solid var(--line); background:var(--surface-2); color:var(--ink)}
+.status-chip svg{flex:none}
+.status-ok  svg{color:var(--ok)}  .status-warn svg{color:var(--warn)}  .status-bad svg{color:var(--bad)}
+
+/* ---------- casca do app ---------- */
+.app{min-height:100vh; display:grid; grid-template-columns:240px 1fr; grid-template-rows:64px 1fr;
+  grid-template-areas:"side head" "side main"}
+.app-head{grid-area:head; display:flex; align-items:center; gap:16px; padding:0 24px;
+  border-bottom:1px solid var(--line-2); background:var(--bg); position:sticky; top:0; z-index:30}
+.app-head .title{font-size:17px; font-weight:650; letter-spacing:-.01em; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.app-head .chip{white-space:nowrap; flex:none}
+.app-head .sp{flex:1}
+.iconbtn{width:44px; height:44px; border-radius:50%; border:1px solid var(--line); background:var(--surface);
+  color:var(--ink-2); cursor:pointer; display:grid; place-items:center}
+.iconbtn:hover{color:var(--ink); background:var(--surface-2)}
+.avatar{width:36px; height:36px; border-radius:50%; display:grid; place-items:center; font-size:13px; font-weight:700;
+  background:var(--accent-soft); color:var(--accent); border:1px solid var(--line)}
+.app-head .avatar{width:44px; height:44px; font-size:14px}
+a.avatar{text-decoration:none}
+a.avatar:hover{box-shadow:0 0 0 3px var(--accent-soft); text-decoration:none}
+.burger{display:none}
+
+.side{grid-area:side; display:flex; flex-direction:column; gap:8px; padding:16px 12px;
+  border-right:1px solid var(--line-2); background:var(--surface); position:sticky; top:0; height:100vh}
+.side .wordmark{display:flex; align-items:center; gap:10px; font-weight:700; font-size:17px; padding:8px 10px 16px}
+.side .mark{width:32px; height:32px; border-radius:9px; display:grid; place-items:center; flex:none;
+  background:linear-gradient(135deg,#4FD1C5,#7AA2F7); color:#06231F}
+.nav{display:flex; flex-direction:column; gap:2px}
+.nav a{display:flex; align-items:center; gap:12px; min-height:44px; padding:0 12px; border-radius:var(--r-m);
+  color:var(--ink-2); font-weight:600; font-size:14px}
+.nav a svg{flex:none; opacity:.8}
+.nav a:hover{background:var(--surface-2); color:var(--ink); text-decoration:none}
+.nav a.on{background:var(--accent-soft); color:var(--accent)}
+.nav a.on svg{opacity:1}
+.nav .badge{margin-left:auto; min-width:20px; height:20px; border-radius:999px; background:var(--accent-soft);
+  color:var(--accent); font-size:11.5px; font-weight:700; display:grid; place-items:center; padding:0 6px}
+.side .sp{flex:1}
+.role-chip{margin:0 10px 10px; align-self:flex-start}
+.side-foot{font-size:11.5px; color:var(--ink-3); padding:0 12px 8px; line-height:1.45}
+
+.main{grid-area:main; padding:24px; max-width:1600px; width:100%}
+
+/* ---------- composição da tela ---------- */
+.live-top{display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:16px}
+.live-top .timer{font-size:26px; font-weight:650; letter-spacing:-.01em; font-variant-numeric:tabular-nums}
+.live-top .sp{flex:1}
+
+.grid{display:grid; gap:20px; grid-template-columns:minmax(0,1fr) 360px;
+  grid-template-areas:"hero rail" "bands bands"}
+.g-hero{grid-area:hero; display:flex; flex-direction:column; min-height:420px; position:relative; overflow:hidden}
+.g-rail{grid-area:rail; display:flex; flex-direction:column; gap:20px}
+.g-bands{grid-area:bands; display:grid; gap:20px; grid-template-columns:1.35fr .9fr .9fr}
+
+/* hero da onda */
+.hero-inner{position:relative; flex:1; min-height:320px}
+.hero-inner canvas{position:absolute; inset:0; width:100%; height:100%}
+.hero-meta{position:absolute; left:20px; top:16px; display:flex; gap:8px; flex-wrap:wrap; z-index:2}
+.hero-note{position:absolute; right:20px; bottom:14px; font-size:12px; color:var(--ink-3); z-index:2; text-align:right}
+.hero-controls{display:flex; gap:10px; padding:16px 20px; border-top:1px solid var(--line-2); align-items:center}
+.hero-controls .sp{flex:1}
+.lock-note{display:flex; align-items:center; gap:6px}
+
+/* qualidade do sinal */
+.sig-val{display:flex; align-items:baseline; gap:10px}
+.sig-val .n{font-size:32px; font-weight:650; letter-spacing:-.02em}
+.sig-val .u{font-size:13px; color:var(--ink-3)}
+.meter{height:8px; border-radius:999px; background:var(--surface-2); overflow:hidden; margin:12px 0 8px}
+.meter > i{display:block; height:100%; border-radius:999px; background:var(--ok); width:0%;
+  transition:width .7s cubic-bezier(.2,.7,.3,1), background .4s}
+.sig-tip{font-size:13px; color:var(--ink-3)}
+
+/* eSense */
+.esense-row{display:flex; flex-direction:column; gap:6px; margin-top:14px}
+.esense-row .lbl{display:flex; justify-content:space-between; font-size:13px; color:var(--ink-2); font-weight:600}
+.esense-row .lbl b{font-variant-numeric:tabular-nums; color:var(--ink)}
+.esense-row .meter > i{background:var(--esense)}
+.esense-note{font-size:12px; color:var(--ink-3); margin-top:12px; line-height:1.45}
+
+/* composição por banda */
+.bands{display:flex; flex-direction:column; gap:14px}
+.band{display:grid; grid-template-columns:120px 1fr 52px; align-items:center; gap:12px}
+.band .bl{display:flex; flex-direction:column}
+.band .bl b{font-size:13.5px; font-weight:650}
+.band .bl span{font-size:11.5px; color:var(--ink-3)}
+.band .track{height:22px; border-radius:4px; background:var(--surface-2); position:relative; overflow:hidden}
+.band .fill{position:absolute; inset:0 auto 0 0; width:0%; border-radius:0 4px 4px 0;
+  transition:width .8s cubic-bezier(.2,.7,.3,1)}
+.band .pct{font-size:13.5px; font-weight:650; font-variant-numeric:tabular-nums; text-align:right; color:var(--ink-2)}
+.bands-note{font-size:12px; color:var(--ink-3); margin-top:14px; line-height:1.5}
+details.tblv{margin-top:12px; font-size:13px}
+details.tblv summary{cursor:pointer; color:var(--ink-3); font-weight:600; min-height:32px; display:flex; align-items:center}
+details.tblv table{width:100%; border-collapse:collapse; margin-top:8px}
+details.tblv th, details.tblv td{padding:7px 8px; text-align:left; border-bottom:1px solid var(--line-2);
+  font-variant-numeric:tabular-nums}
+details.tblv th{font-size:12px; color:var(--ink-3); font-weight:650; text-transform:uppercase; letter-spacing:.05em}
+
+/* protocolo guiado */
+.proto-phase{display:flex; align-items:center; gap:16px; margin:6px 0 14px}
+.proto-ring{position:relative; width:84px; height:84px; flex:none}
+.proto-ring svg{transform:rotate(-90deg)}
+.proto-ring .tr{stroke:var(--surface-2)}
+.proto-ring .pr{stroke:var(--accent); stroke-linecap:round; transition:stroke-dashoffset 1s linear}
+.proto-ring .n{position:absolute; inset:0; display:grid; place-items:center; font-weight:650; font-size:17px;
+  font-variant-numeric:tabular-nums}
+.proto-txt b{display:block; font-size:15px; font-weight:650}
+.proto-txt span{font-size:13px; color:var(--ink-3)}
+.voice{display:inline-flex; align-items:center; gap:8px; font-size:12.5px; color:var(--ink-3); margin-top:8px}
+.voice .bars{display:inline-flex; gap:2px; align-items:flex-end; height:14px}
+.voice .bars i{width:3px; background:var(--accent); border-radius:2px; height:4px}
+@media (prefers-reduced-motion: no-preference){
+  .voice.speaking .bars i{animation:vb 1s ease-in-out infinite}
+  .voice.speaking .bars i:nth-child(2){animation-delay:.15s}
+  .voice.speaking .bars i:nth-child(3){animation-delay:.3s}
+  .voice.speaking .bars i:nth-child(4){animation-delay:.45s}
+  @keyframes vb{0%,100%{height:4px} 50%{height:14px}}
+}
+
+/* nota de contexto */
+.note-field textarea{width:100%; min-height:96px; resize:vertical; padding:12px 14px; border-radius:var(--r-m);
+  border:1px solid var(--line); background:var(--surface-2); color:var(--ink)}
+.note-field textarea:focus{outline:none; border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-soft)}
+.note-chips{display:flex; gap:8px; flex-wrap:wrap; margin-top:10px}
+.note-chips .chip{cursor:pointer; min-height:44px; padding:8px 14px}
+.note-chips .chip:hover{border-color:var(--accent); color:var(--accent)}
+
+/* estados: conectando */
+.connect-veil{position:absolute; inset:0; z-index:3; display:none; flex-direction:column; align-items:center;
+  justify-content:center; gap:18px; background:color-mix(in srgb, var(--surface) 78%, transparent);
+  backdrop-filter:blur(3px); text-align:center; padding:24px}
+.state-connecting .connect-veil{display:flex}
+.breath{width:64px; height:64px; border-radius:50%; border:2px solid var(--accent); position:relative}
+.breath::after{content:""; position:absolute; inset:-2px; border-radius:50%; border:2px solid var(--accent); opacity:.5}
+@media (prefers-reduced-motion: no-preference){
+  .breath{animation:br 2.8s ease-in-out infinite}
+  .breath::after{animation:brh 2.8s ease-in-out infinite}
+  @keyframes br{0%,100%{transform:scale(.92)} 50%{transform:scale(1.06)}}
+  @keyframes brh{0%,100%{transform:scale(1); opacity:.5} 50%{transform:scale(1.35); opacity:0}}
+}
+.state-connecting .liveWave{opacity:.15}
+.state-adjust .liveWave{opacity:.45}
+.adjust-banner{display:none; align-items:center; gap:10px; margin-bottom:16px; padding:12px 16px;
+  border-radius:var(--r-m); border:1px solid var(--line); background:var(--surface); font-size:14px; color:var(--ink-2)}
+.state-adjust .adjust-banner{display:flex}
+.adjust-banner svg{color:var(--warn); flex:none}
+
+/* rodapé de rastreabilidade */
+.trace{margin-top:24px; font-size:12px; color:var(--ink-3); display:flex; gap:8px; flex-wrap:wrap; align-items:center}
+.trace .sep{opacity:.5}
+
+/* controle de demonstração */
+.demo{position:fixed; right:16px; bottom:16px; z-index:60; display:flex; align-items:center; gap:6px;
+  background:var(--surface); border:1px solid var(--line); border-radius:999px; padding:6px 8px; box-shadow:var(--shadow)}
+.demo .lb{font-size:11px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-3); padding:0 6px}
+.demo button{min-height:34px; padding:0 12px; border-radius:999px; border:none; background:transparent;
+  font-size:12.5px; font-weight:650; color:var(--ink-3); cursor:pointer}
+.demo button.on{background:var(--accent-soft); color:var(--accent)}
+
+/* drawer mobile */
+.scrim{display:none}
+
+/* ---------- tablet ---------- */
+@media (max-width: 1199px){
+  .app{grid-template-columns:76px 1fr}
+  .side{padding:16px 10px}
+  .side .wordmark span.wtxt, .nav a .ntxt, .side-foot, .role-chip, .nav .badge{display:none}
+  .side .wordmark{justify-content:center; padding:8px 0 16px}
+  .nav a{justify-content:center; padding:0}
+  .grid{grid-template-columns:1fr; grid-template-areas:"hero" "rail" "bands"}
+  .g-rail{flex-direction:row}
+  .g-rail > .card{flex:1}
+  .g-bands{grid-template-columns:1fr 1fr}
+  .g-bands > .card:first-child{grid-column:1 / -1}
+}
+/* ---------- mobile ---------- */
+@media (max-width: 767px){
+  .app{grid-template-columns:1fr; grid-template-areas:"head" "main"}
+  .side{position:fixed; inset:0 84px 0 0; z-index:70; height:100vh; transform:translateX(-102%);
+    transition:transform .25s ease; box-shadow:var(--shadow); border-right:none}
+  .side.open{transform:none}
+  .side .wordmark span.wtxt, .nav a .ntxt, .side-foot, .role-chip{display:initial}
+  .nav .badge{display:grid}
+  .side .wordmark{justify-content:flex-start; padding:8px 10px 16px}
+  .nav a{justify-content:flex-start; padding:0 12px}
+  .scrim{display:block; position:fixed; inset:0; z-index:65; background:rgba(2,6,16,.5); opacity:0;
+    pointer-events:none; transition:opacity .25s}
+  .scrim.on{opacity:1; pointer-events:auto}
+  .burger{display:grid}
+  .main{padding:16px 16px 96px}
+  .g-rail{flex-direction:column}
+  .g-bands{grid-template-columns:1fr}
+  .g-hero{min-height:340px}
+  .hero-inner{min-height:260px}
+  .live-top .timer{font-size:22px}
+  .hero-controls{position:fixed; left:0; right:0; bottom:0; z-index:40; background:var(--surface);
+    border-top:1px solid var(--line-2); padding:12px 16px calc(12px + env(safe-area-inset-bottom))}
+  .band{grid-template-columns:96px 1fr 46px}
+  .hero-controls .lock-note{display:none}
+  .hero-controls .btn{white-space:nowrap; font-size:14px; padding:0 14px}
+  .hero-controls .btn-primary{flex:1}
+  .hero-controls .btn-ghost .btxt{display:none}
+  .app-head{gap:10px; padding:0 12px}
+  .app-head .title{font-size:16px}
+  .app-head .chip-live{display:none}
+  .demo{bottom:calc(76px + env(safe-area-inset-bottom))}
+}
+</style>
+</head>
+<body class="state-capturing" id="page">
+
+<div class="app">
+  <!-- ===== sidebar ===== -->
+  <aside class="side" id="side">
+    <div class="wordmark">
+      <span class="mark">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M2 12c2.5 0 2.5-5 5-5s2.5 8 5 8 2.5-8 5-8 2.5 5 5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+      </span>
+      <span class="wtxt">WaveAI</span>
+    </div>
+    <span class="chip role-chip"><span class="dot"></span> Paciente</span>
+    <nav class="nav" aria-label="Navegação principal">
+      <a href="inicio-paciente.html">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11 12 3l9 8"/><path d="M5 10v10h14V10"/></svg>
+        <span class="ntxt">Início</span></a>
+      <a href="estado-ao-vivo.html" class="on" aria-current="page">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M2 12c2.5 0 2.5-5 5-5s2.5 8 5 8 2.5-8 5-8 2.5 5 5 5"/></svg>
+        <span class="ntxt">Estado ao vivo</span></a>
+      <a href="sessoes.html">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><rect x="3" y="4" width="18" height="17" rx="3"/><path d="M3 9h18M8 2.5V6M16 2.5V6"/></svg>
+        <span class="ntxt">Sessões</span></a>
+      <a href="convites.html">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="m3.5 7 8.5 6 8.5-6"/></svg>
+        <span class="ntxt">Convites</span><span class="badge">2</span></a>
+      <a href="perfil.html">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg>
+        <span class="ntxt">Perfil</span></a>
+    </nav>
+    <div class="sp"></div>
+    <p class="side-foot">Plataforma exploratória de bem-estar. Não realiza diagnóstico.</p>
+  </aside>
+  <div class="scrim" id="scrim"></div>
+
+  <!-- ===== header ===== -->
+  <header class="app-head">
+    <button class="iconbtn burger" id="burger" aria-label="Abrir menu">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+    </button>
+    <span class="title">Estado ao vivo</span>
+    <span class="chip chip-live"><span class="dot"></span> AO VIVO</span>
+    <span class="sp"></span>
+    <button class="iconbtn" id="themeToggle" aria-label="Alternar tema claro/escuro" title="Alternar tema">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true">
+        <path class="ic-moon" d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5Z"/>
+        <g class="ic-sun" style="display:none"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M4.9 4.9l1.6 1.6M17.5 17.5l1.6 1.6M19.1 4.9l-1.6 1.6M6.5 17.5l-1.6 1.6"/></g>
+      </svg>
+    </button>
+    <a class="avatar" href="perfil.html" title="Ana Martins · abrir perfil (dados fictícios)" aria-label="Abrir perfil">AM</a>
+  </header>
+
+  <!-- ===== conteúdo ===== -->
+  <main class="main">
+    <div class="adjust-banner" role="status">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 8v5"/><circle cx="12" cy="16.5" r=".5" fill="currentColor"/><circle cx="12" cy="12" r="9.2"/></svg>
+      O contato do sensor caiu. Afaste os cabelos da testa e reposicione a haste frontal — a captação continua ao retomar o contato.
+    </div>
+
+    <div class="live-top">
+      <span class="timer" id="timer" aria-label="Duração da sessão">07:42</span>
+      <span class="chip"><span class="dot" style="background:var(--ink-3)"></span> Sessão de captação</span>
+      <span class="sp"></span>
+      <span class="t-small">iniciada às 09:14 · dados fictícios</span>
+    </div>
+
+    <div class="grid">
+      <!-- ===== herói: onda ao vivo ===== -->
+      <section class="card g-hero" aria-label="Onda ao vivo">
+        <div class="hero-inner" id="heroHost">
+          <canvas id="liveWave" class="liveWave" aria-hidden="true"></canvas>
+          <div class="hero-meta">
+            <span class="chip"><span class="dot"></span> ritmo ao vivo</span>
+            <span class="chip chip-exp">visualização estilizada — não é exame</span>
+          </div>
+          <p class="hero-note">métricas calculadas no servidor ·<br>a onda responde ao seu cursor</p>
+          <div class="connect-veil">
+            <div class="breath" aria-hidden="true"></div>
+            <div>
+              <b style="font-size:17px">Procurando o sensor…</b>
+              <p class="t-small" style="max-width:300px; margin-top:6px">Ligue o MindWave e aproxime-o do dispositivo. A sessão começa assim que o contato ficar bom.</p>
+            </div>
+          </div>
+        </div>
+        <div class="hero-controls">
+          <button class="btn btn-ghost" type="button" aria-label="Pausar">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6" y="5" width="4" height="14" rx="1.2"/><rect x="14" y="5" width="4" height="14" rx="1.2"/></svg>
+            <span class="btxt">Pausar</span>
+          </button>
+          <button class="btn btn-primary" type="button">Encerrar e salvar sessão</button>
+          <span class="sp"></span>
+          <span class="t-small lock-note">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><rect x="4" y="10" width="16" height="10" rx="2.5"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+            só você vê esta sessão
+          </span>
+        </div>
+      </section>
+
+      <!-- ===== trilho: sinal + eSense ===== -->
+      <div class="g-rail">
+        <section class="card" aria-label="Qualidade do sinal">
+          <div class="card-h"><h3>Qualidade do sinal</h3><span class="eyebrow">contato</span></div>
+          <div class="card-b">
+            <div class="sig-val"><span class="n" id="sigVal">92</span><span class="u">% de contato</span></div>
+            <div class="meter"><i id="sigBar" style="width:92%"></i></div>
+            <div style="display:flex; align-items:center; gap:10px; margin-top:10px">
+              <span class="status-chip status-ok" id="sigChip">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 12.5 10 18 19.5 7"/></svg>
+                <span id="sigChipTxt">Bom contato</span>
+              </span>
+            </div>
+            <p class="sig-tip" id="sigTip" style="margin-top:10px">Sensor frontal bem posicionado. Mantenha-se confortável.</p>
+          </div>
+        </section>
+
+        <section class="card" aria-label="eSense">
+          <div class="card-h">
+            <h3>eSense</h3>
+            <span class="chip chip-exp">proprietário · não validado</span>
+          </div>
+          <div class="card-b">
+            <div class="esense-row">
+              <div class="lbl"><span>Atenção</span><b id="esA">64</b></div>
+              <div class="meter"><i id="esABar" style="width:64%"></i></div>
+            </div>
+            <div class="esense-row">
+              <div class="lbl"><span>Meditação</span><b id="esM">71</b></div>
+              <div class="meter"><i id="esMBar" style="width:71%"></i></div>
+            </div>
+            <p class="esense-note">Índices 0–100 do algoritmo proprietário do sensor. Complemento exploratório — a leitura principal é a composição por banda.</p>
+          </div>
+        </section>
+      </div>
+
+      <!-- ===== faixa inferior ===== -->
+      <div class="g-bands">
+        <section class="card" aria-label="Composição por banda">
+          <div class="card-h">
+            <h3>Composição por banda</h3>
+            <span class="eyebrow">% do espectro · potência relativa</span>
+          </div>
+          <div class="card-b">
+            <div class="bands" id="bands">
+              <div class="band"><div class="bl"><b>Delta</b><span>0,5–4 Hz</span></div><div class="track"><div class="fill" style="background:var(--band-delta)"></div></div><span class="pct">—</span></div>
+              <div class="band"><div class="bl"><b>Teta</b><span>4–8 Hz</span></div><div class="track"><div class="fill" style="background:var(--band-theta)"></div></div><span class="pct">—</span></div>
+              <div class="band"><div class="bl"><b>Alfa</b><span>8–13 Hz</span></div><div class="track"><div class="fill" style="background:var(--band-alpha)"></div></div><span class="pct">—</span></div>
+              <div class="band"><div class="bl"><b>Beta</b><span>13–30 Hz</span></div><div class="track"><div class="fill" style="background:var(--band-beta)"></div></div><span class="pct">—</span></div>
+              <div class="band"><div class="bl"><b>Gama</b><span>30–44 Hz</span></div><div class="track"><div class="fill" style="background:var(--band-gamma)"></div></div><span class="pct">—</span></div>
+            </div>
+            <p class="bands-note">Potência relativa de cada banda no espectro da última janela. As bandas não têm valência — nenhuma é “boa” ou “ruim”; o interesse está em como a composição muda entre estados e ao longo das sessões.</p>
+            <details class="tblv">
+              <summary>Ver valores numéricos</summary>
+              <table>
+                <thead><tr><th>Banda</th><th>Faixa</th><th>% do espectro</th></tr></thead>
+                <tbody id="bandTable">
+                  <tr><td>Delta</td><td>0,5–4 Hz</td><td class="v">—</td></tr>
+                  <tr><td>Teta</td><td>4–8 Hz</td><td class="v">—</td></tr>
+                  <tr><td>Alfa</td><td>8–13 Hz</td><td class="v">—</td></tr>
+                  <tr><td>Beta</td><td>13–30 Hz</td><td class="v">—</td></tr>
+                  <tr><td>Gama</td><td>30–44 Hz</td><td class="v">—</td></tr>
+                </tbody>
+              </table>
+            </details>
+          </div>
+        </section>
+
+        <section class="card" aria-label="Sessão guiada">
+          <div class="card-h"><h3>Sessão guiada</h3><span class="eyebrow">opcional</span></div>
+          <div class="card-b">
+            <div class="proto-phase">
+              <div class="proto-ring">
+                <svg width="84" height="84" viewBox="0 0 84 84" aria-hidden="true">
+                  <circle class="tr" cx="42" cy="42" r="37" fill="none" stroke-width="6"/>
+                  <circle class="pr" id="protoRing" cx="42" cy="42" r="37" fill="none" stroke-width="6"/>
+                </svg>
+                <span class="n" id="protoSec">0:47</span>
+              </div>
+              <div class="proto-txt">
+                <b id="protoPhase">Olhos abertos</b>
+                <span id="protoNext">em seguida: 60 s de olhos fechados</span>
+              </div>
+            </div>
+            <p class="voice speaking" id="voiceRow">
+              <span class="bars" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+              <span id="voiceTxt">guia por voz: “mantenha o olhar suave, respirando no seu ritmo…”</span>
+            </p>
+            <div style="display:flex; gap:10px; margin-top:16px; flex-wrap:wrap">
+              <button class="btn btn-ghost" type="button" style="min-height:40px; padding:0 16px; font-size:13.5px">Pular etapa</button>
+              <button class="btn btn-ghost" type="button" style="min-height:40px; padding:0 16px; font-size:13.5px">Silenciar voz</button>
+            </div>
+          </div>
+        </section>
+
+        <section class="card" aria-label="Nota de contexto">
+          <div class="card-h"><h3>Nota de contexto</h3><span class="chip chip-exp">autorrelato</span></div>
+          <div class="card-b">
+            <div class="note-field">
+              <label class="t-small" for="nota" style="display:block; margin-bottom:6px">Como você chegou para esta sessão?</label>
+              <textarea id="nota" placeholder="Ex.: dormi pouco; sessão logo após meditar."></textarea>
+            </div>
+            <div class="note-chips" aria-label="Sugestões de nota">
+              <button class="chip" type="button">estava cansado(a)</button>
+              <button class="chip" type="button">após meditar</button>
+              <button class="chip" type="button">dia agitado</button>
+              <button class="chip" type="button">tomei café</button>
+            </div>
+            <p class="t-small" style="margin-top:12px">A nota fica junto da sessão. Se você autorizar um profissional de bem-estar, ele a lê como “autorrelato da pessoa”.</p>
+          </div>
+        </section>
+      </div>
+    </div>
+
+    <p class="trace">
+      <span>engine wave_eeg v0.4.2</span><span class="sep">·</span>
+      <span>métricas calculadas no servidor WaveAI</span><span class="sep">·</span>
+      <span>janela de 2 s · 512 Hz · canal FP1</span><span class="sep">·</span>
+      <span>dados fictícios para demonstração</span>
+    </p>
+  </main>
+</div>
+
+<!-- ===== alternador de estados (só na demonstração) ===== -->
+<div class="demo" role="group" aria-label="Estados de demonstração">
+  <span class="lb">demo</span>
+  <button type="button" data-state="connecting">Conectando</button>
+  <button type="button" data-state="adjust">Ajuste</button>
+  <button type="button" data-state="capturing" class="on">Captando</button>
+</div>
+
+<script>
+/* ---------- tema ---------- */
+(function(){
+  const btn = document.getElementById('themeToggle');
+  const sync = ()=>{
+    const light = document.documentElement.dataset.theme === 'light';
+    btn.querySelector('.ic-moon').style.display = light ? '' : 'none';
+    btn.querySelector('.ic-sun').style.display  = light ? 'none' : '';
+  };
+  btn.addEventListener('click', ()=>{
+    const t = document.documentElement.dataset.theme === 'light' ? 'dark' : 'light';
+    document.documentElement.dataset.theme = t;
+    localStorage.setItem('waveai-theme', t);
+    sync();
+  });
+  sync();
+})();
+
+/* ---------- drawer mobile ---------- */
+(function(){
+  const side = document.getElementById('side'), scrim = document.getElementById('scrim');
+  document.getElementById('burger').addEventListener('click', ()=>{ side.classList.add('open'); scrim.classList.add('on'); });
+  scrim.addEventListener('click', ()=>{ side.classList.remove('open'); scrim.classList.remove('on'); });
+})();
+
+/* ---------- estados de demonstração ---------- */
+let state = 'capturing';
+const page = document.getElementById('page');
+document.querySelectorAll('.demo button').forEach(b=>{
+  b.addEventListener('click', ()=>{
+    state = b.dataset.state;
+    page.className = 'state-' + state;
+    document.querySelectorAll('.demo button').forEach(x=>x.classList.toggle('on', x===b));
+  });
+});
+
+const cssVar = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* ============================================================
+   Onda ao vivo — traço principal + ecos em camadas.
+   Estilizada de propósito (não é exame); a proximidade do
+   cursor eleva a amplitude local com suavidade.
+============================================================ */
+(function(){
+  const c = document.getElementById('liveWave'), ctx = c.getContext('2d');
+  const host = document.getElementById('heroHost');
+  let w=0, h=0, t=0, px=-1e4, boost=0, amp=1, ampT=1;
+  function resize(){
+    const d = Math.min(devicePixelRatio||1, 2);
+    w = c.clientWidth; h = c.clientHeight;
+    c.width = w*d; c.height = h*d; ctx.setTransform(d,0,0,d,0,0);
+    if(reduced) draw();
+  }
+  new ResizeObserver(resize).observe(c); resize();
+  host.addEventListener('pointermove', e=>{ const r=c.getBoundingClientRect(); px = e.clientX-r.left; });
+  host.addEventListener('pointerleave', ()=>{ px = -1e4; });
+
+  function trace(y0, k, seed, speed){
+    ctx.beginPath();
+    for(let x=0; x<=w; x+=3){
+      const near = Math.exp(-Math.pow((x-px)/120, 2)) * boost;
+      const y = y0
+        + Math.sin(x*.021 + t*2.1*speed + seed)     * 14  * k * amp
+        + Math.sin(x*.043 + t*3.3*speed + seed*2.7) * 6   * k * amp
+        + Math.sin(x*.009 - t*1.2*speed + seed*4.1) * 20  * k * amp
+        + Math.sin(x*.087 + t*5.2*speed + seed*1.3) * 2.4 * k
+        - near * 18;
+      x===0 ? ctx.moveTo(x,y) : ctx.lineTo(x,y);
+    }
+    ctx.stroke();
+  }
+  function draw(){
+    ctx.clearRect(0,0,w,h);
+    const acc = cssVar('--accent') || '#4FD1C5';
+    const mid = h*.52;
+    ctx.strokeStyle = cssVar('--line-2') || 'rgba(255,255,255,.06)';
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(0,mid); ctx.lineTo(w,mid); ctx.stroke();
+    ctx.strokeStyle = acc; ctx.lineWidth = 1.2;
+    ctx.globalAlpha = .16; trace(mid,  .85, 11.3, .8);
+    ctx.globalAlpha = .10; trace(mid, 1.15, 23.7, .65);
+    ctx.globalAlpha = 1; ctx.lineWidth = 2;
+    ctx.shadowColor = acc; ctx.shadowBlur = 14;
+    trace(mid, 1, 0, 1);
+    ctx.shadowBlur = 0;
+  }
+  function loop(){
+    t += .016;
+    boost += ((px > -1e3 ? 1 : 0) - boost) * .05;
+    amp += (ampT - amp) * .02;
+    if(Math.random() < .01) ampT = .75 + Math.random()*.6;
+    draw();
+    requestAnimationFrame(loop);
+  }
+  if(reduced){ draw(); } else { loop(); }
+})();
+
+/* ---------- cronômetro da sessão ---------- */
+(function(){
+  let s = 7*60 + 42;
+  const el = document.getElementById('timer');
+  setInterval(()=>{
+    if(state !== 'capturing') return;
+    s++;
+    el.textContent = String(Math.floor(s/60)).padStart(2,'0') + ':' + String(s%60).padStart(2,'0');
+  }, 1000);
+})();
+
+/* ---------- composição por banda (simulação suave) ---------- */
+(function(){
+  const targets = [21, 17, 33, 21, 8];
+  const rows  = [...document.querySelectorAll('#bands .band')];
+  const cells = [...document.querySelectorAll('#bandTable td.v')];
+  let vals = [...targets];
+  function tick(){
+    if(state === 'connecting'){
+      rows.forEach(r=>{ r.querySelector('.fill').style.width = '0%'; r.querySelector('.pct').textContent = '—'; });
+      cells.forEach(c=> c.textContent = '—');
+      return;
+    }
+    const raw = targets.map((tv,i)=> Math.max(2, vals[i] + (tv - vals[i])*.3 + (Math.random()-.5)*4));
+    const sum = raw.reduce((a,b)=>a+b, 0);
+    vals = raw.map(v => v/sum*100);
+    rows.forEach((r,i)=>{
+      r.querySelector('.fill').style.width = vals[i].toFixed(0) + '%';
+      r.querySelector('.pct').textContent  = vals[i].toFixed(0) + '%';
+    });
+    cells.forEach((c,i)=> c.textContent = vals[i].toFixed(1).replace('.', ',') + '%');
+  }
+  tick();
+  setInterval(tick, 1400);
+})();
+
+/* ---------- qualidade do sinal + eSense ---------- */
+(function(){
+  const esA = document.getElementById('esA'),   esM = document.getElementById('esM');
+  const esABar = document.getElementById('esABar'), esMBar = document.getElementById('esMBar');
+  const sigVal = document.getElementById('sigVal'), sigBar = document.getElementById('sigBar');
+  const sigChip = document.getElementById('sigChip'), sigChipTxt = document.getElementById('sigChipTxt');
+  const sigTip = document.getElementById('sigTip');
+  const okIcon   = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 12.5 10 18 19.5 7"/></svg>';
+  const warnIcon = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 7v6"/><circle cx="12" cy="16.8" r=".6" fill="currentColor"/><circle cx="12" cy="12" r="9.2"/></svg>';
+  let a=64, m=71, q=92;
+  function setChip(kind, txt, tip){
+    sigChip.className = 'status-chip status-' + kind;
+    sigChip.innerHTML = (kind==='ok' ? okIcon : warnIcon) + '<span id="sigChipTxt">' + txt + '</span>';
+    sigTip.textContent = tip;
+  }
+  function tick(){
+    if(state === 'connecting'){
+      sigVal.textContent = '—'; sigBar.style.width = '0%';
+      setChip('bad', 'Sem contato', 'Ligue o sensor e aguarde a conexão.');
+      esA.textContent = '—'; esM.textContent = '—';
+      esABar.style.width = '0%'; esMBar.style.width = '0%';
+      return;
+    }
+    const target = state === 'adjust' ? 38 + Math.random()*14 : 90 + Math.random()*7;
+    q += (target - q) * .45;
+    const qi = Math.round(q);
+    sigVal.textContent = qi;
+    sigBar.style.width = qi + '%';
+    sigBar.style.background = qi >= 70 ? 'var(--ok)' : (qi >= 40 ? 'var(--warn)' : 'var(--bad)');
+    if(qi >= 70) setChip('ok', 'Bom contato', 'Sensor frontal bem posicionado. Mantenha-se confortável.');
+    else if(qi >= 40) setChip('warn', 'Contato instável', 'Afaste os cabelos da testa e reposicione a haste frontal.');
+    else setChip('bad', 'Contato solto', 'Reajuste a faixa até o indicador voltar ao verde.');
+    a = Math.max(5, Math.min(95, a + (Math.random()-.5)*9));
+    m = Math.max(5, Math.min(95, m + (Math.random()-.5)*7));
+    esA.textContent = Math.round(a); esABar.style.width = Math.round(a) + '%';
+    esM.textContent = Math.round(m); esMBar.style.width = Math.round(m) + '%';
+  }
+  tick();
+  setInterval(tick, 1600);
+})();
+
+/* ---------- protocolo guiado 60 s / 60 s ---------- */
+(function(){
+  const C = 2*Math.PI*37;
+  const ring = document.getElementById('protoRing');
+  const sec = document.getElementById('protoSec');
+  const ph = document.getElementById('protoPhase'), nx = document.getElementById('protoNext');
+  const voiceTxt = document.getElementById('voiceTxt'), voiceRow = document.getElementById('voiceRow');
+  ring.style.strokeDasharray = C;
+  const phases = [
+    {t:'Olhos abertos',   n:'em seguida: 60 s de olhos fechados', v:'guia por voz: “mantenha o olhar suave, respirando no seu ritmo…”'},
+    {t:'Olhos fechados',  n:'em seguida: encerramento do exercício', v:'guia por voz: “feche os olhos e deixe os pensamentos passarem…”'}
+  ];
+  let remaining = 47, phase = 0;
+  function render(){
+    sec.textContent = Math.floor(remaining/60) + ':' + String(remaining%60).padStart(2,'0');
+    ring.style.strokeDashoffset = C * (1 - remaining/60);
+  }
+  render();
+  setInterval(()=>{
+    if(state !== 'capturing'){ voiceRow.classList.remove('speaking'); return; }
+    voiceRow.classList.add('speaking');
+    remaining--;
+    if(remaining < 0){
+      phase = 1 - phase; remaining = 60;
+      ph.textContent = phases[phase].t;
+      nx.textContent = phases[phase].n;
+      voiceTxt.textContent = phases[phase].v;
+    }
+    render();
+  }, 1000);
+})();
+
+/* ---------- sugestões de nota ---------- */
+document.querySelectorAll('.note-chips .chip').forEach(ch=>{
+  ch.addEventListener('click', ()=>{
+    const ta = document.getElementById('nota');
+    ta.value = ta.value ? ta.value.replace(/\s*$/, '') + '; ' + ch.textContent : ch.textContent;
+    ta.focus();
+  });
+});
+</script>
+</body>
+</html>
