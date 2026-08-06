@@ -60,6 +60,12 @@ function pares(c) {
     ["onAccent", "accentPatient", AA_TEXTO],
     ["onAccent", "accentDoctor", AA_TEXTO],
     ["onAccent", "warning", AA_TEXTO],
+    // Campo de formulário: desde o porte do design "Maré" o input é preenchido
+    // com `surfaceAlt`, então é sobre ele que o texto digitado, o placeholder e
+    // o limite do controle precisam se sustentar.
+    ["text", "surfaceAlt", AA_TEXTO],
+    ["textMuted", "surfaceAlt", AA_TEXTO],
+    ["borderStrong", "surfaceAlt", AA_NAO_TEXTO],
     // Limites de controles interativos: 3:1 (WCAG 1.4.11).
     ["borderStrong", "background", AA_NAO_TEXTO],
     ["borderStrong", "surface", AA_NAO_TEXTO],

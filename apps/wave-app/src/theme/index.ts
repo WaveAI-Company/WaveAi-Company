@@ -13,9 +13,12 @@ export {
   type RoleAccent,
   type Theme,
 } from "./ThemeProvider";
+export { withAlpha } from "./color";
 export {
   MIN_TOUCH,
+  palettes,
   radius,
+  shadows,
   spacing,
   typography,
   type Role,
