@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WaveAI · Linguagem de design “Maré”</title>
+<script>
+  (function(){
+    var t = localStorage.getItem('waveai-theme');
+    if(!t){ t = window.matchMedia && matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark'; }
+    document.documentElement.dataset.theme = t;
+  })();
+</script>
+<style>
+/* ============================================================
+   WaveAI · Design "Maré" · tokens
+   ============================================================ */
+:root{
+  color-scheme: dark;
+  --bg:#0B1220; --surface:#151E32; --surface-2:#1C2740; --surface-3:#233152;
+  --ink:#F5F7FA; --ink-2:#B6C1D4; --ink-3:#8291A9;
+  --line:rgba(245,247,250,.10); --line-2:rgba(245,247,250,.055);
+  --accent:#4FD1C5; --accent-ink:#06231F; --accent-soft:rgba(79,209,197,.12);
+  --accent-pro:#7AA2F7; --accent-pro-ink:#0A1430; --accent-pro-soft:rgba(122,162,247,.12);
+  --ok:#0ca30c; --warn:#fab219; --bad:#ec835a;
+  --band-delta:#5C7CFA; --band-theta:#B24468; --band-alpha:#1FA695; --band-beta:#C98500; --band-gamma:#9085E9;
+  --esense:#8291A9;
+  --shadow:0 10px 30px rgba(2,6,16,.45), 0 2px 8px rgba(2,6,16,.35);
+  --r-s:8px; --r-m:12px; --r-l:16px;
+}
+:root[data-theme="light"]{
+  color-scheme: light;
+  --bg:#F5F7FA; --surface:#FFFFFF; --surface-2:#EDF1F6; --surface-3:#E2E8F1;
+  --ink:#0F1726; --ink-2:#44526A; --ink-3:#68778F;
+  --line:rgba(15,23,38,.12); --line-2:rgba(15,23,38,.06);
+  --accent:#0F7A70; --accent-ink:#FFFFFF; --accent-soft:rgba(15,122,112,.10);
+  --accent-pro:#2A5BC7; --accent-pro-ink:#FFFFFF; --accent-pro-soft:rgba(42,91,199,.10);
+  --band-delta:#3E63DD; --band-theta:#963061; --band-alpha:#009184; --band-beta:#B87500; --band-gamma:#6D5AC4;
+  --esense:#68778F;
+  --shadow:0 10px 30px rgba(15,23,38,.08), 0 2px 8px rgba(15,23,38,.06);
+}
+*{box-sizing:border-box; margin:0; padding:0}
+body{
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  background:var(--bg); color:var(--ink); font-size:15px; line-height:1.5;
+  -webkit-font-smoothing:antialiased;
+}
+button,input,textarea{font:inherit; color:inherit}
+a{color:var(--accent); text-decoration:none}
+a:hover{text-decoration:underline}
+:focus-visible{outline:2px solid var(--accent); outline-offset:2px; border-radius:4px}
+.eyebrow{font-size:12px; font-weight:650; letter-spacing:.09em; text-transform:uppercase; color:var(--ink-3)}
+.t-small{font-size:13px; color:var(--ink-3)}
+
+/* ---------- componentes de amostra ---------- */
+.btn{display:inline-flex; align-items:center; justify-content:center; gap:8px; min-height:44px; padding:0 22px;
+  border:none; border-radius:var(--r-m); font-weight:600; font-size:15px; cursor:pointer;
+  transition:transform .15s ease, box-shadow .2s ease, background .2s ease}
+.btn-primary{background:var(--accent); color:var(--accent-ink)}
+.btn-primary:hover{transform:translateY(-1px); box-shadow:0 6px 18px var(--accent-soft)}
+.btn-pro{background:var(--accent-pro); color:var(--accent-pro-ink)}
+.btn-pro:hover{transform:translateY(-1px); box-shadow:0 6px 18px var(--accent-pro-soft)}
+.btn-ghost{background:transparent; color:var(--ink-2); border:1px solid var(--line)}
+.btn-ghost:hover{background:var(--surface-2); color:var(--ink)}
+.card{background:var(--surface); border:1px solid var(--line-2); border-radius:var(--r-l); box-shadow:var(--shadow)}
+.chip{display:inline-flex; align-items:center; gap:6px; min-height:28px; padding:3px 12px; border-radius:999px;
+  border:1px solid var(--line); background:var(--surface-2); font-size:12px; font-weight:600; color:var(--ink-2)}
+.chip .dot{width:7px; height:7px; border-radius:50%; background:var(--accent); flex:none}
+.chip-exp{color:var(--ink-3)}
+.status-chip{display:inline-flex; align-items:center; gap:7px; min-height:28px; padding:3px 12px; border-radius:999px;
+  font-size:12.5px; font-weight:650; border:1px solid var(--line); background:var(--surface-2); color:var(--ink)}
+.status-ok svg{color:var(--ok)} .status-warn svg{color:var(--warn)} .status-bad svg{color:var(--bad)}
+.field{display:flex; flex-direction:column; gap:6px}
+.field label{font-size:13px; font-weight:600; color:var(--ink-2)}
+.field input{width:100%; min-height:46px; padding:0 14px; border-radius:var(--r-m);
+  border:1px solid var(--line); background:var(--surface-2); color:var(--ink);
+  transition:border-color .15s, box-shadow .15s}
+.field input::placeholder{color:var(--ink-3)}
+.field input:focus{outline:none; border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-soft); background:var(--surface)}
+.meter{height:8px; border-radius:999px; background:var(--surface-2); overflow:hidden}
+.meter > i{display:block; height:100%; border-radius:999px}
+
+/* ---------- página ---------- */
+.top{position:sticky; top:0; z-index:20; display:flex; align-items:center; gap:14px; padding:0 24px; height:64px;
+  background:color-mix(in srgb, var(--bg) 86%, transparent); backdrop-filter:blur(8px); border-bottom:1px solid var(--line-2)}
+.wordmark{display:flex; align-items:center; gap:10px; font-weight:700; font-size:17px}
+.wordmark .mark{width:32px; height:32px; border-radius:9px; display:grid; place-items:center; flex:none;
+  background:linear-gradient(135deg,#4FD1C5,#7AA2F7); color:#06231F}
+.top nav{display:flex; gap:2px; flex:1; justify-content:flex-end; align-items:center; flex-wrap:wrap}
+.top nav a{color:var(--ink-2); font-weight:600; font-size:13.5px; padding:8px 12px; border-radius:var(--r-s)}
+.top nav a:hover{background:var(--surface-2); color:var(--ink); text-decoration:none}
+.menu-toggle{display:none}
+.iconbtn{width:44px; height:44px; border-radius:50%; border:1px solid var(--line); background:var(--surface);
+  color:var(--ink-2); cursor:pointer; display:grid; place-items:center; flex:none}
+.iconbtn:hover{color:var(--ink)}
+
+.wrap{max-width:1240px; margin:0 auto; padding:40px 24px 80px}
+.hero{position:relative; overflow:hidden; border-radius:var(--r-l); border:1px solid var(--line-2);
+  background:var(--surface); box-shadow:var(--shadow); padding:56px 48px 72px; margin-bottom:48px}
+.hero .wavefield{position:absolute; inset:auto 0 0 0; height:120px; width:100%; pointer-events:none}
+.hero h1{font-size:32px; font-weight:650; letter-spacing:-.02em; line-height:1.15; max-width:640px}
+.hero h1 em{font-style:normal; background:linear-gradient(90deg,var(--accent),var(--accent-pro));
+  -webkit-background-clip:text; background-clip:text; color:transparent}
+.hero p{color:var(--ink-2); max-width:560px; margin-top:12px}
+.hero .chips{display:flex; gap:8px; flex-wrap:wrap; margin-top:20px}
+
+.sec{margin-bottom:48px}
+.sec > .eyebrow{margin-bottom:6px}
+.sec > h2{font-size:26px; font-weight:650; letter-spacing:-.015em; margin-bottom:6px}
+.sec > .lead{color:var(--ink-2); max-width:640px; margin-bottom:22px}
+.grid{display:grid; gap:20px}
+.g2{grid-template-columns:repeat(2, minmax(0,1fr))}
+.g3{grid-template-columns:repeat(3, minmax(0,1fr))}
+.g4{grid-template-columns:repeat(4, minmax(0,1fr))}
+.cellcard{padding:22px}
+.cellcard h3{font-size:15px; font-weight:650; margin-bottom:4px}
+.cellcard .t-small{margin-bottom:16px; display:block}
+
+/* swatches */
+.sw-row{display:grid; grid-template-columns:repeat(auto-fill, minmax(132px,1fr)); gap:12px}
+.sw{border-radius:var(--r-m); border:1px solid var(--line-2); overflow:hidden; background:var(--surface)}
+.sw .c{height:64px}
+.sw .m{padding:10px 12px}
+.sw .m b{display:block; font-size:12.5px}
+.sw .m span{font-size:11.5px; color:var(--ink-3); font-variant-numeric:tabular-nums; display:block; line-height:1.4}
+
+/* tipografia */
+.type-row{display:flex; flex-direction:column; gap:18px}
+.type-row .tr{display:grid; grid-template-columns:110px 1fr; gap:16px; align-items:baseline;
+  padding-bottom:16px; border-bottom:1px solid var(--line-2)}
+.type-row .tr:last-child{border-bottom:none; padding-bottom:0}
+.type-row .lbl{font-size:12px; color:var(--ink-3); font-variant-numeric:tabular-nums}
+
+/* bandas demo */
+.band{display:grid; grid-template-columns:96px 1fr 48px; align-items:center; gap:12px; margin-bottom:10px}
+.band .bl b{font-size:13.5px; font-weight:650; display:block}
+.band .bl span{font-size:11.5px; color:var(--ink-3)}
+.band .track{height:20px; border-radius:4px; background:var(--surface-2); position:relative; overflow:hidden}
+.band .fill{position:absolute; inset:0 auto 0 0; border-radius:0 4px 4px 0}
+.band .pct{font-size:13px; font-weight:650; text-align:right; color:var(--ink-2); font-variant-numeric:tabular-nums}
+
+/* loader */
+.breath{width:56px; height:56px; border-radius:50%; border:2px solid var(--accent); position:relative; margin:8px auto}
+.breath::after{content:""; position:absolute; inset:-2px; border-radius:50%; border:2px solid var(--accent); opacity:.5}
+@media (prefers-reduced-motion: no-preference){
+  .breath{animation:br 2.8s ease-in-out infinite}
+  .breath::after{animation:brh 2.8s ease-in-out infinite}
+  @keyframes br{0%,100%{transform:scale(.92)} 50%{transform:scale(1.06)}}
+  @keyframes brh{0%,100%{transform:scale(1); opacity:.5} 50%{transform:scale(1.35); opacity:0}}
+}
+
+/* estado vazio (amostra) */
+.empty{display:flex; flex-direction:column; align-items:center; text-align:center; gap:6px; padding:26px 18px}
+.empty svg{margin-bottom:6px}
+.empty b{font-size:15px}
+.empty p{font-size:13px; color:var(--ink-3); max-width:250px}
+
+/* cabeça-constelação (amostra) */
+.headfig{width:100%; max-width:250px; margin:0 auto; display:block; overflow:visible}
+.headfig .silhouette{fill:none; stroke:var(--ink-3); stroke-width:1.6; stroke-linecap:round; opacity:.55}
+.headfig .dome{fill:none; stroke:var(--accent-pro); stroke-width:1; opacity:.4}
+.headfig .link-line{stroke:var(--accent); stroke-width:1; opacity:.4}
+.headfig .node circle.core{fill:var(--accent)}
+.headfig .node circle.halo{fill:none; stroke:var(--accent); stroke-width:1.2; opacity:.6}
+@media (prefers-reduced-motion: no-preference){
+  .headfig .node circle.halo{animation:halo 3.2s ease-in-out infinite; transform-origin:center; transform-box:fill-box}
+  @keyframes halo{0%,100%{transform:scale(1); opacity:.6} 50%{transform:scale(1.55); opacity:0}}
+}
+
+/* telas */
+.screen-card{display:flex; flex-direction:column; gap:6px; padding:22px; color:inherit; border-radius:var(--r-l);
+  background:var(--surface); border:1px solid var(--line-2); box-shadow:var(--shadow);
+  transition:transform .15s ease, border-color .2s ease}
+.screen-card:hover{transform:translateY(-2px); border-color:var(--accent); text-decoration:none}
+.screen-card h3{font-size:17px; font-weight:650}
+.screen-card p{font-size:13px; color:var(--ink-3)}
+.screen-card .chips{display:flex; gap:6px; flex-wrap:wrap; margin-top:8px}
+
+.foot{border-top:1px solid var(--line-2); margin-top:16px; padding-top:24px; font-size:12.5px; color:var(--ink-3); line-height:1.6; max-width:760px}
+
+@media (max-width: 980px){
+  .g4{grid-template-columns:repeat(2, minmax(0,1fr))}
+  .g3{grid-template-columns:repeat(2, minmax(0,1fr))}
+  .hero{padding:40px 28px 64px}
+}
+@media (max-width: 900px){
+  .top{height:auto; padding:10px 16px; flex-wrap:wrap; gap:4px 8px}
+  .menu-toggle{display:grid}
+  .top .wordmark{flex:1}
+  .top nav{display:none; order:3; flex-basis:100%; flex-direction:column; justify-content:flex-start; gap:2px; padding-top:6px}
+  .top.nav-open nav{display:flex}
+  .top nav a{padding:12px 10px; font-size:15px}
+}
+@media (max-width: 640px){
+  .g2,.g3,.g4{grid-template-columns:1fr}
+  .wrap{padding:28px 16px 64px}
+  .hero{padding:32px 22px 60px}
+  .hero h1{font-size:26px}
+  .type-row .tr{grid-template-columns:1fr; gap:4px}
+}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <button class="iconbtn menu-toggle" id="menuToggle" aria-label="Abrir menu" aria-expanded="false">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+  </button>
+  <div class="wordmark">
+    <span class="mark">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M2 12c2.5 0 2.5-5 5-5s2.5 8 5 8 2.5-8 5-8 2.5 5 5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      </svg>
+    </span>
+    WaveAI · Maré
+  </div>
+  <nav aria-label="Telas do round 1">
+    <a href="login.html">Login</a>
+    <a href="criar-conta.html">Criar conta</a>
+    <a href="inicio-paciente.html">Início da pessoa</a>
+    <a href="estado-ao-vivo.html">Estado ao vivo</a>
+    <a href="painel-profissional.html">Painel do profissional</a>
+  </nav>
+  <button class="iconbtn" id="themeToggle" aria-label="Alternar tema claro/escuro" title="Alternar tema">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true">
+      <path class="ic-moon" d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5Z"/>
+      <g class="ic-sun" style="display:none"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M4.9 4.9l1.6 1.6M17.5 17.5l1.6 1.6M19.1 4.9l-1.6 1.6M6.5 17.5l-1.6 1.6"/></g>
+    </svg>
+  </button>
+</header>
+
+<div class="wrap">
+
+  <!-- ===== hero ===== -->
+  <section class="hero" id="heroHost">
+    <p class="eyebrow">Linguagem de design · round 1</p>
+    <h1>“Maré” — fazer o comum parecer <em>sofisticado</em>.</h1>
+    <p>Sereno como uma prática de bem-estar, preciso como um instrumento científico. A identidade vem da escala, do peso, do movimento calmo e de dois visuais-assinatura — não de decoração.</p>
+    <div class="chips">
+      <span class="chip"><span class="dot"></span> futurista</span>
+      <span class="chip"><span class="dot"></span> científico</span>
+      <span class="chip"><span class="dot"></span> sereno</span>
+      <span class="chip chip-exp">exploratório · nunca clínico</span>
+    </div>
+    <canvas class="wavefield" id="waveHero" aria-hidden="true"></canvas>
+  </section>
+
+  <!-- ===== direções assinatura ===== -->
+  <section class="sec">
+    <p class="eyebrow">Assinaturas</p>
+    <h2>Duas direções fortes, uma identidade</h2>
+    <p class="lead">As duas convivem: a Maré é o movimento (fundos, momentos ao vivo); a Constelação é a estrutura (herói de marca, navegação evocativa, estados vazios).</p>
+    <div class="grid g2">
+      <div class="card cellcard" id="mareHost">
+        <h3>Direção A — Maré</h3>
+        <span class="t-small">Ondas em camadas fluindo com calma; a proximidade do cursor eleva a amplitude local. Vive no login, no herói do estado ao vivo e em fundos discretos. Passe o cursor abaixo.</span>
+        <div style="position:relative; height:150px; border-radius:var(--r-m); overflow:hidden; background:var(--surface-2)">
+          <canvas id="waveDemo" style="position:absolute; inset:0; width:100%; height:100%"></canvas>
+        </div>
+      </div>
+      <div class="card cellcard">
+        <h3>Direção B — Constelação</h3>
+        <span class="t-small">Perfil + domo de sensores + nós que pulsam e nomeiam funcionalidades ao toque. Herói de marca, onboarding e estados vazios. Versão completa no login.</span>
+        <svg class="headfig" viewBox="60 20 320 330" role="img" aria-label="Perfil com sensores e nós de funcionalidades">
+          <path class="silhouette" d="M208 46 C 158 50 122 92 116 148 C 114 170 117 186 112 200 C 108 212 100 222 104 232 C 107 240 116 240 118 246 C 120 252 114 258 116 266 C 118 274 126 272 128 280 C 130 290 122 300 130 312 C 138 324 158 322 172 328"/>
+          <path class="silhouette" d="M208 46 C 268 44 318 92 324 158 C 330 224 316 268 302 316"/>
+          <path class="dome" d="M120 160 C 130 74 288 60 318 168"/>
+          <path class="dome" d="M126 136 C 148 92 272 82 306 140" opacity=".7"/>
+          <line class="link-line" x1="118" y1="152" x2="208" y2="58"/>
+          <line class="link-line" x1="208" y1="58" x2="316" y2="164"/>
+          <line class="link-line" x1="118" y1="152" x2="222" y2="118"/>
+          <line class="link-line" x1="222" y1="118" x2="316" y2="164"/>
+          <g class="node"><circle class="halo" cx="118" cy="152" r="9"/><circle class="core" cx="118" cy="152" r="5"/></g>
+          <g class="node"><circle class="halo" cx="208" cy="58" r="9"/><circle class="core" cx="208" cy="58" r="5"/></g>
+          <g class="node"><circle class="halo" cx="316" cy="164" r="9"/><circle class="core" cx="316" cy="164" r="5"/></g>
+          <g class="node"><circle class="halo" cx="222" cy="118" r="7.5"/><circle class="core" cx="222" cy="118" r="4"/></g>
+        </svg>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== cores ===== -->
+  <section class="sec">
+    <p class="eyebrow">Cor</p>
+    <h2>Sistema de destaque por papel + cores sem veredito</h2>
+    <p class="lead">Um destaque por papel, neutros profundos e uma regra rígida: cor semântica (verde/âmbar/laranja) só onde existe “bom/ruim” de verdade — qualidade do sinal e força de senha. Bandas são categóricas, nunca valorativas.</p>
+    <div class="grid g2">
+      <div class="card cellcard">
+        <h3>Destaques por papel</h3>
+        <span class="t-small">O papel colore a interface inteira: navegação ativa, botões, foco.</span>
+        <div class="sw-row">
+          <div class="sw"><div class="c" style="background:#4FD1C5"></div><div class="m"><b>Pessoa · escuro</b><span>#4FD1C5</span></div></div>
+          <div class="sw"><div class="c" style="background:#0F7A70"></div><div class="m"><b>Pessoa · claro</b><span>#0F7A70</span></div></div>
+          <div class="sw"><div class="c" style="background:#7AA2F7"></div><div class="m"><b>Profissional · escuro</b><span>#7AA2F7</span></div></div>
+          <div class="sw"><div class="c" style="background:#2A5BC7"></div><div class="m"><b>Profissional · claro</b><span>#2A5BC7</span></div></div>
+        </div>
+      </div>
+      <div class="card cellcard">
+        <h3>Neutros (tema ativo)</h3>
+        <span class="t-small">Fundo, superfícies em três alturas e três tons de texto.</span>
+        <div class="sw-row">
+          <div class="sw"><div class="c" style="background:var(--bg)"></div><div class="m"><b>bg</b><span>#0B1220 · #F5F7FA</span></div></div>
+          <div class="sw"><div class="c" style="background:var(--surface)"></div><div class="m"><b>surface</b><span>#151E32 · #FFFFFF</span></div></div>
+          <div class="sw"><div class="c" style="background:var(--surface-2)"></div><div class="m"><b>surface-2</b><span>#1C2740 · #EDF1F6</span></div></div>
+          <div class="sw"><div class="c" style="background:var(--ink)"></div><div class="m"><b>ink</b><span>#F5F7FA · #0F1726</span></div></div>
+        </div>
+      </div>
+      <div class="card cellcard">
+        <h3>Bandas — categóricas, sem valência</h3>
+        <span class="t-small">Cinco matizes distinguíveis, saturação contida. Nenhuma banda é “boa” ou “ruim” — a cor só identifica.</span>
+        <div class="sw-row">
+          <div class="sw"><div class="c" style="background:var(--band-delta)"></div><div class="m"><b>Delta</b><span>0,5–4 Hz</span></div></div>
+          <div class="sw"><div class="c" style="background:var(--band-theta)"></div><div class="m"><b>Teta</b><span>4–8 Hz</span></div></div>
+          <div class="sw"><div class="c" style="background:var(--band-alpha)"></div><div class="m"><b>Alfa</b><span>8–13 Hz</span></div></div>
+          <div class="sw"><div class="c" style="background:var(--band-beta)"></div><div class="m"><b>Beta</b><span>13–30 Hz</span></div></div>
+          <div class="sw"><div class="c" style="background:var(--band-gamma)"></div><div class="m"><b>Gama</b><span>30–44 Hz</span></div></div>
+        </div>
+      </div>
+      <div class="card cellcard">
+        <h3>Semânticas — uso restrito</h3>
+        <span class="t-small">Permitidas apenas em qualidade do sinal e força de senha, onde bom/ruim existe de fato.</span>
+        <div class="sw-row">
+          <div class="sw"><div class="c" style="background:var(--ok)"></div><div class="m"><b>ok</b><span>bom contato</span></div></div>
+          <div class="sw"><div class="c" style="background:var(--warn)"></div><div class="m"><b>ajuste</b><span>contato instável</span></div></div>
+          <div class="sw"><div class="c" style="background:var(--bad)"></div><div class="m"><b>solto</b><span>sem contato</span></div></div>
+          <div class="sw"><div class="c" style="background:var(--esense)"></div><div class="m"><b>eSense</b><span>neutro de propósito</span></div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== tipografia ===== -->
+  <section class="sec">
+    <p class="eyebrow">Tipografia</p>
+    <h2>Fontes de sistema, escala firme</h2>
+    <p class="lead">system-ui em seis tamanhos. A sofisticação vem do tracking negativo nos títulos, do peso 650 e dos números tabulares em toda métrica.</p>
+    <div class="card cellcard">
+      <div class="type-row">
+        <div class="tr"><span class="lbl">32 · display</span><span style="font-size:32px; font-weight:650; letter-spacing:-.02em">A calma tem um ritmo</span></div>
+        <div class="tr"><span class="lbl">26 · título</span><span style="font-size:26px; font-weight:650; letter-spacing:-.015em">Tendências das últimas sessões</span></div>
+        <div class="tr"><span class="lbl">17 · seção</span><span style="font-size:17px; font-weight:650">Composição por banda</span></div>
+        <div class="tr"><span class="lbl">15 · corpo</span><span style="font-size:15px; color:var(--ink-2)">O alfa tende a subir quando a pessoa relaxa ou fecha os olhos.</span></div>
+        <div class="tr"><span class="lbl">13 · apoio</span><span style="font-size:13px; color:var(--ink-3)">iniciada às 09:14 · 12 min · qualidade 92%</span></div>
+        <div class="tr"><span class="lbl">12 · eyebrow</span><span class="eyebrow">proprietário · não validado</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== componentes ===== -->
+  <section class="sec">
+    <p class="eyebrow">Componentes-núcleo</p>
+    <h2>O comum, com acabamento</h2>
+    <div class="grid g3">
+      <div class="card cellcard">
+        <h3>Botões</h3>
+        <span class="t-small">Primário por papel, fantasma neutro. Elevação de 1px no hover, nunca mais que isso.</span>
+        <div style="display:flex; flex-direction:column; gap:10px; align-items:flex-start">
+          <button class="btn btn-primary" type="button">Iniciar sessão</button>
+          <button class="btn btn-pro" type="button">Acompanhar ao vivo</button>
+          <button class="btn btn-ghost" type="button">Ver histórico</button>
+        </div>
+      </div>
+      <div class="card cellcard">
+        <h3>Campo</h3>
+        <span class="t-small">Anel de foco suave na cor do papel; a superfície clareia ao focar.</span>
+        <div class="field">
+          <label for="demoField">E-mail</label>
+          <input id="demoField" type="email" placeholder="voce@exemplo.com.br">
+          <span class="t-small" style="font-size:12px">Enviaremos um código de 6 dígitos.</span>
+        </div>
+      </div>
+      <div class="card cellcard">
+        <h3>Tags e status</h3>
+        <span class="t-small">Chips neutros para rotular; status colorido só na qualidade do sinal.</span>
+        <div style="display:flex; gap:8px; flex-wrap:wrap">
+          <span class="chip"><span class="dot"></span> AO VIVO</span>
+          <span class="chip chip-exp">proprietário · não validado</span>
+          <span class="chip chip-exp">autorrelato</span>
+          <span class="status-chip status-ok"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 12.5 10 18 19.5 7"/></svg> Bom contato</span>
+          <span class="status-chip status-warn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 7v6"/><circle cx="12" cy="16.8" r=".6" fill="currentColor"/><circle cx="12" cy="12" r="9.2"/></svg> Ajuste a faixa</span>
+        </div>
+      </div>
+      <div class="card cellcard">
+        <h3>Gráfico de bandas</h3>
+        <span class="t-small">Escala 0–100% honesta, rótulo + faixa Hz + valor tabular. Entrada animada da esquerda.</span>
+        <div>
+          <div class="band"><div class="bl"><b>Alfa</b><span>8–13 Hz</span></div><div class="track"><i class="fill bfill" style="background:var(--band-alpha); width:0%" data-w="34%"></i></div><span class="pct">34%</span></div>
+          <div class="band"><div class="bl"><b>Beta</b><span>13–30 Hz</span></div><div class="track"><i class="fill bfill" style="background:var(--band-beta); width:0%" data-w="21%"></i></div><span class="pct">21%</span></div>
+          <div class="band"><div class="bl"><b>Teta</b><span>4–8 Hz</span></div><div class="track"><i class="fill bfill" style="background:var(--band-theta); width:0%" data-w="17%"></i></div><span class="pct">17%</span></div>
+        </div>
+      </div>
+      <div class="card cellcard">
+        <h3>Loader “respiração”</h3>
+        <span class="t-small">Círculo que respira em ciclo de 2,8 s — o compasso do produto inteiro.</span>
+        <div class="breath" aria-hidden="true"></div>
+        <p class="t-small" style="text-align:center">Procurando o sensor…</p>
+      </div>
+      <div class="card cellcard" style="padding:0">
+        <div class="empty">
+          <svg width="64" height="64" viewBox="0 0 64 64" fill="none" aria-hidden="true">
+            <circle cx="32" cy="32" r="26" stroke="var(--line)" stroke-width="1.5"/>
+            <path d="M14 32c4.5 0 4.5-9 9-9s4.5 14 9 14 4.5-14 9-14 4.5 9 9 9" stroke="var(--accent)" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+          <b>Sua primeira onda começa aqui</b>
+          <p>Vista a faixa, confira o contato e faça uma sessão guiada de 2 minutos.</p>
+          <button class="btn btn-primary" type="button" style="margin-top:8px">Iniciar sessão</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== movimento ===== -->
+  <section class="sec">
+    <p class="eyebrow">Movimento</p>
+    <h2>Calmo, curto, com propósito</h2>
+    <div class="grid g3">
+      <div class="card cellcard"><h3>Durações</h3><p class="t-small">Microinterações 150–200 ms; entradas de conteúdo 280 ms; gráficos 700–800 ms com cubic-bezier(.2,.7,.3,1). Nada pisca, nada salta.</p></div>
+      <div class="card cellcard"><h3>Assinaturas vivas</h3><p class="t-small">Maré fluindo nos fundos; halos dos nós pulsando em 3,2 s; loader respirando em 2,8 s; barras de voz só enquanto a guia fala.</p></div>
+      <div class="card cellcard"><h3>Acessível</h3><p class="t-small">prefers-reduced-motion desliga tudo que se move sozinho. Foco sempre visível; alvos de toque ≥ 44 px; contraste AA nos dois temas.</p></div>
+    </div>
+  </section>
+
+  <!-- ===== telas ===== -->
+  <section class="sec">
+    <p class="eyebrow">Round 1</p>
+    <h2>As telas</h2>
+    <p class="lead">Cada uma responde aos três tamanhos (desktop / tablet / mobile) como composições distintas, com estados de carregando, vazio e preenchido onde faz sentido.</p>
+
+    <div class="sec-label" style="display:flex; align-items:center; gap:10px; margin:8px 0 14px">
+      <span class="eyebrow">Entrada</span><span style="flex:1; height:1px; background:var(--line-2)"></span>
+    </div>
+    <div class="grid g4">
+      <a class="screen-card" href="login.html">
+        <h3>Login</h3>
+        <p>A porta de entrada: painel de marca com a Constelação + Maré, e o fluxo completo de recuperação — e-mail → enviado → código → nova senha.</p>
+        <span class="chips"><span class="chip chip-exp">ambos os papéis</span></span>
+      </a>
+      <a class="screen-card" href="criar-conta.html">
+        <h3>Criar conta</h3>
+        <p>Cadastro com medidor de força ao vivo, verificação de e-mail por código e seletor de papel que muda o destaque da página.</p>
+        <span class="chips"><span class="chip chip-exp">ambos os papéis</span></span>
+      </a>
+    </div>
+
+    <div class="sec-label" style="display:flex; align-items:center; gap:10px; margin:24px 0 14px">
+      <span class="eyebrow">Pessoa</span><span style="flex:1; height:1px; background:var(--line-2)"></span>
+    </div>
+    <div class="grid g4">
+      <a class="screen-card" href="inicio-paciente.html">
+        <h3>Início da pessoa</h3>
+        <p>Um lar acolhedor: última sessão, tendências rápidas e a chamada para a próxima sessão.</p>
+        <span class="chips"><span class="chip"><span class="dot"></span> pessoa</span></span>
+      </a>
+      <a class="screen-card" href="estado-ao-vivo.html">
+        <h3>Estado ao vivo</h3>
+        <p>A tela-herói: onda ao vivo, composição por banda, qualidade do sinal e eSense em tempo real.</p>
+        <span class="chips"><span class="chip"><span class="dot"></span> pessoa</span></span>
+      </a>
+      <a class="screen-card" href="sessoes.html">
+        <h3>Histórico de sessões</h3>
+        <p>Linha do tempo por mês: duração, qualidade, alfa, mini-composição por banda e indicador de autorrelato.</p>
+        <span class="chips"><span class="chip"><span class="dot"></span> pessoa</span></span>
+      </a>
+      <a class="screen-card" href="perfil.html">
+        <h3>Perfil e configurações</h3>
+        <p>Tema claro/escuro/sistema, dados da conta e “Quem me acompanha” com revogação imediata (e desfazer).</p>
+        <span class="chips"><span class="chip"><span class="dot"></span> pessoa</span></span>
+      </a>
+      <a class="screen-card" href="convites.html">
+        <h3>Convites</h3>
+        <p>Pedidos de profissionais para te acompanhar, com aceitar/recusar e escopo claro do que será visto.</p>
+        <span class="chips"><span class="chip"><span class="dot"></span> pessoa</span></span>
+      </a>
+      <a class="screen-card" href="consentimento.html">
+        <h3>Consentimento</h3>
+        <p>Termo sereno para guardar os resultados das sessões: o que é guardado, o que não fazemos e o controle de sempre.</p>
+        <span class="chips"><span class="chip"><span class="dot"></span> pessoa</span></span>
+      </a>
+    </div>
+
+    <div class="sec-label" style="display:flex; align-items:center; gap:10px; margin:24px 0 14px">
+      <span class="eyebrow">Profissional de bem-estar</span><span style="flex:1; height:1px; background:var(--line-2)"></span>
+    </div>
+    <div class="grid g4">
+      <a class="screen-card" href="inicio-profissional.html">
+        <h3>Início do profissional</h3>
+        <p>Cards das pessoas que autorizaram, com busca, resumo por pessoa e tendência de alfa em miniatura.</p>
+        <span class="chips"><span class="chip"><span class="dot" style="background:var(--accent-pro)"></span> profissional</span></span>
+      </a>
+      <a class="screen-card" href="painel-profissional.html">
+        <h3>Painel da pessoa</h3>
+        <p>Visão geral de quem autorizou, tendências, resumo exploratório e autorrelatos.</p>
+        <span class="chips"><span class="chip"><span class="dot" style="background:var(--accent-pro)"></span> profissional</span></span>
+      </a>
+      <a class="screen-card" href="convidar.html">
+        <h3>Convidar uma pessoa</h3>
+        <p>Convite por e-mail ou código com confirmação — o acompanhamento só começa quando a pessoa aceitar.</p>
+        <span class="chips"><span class="chip"><span class="dot" style="background:var(--accent-pro)"></span> profissional</span></span>
+      </a>
+    </div>
+    <p class="foot">
+      Regras de conteúdo que este design obedece: estritamente bem-estar e exploratório — sem enquadramento médico ou de laudo; eixos rotulados e escalas honestas; bandas e estados mentais nunca pintados como bom/ruim; índice de atenção/meditação (eSense) sempre “proprietário · não validado”, como complemento; o acompanhante é sempre “profissional de bem-estar”; as métricas vêm do servidor WaveAI, não do aparelho. Todos os dados exibidos são fictícios, para demonstração.
+    </p>
+  </section>
+</div>
+
+<script>
+/* ---------- menu (mobile) ---------- */
+(function(){
+  const top = document.querySelector('.top');
+  const btn = document.getElementById('menuToggle');
+  if(top && btn){
+    btn.addEventListener('click', ()=>{
+      const open = top.classList.toggle('nav-open');
+      btn.setAttribute('aria-expanded', String(open));
+    });
+    top.querySelectorAll('nav a').forEach(a=> a.addEventListener('click', ()=> top.classList.remove('nav-open')));
+  }
+})();
+/* ---------- tema ---------- */
+(function(){
+  const btn = document.getElementById('themeToggle');
+  const sync = ()=>{
+    const light = document.documentElement.dataset.theme === 'light';
+    btn.querySelector('.ic-moon').style.display = light ? '' : 'none';
+    btn.querySelector('.ic-sun').style.display  = light ? 'none' : '';
+  };
+  btn.addEventListener('click', ()=>{
+    const t = document.documentElement.dataset.theme === 'light' ? 'dark' : 'light';
+    document.documentElement.dataset.theme = t;
+    localStorage.setItem('waveai-theme', t);
+    sync();
+  });
+  sync();
+})();
+
+/* ---------- Maré: campo de ondas ---------- */
+class WaveField{
+  constructor(canvas, opts={}){
+    this.c = canvas; this.ctx = canvas.getContext('2d');
+    this.colors = opts.colors || ['#4FD1C5','#7AA2F7','#4FD1C5'];
+    this.alpha  = opts.alpha  ?? .55;
+    this.lines  = opts.lines  ?? 3;
+    this.speed  = opts.speed  ?? 1;
+    this.amp    = opts.amp    ?? 18;
+    this.t = 0; this.px = -1e4; this.boost = 0;
+    this.reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    new ResizeObserver(()=>this.resize()).observe(canvas);
+    this.resize();
+    const host = opts.pointerHost || canvas.parentElement;
+    host.addEventListener('pointermove', e=>{
+      const r = this.c.getBoundingClientRect();
+      this.px = e.clientX - r.left;
+    });
+    host.addEventListener('pointerleave', ()=>{ this.px = -1e4; });
+    if(this.reduced){ this.draw(); } else { this.loop = this.loop.bind(this); requestAnimationFrame(this.loop); }
+  }
+  resize(){
+    const d = Math.min(devicePixelRatio||1, 2);
+    this.w = this.c.clientWidth; this.h = this.c.clientHeight;
+    this.c.width = this.w*d; this.c.height = this.h*d;
+    this.ctx.setTransform(d,0,0,d,0,0);
+    if(this.reduced) this.draw();
+  }
+  wave(y0, k, seed){
+    const {ctx,w} = this; ctx.beginPath();
+    for(let x=0; x<=w; x+=4){
+      const near = Math.exp(-Math.pow((x-this.px)/140,2)) * this.boost;
+      const y = y0
+        + Math.sin(x*0.008 + this.t*0.9  + seed)     * this.amp * k
+        + Math.sin(x*0.017 + this.t*0.55 + seed*2.1) * this.amp * .45 * k
+        + Math.sin(x*0.004 - this.t*0.3  + seed*3.7) * this.amp * .8  * k
+        - near * 16;
+      x===0 ? ctx.moveTo(x,y) : ctx.lineTo(x,y);
+    }
+  }
+  draw(){
+    const {ctx,w,h} = this; ctx.clearRect(0,0,w,h);
+    for(let i=0;i<this.lines;i++){
+      const g = ctx.createLinearGradient(0,0,w,0);
+      const col = this.colors[i % this.colors.length];
+      g.addColorStop(0, col+'00'); g.addColorStop(.5, col); g.addColorStop(1, col+'00');
+      ctx.strokeStyle = g;
+      ctx.globalAlpha = this.alpha * (1 - i*0.22);
+      ctx.lineWidth = 1.6;
+      this.wave(h*(.35 + i*.18), 1 - i*.18, i*7.3);
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+  }
+  loop(){
+    this.t += 0.012 * this.speed;
+    this.boost += ((this.px > -1e3 ? 1 : 0) - this.boost) * .04;
+    this.draw();
+    requestAnimationFrame(this.loop);
+  }
+}
+new WaveField(document.getElementById('waveHero'), {pointerHost: document.getElementById('heroHost')});
+new WaveField(document.getElementById('waveDemo'), {pointerHost: document.getElementById('mareHost'), amp:14, alpha:.7});
+
+/* ---------- entrada das barras de banda ---------- */
+(function(){
+  const fills = document.querySelectorAll('.bfill');
+  const io = new IntersectionObserver(es=>{
+    es.forEach(e=>{
+      if(e.isIntersecting){
+        e.target.style.transition = 'width .8s cubic-bezier(.2,.7,.3,1)';
+        requestAnimationFrame(()=>{ e.target.style.width = e.target.dataset.w; });
+        io.unobserve(e.target);
+      }
+    });
+  }, {threshold:.4});
+  fills.forEach(f=>io.observe(f));
+})();
+</script>
+</body>
+</html>

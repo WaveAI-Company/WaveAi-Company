@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WaveAI · Início do profissional</title>
+<script>
+  (function(){
+    var t = localStorage.getItem('waveai-theme');
+    if(!t){ t = window.matchMedia && matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark'; }
+    document.documentElement.dataset.theme = t;
+  })();
+</script>
+<style>
+/* ============================================================
+   WaveAI · Design "Maré" · tokens (papel: profissional → azul)
+   ============================================================ */
+:root{
+  color-scheme: dark;
+  --bg:#0B1220; --surface:#151E32; --surface-2:#1C2740; --surface-3:#233152;
+  --ink:#F5F7FA; --ink-2:#B6C1D4; --ink-3:#8291A9;
+  --line:rgba(245,247,250,.10); --line-2:rgba(245,247,250,.055);
+  --accent:#7AA2F7; --accent-ink:#0A1430; --accent-soft:rgba(122,162,247,.13);
+  --ok:#0ca30c; --warn:#fab219; --bad:#ec835a;
+  --band-alpha:#1FA695;
+  --shadow:0 10px 30px rgba(2,6,16,.45), 0 2px 8px rgba(2,6,16,.35);
+  --r-s:8px; --r-m:12px; --r-l:16px;
+}
+:root[data-theme="light"]{
+  color-scheme: light;
+  --bg:#F5F7FA; --surface:#FFFFFF; --surface-2:#EDF1F6; --surface-3:#E2E8F1;
+  --ink:#0F1726; --ink-2:#44526A; --ink-3:#68778F;
+  --line:rgba(15,23,38,.12); --line-2:rgba(15,23,38,.06);
+  --accent:#2A5BC7; --accent-ink:#FFFFFF; --accent-soft:rgba(42,91,199,.10);
+  --band-alpha:#009184;
+  --shadow:0 10px 30px rgba(15,23,38,.08), 0 2px 8px rgba(15,23,38,.06);
+}
+*{box-sizing:border-box; margin:0; padding:0}
+html,body{height:100%}
+body{
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  background:var(--bg); color:var(--ink); font-size:15px; line-height:1.5;
+  -webkit-font-smoothing:antialiased;
+}
+button,input{font:inherit; color:inherit}
+a{color:var(--accent); text-decoration:none}
+a:hover{text-decoration:underline}
+:focus-visible{outline:2px solid var(--accent); outline-offset:2px; border-radius:4px}
+.eyebrow{font-size:12px; font-weight:650; letter-spacing:.09em; text-transform:uppercase; color:var(--ink-3)}
+.t-small{font-size:13px; color:var(--ink-3)}
+
+.btn{display:inline-flex; align-items:center; justify-content:center; gap:8px; min-height:44px; padding:0 20px;
+  border:none; border-radius:var(--r-m); font-weight:600; font-size:15px; cursor:pointer;
+  transition:transform .15s ease, box-shadow .2s ease, background .2s ease}
+.btn-primary{background:var(--accent); color:var(--accent-ink)}
+.btn-primary:hover{transform:translateY(-1px); box-shadow:0 6px 18px var(--accent-soft)}
+.btn-ghost{background:transparent; color:var(--ink-2); border:1px solid var(--line)}
+.btn-ghost:hover{background:var(--surface-2); color:var(--ink)}
+.card{background:var(--surface); border:1px solid var(--line-2); border-radius:var(--r-l); box-shadow:var(--shadow)}
+.chip{display:inline-flex; align-items:center; gap:6px; min-height:26px; padding:2px 11px; border-radius:999px;
+  border:1px solid var(--line); background:var(--surface-2); font-size:12px; font-weight:600; color:var(--ink-2)}
+.chip .dot{width:7px; height:7px; border-radius:50%; background:var(--accent); flex:none}
+.chip-exp{color:var(--ink-3)}
+.chip-live .dot{background:#4FD1C5}
+@media (prefers-reduced-motion: no-preference){
+  .chip-live .dot{animation:pulse 1.6s ease-in-out infinite}
+  @keyframes pulse{0%,100%{opacity:1} 50%{opacity:.35}}
+}
+.status-chip{display:inline-flex; align-items:center; gap:7px; min-height:28px; padding:3px 12px; border-radius:999px;
+  font-size:12.5px; font-weight:650; border:1px solid var(--line); background:var(--surface-2); color:var(--ink)}
+.status-ok svg{color:var(--ok)} .status-warn svg{color:var(--warn)}
+
+/* ---------- casca do app ---------- */
+.app{min-height:100vh; display:grid; grid-template-columns:240px 1fr; grid-template-rows:64px 1fr;
+  grid-template-areas:"side head" "side main"}
+.app-head{grid-area:head; display:flex; align-items:center; gap:16px; padding:0 24px;
+  border-bottom:1px solid var(--line-2); background:var(--bg); position:sticky; top:0; z-index:30}
+.app-head .title{font-size:17px; font-weight:650; letter-spacing:-.01em; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.app-head .sp{flex:1}
+.iconbtn{width:44px; height:44px; border-radius:50%; border:1px solid var(--line); background:var(--surface);
+  color:var(--ink-2); cursor:pointer; display:grid; place-items:center}
+.iconbtn:hover{color:var(--ink); background:var(--surface-2)}
+.avatar{width:36px; height:36px; border-radius:50%; display:grid; place-items:center; font-size:13px; font-weight:700;
+  background:var(--accent-soft); color:var(--accent); border:1px solid var(--line); flex:none}
+.app-head .avatar{width:44px; height:44px; font-size:14px}
+a.avatar{text-decoration:none}
+a.avatar:hover{box-shadow:0 0 0 3px var(--accent-soft); text-decoration:none}
+.burger{display:none}
+.side{grid-area:side; display:flex; flex-direction:column; gap:8px; padding:16px 12px;
+  border-right:1px solid var(--line-2); background:var(--surface); position:sticky; top:0; height:100vh}
+.side .wordmark{display:flex; align-items:center; gap:10px; font-weight:700; font-size:17px; padding:8px 10px 16px}
+.side .mark{width:32px; height:32px; border-radius:9px; display:grid; place-items:center; flex:none;
+  background:linear-gradient(135deg,#4FD1C5,#7AA2F7); color:#06231F}
+.nav{display:flex; flex-direction:column; gap:2px}
+.nav a{display:flex; align-items:center; gap:12px; min-height:44px; padding:0 12px; border-radius:var(--r-m);
+  color:var(--ink-2); font-weight:600; font-size:14px}
+.nav a svg{flex:none; opacity:.8}
+.nav a:hover{background:var(--surface-2); color:var(--ink); text-decoration:none}
+.nav a.on{background:var(--accent-soft); color:var(--accent)}
+.side .sp{flex:1}
+.role-chip{margin:0 10px 10px; align-self:flex-start}
+.side-foot{font-size:11.5px; color:var(--ink-3); padding:0 12px 8px; line-height:1.45}
+.main{grid-area:main; padding:24px 32px 64px; max-width:1600px; width:100%}
+.scrim{display:none}
+
+/* ---------- topo ---------- */
+.page-top{display:flex; align-items:flex-end; gap:16px; flex-wrap:wrap; margin:8px 0 20px}
+.page-top h1{font-size:26px; font-weight:650; letter-spacing:-.015em}
+.page-top p{font-size:13.5px; color:var(--ink-3); margin-top:4px}
+.page-top .sp{flex:1}
+.search{display:flex; align-items:center; gap:9px; min-height:44px; padding:0 14px; width:min(320px,100%);
+  border-radius:var(--r-m); border:1px solid var(--line); background:var(--surface); color:var(--ink-3)}
+.search input{border:none; background:none; outline:none; width:100%; color:var(--ink); font-size:14px}
+.search input::placeholder{color:var(--ink-3)}
+.search:focus-within{border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-soft)}
+
+/* ---------- cards de pessoas ---------- */
+.people-grid{display:grid; gap:20px; grid-template-columns:repeat(auto-fill, minmax(300px, 1fr))}
+.pcard{padding:22px; display:flex; flex-direction:column; gap:16px; transition:transform .15s ease, border-color .2s ease}
+.pcard:hover{transform:translateY(-2px); border-color:var(--accent)}
+.pcard .head{display:flex; align-items:center; gap:12px}
+.pcard .head .avatar{width:46px; height:46px; font-size:15px}
+.pcard .head .who{flex:1; min-width:0}
+.pcard .head .who b{display:block; font-size:15.5px; font-weight:650}
+.pcard .head .who span{display:block; font-size:12.5px; color:var(--ink-3)}
+.pcard .stats{display:grid; grid-template-columns:1fr 1fr; gap:10px 16px}
+.pcard .stat .k{font-size:11.5px; color:var(--ink-3); display:block}
+.pcard .stat .v{font-size:15px; font-weight:650; font-variant-numeric:tabular-nums}
+.spark-row{display:flex; align-items:center; gap:12px; padding:12px 14px; border-radius:var(--r-m); background:var(--surface-2)}
+.spark-row svg{flex:none}
+.spark-row .tx b{display:block; font-size:12.5px; font-weight:650; color:var(--band-alpha)}
+.spark-row .tx span{display:block; font-size:11.5px; color:var(--ink-3)}
+.pcard .foot{display:flex; align-items:center; gap:10px; margin-top:2px}
+.pcard .foot .sp{flex:1}
+.pcard.pending{border-style:dashed; border-color:var(--line)}
+.pcard.pending .avatar{background:var(--surface-2); color:var(--ink-3)}
+.pcard.hidden{display:none}
+
+/* ---------- estados ---------- */
+.stv{display:none}
+.state-filled  .stv-filled{display:block}
+.state-loading .stv-loading{display:block}
+.state-empty   .stv-empty{display:block}
+.skl{position:relative; overflow:hidden; border-radius:var(--r-s); background:var(--surface-2)}
+@media (prefers-reduced-motion: no-preference){
+  .skl::after{content:""; position:absolute; inset:0; transform:translateX(-100%);
+    background:linear-gradient(90deg, transparent, var(--surface-3), transparent);
+    animation:shimmer 1.5s infinite}
+  @keyframes shimmer{100%{transform:translateX(100%)}}
+}
+.load-note{display:flex; align-items:center; gap:10px; margin:0 0 20px; color:var(--ink-3); font-size:13px}
+.load-note .breath{width:26px; height:26px; border-radius:50%; border:2px solid var(--accent); flex:none}
+@media (prefers-reduced-motion: no-preference){
+  .load-note .breath{animation:br 2.8s ease-in-out infinite}
+  @keyframes br{0%,100%{transform:scale(.9)} 50%{transform:scale(1.08)}}
+}
+.empty-hero{position:relative; overflow:hidden; padding:56px 32px 72px; text-align:center}
+.empty-hero .wavefield{position:absolute; inset:auto 0 0 0; height:110px; width:100%; pointer-events:none}
+.empty-hero h2{font-size:26px; font-weight:650; letter-spacing:-.015em; margin-top:12px}
+.empty-hero > p{color:var(--ink-2); max-width:480px; margin:8px auto 0}
+.empty-ic{width:88px; height:88px; border-radius:50%; display:grid; place-items:center; margin:0 auto;
+  background:var(--accent-soft); color:var(--accent); position:relative}
+.empty-ic::after{content:""; position:absolute; inset:-2px; border-radius:50%; border:2px solid var(--accent); opacity:.35}
+@media (prefers-reduced-motion: no-preference){
+  .empty-ic::after{animation:bigh 2.8s ease-in-out infinite}
+  @keyframes bigh{0%,100%{transform:scale(1); opacity:.35} 50%{transform:scale(1.25); opacity:0}}
+}
+
+/* controle de demonstração */
+.demo{position:fixed; right:16px; bottom:16px; z-index:60; display:flex; align-items:center; gap:6px;
+  background:var(--surface); border:1px solid var(--line); border-radius:999px; padding:6px 8px; box-shadow:var(--shadow)}
+.demo .lb{font-size:11px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-3); padding:0 6px}
+.demo button{min-height:34px; padding:0 12px; border-radius:999px; border:none; background:transparent;
+  font-size:12.5px; font-weight:650; color:var(--ink-3); cursor:pointer}
+.demo button.on{background:var(--accent-soft); color:var(--accent)}
+
+/* ---------- tablet ---------- */
+@media (max-width: 1199px){
+  .app{grid-template-columns:76px 1fr}
+  .side{padding:16px 10px}
+  .side .wordmark span.wtxt, .nav a .ntxt, .side-foot, .role-chip{display:none}
+  .side .wordmark{justify-content:center; padding:8px 0 16px}
+  .nav a{justify-content:center; padding:0}
+  .main{padding:24px 24px 64px}
+}
+/* ---------- mobile ---------- */
+@media (max-width: 767px){
+  .app{grid-template-columns:1fr; grid-template-areas:"head" "main"}
+  .side{position:fixed; inset:0 84px 0 0; z-index:70; height:100vh; transform:translateX(-102%);
+    transition:transform .25s ease; box-shadow:var(--shadow); border-right:none}
+  .side.open{transform:none}
+  .side .wordmark span.wtxt, .nav a .ntxt, .side-foot, .role-chip{display:initial}
+  .side .wordmark{justify-content:flex-start; padding:8px 10px 16px}
+  .nav a{justify-content:flex-start; padding:0 12px}
+  .scrim{display:block; position:fixed; inset:0; z-index:65; background:rgba(2,6,16,.5); opacity:0;
+    pointer-events:none; transition:opacity .25s}
+  .scrim.on{opacity:1; pointer-events:auto}
+  .burger{display:grid}
+  .main{padding:16px 16px 96px}
+  .app-head{gap:10px; padding:0 12px}
+  .app-head .title{font-size:16px}
+  .page-top h1{font-size:22px}
+  .search{width:100%}
+  .page-top > .btn{width:100%}
+  .people-grid{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body class="state-filled" id="page">
+
+<div class="app">
+  <!-- ===== sidebar ===== -->
+  <aside class="side" id="side">
+    <div class="wordmark">
+      <span class="mark">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M2 12c2.5 0 2.5-5 5-5s2.5 8 5 8 2.5-8 5-8 2.5 5 5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+      </span>
+      <span class="wtxt">WaveAI</span>
+    </div>
+    <span class="chip role-chip"><span class="dot"></span> Profissional de bem-estar</span>
+    <nav class="nav" aria-label="Navegação principal">
+      <a href="inicio-profissional.html" class="on" aria-current="page">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11 12 3l9 8"/><path d="M5 10v10h14V10"/></svg>
+        <span class="ntxt">Início</span></a>
+      <a href="painel-profissional.html">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><rect x="3" y="3" width="8" height="8" rx="2"/><rect x="13" y="3" width="8" height="8" rx="2"/><rect x="3" y="13" width="8" height="8" rx="2"/><rect x="13" y="13" width="8" height="8" rx="2"/></svg>
+        <span class="ntxt">Painel</span></a>
+      <a href="convidar.html">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c1.2-3.4 3.7-5 6.5-5s5.3 1.6 6.5 5"/><path d="M17.5 6.5v6M14.5 9.5h6"/></svg>
+        <span class="ntxt">Convidar</span></a>
+      <a href="#">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg>
+        <span class="ntxt">Perfil</span></a>
+    </nav>
+    <div class="sp"></div>
+    <p class="side-foot">Acesso concedido pelas pessoas — e revogável por elas. Leituras exploratórias de bem-estar; nada aqui é laudo.</p>
+  </aside>
+  <div class="scrim" id="scrim"></div>
+
+  <!-- ===== header ===== -->
+  <header class="app-head">
+    <button class="iconbtn burger" id="burger" aria-label="Abrir menu">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+    </button>
+    <span class="title">Início</span>
+    <span class="sp"></span>
+    <button class="iconbtn" id="themeToggle" aria-label="Alternar tema claro/escuro" title="Alternar tema">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true">
+        <path class="ic-moon" d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5Z"/>
+        <g class="ic-sun" style="display:none"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M4.9 4.9l1.6 1.6M17.5 17.5l1.6 1.6M19.1 4.9l-1.6 1.6M6.5 17.5l-1.6 1.6"/></g>
+      </svg>
+    </button>
+    <a class="avatar" href="perfil.html" title="Beatriz Nunes · abrir perfil (dados fictícios)" aria-label="Abrir perfil">BN</a>
+  </header>
+
+  <!-- ===== conteúdo ===== -->
+  <main class="main">
+
+    <!-- ========== carregando ========== -->
+    <div class="stv stv-loading" aria-label="Carregando">
+      <p class="load-note"><span class="breath" aria-hidden="true"></span> Carregando as pessoas que autorizaram seu acompanhamento…</p>
+      <div class="people-grid">
+        <div class="card" style="padding:22px; display:flex; flex-direction:column; gap:14px">
+          <div style="display:flex; gap:12px; align-items:center"><div class="skl" style="width:46px; height:46px; border-radius:50%"></div><div style="flex:1"><div class="skl" style="width:60%; height:16px"></div><div class="skl" style="width:40%; height:12px; margin-top:8px"></div></div></div>
+          <div class="skl" style="width:100%; height:58px"></div>
+          <div class="skl" style="width:50%; height:14px"></div>
+        </div>
+        <div class="card" style="padding:22px; display:flex; flex-direction:column; gap:14px">
+          <div style="display:flex; gap:12px; align-items:center"><div class="skl" style="width:46px; height:46px; border-radius:50%"></div><div style="flex:1"><div class="skl" style="width:55%; height:16px"></div><div class="skl" style="width:45%; height:12px; margin-top:8px"></div></div></div>
+          <div class="skl" style="width:100%; height:58px"></div>
+          <div class="skl" style="width:50%; height:14px"></div>
+        </div>
+        <div class="card" style="padding:22px; display:flex; flex-direction:column; gap:14px">
+          <div style="display:flex; gap:12px; align-items:center"><div class="skl" style="width:46px; height:46px; border-radius:50%"></div><div style="flex:1"><div class="skl" style="width:65%; height:16px"></div><div class="skl" style="width:35%; height:12px; margin-top:8px"></div></div></div>
+          <div class="skl" style="width:100%; height:58px"></div>
+          <div class="skl" style="width:50%; height:14px"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========== vazio ========== -->
+    <div class="stv stv-empty">
+      <section class="card empty-hero" id="emptyHost">
+        <div class="empty-ic" aria-hidden="true">
+          <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true">
+            <circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c1.2-3.4 3.7-5 6.5-5s5.3 1.6 6.5 5"/><path d="M17.5 6.5v6M14.5 9.5h6"/>
+          </svg>
+        </div>
+        <h2>Ninguém por aqui — ainda</h2>
+        <p>Convide uma pessoa por e-mail ou código. O acompanhamento só começa se ela aceitar — e ela pode revogar o acesso a qualquer momento. Quando alguém autorizar, as tendências dela aparecem aqui.</p>
+        <div style="margin-top:26px; position:relative; z-index:2">
+          <a class="btn btn-primary" href="convidar.html">Convidar uma pessoa</a>
+        </div>
+        <canvas class="wavefield" id="waveEmpty" aria-hidden="true"></canvas>
+      </section>
+    </div>
+
+    <!-- ========== preenchido ========== -->
+    <div class="stv stv-filled">
+      <div class="page-top">
+        <div>
+          <h1>Boa tarde, Beatriz.</h1>
+          <p>3 pessoas autorizaram seu acompanhamento · 1 convite pendente</p>
+        </div>
+        <span class="sp"></span>
+        <label class="search">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.8-3.8"/></svg>
+          <input type="search" id="q" placeholder="Buscar pessoa" aria-label="Buscar pessoa">
+        </label>
+        <a class="btn btn-primary" href="convidar.html">Convidar</a>
+      </div>
+
+      <div class="people-grid" id="peopleGrid">
+        <!-- Ana -->
+        <article class="card pcard" data-name="ana martins">
+          <div class="head">
+            <span class="avatar">AM</span>
+            <div class="who">
+              <b>Ana Martins</b>
+              <span>autorizou em 12 jul · 12 sessões</span>
+            </div>
+            <span class="chip chip-live"><span class="dot"></span> em sessão</span>
+          </div>
+          <div class="stats">
+            <div class="stat"><span class="k">Última sessão</span><span class="v">ontem</span></div>
+            <div class="stat"><span class="k">Qualidade média</span><span class="v">88%</span></div>
+          </div>
+          <div class="spark-row">
+            <svg width="120" height="36" viewBox="0 0 120 36" role="img" aria-label="Alfa subiu de 26% para 34% do espectro em 8 sessões">
+              <polyline points="4,26 20,23 36,21 52,24 68,17 84,20 100,13 116,13"
+                fill="none" stroke="var(--band-alpha)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              <circle cx="116" cy="13" r="3" fill="var(--band-alpha)"/>
+            </svg>
+            <div class="tx">
+              <b>alfa 26% → 34%</b>
+              <span>% do espectro · 8 sessões · sem valência</span>
+            </div>
+          </div>
+          <div class="foot">
+            <a class="btn btn-ghost" href="painel-profissional.html" style="min-height:40px; padding:0 16px; font-size:13.5px">Abrir painel</a>
+            <span class="sp"></span>
+            <span class="t-small">3 autorrelatos</span>
+          </div>
+        </article>
+
+        <!-- Carlos -->
+        <article class="card pcard" data-name="carlos souza">
+          <div class="head">
+            <span class="avatar">CS</span>
+            <div class="who">
+              <b>Carlos Souza</b>
+              <span>autorizou em 15 jul · 8 sessões</span>
+            </div>
+          </div>
+          <div class="stats">
+            <div class="stat"><span class="k">Última sessão</span><span class="v">29 jul</span></div>
+            <div class="stat"><span class="k">Qualidade média</span><span class="v">91%</span></div>
+          </div>
+          <div class="spark-row">
+            <svg width="120" height="36" viewBox="0 0 120 36" role="img" aria-label="Alfa estável entre 24% e 28% do espectro em 8 sessões">
+              <polyline points="4,22 20,24 36,20 52,22 68,19 84,21 100,18 116,20"
+                fill="none" stroke="var(--band-alpha)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              <circle cx="116" cy="20" r="3" fill="var(--band-alpha)"/>
+            </svg>
+            <div class="tx">
+              <b>alfa 24% → 27%</b>
+              <span>% do espectro · 8 sessões · sem valência</span>
+            </div>
+          </div>
+          <div class="foot">
+            <a class="btn btn-ghost" href="painel-profissional.html" style="min-height:40px; padding:0 16px; font-size:13.5px">Abrir painel</a>
+            <span class="sp"></span>
+            <span class="t-small">1 autorrelato</span>
+          </div>
+        </article>
+
+        <!-- Marina -->
+        <article class="card pcard" data-name="marina lopes">
+          <div class="head">
+            <span class="avatar">ML</span>
+            <div class="who">
+              <b>Marina Lopes</b>
+              <span>autorizou em 2 jul · 5 sessões</span>
+            </div>
+          </div>
+          <div class="stats">
+            <div class="stat"><span class="k">Última sessão</span><span class="v">14 jul</span></div>
+            <div class="stat"><span class="k">Qualidade média</span><span class="v">84%</span></div>
+          </div>
+          <div class="spark-row">
+            <svg width="120" height="36" viewBox="0 0 120 36" role="img" aria-label="Alfa entre 29% e 31% do espectro em 5 sessões">
+              <polyline points="4,18 32,20 60,16 88,19 116,17"
+                fill="none" stroke="var(--band-alpha)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              <circle cx="116" cy="17" r="3" fill="var(--band-alpha)"/>
+            </svg>
+            <div class="tx">
+              <b>alfa 29% → 31%</b>
+              <span>% do espectro · 5 sessões · sem valência</span>
+            </div>
+          </div>
+          <div class="foot">
+            <a class="btn btn-ghost" href="painel-profissional.html" style="min-height:40px; padding:0 16px; font-size:13.5px">Abrir painel</a>
+            <span class="sp"></span>
+            <span class="t-small">sem sessão há 22 dias</span>
+          </div>
+        </article>
+
+        <!-- pendente -->
+        <article class="card pcard pending" data-name="paulo herrera">
+          <div class="head">
+            <span class="avatar">PH</span>
+            <div class="who">
+              <b>Paulo Herrera</b>
+              <span>convite enviado há 5 dias</span>
+            </div>
+            <span class="chip chip-exp">pendente</span>
+          </div>
+          <p class="t-small" style="line-height:1.55">Aguardando o aceite. O acompanhamento só começa quando a pessoa autorizar — e ela pode revogar depois, a qualquer momento.</p>
+          <div class="foot">
+            <button class="btn btn-ghost" type="button" style="min-height:40px; padding:0 16px; font-size:13.5px">Reenviar convite</button>
+            <button class="btn btn-ghost" type="button" style="min-height:40px; padding:0 16px; font-size:13.5px">Cancelar</button>
+          </div>
+        </article>
+      </div>
+
+      <p class="t-small" id="noMatch" style="display:none; text-align:center; margin-top:28px">
+        Nenhuma pessoa encontrada com esse nome.
+      </p>
+    </div>
+  </main>
+</div>
+
+<!-- ===== alternador de estados (só na demonstração) ===== -->
+<div class="demo" role="group" aria-label="Estados de demonstração">
+  <span class="lb">demo</span>
+  <button type="button" data-state="loading">Carregando</button>
+  <button type="button" data-state="empty">Ninguém ainda</button>
+  <button type="button" data-state="filled" class="on">Preenchido</button>
+</div>
+
+<script>
+/* ---------- tema ---------- */
+(function(){
+  const btn = document.getElementById('themeToggle');
+  const sync = ()=>{
+    const light = document.documentElement.dataset.theme === 'light';
+    btn.querySelector('.ic-moon').style.display = light ? '' : 'none';
+    btn.querySelector('.ic-sun').style.display  = light ? 'none' : '';
+  };
+  btn.addEventListener('click', ()=>{
+    const t = document.documentElement.dataset.theme === 'light' ? 'dark' : 'light';
+    document.documentElement.dataset.theme = t;
+    localStorage.setItem('waveai-theme', t);
+    sync();
+  });
+  sync();
+})();
+/* ---------- drawer mobile ---------- */
+(function(){
+  const side = document.getElementById('side'), scrim = document.getElementById('scrim');
+  document.getElementById('burger').addEventListener('click', ()=>{ side.classList.add('open'); scrim.classList.add('on'); });
+  scrim.addEventListener('click', ()=>{ side.classList.remove('open'); scrim.classList.remove('on'); });
+})();
+/* ---------- estados de demonstração ---------- */
+document.querySelectorAll('.demo button').forEach(b=>{
+  b.addEventListener('click', ()=>{
+    document.getElementById('page').className = 'state-' + b.dataset.state;
+    document.querySelectorAll('.demo button').forEach(x=>x.classList.toggle('on', x===b));
+    setTimeout(()=>{ if(typeof waveFields !== 'undefined') waveFields.forEach(f=>f.resize()); }, 0);
+  });
+});
+/* ---------- busca ---------- */
+document.getElementById('q').addEventListener('input', function(){
+  const q = this.value.trim().toLowerCase();
+  let shown = 0;
+  document.querySelectorAll('#peopleGrid .pcard').forEach(c=>{
+    const hit = !q || c.dataset.name.includes(q);
+    c.classList.toggle('hidden', !hit);
+    if(hit) shown++;
+  });
+  document.getElementById('noMatch').style.display = shown ? 'none' : '';
+});
+/* ---------- Maré ---------- */
+class WaveField{
+  constructor(canvas, opts={}){
+    this.c = canvas; this.ctx = canvas.getContext('2d');
+    this.colors = opts.colors || ['#7AA2F7','#4FD1C5','#7AA2F7'];
+    this.alpha  = opts.alpha  ?? .4;
+    this.lines  = opts.lines  ?? 3;
+    this.speed  = opts.speed  ?? 1;
+    this.amp    = opts.amp    ?? 14;
+    this.t = 0; this.px = -1e4; this.boost = 0;
+    this.reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    new ResizeObserver(()=>this.resize()).observe(canvas);
+    this.resize();
+    const host = opts.pointerHost || canvas.parentElement;
+    host.addEventListener('pointermove', e=>{
+      const r = this.c.getBoundingClientRect();
+      this.px = e.clientX - r.left;
+    });
+    host.addEventListener('pointerleave', ()=>{ this.px = -1e4; });
+    if(this.reduced){ this.draw(); } else { this.loop = this.loop.bind(this); requestAnimationFrame(this.loop); }
+  }
+  resize(){
+    const d = Math.min(devicePixelRatio||1, 2);
+    this.w = this.c.clientWidth; this.h = this.c.clientHeight;
+    this.c.width = this.w*d; this.c.height = this.h*d;
+    this.ctx.setTransform(d,0,0,d,0,0);
+    if(this.reduced) this.draw();
+  }
+  wave(y0, k, seed){
+    const {ctx,w} = this; ctx.beginPath();
+    for(let x=0; x<=w; x+=4){
+      const near = Math.exp(-Math.pow((x-this.px)/140,2)) * this.boost;
+      const y = y0
+        + Math.sin(x*0.008 + this.t*0.9  + seed)     * this.amp * k
+        + Math.sin(x*0.017 + this.t*0.55 + seed*2.1) * this.amp * .45 * k
+        + Math.sin(x*0.004 - this.t*0.3  + seed*3.7) * this.amp * .8  * k
+        - near * 14;
+      x===0 ? ctx.moveTo(x,y) : ctx.lineTo(x,y);
+    }
+  }
+  draw(){
+    const {ctx,w,h} = this; ctx.clearRect(0,0,w,h);
+    for(let i=0;i<this.lines;i++){
+      const g = ctx.createLinearGradient(0,0,w,0);
+      const col = this.colors[i % this.colors.length];
+      g.addColorStop(0, col+'00'); g.addColorStop(.5, col); g.addColorStop(1, col+'00');
+      ctx.strokeStyle = g;
+      ctx.globalAlpha = this.alpha * (1 - i*0.22);
+      ctx.lineWidth = 1.6;
+      this.wave(h*(.4 + i*.18), 1 - i*.18, i*7.3);
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+  }
+  loop(){
+    this.t += 0.012 * this.speed;
+    this.boost += ((this.px > -1e3 ? 1 : 0) - this.boost) * .04;
+    this.draw();
+    requestAnimationFrame(this.loop);
+  }
+}
+const waveFields = [
+  new WaveField(document.getElementById('waveEmpty'), {pointerHost: document.getElementById('emptyHost')})
+];
+</script>
+</body>
+</html>
