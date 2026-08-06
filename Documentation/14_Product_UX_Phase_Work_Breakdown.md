@@ -62,6 +62,13 @@ Celular **capta** → navegador **assiste** em tempo real (o web não capta, mas
 - **UI web do titular** — assistir à própria captação de outra tela.
 - **UI web do profissional** — assistir ao vivo na tela do paciente (CareLink).
 
+### P7 — Porte do design "Maré" *(frente própria — **ADR-0042**)*
+O round 1 de design (Fable 5) entregou **12 telas HTML autocontidas** em [Design/round1/](../Design/round1/) — referência visual, **não** código de produção. Elas são o **contrato visual** desta frente: portar fiel para o app RN, dentro das regras (a revisão de conteúdo dos mockups saiu limpa; nada clínico a reintroduzir). A paleta dos mockups **já é** a de `src/theme/tokens.ts` (mesmos hexes), então o porte é de **forma e composição**, não de cor. Dependências decididas em **[ADR-0042](../05_Decisions.md)**: `react-native-svg` + `react-native-reanimated` (com `react-native-worklets`), **sem** Skia.
+- **P7-a — Login** *(primeira fatia)*: lacuna de tokens (`surface-3`, `accent-soft`, `line-2`, sombra), primitivas `Icon` (SVG) e `WaveField` (onda animada, estática sob *reduced motion*), layout de duas colunas (marca + auth) com marca compacta no estreito, figura cabeça-constelação com rótulos por **toque**, revelar-senha em ícone.
+- **P7-b — Herói (estado ao vivo)** e demais telas, na sequência.
+- **Fora do porte por decisão:** "Esqueci minha senha" e "Manter conectado" — controles **sem função** no backend (ADR-0041: não telar sem função; o primeiro nasce no P5 com o envio de e-mail, o segundo seria falso porque a sessão já persiste pelo cookie de refresh).
+- **Backlog levantado no round 1:** foto de perfil (hoje os avatares são só iniciais); tela de **perfil do profissional** (não existe nos mockups, ganha no porte); cópia do titular = **"Paciente"** (os mockups dizem "Pessoa"; o papel no dado segue `patient`, ADR-0036).
+
 ### P5 — Deploy & distribuição *(a cauda — só com produto bom)*
 - **Hospedagem em nuvem** do serviço de Analysis + banco de produção — **revisita [ADR-0005](../05_Decisions.md)** (edge vs nuvem), residência de dados/LGPD, segredos por ambiente.
 - **Build do APK:** sair do fluxo *managed* para **EAS build** (ou prebuild local) — o módulo SPP nativo já exige dev-client; formalizar o pipeline de build assinado. **Inclui um passo de migração no deploy** (o container da API hoje não roda `alembic upgrade` no boot).
