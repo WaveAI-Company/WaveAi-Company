@@ -27,8 +27,12 @@ const darkColors = {
   background: "#0B1220",
   surface: "#151E32",
   surfaceAlt: "#1C2740",
+  /** Terceiro nível de elevação — fundo de controle dentro de um cartão. */
+  surfaceStrong: "#233152",
   /** Divisor decorativo — não carrega significado, pode ter baixo contraste. */
   border: "#243049",
+  /** Divisor ainda mais discreto (separar seções dentro do mesmo cartão). */
+  borderSoft: "#1B2438",
   /** Limite de controle interativo: exige 3:1 (WCAG 1.4.11) — inclusive
    *  sobre `surface`, que é o fundo mais claro e portanto o caso limite. */
   borderStrong: "#5F719A",
@@ -50,7 +54,9 @@ const lightColors = {
   background: "#F5F7FA",
   surface: "#FFFFFF",
   surfaceAlt: "#EDF1F7",
+  surfaceStrong: "#E2E8F1",
   border: "#D7DEE9",
+  borderSoft: "#E8EDF4",
   borderStrong: "#6B7890",
   text: "#0F1726",
   textMuted: "#55637A",
@@ -103,6 +109,23 @@ export const radius = {
   md: 12,
   lg: 16,
   pill: 999,
+} as const;
+
+/**
+ * Elevação — sombra difusa e discreta, igual nos dois temas.
+ *
+ * Fica **fora** das paletas de propósito: sombra é profundidade, não cor de
+ * conteúdo, e nenhum texto se apoia nela para ser legível.
+ */
+export const shadows = {
+  card: {
+    shadowColor: "#020610",
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.24,
+    shadowRadius: 24,
+    /** Android ignora `shadow*` e usa isto. */
+    elevation: 8,
+  },
 } as const;
 
 /**
