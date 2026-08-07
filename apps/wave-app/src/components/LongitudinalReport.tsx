@@ -7,12 +7,13 @@ import {
   featureLabel,
   type LongitudinalReport as Report,
 } from "../api/report";
-import { useRoleAccent, useTheme, type Theme } from "../theme";
-import { Card } from "./Card";
+import { useTheme, type Theme } from "../theme";
+import { Panel } from "./Panel";
 import { InfoButton } from "./InfoButton";
 
 type Props = {
   report: Report;
+  /** Ignorado desde o porte "Maré": o painel não tem faixa de destaque. */
   accent?: string;
 };
 
@@ -25,11 +26,9 @@ type Props = {
  * escaneável. Nada aqui é veredito: "↑/↓/→" é a direção **numérica** de uma
  * feature, sem cor de "bom/ruim" (não há juízo — honestidade visual, ADR-0027).
  */
-export function LongitudinalReport({ report, accent }: Props) {
+export function LongitudinalReport({ report }: Props) {
   const t = useTheme();
-  const papel = useRoleAccent();
   const styles = useMemo(() => criarEstilos(t), [t]);
-  const cor = accent ?? papel.accent;
 
   const trends = Object.entries(report.report.features);
   // Maior variação primeiro — o que mais mudou fica no topo (|delta_pct|).
@@ -44,35 +43,32 @@ export function LongitudinalReport({ report, accent }: Props) {
       {report.narrative ? (
         // Camada de linguagem por LLM (N6-b): prosa aterrada no sumário.
         // Rotulada como gerada por IA e não-diagnóstica (ADR-0035 / Medical/71).
-        <Card
-          title="Resumo do período"
-          subtitle={periodo ? `${report.n_sessions} sessões · ${periodo}` : undefined}
-          accent={cor}
+        <Panel
+          title="Panorama das sessões"
+          eyebrow={periodo ? `${report.n_sessions} sessões · ${periodo}` : undefined}
         >
           <Text style={styles.sumario}>{report.narrative}</Text>
           <Text style={styles.aiLabel}>
             Texto gerado por IA a partir das suas medidas — não-diagnóstico.
           </Text>
-        </Card>
+        </Panel>
       ) : report.summary.length > 0 ? (
-        <Card
-          title="Resumo do período"
-          subtitle={periodo ? `${report.n_sessions} sessões · ${periodo}` : undefined}
-          accent={cor}
+        <Panel
+          title="Panorama das sessões"
+          eyebrow={periodo ? `${report.n_sessions} sessões · ${periodo}` : undefined}
         >
           {report.summary.map((linha, i) => (
             <Text key={`sum-${i}`} style={styles.sumario}>
               {linha}
             </Text>
           ))}
-        </Card>
+        </Panel>
       ) : null}
 
       {trends.length > 0 ? (
-        <Card
+        <Panel
           title="Tendências por medida"
-          accent={cor}
-          titleAccessory={<InfoButton term="trend_direction" />}
+          headerAccessory={<InfoButton term="trend_direction" />}
         >
           <Text style={styles.legenda}>
             Direção da medida ao longo das sessões — descrição, não diagnóstico.
@@ -94,7 +90,7 @@ export function LongitudinalReport({ report, accent }: Props) {
               <InfoButton term={chave} />
             </View>
           ))}
-        </Card>
+        </Panel>
       ) : null}
 
       {report.engine_version ? (
