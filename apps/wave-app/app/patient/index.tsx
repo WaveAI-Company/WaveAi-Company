@@ -167,7 +167,7 @@ export default function PatientHomeScreen() {
               <Skeleton width={160} height={44} radius={t.radius.md} />
             </Panel>
           </View>
-          <View style={[styles.coluna, emColunas && styles.colunaLateral]}>
+          <View style={emColunas ? styles.colunaLateral : styles.coluna}>
             <Panel>
               <Skeleton width="45%" height={18} />
               <Skeleton width="100%" height={22} radius={6} />
@@ -311,7 +311,7 @@ export default function PatientHomeScreen() {
           </View>
 
           {ultima ? (
-            <View style={[styles.coluna, emColunas && styles.colunaLateral]}>
+            <View style={emColunas ? styles.colunaLateral : styles.coluna}>
               <Panel title="Última sessão" eyebrow={carimbo(ultima.created_at)} grow>
                 {ultima.metrics?.relative_band_powers ? (
                   <>
@@ -473,8 +473,13 @@ const criarEstilos = (t: Theme) =>
       gap: t.spacing.md,
       minWidth: 0,
     },
+    // Largura fixa, **sem** compor com `coluna`: aquela tem `flex: 1`, que no
+    // RN-web vira `flex-basis: 0%` e vence a largura no eixo principal — a
+    // coluna encolhia até o texto quebrar letra a letra.
     colunaLateral: {
-      flex: 0,
+      flexGrow: 0,
+      flexShrink: 0,
+      gap: t.spacing.md,
       width: 360,
     },
     heroiTitulo: {
