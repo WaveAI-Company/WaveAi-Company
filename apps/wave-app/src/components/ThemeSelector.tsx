@@ -1,13 +1,6 @@
-import { useMemo } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
-
-import { useRoleAccent, useTheme, type Theme, type ThemePreference } from "../theme";
-
-const OPCOES: { valor: ThemePreference; rotulo: string }[] = [
-  { valor: "system", rotulo: "Sistema" },
-  { valor: "light", rotulo: "Claro" },
-  { valor: "dark", rotulo: "Escuro" },
-];
+import { Icon } from "./Icon";
+import { SegmentedFilter, type SegmentedOption } from "./SegmentedFilter";
+import { useRoleAccent, useTheme, type ThemePreference } from "../theme";
 
 /**
  * Escolha de tema: seguir o sistema (padrão) ou fixar claro/escuro.
@@ -17,61 +10,49 @@ const OPCOES: { valor: ThemePreference; rotulo: string }[] = [
  * ela o app fica preso a um tema no aparelho, por mais que o sistema mude.
  * Este seletor é puro JavaScript, então funciona em qualquer build já
  * instalado, e mantém "seguir o sistema" como padrão.
+ *
+ * A forma é a do design "Maré": um segmentado, o mesmo controle do filtro de
+ * período — dois controles idênticos em função não deveriam ter dois desenhos.
  */
+
 export function ThemeSelector() {
   const t = useTheme();
-  const { accent, onAccent } = useRoleAccent();
-  const styles = useMemo(() => criarEstilos(t), [t]);
+  const { accent } = useRoleAccent();
+
+  // Ordem do design: os dois temas concretos primeiro, "Sistema" como saída.
+  const opcoes: SegmentedOption<ThemePreference>[] = [
+    { value: "light", label: "Claro", icon: <Glifo nome="sun" preferencia="light" /> },
+    { value: "dark", label: "Escuro", icon: <Glifo nome="moon" preferencia="dark" /> },
+    {
+      value: "system",
+      label: "Sistema",
+      icon: <Glifo nome="monitor" preferencia="system" />,
+    },
+  ];
 
   return (
-    <View style={styles.grupo} accessibilityRole="radiogroup" accessibilityLabel="Tema">
-      {OPCOES.map(({ valor, rotulo }) => {
-        const selecionado = t.preference === valor;
-        return (
-          <Pressable
-            key={valor}
-            accessibilityRole="radio"
-            accessibilityState={{ selected: selecionado }}
-            accessibilityLabel={rotulo}
-            onPress={() => t.setPreference(valor)}
-            style={[
-              styles.opcao,
-              selecionado
-                ? { backgroundColor: accent, borderColor: accent }
-                : { borderColor: t.colors.borderStrong },
-            ]}
-          >
-            <Text
-              style={[
-                styles.texto,
-                { color: selecionado ? onAccent : t.colors.text },
-              ]}
-            >
-              {rotulo}
-            </Text>
-          </Pressable>
-        );
-      })}
-    </View>
+    <SegmentedFilter
+      options={opcoes}
+      value={t.preference}
+      onChange={t.setPreference}
+      label="Tema"
+      accent={accent}
+      fill
+    />
   );
 }
 
-const criarEstilos = (t: Theme) =>
-  StyleSheet.create({
-    grupo: {
-      flexDirection: "row",
-      gap: t.spacing.sm,
-    },
-    opcao: {
-      borderRadius: t.radius.md,
-      borderWidth: 1,
-      flex: 1,
-      justifyContent: "center",
-      minHeight: t.minTouch,
-      paddingHorizontal: t.spacing.sm,
-    },
-    texto: {
-      ...t.typography.bodyStrong,
-      textAlign: "center",
-    },
-  });
+/** Glifo da opção, tingido quando ela é a escolhida. */
+function Glifo({
+  nome,
+  preferencia,
+}: {
+  nome: "sun" | "moon" | "monitor";
+  preferencia: ThemePreference;
+}) {
+  const t = useTheme();
+  const { accent } = useRoleAccent();
+  const ativo = t.preference === preferencia;
+
+  return <Icon name={nome} size={15} color={ativo ? accent : t.colors.textMuted} />;
+}

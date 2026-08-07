@@ -66,6 +66,10 @@ function pares(c) {
     ["text", "surfaceAlt", AA_TEXTO],
     ["textMuted", "surfaceAlt", AA_TEXTO],
     ["borderStrong", "surfaceAlt", AA_NAO_TEXTO],
+    // Iniciais do `Avatar`: o disco é preenchido com `surfaceAlt`, e as
+    // iniciais herdam o destaque do papel de quem está sendo mostrado.
+    ["accentPatientText", "surfaceAlt", AA_TEXTO],
+    ["accentDoctorText", "surfaceAlt", AA_TEXTO],
     // Limites de controles interativos: 3:1 (WCAG 1.4.11).
     ["borderStrong", "background", AA_NAO_TEXTO],
     ["borderStrong", "surface", AA_NAO_TEXTO],
