@@ -15,6 +15,7 @@ export {
 } from "./ThemeProvider";
 export { withAlpha } from "./color";
 export {
+  BAND_COLORS,
   MIN_TOUCH,
   palettes,
   radius,

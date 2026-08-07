@@ -5,10 +5,18 @@ import { useTheme, type Theme } from "../theme";
 
 type Props = {
   children: ReactNode;
+  /**
+   * Solta o teto de largura para telas que se organizam em colunas.
+   *
+   * O padrão de 720 serve a texto e listas — linha longa demais cansa de ler.
+   * Mas numa tela de painéis lado a lado esse teto deixava o conteúdo boiando
+   * ao lado da barra lateral, que foi uma das queixas do teste em grupo.
+   */
+  wide?: boolean;
 };
 
 /** Container padrão das telas: fundo, respiro e rolagem (útil no web estreito). */
-export function ScreenContainer({ children }: Props) {
+export function ScreenContainer({ children, wide }: Props) {
   const t = useTheme();
   const styles = useMemo(() => criarEstilos(t), [t]);
 
@@ -18,7 +26,7 @@ export function ScreenContainer({ children }: Props) {
       contentContainerStyle={styles.content}
       keyboardShouldPersistTaps="handled"
     >
-      <View style={styles.inner}>{children}</View>
+      <View style={[styles.inner, wide && styles.innerLargo]}>{children}</View>
     </ScrollView>
   );
 }
@@ -39,5 +47,8 @@ const criarEstilos = (t: Theme) =>
       gap: t.spacing.md,
       maxWidth: 720,
       width: "100%",
+    },
+    innerLargo: {
+      maxWidth: 1280,
     },
   });
