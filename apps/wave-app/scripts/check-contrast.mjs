@@ -69,6 +69,13 @@ function pares(c) {
     // Limites de controles interativos: 3:1 (WCAG 1.4.11).
     ["borderStrong", "background", AA_NAO_TEXTO],
     ["borderStrong", "surface", AA_NAO_TEXTO],
+    // Cores de banda: o preenchimento da barra vive sobre o **trilho**
+    // (`surfaceAlt`), não sobre o cartão — é esse o par que precisa passar.
+    ["bandDelta", "surfaceAlt", AA_NAO_TEXTO],
+    ["bandTheta", "surfaceAlt", AA_NAO_TEXTO],
+    ["bandAlpha", "surfaceAlt", AA_NAO_TEXTO],
+    ["bandBeta", "surfaceAlt", AA_NAO_TEXTO],
+    ["bandGamma", "surfaceAlt", AA_NAO_TEXTO],
     // Traço de gráfico sobre o fundo do cartão.
     ["accentPatient", "surface", AA_NAO_TEXTO],
     ["accentDoctor", "surface", AA_NAO_TEXTO],
