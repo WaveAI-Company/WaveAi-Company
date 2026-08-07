@@ -9,6 +9,7 @@ import {
 } from "react-native";
 
 import { useRoleAccent, useTheme, type Theme } from "../theme";
+import { Icon } from "./Icon";
 
 type Props = TextInputProps & {
   label: string;
@@ -68,9 +69,9 @@ export function Field({ label, error, revealable, ...input }: Props) {
             style={styles.revelar}
             hitSlop={8}
           >
-            <Text style={[styles.revelarTexto, { color: accent }]}>
-              {revelado ? "Ocultar" : "Mostrar"}
-            </Text>
+            {/* Ícone, não a palavra "Mostrar": o rótulo acessível já diz a ação
+                e o texto disputava espaço com senhas longas. */}
+            <Icon name={revelado ? "eyeOff" : "eye"} size={20} color={accent} />
           </Pressable>
         ) : null}
       </View>
@@ -93,7 +94,10 @@ const criarEstilos = (t: Theme) =>
     },
     input: {
       ...t.typography.body,
-      backgroundColor: t.colors.surface,
+      // "Maré" assenta o campo num nível abaixo da superfície do cartão; o
+      // limite continua em `borderStrong` (3:1, WCAG 1.4.11) e não no traço
+      // fino do mockup, que não passaria.
+      backgroundColor: t.colors.surfaceAlt,
       borderColor: t.colors.borderStrong,
       borderRadius: t.radius.md,
       borderWidth: 1,
@@ -102,20 +106,17 @@ const criarEstilos = (t: Theme) =>
       paddingHorizontal: t.spacing.md,
       paddingVertical: t.spacing.sm + 2,
     },
-    // Espaço à direita para o texto não correr sob o botão Mostrar/Ocultar.
+    // Espaço à direita para o texto não correr sob o botão de revelar.
     inputComBotao: {
-      paddingRight: 92,
+      paddingRight: 52,
     },
     revelar: {
       position: "absolute",
-      right: t.spacing.sm,
+      right: t.spacing.xs,
+      alignItems: "center",
       justifyContent: "center",
       minHeight: t.minTouch,
-      paddingHorizontal: t.spacing.sm,
-    },
-    revelarTexto: {
-      ...t.typography.bodyStrong,
-      fontSize: 14,
+      width: t.minTouch,
     },
     erro: {
       ...t.typography.caption,

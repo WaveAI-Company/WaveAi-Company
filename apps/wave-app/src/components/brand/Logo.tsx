@@ -1,63 +1,63 @@
 import { useMemo } from "react";
 import { StyleSheet, Text, View } from "react-native";
+import Svg, { Defs, LinearGradient, Path, Rect, Stop } from "react-native-svg";
 
 import { useTheme, type Theme } from "../../theme";
 
 /**
- * Marca do WaveAI (P6-c) — derivada dos tokens, **sem dependência nativa**.
+ * Marca do WaveAI — símbolo do design "Maré" (ADR-0042).
  *
- * O símbolo é um "waveform" de barras arredondadas sobre um ladrilho no tom de
- * destaque: conversa com o `BandBars` (a análise por banda é o coração do
- * produto) e é honesto — nada de reproduzir o mockup clínico. Construído com
- * `View`s, como os gráficos, para não puxar `react-native-svg`.
+ * O símbolo é uma **onda de traço contínuo** sobre um ladrilho de gradiente
+ * que atravessa os dois tons de destaque (paciente → profissional): a mesma
+ * marca cobre os dois papéis do produto, sem escolher um lado.
  *
- * `assets/logo.svg` guarda a mesma marca em vetor (fonte para gerar os PNGs de
- * ícone/splash quando o pipeline de build existir — P5/EAS).
+ * Antes da `react-native-svg` (P6-c) isto eram `View`s empilhadas simulando um
+ * waveform de barras — o que a onda de verdade agora substitui, na casca, no
+ * login e na landing de uma vez só.
+ *
+ * O traço usa `onAccent`, e as duas pontas do gradiente (`accentPatient` e
+ * `accentDoctor`) são pares obrigatórios do `scripts/check-contrast.mjs` — o
+ * gradiente inteiro fica coberto pelo verificador, não só as extremidades.
  */
-
-/** Alturas relativas das barras do waveform (0..1 da altura interna). */
-const BARRAS = [0.45, 0.8, 0.6, 1, 0.55];
 
 type Props = {
   /** Lado do ladrilho do símbolo. */
   size?: number;
-  /** Cor do ladrilho (padrão: destaque do paciente = cor primária da marca). */
+  /** Cor sólida no lugar do gradiente (a casca usa o tom do papel ativo). */
   tint?: string;
   /** Mostra o wordmark "WaveAI" ao lado do símbolo. */
   withWordmark?: boolean;
-  /** Subtítulo sob o wordmark (ex.: "análise de bem-estar"). */
+  /** Subtítulo sob o wordmark (ex.: "bem-estar exploratório"). */
   tagline?: string;
 };
 
 export function Logo({ size = 36, tint, withWordmark = false, tagline }: Props) {
   const t = useTheme();
   const styles = useMemo(() => criarEstilos(t), [t]);
-  const cor = tint ?? t.colors.accentPatient;
 
-  const raio = Math.round(size * 0.28);
-  const alturaInterna = size * 0.56;
-  const larguraBarra = Math.max(2, Math.round(size * 0.1));
+  const raio = Math.round(size * 0.29);
+  const preenchimento = tint ?? "url(#marca)";
 
   return (
     <View style={styles.linha}>
-      <View
-        style={[
-          styles.simbolo,
-          { width: size, height: size, borderRadius: raio, backgroundColor: cor },
-        ]}
-      >
-        {BARRAS.map((h, i) => (
-          <View
-            key={i}
-            style={{
-              width: larguraBarra,
-              height: Math.round(alturaInterna * h),
-              borderRadius: larguraBarra / 2,
-              backgroundColor: t.colors.onAccent,
-            }}
-          />
-        ))}
-      </View>
+      <Svg width={size} height={size} viewBox="0 0 36 36" aria-hidden>
+        <Defs>
+          <LinearGradient id="marca" x1="0" y1="0" x2="1" y2="1">
+            <Stop offset="0" stopColor={t.colors.accentPatient} />
+            <Stop offset="1" stopColor={t.colors.accentDoctor} />
+          </LinearGradient>
+        </Defs>
+        <Rect x={0} y={0} width={36} height={36} rx={(raio * 36) / size} fill={preenchimento} />
+        <Path
+          // A onda do mockup (grade 24) reescalada para a grade 36 do ladrilho.
+          d="M9.67 18c2.083 0 2.083-4.167 4.167-4.167s2.083 6.667 4.167 6.667 2.083-6.667 4.166-6.667 2.084 4.167 4.167 4.167"
+          stroke={t.colors.onAccent}
+          strokeWidth={2}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          fill="none"
+        />
+      </Svg>
 
       {withWordmark ? (
         <View style={styles.textos}>
@@ -75,12 +75,6 @@ const criarEstilos = (t: Theme) =>
       alignItems: "center",
       flexDirection: "row",
       gap: t.spacing.sm,
-    },
-    simbolo: {
-      alignItems: "center",
-      flexDirection: "row",
-      gap: Math.max(2, t.spacing.xs / 2),
-      justifyContent: "center",
     },
     textos: {
       flexShrink: 1,

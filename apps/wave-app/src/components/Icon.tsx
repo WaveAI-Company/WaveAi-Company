@@ -1,0 +1,108 @@
+import Svg, { Circle, Path } from "react-native-svg";
+
+import { useTheme } from "../theme";
+
+/**
+ * Ícones de traço do design "Maré" (ADR-0042).
+ *
+ * Todos vêm da mesma grade 24×24, desenhados só com **traço** (`stroke`), sem
+ * preenchimento: é o que faz um ícone herdar a cor do texto ao lado e funcionar
+ * nos dois temas sem uma segunda arte. Antes da `react-native-svg` o app
+ * desenhava com `View`, o que serve para uma marca e não para um conjunto.
+ *
+ * O conjunto cresce **sob demanda**, tela a tela — um catálogo especulativo só
+ * junta peso de bundle e arte sem uso.
+ */
+
+/** Cada ícone é uma função do traço, porque alguns misturam `Path` e `Circle`. */
+const ICONES = {
+  /** Revelar senha. */
+  eye: (c: string, w: number) => (
+    <>
+      <Path
+        d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z"
+        stroke={c}
+        strokeWidth={w}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <Circle cx={12} cy={12} r={2.8} stroke={c} strokeWidth={w} />
+    </>
+  ),
+  /** Ocultar senha — o mesmo olho, cortado. */
+  eyeOff: (c: string, w: number) => (
+    <>
+      <Path
+        d="M3 3l18 18M10.6 6C11.05 5.9 11.5 5.9 12 5.9c6 0 9.5 6.1 9.5 6.1a17 17 0 0 1-3.3 3.9M6.4 8.1A17 17 0 0 0 2.5 12S6 18.1 12 18.1c1.2 0 2.3-.24 3.3-.63"
+        stroke={c}
+        strokeWidth={w}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <Path
+        d="M9.6 9.9a3 3 0 0 0 4.2 4.2"
+        stroke={c}
+        strokeWidth={w}
+        strokeLinecap="round"
+      />
+    </>
+  ),
+  /** Tema escuro em uso. */
+  moon: (c: string, w: number) => (
+    <Path
+      d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5Z"
+      stroke={c}
+      strokeWidth={w}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  ),
+  /** Tema claro em uso. */
+  sun: (c: string, w: number) => (
+    <>
+      <Circle cx={12} cy={12} r={4.2} stroke={c} strokeWidth={w} />
+      <Path
+        d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M4.9 4.9l1.6 1.6M17.5 17.5l1.6 1.6M19.1 4.9l-1.6 1.6M6.5 17.5l-1.6 1.6"
+        stroke={c}
+        strokeWidth={w}
+        strokeLinecap="round"
+      />
+    </>
+  ),
+  /** Onda — símbolo da marca. */
+  wave: (c: string, w: number) => (
+    <Path
+      d="M2 12c2.5 0 2.5-5 5-5s2.5 8 5 8 2.5-8 5-8 2.5 5 5 5"
+      stroke={c}
+      strokeWidth={w}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  ),
+} as const;
+
+export type IconName = keyof typeof ICONES;
+
+type Props = {
+  name: IconName;
+  size?: number;
+  /** Padrão: a cor de texto do tema. */
+  color?: string;
+  /** Espessura do traço na grade 24×24. */
+  strokeWidth?: number;
+};
+
+export function Icon({ name, size = 20, color, strokeWidth = 1.7 }: Props) {
+  const t = useTheme();
+  const cor = color ?? t.colors.text;
+
+  return (
+    // `aria-hidden` mantém o ícone fora do leitor de tela: quem descreve a ação
+    // é o rótulo do controle que o envolve, e um nome duplicado só atrapalha a
+    // navegação. É o atributo que vale nas duas pontas — no web vira o atributo
+    // do próprio `<svg>`, sem prop desconhecida vazando para o DOM.
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden>
+      {ICONES[name](cor, strokeWidth)}
+    </Svg>
+  );
+}
