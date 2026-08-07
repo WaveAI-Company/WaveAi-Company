@@ -59,9 +59,16 @@ function mmss(segundos: number): string {
 type Props = {
   accent: string;
   onPhaseChange?: (fase: ProtocolPhase | null) => void;
+  /**
+   * Já está dentro de um `Panel` — sem cartão próprio e sem repetir o título.
+   *
+   * A linha de ações (silenciar, ⓘ) continua, porque ela pertence ao protocolo
+   * e não ao painel que o embrulha.
+   */
+  embedded?: boolean;
 };
 
-export function GuidedProtocol({ accent, onPhaseChange }: Props) {
+export function GuidedProtocol({ accent, onPhaseChange, embedded }: Props) {
   const t = useTheme();
   const styles = useMemo(() => criarEstilos(t), [t]);
   const [indice, setIndice] = useState(OCIOSO);
@@ -133,9 +140,9 @@ export function GuidedProtocol({ accent, onPhaseChange }: Props) {
   useEffect(() => () => protocolCues.stop(), []);
 
   return (
-    <View style={[styles.card, { borderLeftColor: accent }]}>
-      <View style={styles.cabecalho}>
-        <Text style={styles.titulo}>Protocolo guiado</Text>
+    <View style={embedded ? styles.solto : [styles.card, { borderLeftColor: accent }]}>
+      <View style={[styles.cabecalho, embedded && styles.cabecalhoSolto]}>
+        {embedded ? null : <Text style={styles.titulo}>Protocolo guiado</Text>}
         <View style={styles.cabecalhoAcoes}>
           {/* Silenciar a guia por voz/vibração. Irmão do InfoButton (nunca
               button aninhado). */}
@@ -206,6 +213,13 @@ const criarEstilos = (t: Theme) =>
       borderRadius: t.radius.md,
       gap: t.spacing.sm,
       padding: t.spacing.md,
+    },
+    // Sem cartão: quem desenha a moldura e o título é o `Panel` da tela.
+    solto: {
+      gap: t.spacing.sm,
+    },
+    cabecalhoSolto: {
+      justifyContent: "flex-end",
     },
     cabecalho: {
       flexDirection: "row",
