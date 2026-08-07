@@ -11,7 +11,7 @@ import { request } from "../auth/api";
 /** Bandas do `wave_eeg` (Hz) — rótulos para exibição, não interpretação. */
 export const BANDS = [
   { key: "delta", label: "Delta", range: "0,5–4 Hz" },
-  { key: "theta", label: "Theta", range: "4–8 Hz" },
+  { key: "theta", label: "Teta", range: "4–8 Hz" },
   { key: "alpha", label: "Alfa", range: "8–13 Hz" },
   { key: "beta", label: "Beta", range: "13–30 Hz" },
   { key: "gamma", label: "Gama", range: "30–45 Hz" },
