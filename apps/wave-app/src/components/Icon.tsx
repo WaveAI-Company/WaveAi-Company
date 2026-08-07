@@ -69,6 +69,54 @@ const ICONES = {
       />
     </>
   ),
+  /** Tema seguindo o sistema — a tela do aparelho. */
+  monitor: (c: string, w: number) => (
+    <>
+      <Path
+        d="M3.2 5.5h17.6v11H3.2Z"
+        stroke={c}
+        strokeWidth={w}
+        strokeLinejoin="round"
+      />
+      <Path d="M9 20.5h6M12 16.5v4" stroke={c} strokeWidth={w} strokeLinecap="round" />
+    </>
+  ),
+  /** Consentimento — escudo com visto. */
+  shield: (c: string, w: number) => (
+    <>
+      <Path
+        d="M12 3 4.5 6v5c0 4.5 3 8.2 7.5 10 4.5-1.8 7.5-5.5 7.5-10V6Z"
+        stroke={c}
+        strokeWidth={w}
+        strokeLinejoin="round"
+      />
+      <Path
+        d="m8.8 11.8 2.3 2.3 4.1-4.6"
+        stroke={c}
+        strokeWidth={w}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </>
+  ),
+  /** Convites — envelope. */
+  mail: (c: string, w: number) => (
+    <>
+      <Path
+        d="M3.5 5.5h17v13h-17Z"
+        stroke={c}
+        strokeWidth={w}
+        strokeLinejoin="round"
+      />
+      <Path
+        d="m3.9 6.6 8.1 5.8 8.1-5.8"
+        stroke={c}
+        strokeWidth={w}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </>
+  ),
   /** Onda — símbolo da marca. */
   wave: (c: string, w: number) => (
     <Path
