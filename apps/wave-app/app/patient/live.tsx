@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useMemo } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 
-import { formatPercent, type BandKey } from "../../src/api/results";
+import { formatPercent } from "../../src/api/results";
 import {
   StreamSession,
   type LiveEsense,
@@ -11,14 +11,17 @@ import {
 } from "../../src/api/stream";
 import { Button } from "../../src/components/Button";
 import { Card } from "../../src/components/Card";
+import { Chip } from "../../src/components/Chip";
 import { InfoButton } from "../../src/components/InfoButton";
 import { LiveReadingConfidence } from "../../src/components/LiveReadingConfidence";
+import { Meter } from "../../src/components/Meter";
+import { Panel } from "../../src/components/Panel";
 import { BandBars } from "../../src/components/charts/BandBars";
 import { LiveBandTrend } from "../../src/components/charts/LiveBandTrend";
 import { SignalQuality } from "../../src/components/charts/SignalQuality";
+import { LiveWave } from "../../src/components/live/LiveWave";
 import { MockBadge } from "../../src/components/MockBadge";
 import { ScreenContainer } from "../../src/components/ScreenContainer";
-import { ScreenHeading } from "../../src/components/ScreenHeading";
 import { SensorPrepGuide } from "../../src/components/SensorPrepGuide";
 import { SessionAnnotation } from "../../src/components/SessionAnnotation";
 import { Disclaimer } from "../../src/components/Disclaimer";
@@ -47,19 +50,37 @@ const BLOCO = 256;
 const INTERVALO_MS = 500;
 /** Janelas mantidas no gráfico ao vivo (janela ~2 s → ~80 s de histórico). */
 const MAX_PONTOS = 40;
+/** Pior contato possível relatado pelo aparelho (0 = bom, 200 = solto). */
+const POOR_SIGNAL_MAX = 200;
+/** A partir daqui a tela se organiza em colunas. */
+const LARGURA_COLUNAS = 900;
+
+function relogio(segundos: number): string {
+  const m = Math.floor(segundos / 60);
+  const s = segundos % 60;
+  return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+}
 
 /**
- * Estado ao vivo a partir de um stream **simulado** (#14).
+ * Estado ao vivo — porte do herói do design "Maré"
+ * (`Design/round1/estado-ao-vivo.html`, ADR-0042).
  *
- * Captação real (Android/SPP) e sinal simulado, atrás da mesma abstração. No web
- * a captura é indisponível e só o simulador aparece. As features vêm do
- * servidor — nada é calculado no cliente.
+ * Captação real (Android/SPP, iOS/BLE) e sinal simulado atrás da mesma
+ * abstração; no web a captura é indisponível e só o simulador aparece. **As
+ * features vêm do servidor — nada é calculado no cliente.**
+ *
+ * A composição segue o design: herói com a onda, trilho lateral com contato e
+ * eSense, faixa inferior com composição por banda, sessão guiada e nota. O que
+ * o mockup não tinha, porque supunha uma sessão sempre em curso, são as duas
+ * outras fases reais da tela — escolher o aparelho e ler o relatório do fim —
+ * e elas continuam aqui.
  */
 export default function PatientLiveScreen() {
   const t = useTheme();
   const papel = useRoleAccent();
   const aparelhoAccent = useAccentFor("doctor");
   const styles = useMemo(() => criarEstilos(t), [t]);
+  const emColunas = useWindowDimensions().width >= LARGURA_COLUNAS;
 
   const [ativo, setAtivo] = useState(false);
   const [features, setFeatures] = useState<LiveFeatures | null>(null);
@@ -78,9 +99,13 @@ export default function PatientLiveScreen() {
   const [encerrada, setEncerrada] = useState<SessionClosed | null>(null);
   /** `true` entre o "stop" e a chegada do relatório. */
   const [encerrando, setEncerrando] = useState(false);
+  /** Cronômetro da sessão, em segundos, e a hora em que ela começou. */
+  const [duracao, setDuracao] = useState(0);
+  const [inicio, setInicio] = useState<Date | null>(null);
 
   const sessao = useRef<StreamSession | null>(null);
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const cronometro = useRef<ReturnType<typeof setInterval> | null>(null);
   /** Simulador ativo (só no caminho web/simulado) — o protocolo guiado o usa
    *  para tornar visível o contraste olhos abertos/fechados. */
   const simuladorRef = useRef<SignalSimulator | null>(null);
@@ -93,6 +118,8 @@ export default function PatientLiveScreen() {
   const encerrarCaptacao = useCallback(() => {
     if (timer.current) clearInterval(timer.current);
     timer.current = null;
+    if (cronometro.current) clearInterval(cronometro.current);
+    cronometro.current = null;
     if (usandoAparelho) void deviceConnection.disconnect();
     pendentes.current = [];
     esensePendente.current = {};
@@ -148,6 +175,24 @@ export default function PatientLiveScreen() {
     if (rbp) setBandHistory((h) => [...h, rbp].slice(-MAX_PONTOS));
   }, []);
 
+  /** Zera o painel para uma sessão nova (os dois caminhos usam isto). */
+  function limparParaNovaSessao() {
+    setErro(null);
+    setFeatures(null);
+    setEsense(null);
+    setJanelas(0);
+    setBandHistory([]);
+    setPoorSignal(null);
+    setEncerrada(null);
+    setDuracao(0);
+    setInicio(new Date());
+  }
+
+  /** Começa a contar o tempo de sessão (parado junto da captação). */
+  function iniciarCronometro() {
+    cronometro.current = setInterval(() => setDuracao((s) => s + 1), 1000);
+  }
+
   async function procurarAparelhos() {
     setErro(null);
     try {
@@ -161,13 +206,7 @@ export default function PatientLiveScreen() {
 
   /** Captação real: o aparelho alimenta o mesmo stream do simulador. */
   async function iniciarComAparelho(device: DeviceInfo) {
-    setErro(null);
-    setFeatures(null);
-    setEsense(null);
-    setJanelas(0);
-    setBandHistory([]);
-    setPoorSignal(null);
-    setEncerrada(null);
+    limparParaNovaSessao();
     esensePendente.current = {};
 
     const stream = new StreamSession({
@@ -204,6 +243,7 @@ export default function PatientLiveScreen() {
     sessao.current = stream;
     setAtivo(true);
     setUsandoAparelho(true);
+    iniciarCronometro();
 
     // Envia o que chegou do aparelho na cadência do stream. O eSense pendente
     // pega carona e é consumido (limpo) para não reenviar valor velho.
@@ -231,13 +271,7 @@ export default function PatientLiveScreen() {
   useEffect(() => () => descartarRef.current(), []);
 
   async function iniciar() {
-    setErro(null);
-    setFeatures(null);
-    setEsense(null);
-    setJanelas(0);
-    setBandHistory([]);
-    setPoorSignal(null);
-    setEncerrada(null);
+    limparParaNovaSessao();
 
     const stream = new StreamSession({
       onSession: setSessionId,
@@ -259,6 +293,7 @@ export default function PatientLiveScreen() {
 
     sessao.current = stream;
     setAtivo(true);
+    iniciarCronometro();
 
     // O simulador emite eSense sintético para exercitar o caminho sem hardware
     // (o selo "simulado" da tela já avisa que nada aqui é medição de ninguém).
@@ -272,222 +307,327 @@ export default function PatientLiveScreen() {
   }
 
   const alfa = features?.rel_alpha;
+  const contato = poorSignal !== null ? describeContact(poorSignal) : null;
+  const corContato =
+    contato === null
+      ? t.colors.textMuted
+      : contato.level === "bom"
+        ? papel.accent
+        : contato.level === "solto"
+          ? t.colors.dangerText
+          : t.colors.warningText;
 
   return (
-    <ScreenContainer>
-      <ScreenHeading
-        title="Estado ao vivo"
-        lead={
-          deviceConnection.supported
-            ? SIMULADOR_HABILITADO
-              ? "Conecte o MindWave pareado, ou use o sinal simulado. As features são calculadas no servidor."
-              : "Conecte o MindWave pareado. As features são calculadas no servidor."
-            : "A captação do aparelho acontece no app do celular. As features são calculadas no servidor."
-        }
-      />
+    <ScreenContainer wide>
+      {/* ===== faixa superior: cronômetro e situação da sessão ===== */}
+      <View style={styles.topo}>
+        {ativo || encerrando ? (
+          <Text style={styles.cronometro} accessibilityLabel="Duração da sessão">
+            {relogio(duracao)}
+          </Text>
+        ) : null}
+        <Chip
+          label={ativo ? "AO VIVO" : encerrada ? "Sessão encerrada" : "Sem captação"}
+          variant={ativo ? "estado" : "neutro"}
+          accent={papel.accent}
+          dot
+        />
+        <View style={styles.espacador} />
+        {inicio && (ativo || encerrada) ? (
+          <Text style={styles.topoNota}>
+            iniciada às{" "}
+            {inicio.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+          </Text>
+        ) : null}
+      </View>
+
       {/* O selo vale só para o sinal simulado (dev): exibi-lo sobre captação
           real rotularia dado verdadeiro como fictício — enganoso na direção
           oposta, e igualmente errado. */}
       {SIMULADOR_HABILITADO && !usandoAparelho ? <MockBadge /> : null}
+      {erro ? <Text style={styles.erro}>{erro}</Text> : null}
+
+      {/* ===== herói + trilho lateral ===== */}
+      <View style={[styles.grade, emColunas && styles.gradeLinha]}>
+        <View style={styles.colunaHeroi}>
+          <Panel grow>
+            <LiveWave
+              accent={papel.accent}
+              paused={!ativo}
+              scale={ativo ? 1 : 0.35}
+              height={emColunas ? 260 : 180}
+            />
+            <View style={styles.heroiChips}>
+              <Chip
+                label={ativo ? "ritmo ao vivo" : "em repouso"}
+                variant={ativo ? "estado" : "neutro"}
+                accent={papel.accent}
+                dot
+              />
+              <Chip label="visualização estilizada — não é exame" variant="cautela" />
+            </View>
+            <Text style={styles.heroiNota}>
+              A figura acima marca que a sessão está correndo; ela não desenha o seu
+              sinal. As medidas são calculadas no servidor e aparecem rotuladas abaixo.
+            </Text>
+
+            {/* Fase ociosa: o mockup supõe sessão em curso, mas aqui é onde se
+                escolhe a fonte do sinal. */}
+            {!ativo && !encerrada ? (
+              <View style={styles.veu}>
+                <Text style={styles.veuTitulo}>
+                  {deviceConnection.supported
+                    ? "Pronto para captar"
+                    : "Captação no app do celular"}
+                </Text>
+                <Text style={styles.veuTexto}>
+                  {deviceConnection.supported
+                    ? "Ligue o MindWave e escolha-o na lista. A sessão começa assim que o contato ficar bom."
+                    : SIMULADOR_HABILITADO
+                      ? "A conexão com o MindWave existe no app do celular. Aqui você pode usar o sinal simulado."
+                      : "A conexão com o MindWave existe no app do celular. Neste dispositivo você acompanha seu histórico e suas tendências."}
+                </Text>
+              </View>
+            ) : null}
+
+            {/* ===== controles da sessão ===== */}
+            <View style={styles.controles}>
+              {ativo || SIMULADOR_HABILITADO ? (
+                <View style={styles.controlePrincipal}>
+                  <Button
+                    label={
+                      ativo
+                        ? "Encerrar e salvar sessão"
+                        : deviceConnection.supported
+                          ? "Ou usar sinal simulado"
+                          : "Iniciar captação simulada"
+                    }
+                    onPress={ativo ? parar : iniciar}
+                    accent={ativo ? t.colors.warningText : papel.accent}
+                  />
+                </View>
+              ) : null}
+              <Text style={styles.controleNota}>🔒 só você vê esta sessão</Text>
+            </View>
+          </Panel>
+
+          {!ativo && deviceConnection.supported ? (
+            <Panel title="Aparelho" eyebrow="bluetooth">
+              <Button
+                label="Procurar aparelhos pareados"
+                onPress={procurarAparelhos}
+                accent={aparelhoAccent.accent}
+              />
+              {aparelhos.map((d) => (
+                <Pressable
+                  key={d.id}
+                  accessibilityRole="button"
+                  onPress={() => void iniciarComAparelho(d)}
+                >
+                  <Card title={d.name} subtitle={d.id} accent={aparelhoAccent.accent} />
+                </Pressable>
+              ))}
+            </Panel>
+          ) : null}
+        </View>
+
+        {/* ===== trilho: contato do sensor + eSense ===== */}
+        <View style={[styles.trilho, emColunas && styles.trilhoLateral]}>
+          <Panel
+            title="Qualidade do sinal"
+            headerAccessory={<InfoButton term="poor_signal" />}
+          >
+            {contato && poorSignal !== null ? (
+              <>
+                <View style={styles.valorLinha}>
+                  <Text style={[styles.valorGrande, { color: corContato }]}>
+                    {poorSignal}
+                  </Text>
+                  <Text style={styles.valorUnidade}>poorSignal (0–200)</Text>
+                </View>
+                {/* O aparelho relata 0 = bom contato e 200 = eletrodo solto; a
+                    barra inverte isso só para encher à direita quando está bom.
+                    O número cru fica à vista para ninguém precisar confiar na
+                    barra — e não inventamos um "% de contato", que seria uma
+                    unidade que o aparelho não dá. */}
+                <Meter
+                  value={1 - poorSignal / POOR_SIGNAL_MAX}
+                  color={corContato}
+                  accessibilityLabel={`Contato do sensor: ${contato.label}, poorSignal ${poorSignal} de ${POOR_SIGNAL_MAX}`}
+                />
+                <Chip label={contato.label} variant="estado" accent={corContato} dot />
+                <Text style={styles.notaPainel}>{contato.hint}</Text>
+              </>
+            ) : (
+              <Text style={styles.notaPainel}>
+                Sem leitura de contato. O valor aparece quando a captação começa.
+              </Text>
+            )}
+
+            {/* Quando confiar na leitura (P4-b): elo entre o contato acima e as
+                features abaixo. Qualificador de confiabilidade, não juízo de
+                estado. */}
+            {ativo && poorSignal !== null ? (
+              <LiveReadingConfidence poorSignal={poorSignal} accent={papel.accent} />
+            ) : null}
+          </Panel>
+
+          {/* eSense (ADR-0034): complemento proprietário e não-validado, nunca
+              fundamento. Cor neutra — nada de "bom/ruim". */}
+          <Panel
+            title="eSense"
+            headerAccessory={<Chip label="proprietário · não validado" variant="cautela" />}
+          >
+            {esense && (esense.attention !== undefined || esense.meditation !== undefined) ? (
+              <>
+                {esense.attention !== undefined ? (
+                  <View style={styles.esenseLinha}>
+                    <View style={styles.esenseRotuloLinha}>
+                      <Text style={styles.esenseRotulo}>Atenção</Text>
+                      <Text style={styles.esenseValor}>{esense.attention}</Text>
+                    </View>
+                    <Meter
+                      value={esense.attention / 100}
+                      color={t.colors.textMuted}
+                      accessibilityLabel={`Atenção eSense: ${esense.attention} de 100`}
+                    />
+                  </View>
+                ) : null}
+                {esense.meditation !== undefined ? (
+                  <View style={styles.esenseLinha}>
+                    <View style={styles.esenseRotuloLinha}>
+                      <Text style={styles.esenseRotulo}>Meditação</Text>
+                      <Text style={styles.esenseValor}>{esense.meditation}</Text>
+                    </View>
+                    <Meter
+                      value={esense.meditation / 100}
+                      color={t.colors.textMuted}
+                      accessibilityLabel={`Meditação eSense: ${esense.meditation} de 100`}
+                    />
+                  </View>
+                ) : null}
+              </>
+            ) : (
+              <Text style={styles.notaPainel}>
+                Sem índices no momento. Eles chegam junto do sinal do aparelho.
+              </Text>
+            )}
+            <View style={styles.esenseNotaLinha}>
+              <Text style={styles.notaCautela}>
+                Índices 0–100 do algoritmo proprietário do sensor, sem validação
+                científica independente. Complemento exploratório — a leitura principal
+                é a composição por banda.
+              </Text>
+              <InfoButton term="esense" />
+            </View>
+          </Panel>
+        </View>
+      </View>
+
+      {/* ===== destaque de alfa + análise indisponível ===== */}
+      {features?.unavailable ? (
+        <Panel title="Análise indisponível" eyebrow="a captação segue">
+          <Text style={styles.notaPainel}>
+            A captação continua e a sessão está sendo registrada.
+          </Text>
+        </Panel>
+      ) : null}
+
+      {alfa !== undefined ? (
+        <Panel>
+          <View style={styles.destaque}>
+            <View style={styles.destaqueRotuloLinha}>
+              <Text style={styles.destaqueRotulo}>Alfa relativa</Text>
+              <InfoButton term="rel_alpha" accent={papel.accent} />
+            </View>
+            <Text style={styles.destaqueValor}>{(alfa * 100).toFixed(1)}%</Text>
+            <Text style={styles.destaqueNota}>janelas analisadas: {janelas}</Text>
+          </View>
+        </Panel>
+      ) : ativo ? (
+        <Panel title="Coletando…">
+          <Text style={styles.notaPainel}>
+            A primeira leitura aparece quando a janela fecha (~2 s). É normal os valores
+            oscilarem no começo — eles se acomodam conforme a captação segue.
+          </Text>
+        </Panel>
+      ) : null}
+
+      {/* ===== faixa inferior: bandas, sessão guiada e nota ===== */}
+      <View style={[styles.grade, emColunas && styles.gradeLinha]}>
+        {features?.relative_band_powers ? (
+          <View style={styles.colunaHeroi}>
+            <Panel
+              title="Composição por banda"
+              eyebrow="% do espectro · potência relativa"
+              grow
+            >
+              <BandBars relative={features.relative_band_powers} />
+              <Text style={styles.notaPainel}>
+                Potência relativa de cada banda no espectro da última janela. As bandas
+                não têm valência — nenhuma é “boa” ou “ruim”; o interesse está em como a
+                composição muda entre estados e ao longo das sessões.
+              </Text>
+            </Panel>
+          </View>
+        ) : null}
+
+        {/* Gráfico ao vivo (P1-c): uma banda por vez, oscilando ao longo da
+            sessão. Alimentado pelas features do servidor — sem DSP no cliente. */}
+        {bandHistory.length > 0 ? (
+          <View style={styles.colunaHeroi}>
+            <Panel
+              title="Ondas ao vivo"
+              headerAccessory={<InfoButton term="live_band_trend" />}
+              grow
+            >
+              <LiveBandTrend history={bandHistory} accent={papel.accent} />
+            </Panel>
+          </View>
+        ) : null}
+      </View>
+
+      {/* Protocolo guiado olhos abertos/fechados (P4-c): contraste de estado na
+          mesma captação. Client-only — não persiste fase; contexto vai na
+          anotação (P2). Some ao encerrar (desmonta e limpa o timer). */}
+      {ativo ? (
+        <Panel title="Sessão guiada" eyebrow="opcional">
+          <GuidedProtocol
+            accent={papel.accent}
+            onPhaseChange={aoMudarFaseProtocolo}
+            embedded
+          />
+        </Panel>
+      ) : null}
 
       {/* Preparação do sensor (P4-a): antes de captar, como conseguir bom
           contato — reduz "lixo entra, lixo sai". Some durante a captação e ao
           ver o relatório, para não competir com a leitura ao vivo. */}
       {!ativo && !encerrada ? <SensorPrepGuide accent={papel.accent} /> : null}
 
-      {!ativo && deviceConnection.supported ? (
-        <>
-          <Text style={styles.secao}>Aparelho</Text>
-          <Button
-            label="Procurar aparelhos pareados"
-            onPress={procurarAparelhos}
-            accent={aparelhoAccent.accent}
-          />
-          {aparelhos.map((d) => (
-            <Pressable
-              key={d.id}
-              accessibilityRole="button"
-              onPress={() => void iniciarComAparelho(d)}
-            >
-              <Card title={d.name} subtitle={d.id} accent={aparelhoAccent.accent} />
-            </Pressable>
-          ))}
-        </>
-      ) : null}
-
-      {!ativo && !deviceConnection.supported ? (
-        <Card
-          title="Captação no app do celular"
-          subtitle={
-            SIMULADOR_HABILITADO
-              ? "A conexão com o MindWave existe no app do celular. Aqui você pode usar o sinal simulado."
-              : "A conexão com o MindWave existe no app do celular. Neste dispositivo você acompanha seu histórico e suas tendências."
-          }
-          accent={t.colors.warningText}
-        />
-      ) : null}
-
-      {/* Botão de captação: "Parar" sempre aparece durante a sessão; iniciar
-          pelo simulador só quando o gate está ligado (dev/teste — P6-b). */}
-      {ativo || SIMULADOR_HABILITADO ? (
-        <Button
-          label={
-            ativo
-              ? "Parar captação"
-              : deviceConnection.supported
-                ? "Ou usar sinal simulado"
-                : "Iniciar captação simulada"
-          }
-          onPress={ativo ? parar : iniciar}
-          accent={ativo ? t.colors.warningText : papel.accent}
-        />
-      ) : null}
-
-      {erro ? <Text style={styles.erro}>{erro}</Text> : null}
-
-      {poorSignal !== null
-        ? (() => {
-            // Faixa em linguagem simples sobre o número cru (P4-a). Contato tem
-            // valência legítima, então a cor de alerta aqui é honesta.
-            const contato = describeContact(poorSignal);
-            const cor =
-              contato.level === "bom"
-                ? papel.accent
-                : contato.level === "solto"
-                  ? t.colors.dangerText
-                  : t.colors.warningText;
-            return (
-              <Card
-                title={`${contato.label} · ${poorSignal}`}
-                subtitle={`${contato.hint} (0 = bom contato · 200 = eletrodo solto, valor do aparelho)`}
-                accent={cor}
-                titleAccessory={<InfoButton term="poor_signal" />}
-              />
-            );
-          })()
-        : null}
-
-      {/* Quando confiar na leitura (P4-b): elo entre o contato acima e as
-          features abaixo. Qualificador de confiabilidade, não juízo de estado. */}
-      {ativo && poorSignal !== null ? (
-        <LiveReadingConfidence poorSignal={poorSignal} accent={papel.accent} />
-      ) : null}
-
-      {/* Protocolo guiado olhos abertos/fechados (P4-c): contraste de estado na
-          mesma captação. Client-only — não persiste fase; contexto vai na
-          anotação (P2). Some ao encerrar (desmonta e limpa o timer). */}
-      {ativo ? (
-        <GuidedProtocol accent={papel.accent} onPhaseChange={aoMudarFaseProtocolo} />
-      ) : null}
-
-      {features?.unavailable ? (
-        <Card
-          title="Análise indisponível"
-          subtitle="A captação continua e a sessão está sendo registrada."
-          accent={t.colors.warningText}
-        />
-      ) : null}
-
-      {alfa !== undefined ? (
-        <View style={styles.destaque}>
-          <View style={styles.destaqueRotuloLinha}>
-            <Text style={styles.destaqueRotulo}>Alfa relativa</Text>
-            <InfoButton term="rel_alpha" accent={papel.accent} />
-          </View>
-          <Text style={styles.destaqueValor}>{(alfa * 100).toFixed(1)}%</Text>
-          <Text style={styles.destaqueNota}>janelas analisadas: {janelas}</Text>
-        </View>
-      ) : ativo ? (
-        <Card
-          title="Coletando…"
-          subtitle="A primeira leitura aparece quando a janela fecha (~2 s). É normal os valores oscilarem no começo — eles se acomodam conforme a captação segue."
-          accent={papel.accent}
-        />
-      ) : null}
-
-      {features?.relative_band_powers
-        ? Object.entries(features.relative_band_powers).map(([banda, valor]) => (
-            <Card
-              key={banda}
-              title={banda}
-              subtitle={`${(valor * 100).toFixed(1)}% da potência total`}
-              accent={papel.accent}
-              titleAccessory={<InfoButton term={`rel_${banda}`} />}
-            />
-          ))
-        : null}
-
-      {/* Gráfico ao vivo (P1-c): uma banda por vez, oscilando ao longo da
-          sessão. Alimentado pelas features do servidor — sem DSP no cliente. */}
-      {bandHistory.length > 0 ? (
-        <Card
-          title="Ondas ao vivo"
-          accent={papel.accent}
-          titleAccessory={<InfoButton term="live_band_trend" />}
-        >
-          <LiveBandTrend history={bandHistory} accent={papel.accent} />
-        </Card>
-      ) : null}
-
-      {/* eSense (ADR-0034): à parte das features transparentes, cor neutra
-          (nada de "bom/ruim") e com o rótulo obrigatório. Complemento
-          proprietário e não-validado — nunca fundamento. */}
-      {esense && (esense.attention !== undefined || esense.meditation !== undefined) ? (
-        <View style={styles.esenseBox}>
-          <View style={styles.esenseCabecalho}>
-            <Text style={styles.esenseTitulo}>eSense (NeuroSky)</Text>
-            <InfoButton term="esense" />
-          </View>
-          <View style={styles.esenseLinha}>
-            {esense.attention !== undefined ? (
-              <View style={styles.esenseItem}>
-                <Text style={styles.esenseValor}>{esense.attention}</Text>
-                <Text style={styles.esenseRotulo}>Atenção</Text>
-              </View>
-            ) : null}
-            {esense.meditation !== undefined ? (
-              <View style={styles.esenseItem}>
-                <Text style={styles.esenseValor}>{esense.meditation}</Text>
-                <Text style={styles.esenseRotulo}>Meditação</Text>
-              </View>
-            ) : null}
-          </View>
-          <Text style={styles.esenseNota}>
-            Métrica proprietária da NeuroSky (0–100), sem validação científica
-            independente. Exploratória e não-clínica: complemento, nunca base de
-            conclusão.
-          </Text>
-        </View>
-      ) : null}
-
       {encerrando ? (
-        <Card
-          title="Encerrando a sessão…"
-          subtitle="Calculando o relatório sobre a sessão inteira."
-          accent={papel.accent}
-        />
+        <Panel title="Encerrando a sessão…">
+          <Text style={styles.notaPainel}>
+            Calculando o relatório sobre a sessão inteira.
+          </Text>
+        </Panel>
       ) : null}
 
       {/* Relatório da sessão encerrada (#17): fecha a jornada captar → ver. */}
       {encerrada ? (
         <>
-          <Text style={styles.secao}>Relatório da sessão</Text>
-          <Card
+          <Panel
             title={
               typeof encerrada.report?.rel_alpha === "number"
                 ? `Alfa relativa média: ${formatPercent(encerrada.report.rel_alpha)}`
                 : "Sessão encerrada"
             }
-            subtitle={`${encerrada.sampleCount} amostras recebidas`}
-            accent={papel.accent}
+            eyebrow={`${encerrada.sampleCount} amostras`}
           >
             {encerrada.report?.relative_band_powers ? (
               <>
                 <Text style={styles.subsecao}>Composição por banda</Text>
-                <BandBars
-                  relative={encerrada.report.relative_band_powers}
-                  accent={papel.accent}
-                />
+                <BandBars relative={encerrada.report.relative_band_powers} />
               </>
             ) : null}
 
@@ -497,42 +637,47 @@ export default function PatientLiveScreen() {
                 <SignalQuality quality={encerrada.report.quality} />
               </>
             ) : null}
-
-            {encerrada.report?.engine_version ? (
-              <Text style={styles.engine}>
-                Motor de análise: {encerrada.report.engine_version}
-              </Text>
-            ) : null}
-          </Card>
+          </Panel>
 
           {/* Ser explícito sobre guardar ou não é parte do consent-first. */}
-          <Card
-            title={
-              encerrada.storage.persisted
-                ? "Sessão guardada no seu histórico"
-                : "Sessão não guardada"
-            }
-            subtitle={
-              encerrada.storage.persisted
+          <Panel title={encerrada.storage.persisted ? "Sessão guardada" : "Sessão não guardada"}>
+            <Text style={styles.notaPainel}>
+              {encerrada.storage.persisted
                 ? "Você pode revê-la a qualquer momento em Histórico."
                 : (encerrada.storage.reason
                     ? MOTIVO_NAO_GUARDADO[encerrada.storage.reason]
-                    : undefined) ?? "O resultado desta sessão não foi registrado."
-            }
-            accent={encerrada.storage.persisted ? papel.accent : t.colors.warningText}
-          />
+                    : undefined) ?? "O resultado desta sessão não foi registrado."}
+            </Text>
+          </Panel>
 
           {/* Versão manual do "pop-up de contexto" (P2, ADR-0037): logo após
               captar, o paciente pode anotar o contexto da sessão. */}
           {sessionId ? (
-            <SessionAnnotation sessionId={sessionId} mode="edit" accent={papel.accent} />
+            <Panel title="Nota de contexto" eyebrow="autorrelato">
+              <SessionAnnotation
+                sessionId={sessionId}
+                mode="edit"
+                accent={papel.accent}
+                embedded
+              />
+            </Panel>
           ) : null}
         </>
       ) : null}
 
-      {sessionId ? (
-        <Text style={styles.footnote}>Sessão {sessionId.slice(0, 8)}…</Text>
-      ) : null}
+      {/* Rastro de proveniência: de onde vem cada número desta tela. */}
+      <Text style={styles.rastro}>
+        {[
+          encerrada?.report?.engine_version
+            ? `motor ${encerrada.report.engine_version}`
+            : "motor wave_eeg",
+          "métricas calculadas no servidor WaveAI",
+          "janela de 2 s · 512 Hz · canal FP1",
+          sessionId ? `sessão ${sessionId.slice(0, 8)}…` : null,
+        ]
+          .filter(Boolean)
+          .join("  ·  ")}
+      </Text>
 
       <Disclaimer variant="medidas" />
     </ScreenContainer>
@@ -541,38 +686,132 @@ export default function PatientLiveScreen() {
 
 const criarEstilos = (t: Theme) =>
   StyleSheet.create({
-    secao: {
-      ...t.typography.heading,
-      color: t.colors.text,
-      marginTop: t.spacing.sm,
+    topo: {
+      alignItems: "center",
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: t.spacing.sm,
     },
-    subsecao: {
-      ...t.typography.body,
+    cronometro: {
+      ...t.typography.title,
       color: t.colors.text,
-      fontSize: 14,
-      fontWeight: "600",
-      marginTop: t.spacing.xs,
+      fontVariant: ["tabular-nums"],
     },
-    engine: {
+    espacador: {
+      flex: 1,
+    },
+    topoNota: {
       ...t.typography.caption,
       color: t.colors.textMuted,
-      fontSize: 11,
-      marginTop: t.spacing.xs,
     },
-    erro: {
+    grade: {
+      gap: t.spacing.md,
+    },
+    gradeLinha: {
+      alignItems: "stretch",
+      flexDirection: "row",
+    },
+    colunaHeroi: {
+      flex: 1,
+      gap: t.spacing.md,
+      // Sem isto, um filho largo (a onda) estica a coluna e estoura a linha.
+      minWidth: 0,
+    },
+    trilho: {
+      gap: t.spacing.md,
+    },
+    trilhoLateral: {
+      width: 320,
+    },
+    heroiChips: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: t.spacing.sm,
+    },
+    heroiNota: {
+      ...t.typography.caption,
+      color: t.colors.textMuted,
+    },
+    veu: {
+      backgroundColor: t.colors.surfaceAlt,
+      borderRadius: t.radius.md,
+      gap: t.spacing.xs,
+      padding: t.spacing.md,
+    },
+    veuTitulo: {
+      ...t.typography.bodyStrong,
+      color: t.colors.text,
+    },
+    veuTexto: {
       ...t.typography.body,
-      color: t.colors.dangerText,
+      color: t.colors.textMuted,
       fontSize: 14,
+    },
+    controles: {
+      alignItems: "center",
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: t.spacing.sm,
+    },
+    controlePrincipal: {
+      flexGrow: 1,
+      minWidth: 220,
+    },
+    controleNota: {
+      ...t.typography.caption,
+      color: t.colors.textMuted,
+    },
+    valorLinha: {
+      alignItems: "baseline",
+      flexDirection: "row",
+      gap: t.spacing.sm,
+    },
+    valorGrande: {
+      fontSize: 34,
+      fontWeight: "700",
+    },
+    valorUnidade: {
+      ...t.typography.caption,
+      color: t.colors.textMuted,
+    },
+    notaPainel: {
+      ...t.typography.caption,
+      color: t.colors.textMuted,
+      lineHeight: 18,
+    },
+    notaCautela: {
+      ...t.typography.caption,
+      color: t.colors.warningText,
+      flexShrink: 1,
+      lineHeight: 18,
+    },
+    esenseLinha: {
+      gap: t.spacing.xs,
+    },
+    esenseRotuloLinha: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+    },
+    esenseRotulo: {
+      ...t.typography.label,
+      color: t.colors.textMuted,
+    },
+    esenseValor: {
+      ...t.typography.bodyStrong,
+      color: t.colors.text,
+      fontVariant: ["tabular-nums"],
+    },
+    esenseNotaLinha: {
+      alignItems: "flex-start",
+      flexDirection: "row",
+      gap: t.spacing.xs,
     },
     destaque: {
       alignItems: "center",
-      backgroundColor: t.colors.surface,
-      borderRadius: t.radius.lg,
-      paddingVertical: t.spacing.lg,
     },
     destaqueRotuloLinha: {
-      flexDirection: "row",
       alignItems: "center",
+      flexDirection: "row",
       gap: t.spacing.xs,
     },
     destaqueRotulo: {
@@ -592,52 +831,22 @@ const criarEstilos = (t: Theme) =>
       ...t.typography.caption,
       color: t.colors.textMuted,
     },
-    footnote: {
-      ...t.typography.caption,
-      color: t.colors.textMuted,
-      marginTop: t.spacing.sm,
-    },
-    // eSense: borda de cautela (não valência) e valores em cor neutra de texto
-    // — deliberadamente sem o tom do papel, para não sugerir "bom/ruim".
-    esenseBox: {
-      backgroundColor: t.colors.surface,
-      borderColor: t.colors.warningText,
-      borderWidth: 1,
-      borderRadius: t.radius.lg,
-      padding: t.spacing.md,
-      marginTop: t.spacing.sm,
-    },
-    esenseCabecalho: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: t.spacing.xs,
-    },
-    esenseTitulo: {
-      ...t.typography.label,
-      color: t.colors.textMuted,
-      letterSpacing: 0.5,
-      textTransform: "uppercase",
-    },
-    esenseLinha: {
-      flexDirection: "row",
-      gap: t.spacing.xl,
+    subsecao: {
+      ...t.typography.body,
+      color: t.colors.text,
+      fontSize: 14,
+      fontWeight: "600",
       marginTop: t.spacing.xs,
     },
-    esenseItem: {
-      alignItems: "center",
+    erro: {
+      ...t.typography.body,
+      color: t.colors.dangerText,
+      fontSize: 14,
     },
-    esenseValor: {
-      color: t.colors.text,
-      fontSize: 32,
-      fontWeight: "700",
-    },
-    esenseRotulo: {
+    rastro: {
       ...t.typography.caption,
       color: t.colors.textMuted,
-    },
-    esenseNota: {
-      ...t.typography.caption,
-      color: t.colors.warningText,
+      fontSize: 11,
       marginTop: t.spacing.sm,
     },
   });

@@ -97,9 +97,16 @@ export function AppShell({ children }: { children: ReactNode }) {
         />
       ) : null}
       <Animated.View
-        style={[styles.drawer, { width: PAINEL_W, transform: [{ translateX: tx }] }]}
-        // Fora da tela, não deve capturar toque nem foco.
-        pointerEvents={aberto ? "auto" : "none"}
+        style={[
+          styles.drawer,
+          {
+            width: PAINEL_W,
+            transform: [{ translateX: tx }],
+            // Fora da tela, não deve capturar toque nem foco. Vai no estilo, e
+            // não como prop: a prop está depreciada e avisa no console.
+            pointerEvents: aberto ? "auto" : "none",
+          },
+        ]}
       >
         {painel}
       </Animated.View>

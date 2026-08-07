@@ -48,6 +48,12 @@ const darkColors = {
   warningText: "#F2C94C",
   danger: "#F2777A",
   dangerText: "#F2777A",
+  // Bandas: cores **categóricas**, não uma escala. Ver `BAND_COLORS`.
+  bandDelta: "#5C7CFA",
+  bandTheta: "#CC5C7E",
+  bandAlpha: "#1FA695",
+  bandBeta: "#C98500",
+  bandGamma: "#9085E9",
 };
 
 const lightColors = {
@@ -71,6 +77,11 @@ const lightColors = {
   accentDoctorText: "#2A5BC7",
   warningText: "#8A6100",
   dangerText: "#B3261E",
+  bandDelta: "#3E63DD",
+  bandTheta: "#963061",
+  bandAlpha: "#00857A",
+  bandBeta: "#A96C00",
+  bandGamma: "#6D5AC4",
 };
 
 export const palettes: Record<ThemeName, typeof darkColors> = {
@@ -112,19 +123,41 @@ export const radius = {
 } as const;
 
 /**
+ * Cor por banda — **categórica, nunca uma escala**.
+ *
+ * Cada banda ganha um matiz próprio só para poder ser seguida de um gráfico a
+ * outro. Não há gradiente de "pior para melhor" e nenhum tom é mais quente ou
+ * mais alarmante que os outros de propósito: banda **não tem valência**, e
+ * pintar alfa de verde ou beta de vermelho inventaria um juízo que a análise
+ * não faz (ADR-0027).
+ *
+ * Os tons vêm do design "Maré", com dois ajustes de contraste: teta no escuro e
+ * alfa/beta no claro foram abertos até passarem de 3:1 **sobre o trilho da
+ * barra** (`surfaceAlt`), que é o fundo real do preenchimento — não sobre a
+ * superfície do cartão.
+ */
+export const BAND_COLORS = {
+  delta: "bandDelta",
+  theta: "bandTheta",
+  alpha: "bandAlpha",
+  beta: "bandBeta",
+  gamma: "bandGamma",
+} as const;
+
+/**
  * Elevação — sombra difusa e discreta, igual nos dois temas.
  *
  * Fica **fora** das paletas de propósito: sombra é profundidade, não cor de
  * conteúdo, e nenhum texto se apoia nela para ser legível.
  */
 export const shadows = {
+  /**
+   * `boxShadow` e não as props `shadow*`: estas ficaram depreciadas no RN 0.86
+   * e avisam no console a cada render. A forma em string vale nas duas pontas
+   * (nativo na arquitetura nova e web).
+   */
   card: {
-    shadowColor: "#020610",
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.24,
-    shadowRadius: 24,
-    /** Android ignora `shadow*` e usa isto. */
-    elevation: 8,
+    boxShadow: "0px 10px 24px rgba(2, 6, 16, 0.18)",
   },
 } as const;
 

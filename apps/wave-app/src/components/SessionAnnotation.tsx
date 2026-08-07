@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
 import {
@@ -20,6 +20,13 @@ type Props = {
   /** Obrigatório em `read`: de quem é a sessão (a API exige CareLink ativo). */
   patientId?: string;
   accent?: string;
+  /**
+   * Já está dentro de um `Panel` — não desenhe o cartão nem repita o título.
+   *
+   * Existe porque as telas portadas para o design "Maré" trazem o próprio
+   * painel, e dois cartões aninhados ficam com moldura dupla.
+   */
+  embedded?: boolean;
 };
 
 const MAX = 2000;
@@ -29,7 +36,13 @@ const MAX = 2000;
  * contexto". O titular escreve/edita/apaga; o profissional só lê (read-only),
  * rotulado como autorrelato. A autorização é do servidor.
  */
-export function SessionAnnotation({ sessionId, mode, patientId, accent }: Props) {
+export function SessionAnnotation({
+  sessionId,
+  mode,
+  patientId,
+  accent,
+  embedded,
+}: Props) {
   const t = useTheme();
   const papel = useRoleAccent();
   const styles = useMemo(() => criarEstilos(t), [t]);
@@ -101,10 +114,26 @@ export function SessionAnnotation({ sessionId, mode, patientId, accent }: Props)
 
   if (carregando) return null;
 
+  /**
+   * Cartão próprio, ou só o conteúdo quando a tela já traz o painel.
+   *
+   * Função, e **não** um componente declarado aqui dentro: um componente novo a
+   * cada render remontaria o campo de texto a cada tecla digitada, e o foco se
+   * perderia junto.
+   */
+  const moldar = (conteudo: ReactNode) =>
+    embedded ? (
+      <View style={styles.solto}>{conteudo}</View>
+    ) : (
+      <Card title="Contexto da sessão" accent={cor}>
+        {conteudo}
+      </Card>
+    );
+
   // -- profissional: só leitura, rotulado como autorrelato --------------
   if (mode === "read") {
-    return (
-      <Card title="Contexto da sessão" accent={cor}>
+    return moldar(
+      <>
         <Text style={styles.rotulo}>Autorrelato do paciente</Text>
         {nota ? (
           <Text style={styles.leitura}>{nota.note}</Text>
@@ -113,13 +142,13 @@ export function SessionAnnotation({ sessionId, mode, patientId, accent }: Props)
             Este paciente não anotou o contexto desta sessão.
           </Text>
         )}
-      </Card>
+      </>,
     );
   }
 
   // -- titular: escreve/edita a própria nota ----------------------------
-  return (
-    <Card title="Contexto da sessão" accent={cor}>
+  return moldar(
+    <>
       <Text style={styles.lead}>
         Anote o que você estava fazendo ou sentindo — dá contexto às suas
         medidas. Só você e um profissional vinculado veem.
@@ -149,12 +178,16 @@ export function SessionAnnotation({ sessionId, mode, patientId, accent }: Props)
         ) : null}
       </View>
       {salvo ? <Text style={styles.salvo}>Anotação salva.</Text> : null}
-    </Card>
+    </>,
   );
 }
 
 const criarEstilos = (t: Theme) =>
   StyleSheet.create({
+    // Sem cartão: quem desenha a moldura é o `Panel` da tela.
+    solto: {
+      gap: t.spacing.sm,
+    },
     lead: {
       ...t.typography.body,
       color: t.colors.textMuted,

@@ -2,11 +2,12 @@ import { useMemo } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
 import { BANDS, formatPercent, type BandKey } from "../../api/results";
-import { useRoleAccent, useTheme, type Theme } from "../../theme";
+import { BAND_COLORS, useTheme, type Theme } from "../../theme";
 
 type Props = {
   /** Potências **relativas** por banda (frações que somam ~1). */
   relative: Partial<Record<BandKey, number>>;
+  /** Ignorado desde o porte "Maré": cada banda tem sua cor categórica. */
   accent?: string;
 };
 
@@ -17,14 +18,15 @@ type Props = {
  * problema de layout, não de geometria — assim acompanham a largura da tela
  * sozinhas, sem medir nada.
  *
- * Todas as bandas usam a mesma cor: destacar uma sugeriria que ela é a
- * "certa", e nesta fase não há interpretação clínica a fazer.
+ * Cada banda tem **cor própria e categórica** (`BAND_COLORS`), o que permite
+ * segui-la de um gráfico a outro. Categórica, e não uma escala: nenhum tom é
+ * mais quente ou mais alarmante que os outros, porque banda não tem valência
+ * (ADR-0027). Antes todas dividiam o tom do papel — mais seguro contra sugerir
+ * uma banda "certa", mas ilegível quando várias aparecem juntas.
  */
-export function BandBars({ relative, accent }: Props) {
+export function BandBars({ relative }: Props) {
   const t = useTheme();
-  const papel = useRoleAccent();
   const styles = useMemo(() => criarEstilos(t), [t]);
-  const cor = accent ?? papel.accent;
 
   // A maior banda define a escala — com frações pequenas, normalizar pelo topo
   // torna a comparação legível sem distorcer a proporção entre elas.
@@ -51,7 +53,13 @@ export function BandBars({ relative, accent }: Props) {
             </View>
             <View style={styles.trilho}>
               <View
-                style={[styles.barra, { width: largura as `${number}%`, backgroundColor: cor }]}
+                style={[
+                  styles.barra,
+                  {
+                    width: largura as `${number}%`,
+                    backgroundColor: t.colors[BAND_COLORS[key]],
+                  },
+                ]}
               />
             </View>
             <Text style={styles.valor}>{texto}</Text>
