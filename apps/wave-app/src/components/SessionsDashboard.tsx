@@ -12,12 +12,20 @@ import { useRoleAccent, useTheme, type Theme } from "../theme";
 import { BandBars } from "./charts/BandBars";
 import { SignalQuality } from "./charts/SignalQuality";
 import { TrendChart, type TrendPoint } from "./charts/TrendChart";
-import { Card } from "./Card";
+import { Panel } from "./Panel";
 import { InfoButton } from "./InfoButton";
 
 type Props = {
   results: SessionResult[];
   accent?: string;
+  /**
+   * Mostra a lista "Todas as sessões" ao final.
+   *
+   * A tela de histórico do paciente desliga: ela já traz a linha do tempo
+   * portada do design, e duas listas das mesmas sessões na mesma página é
+   * ruído. A tela do profissional segue com a lista até ganhar a sua.
+   */
+  showAllSessions?: boolean;
 };
 
 /**
@@ -29,7 +37,7 @@ type Props = {
  *
  * `results` chega ordenado do mais antigo ao mais recente.
  */
-export function SessionsDashboard({ results, accent }: Props) {
+export function SessionsDashboard({ results, accent, showAllSessions = true }: Props) {
   const t = useTheme();
   const papel = useRoleAccent();
   const styles = useMemo(() => criarEstilos(t), [t]);
@@ -51,10 +59,9 @@ export function SessionsDashboard({ results, accent }: Props) {
   return (
     <View style={styles.wrapper}>
       {tendencia.length > 0 ? (
-        <Card
+        <Panel
           title="Tendência de alfa relativo"
-          accent={cor}
-          titleAccessory={<InfoButton term="rel_alpha" />}
+          headerAccessory={<InfoButton term="rel_alpha" />}
         >
           <Text style={styles.explicacao}>
             Fração da potência total do sinal na banda alfa (8–13 Hz), sessão a
@@ -62,19 +69,18 @@ export function SessionsDashboard({ results, accent }: Props) {
             {tendencia.length === 1 ? " Com mais sessões, a linha aparece." : ""}
           </Text>
           <TrendChart data={tendencia} accent={cor} formatValue={formatPercent} />
-        </Card>
+        </Panel>
       ) : null}
 
       {ultima ? (
-        <Card
+        <Panel
           title="Última sessão"
-          subtitle={[
+          eyebrow={[
             formatDate(ultima.created_at),
             formatDuration(sessionDurationSeconds(ultima.metrics)),
           ]
             .filter(Boolean)
             .join(" · ")}
-          accent={cor}
         >
           {relativas ? (
             <>
@@ -82,7 +88,7 @@ export function SessionsDashboard({ results, accent }: Props) {
                 <Text style={styles.secao}>Composição por banda</Text>
                 <InfoButton term="band_composition" />
               </View>
-              <BandBars relative={relativas} accent={cor} />
+              <BandBars relative={relativas} />
             </>
           ) : null}
 
@@ -98,26 +104,25 @@ export function SessionsDashboard({ results, accent }: Props) {
 
           {/* Rastreabilidade: todo resultado carrega a versão do engine. */}
           <Text style={styles.engine}>Motor de análise: {ultima.engine_version}</Text>
-        </Card>
+        </Panel>
       ) : null}
 
-      {results.length > 1 ? (
+      {showAllSessions && results.length > 1 ? (
         <>
           <Text style={styles.tituloLista}>Todas as sessões</Text>
           {[...results].reverse().map((r) => {
             const duracao = formatDuration(sessionDurationSeconds(r.metrics));
             const alfa = r.metrics?.rel_alpha;
             return (
-              <Card
+              <Panel
                 key={r.id}
                 title={`Sessão de ${formatDate(r.created_at)}`}
-                subtitle={[
+                eyebrow={[
                   duracao,
                   typeof alfa === "number" ? `alfa ${formatPercent(alfa)}` : null,
                 ]
                   .filter(Boolean)
                   .join(" · ")}
-                accent={cor}
               />
             );
           })}
