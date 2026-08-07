@@ -13,6 +13,7 @@ import {
 } from "../../src/api/results";
 import { useAuth } from "../../src/auth/AuthContext";
 import { capturaDisponivel, espectadorDisponivel } from "../../src/capture/availability";
+import { Avatar } from "../../src/components/Avatar";
 import { Button } from "../../src/components/Button";
 import { Chip } from "../../src/components/Chip";
 import { Disclaimer } from "../../src/components/Disclaimer";
@@ -390,11 +391,7 @@ export default function PatientHomeScreen() {
         <Panel title="Quem me acompanha" eyebrow="autorização sua">
           {acompanhantes.map((v) => (
             <View key={v.id} style={styles.acompanhante}>
-              <View style={styles.avatar}>
-                <Text style={styles.avatarTexto}>
-                  {(v.counterpart_display_name ?? "?").slice(0, 2).toUpperCase()}
-                </Text>
-              </View>
+              <Avatar name={v.counterpart_display_name} tone={t.colors.accentDoctorText} />
               <View style={styles.acompanhanteTextos}>
                 <Text style={styles.acompanhanteNome}>
                   {v.counterpart_display_name ?? "Profissional de bem-estar"}
@@ -535,20 +532,6 @@ const criarEstilos = (t: Theme) =>
       alignItems: "center",
       flexDirection: "row",
       gap: t.spacing.sm,
-    },
-    avatar: {
-      alignItems: "center",
-      backgroundColor: t.colors.surfaceAlt,
-      borderColor: t.colors.border,
-      borderRadius: t.radius.pill,
-      borderWidth: 1,
-      height: 44,
-      justifyContent: "center",
-      width: 44,
-    },
-    avatarTexto: {
-      ...t.typography.bodyStrong,
-      color: t.colors.accentDoctorText,
     },
     acompanhanteTextos: {
       flexShrink: 1,
