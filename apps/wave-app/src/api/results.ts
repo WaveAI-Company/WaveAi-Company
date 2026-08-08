@@ -65,6 +65,29 @@ export async function listPatientResults(patientId: string): Promise<SessionResu
   return ordenarPorData(payload.results ?? []);
 }
 
+/**
+ * Direito de **portabilidade** (Medical/72): tudo o que é do titular em JSON
+ * aberto — Result e notas de contexto. Devolve o objeto cru, porque quem chama
+ * o transforma em arquivo.
+ */
+export async function exportMyData(): Promise<unknown> {
+  return request<unknown>("/me/results/export", { auth: true });
+}
+
+/**
+ * Direito de **exclusão**: apaga TODOS os Result e notas do titular.
+ *
+ * Não apaga as sessões de captação em si nem revoga o consentimento — são atos
+ * separados de propósito (Medical/72 §2), para um não destruir o outro sem que
+ * a pessoa tenha pedido.
+ */
+export async function deleteMyResults(): Promise<{ deleted: number; annotations_deleted: number }> {
+  return request<{ deleted: number; annotations_deleted: number }>("/me/results", {
+    method: "DELETE",
+    auth: true,
+  });
+}
+
 /** Mais antigo → mais recente: é a ordem que a linha do tempo espera. */
 function ordenarPorData(results: SessionResult[]): SessionResult[] {
   return [...results].sort(
