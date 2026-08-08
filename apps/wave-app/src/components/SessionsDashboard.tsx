@@ -26,6 +26,14 @@ type Props = {
    * ruído. A tela do profissional segue com a lista até ganhar a sua.
    */
   showAllSessions?: boolean;
+  /**
+   * Mostra a "Tendência de alfa relativo".
+   *
+   * O painel do profissional desliga: o porte do design já abre com o mesmo
+   * gráfico como figura principal, e repeti-lo trinta linhas abaixo faria o
+   * leitor procurar a diferença entre dois gráficos idênticos.
+   */
+  showTrend?: boolean;
 };
 
 /**
@@ -37,7 +45,12 @@ type Props = {
  *
  * `results` chega ordenado do mais antigo ao mais recente.
  */
-export function SessionsDashboard({ results, accent, showAllSessions = true }: Props) {
+export function SessionsDashboard({
+  results,
+  accent,
+  showAllSessions = true,
+  showTrend = true,
+}: Props) {
   const t = useTheme();
   const papel = useRoleAccent();
   const styles = useMemo(() => criarEstilos(t), [t]);
@@ -58,7 +71,7 @@ export function SessionsDashboard({ results, accent, showAllSessions = true }: P
 
   return (
     <View style={styles.wrapper}>
-      {tendencia.length > 0 ? (
+      {showTrend && tendencia.length > 0 ? (
         <Panel
           title="Tendência de alfa relativo"
           headerAccessory={<InfoButton term="rel_alpha" />}
