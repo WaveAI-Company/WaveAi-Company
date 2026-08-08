@@ -127,6 +127,54 @@ const ICONES = {
       />
     </>
   ),
+  /** O que é guardado — cilindro de dados. */
+  database: (c: string, w: number) => (
+    <>
+      <Path
+        d="M20 6c0 1.66-3.58 3-8 3S4 7.66 4 6s3.58-3 8-3 8 1.34 8 3Z"
+        stroke={c}
+        strokeWidth={w}
+        strokeLinejoin="round"
+      />
+      <Path
+        d="M4 6v12c0 1.7 3.58 3 8 3s8-1.3 8-3V6M4 12c0 1.7 3.58 3 8 3s8-1.3 8-3"
+        stroke={c}
+        strokeWidth={w}
+        strokeLinecap="round"
+      />
+    </>
+  ),
+  /** O que não é feito — o círculo cortado. */
+  xCircle: (c: string, w: number) => (
+    <>
+      <Circle cx={12} cy={12} r={9} stroke={c} strokeWidth={w} />
+      <Path d="m8.5 8.5 7 7M15.5 8.5l-7 7" stroke={c} strokeWidth={w} strokeLinecap="round" />
+    </>
+  ),
+  /** Controle do titular — cadeado. */
+  lock: (c: string, w: number) => (
+    <>
+      <Path
+        d="M4.5 10.5h15v10h-15Z"
+        stroke={c}
+        strokeWidth={w}
+        strokeLinejoin="round"
+      />
+      <Path d="M8 10.5V7a4 4 0 0 1 8 0v3.5" stroke={c} strokeWidth={w} strokeLinecap="round" />
+    </>
+  ),
+  /** Gerenciar — engrenagem simplificada. */
+  gear: (c: string, w: number) => (
+    <>
+      <Circle cx={12} cy={12} r={3} stroke={c} strokeWidth={w} />
+      <Path
+        d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.2 5.2l2.1 2.1M16.7 16.7l2.1 2.1M18.8 5.2l-2.1 2.1M7.3 16.7l-2.1 2.1"
+        stroke={c}
+        strokeWidth={w}
+        strokeLinecap="round"
+      />
+    </>
+  ),
   /** Onda — símbolo da marca. */
   wave: (c: string, w: number) => (
     <Path
