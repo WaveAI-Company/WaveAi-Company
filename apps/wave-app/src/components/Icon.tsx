@@ -206,6 +206,26 @@ const ICONES = {
       />
     </>
   ),
+  /** Busca. */
+  search: (c: string, w: number) => (
+    <>
+      <Circle cx={11} cy={11} r={7} stroke={c} strokeWidth={w} />
+      <Path d="m20 20-3.8-3.8" stroke={c} strokeWidth={w} strokeLinecap="round" />
+    </>
+  ),
+  /** Convidar alguém — pessoa com mais. */
+  userPlus: (c: string, w: number) => (
+    <>
+      <Circle cx={9} cy={8} r={3.5} stroke={c} strokeWidth={w} />
+      <Path
+        d="M2.5 20c1.2-3.4 3.7-5 6.5-5s5.3 1.6 6.5 5"
+        stroke={c}
+        strokeWidth={w}
+        strokeLinecap="round"
+      />
+      <Path d="M17.5 6.5v6M14.5 9.5h6" stroke={c} strokeWidth={w} strokeLinecap="round" />
+    </>
+  ),
   /** Onda — símbolo da marca. */
   wave: (c: string, w: number) => (
     <Path
