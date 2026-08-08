@@ -99,6 +99,16 @@ const ICONES = {
       />
     </>
   ),
+  /** Confirmação de um ato que acabou de acontecer. */
+  check: (c: string, w: number) => (
+    <Path
+      d="M4.5 12.5 10 18 19.5 7"
+      stroke={c}
+      strokeWidth={w}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  ),
   /** Convites — envelope. */
   mail: (c: string, w: number) => (
     <>
