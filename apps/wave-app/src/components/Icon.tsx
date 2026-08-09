@@ -373,6 +373,21 @@ const ICONES = {
       strokeLinejoin="round"
     />
   ),
+  /**
+   * Abrir uma lista de opções (o seletor de período do painel).
+   *
+   * Ícone próprio, e não o `chevronRight` girado: `transform` num `Svg` gira
+   * **a caixa junto**, e a seta sai do lugar (lição da P8-b).
+   */
+  chevronDown: (c: string, w: number) => (
+    <Path
+      d="m6 9 6 6 6-6"
+      stroke={c}
+      strokeWidth={w}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  ),
   /** Abrir a explicação de um termo (camada didática). */
   info: (c: string, w: number) => (
     <>

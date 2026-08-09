@@ -49,19 +49,50 @@ export type SessionResult = {
   metrics: ResultMetrics;
 };
 
-type ResultsPayload = { results: SessionResult[] };
+type ResultsPayload = { results: SessionResult[]; window_days: number | null };
+
+/**
+ * Recorte de período pedido ao servidor (P9-b). `null` = histórico inteiro.
+ *
+ * O corte é do **servidor**, não do cliente: quem pede 30 dias não recebe anos
+ * de resultados para a tela esconder o resto — minimização de dados —, e a
+ * trilha de acesso passa a contar o que a pessoa de fato viu.
+ */
+export type Periodo = number | null;
+
+function comPeriodo(path: string, days: Periodo): string {
+  return days === null ? path : `${path}?days=${days}`;
+}
+
+/**
+ * As três opções que o design oferece nas duas telas (`sessoes.html` e
+ * `painel-profissional.html`). Os **rótulos** ficam em cada tela, porque o
+ * mockup escreve diferente em cada uma ("30 dias" no paciente, "últimos 30
+ * dias" no profissional); o que se compartilha é o valor e a conversão.
+ */
+export type PeriodoOpcao = "30" | "90" | "tudo";
+
+export function dias(opcao: PeriodoOpcao): Periodo {
+  return opcao === "tudo" ? null : Number(opcao);
+}
 
 /** Direito de acesso do titular: os próprios Result. */
-export async function listMyResults(): Promise<SessionResult[]> {
-  const payload = await request<ResultsPayload>("/me/results", { auth: true });
+export async function listMyResults(days: Periodo = null): Promise<SessionResult[]> {
+  const payload = await request<ResultsPayload>(comPeriodo("/me/results", days), {
+    auth: true,
+  });
   return ordenarPorData(payload.results ?? []);
 }
 
 /** Result de um paciente. A API devolve 403 sem vínculo ativo. */
-export async function listPatientResults(patientId: string): Promise<SessionResult[]> {
-  const payload = await request<ResultsPayload>(`/patients/${patientId}/results`, {
-    auth: true,
-  });
+export async function listPatientResults(
+  patientId: string,
+  days: Periodo = null,
+): Promise<SessionResult[]> {
+  const payload = await request<ResultsPayload>(
+    comPeriodo(`/patients/${patientId}/results`, days),
+    { auth: true },
+  );
   return ordenarPorData(payload.results ?? []);
 }
 
