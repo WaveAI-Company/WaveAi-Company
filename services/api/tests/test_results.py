@@ -558,3 +558,185 @@ def test_medico_ve_relatorio_so_com_vinculo(client_report, db_session: Session):
     resp = client_report.get(f"/patients/{pid}/report/longitudinal", headers=cab)
     assert resp.status_code == 200
     assert resp.json()["n_sessions"] == 1
+
+
+# -- recorte de período (?days=N) ---------------------------------------
+#
+# Contrato desta fatia (P9-b): o parâmetro só **estreita**. Ausente, tudo se
+# comporta como antes — os testes acima seguem valendo como não-regressão.
+
+
+def _ha_dias(n: float):
+    from datetime import UTC, datetime, timedelta
+
+    return datetime.now(UTC) - timedelta(days=n)
+
+
+def _eventos_de_leitura(db_session: Session, paciente: User) -> list[ResultAccessEvent]:
+    return [
+        e
+        for e in db_session.scalars(
+            select(ResultAccessEvent).where(ResultAccessEvent.patient_user_id == paciente.id)
+        )
+        if e.action == ResultAccessAction.READ
+    ]
+
+
+def _seed_em(db_session: Session, paciente: User, alpha: float, quando) -> None:
+    metrics = {**METRICS_FALSAS, "features": {"rel_alpha": alpha}, "quality": {"score": 0.8}}
+    r = _service(db_session).persistir(
+        patient=paciente, session_id=_sessao(db_session, paciente).id, metrics=metrics
+    )
+    r.created_at = quando
+    db_session.flush()
+
+
+def test_serie_longitudinal_recorta_pela_janela(db_session: Session):
+    """A janela corta no banco: fora dela a sessão não entra na tendência."""
+    service = _service(db_session)
+    paciente = _paciente(db_session, consentiu=True)
+    _seed_em(db_session, paciente, 0.10, _ha_dias(200))
+    _seed_em(db_session, paciente, 0.20, _ha_dias(45))
+    _seed_em(db_session, paciente, 0.30, _ha_dias(5))
+
+    serie = service.serie_longitudinal(titular=paciente, ator=paciente, desde=_ha_dias(30))
+
+    assert serie["sessions"] == [{"rel_alpha": 0.30}]
+    # A auditoria conta o que foi DE FATO lido, não o histórico inteiro.
+    assert [e.count for e in _eventos_de_leitura(db_session, paciente)] == [1]
+
+
+def test_janela_inclui_a_borda(db_session: Session):
+    """Corte é `>=`: a sessão exatamente no limite entra."""
+    from datetime import timedelta
+
+    service = _service(db_session)
+    paciente = _paciente(db_session, consentiu=True)
+    corte = _ha_dias(30)
+    _seed_em(db_session, paciente, 0.20, corte)
+    _seed_em(db_session, paciente, 0.10, corte - timedelta(seconds=1))
+
+    serie = service.serie_longitudinal(titular=paciente, ator=paciente, desde=corte)
+
+    assert serie["sessions"] == [{"rel_alpha": 0.20}]
+
+
+def test_janela_vazia_nao_audita_leitura(db_session: Session):
+    """Sem nada dentro da janela não houve acesso a dado de titular — nada a auditar."""
+    service = _service(db_session)
+    paciente = _paciente(db_session, consentiu=True)
+    _seed_em(db_session, paciente, 0.10, _ha_dias(90))
+
+    serie = service.serie_longitudinal(titular=paciente, ator=paciente, desde=_ha_dias(7))
+
+    assert serie["sessions"] == []
+    assert serie["period"] is None
+    assert _eventos_de_leitura(db_session, paciente) == []
+
+
+def test_exportacao_ignora_qualquer_janela(db_session: Session):
+    """Portabilidade é o direito a TUDO (Medical/72) — não tem recorte."""
+    service = _service(db_session)
+    paciente = _paciente(db_session, consentiu=True)
+    _seed_em(db_session, paciente, 0.10, _ha_dias(400))
+    _seed_em(db_session, paciente, 0.20, _ha_dias(1))
+
+    assert len(service.exportar(titular=paciente)["results"]) == 2
+
+
+def test_me_report_longitudinal_com_days(client_report, db_session: Session, analysis_fake):
+    p = Paciente(client_report, consentiu=True)
+    _seed_result_features(db_session, p.email, 0.10, 0.7, _ha_dias(120))
+    _seed_result_features(db_session, p.email, 0.20, 0.8, _ha_dias(60))
+    _seed_result_features(db_session, p.email, 0.30, 0.9, _ha_dias(3))
+
+    body = p.get("/me/report/longitudinal?days=30").json()
+
+    assert body["n_sessions"] == 1
+    assert body["window_days"] == 30
+    # A Analysis recebe só a janela — ela é cega a data, o corte é do gateway.
+    sessions, _ = analysis_fake.calls[-1]
+    assert sessions == [{"rel_alpha": 0.30}]
+
+    # Sem o parâmetro, nada muda: histórico inteiro e `window_days` nulo.
+    tudo = p.get("/me/report/longitudinal").json()
+    assert tudo["n_sessions"] == 3
+    assert tudo["window_days"] is None
+
+
+def test_report_com_janela_vazia_responde_200(client_report, db_session: Session):
+    """Janela sem sessão é 200 vazio, não 404: a tela diz "nenhuma sessão neste
+    período" — erro faria a tela inteira cair."""
+    p = Paciente(client_report, consentiu=True)
+    _seed_result_features(db_session, p.email, 0.30, 0.9, _ha_dias(90))
+
+    resp = p.get("/me/report/longitudinal?days=7")
+
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["n_sessions"] == 0
+    assert body["period"] is None
+    assert body["window_days"] == 7
+
+
+def test_me_results_recorta_pela_janela(client: TestClient, db_session: Session):
+    """Minimização: quem pede 30 dias não recebe o histórico inteiro para o
+    cliente esconder o resto."""
+    p = Paciente(client, consentiu=True)
+    _seed_result_features(db_session, p.email, 0.10, 0.7, _ha_dias(120))
+    _seed_result_features(db_session, p.email, 0.30, 0.9, _ha_dias(3))
+
+    body = p.get("/me/results?days=30").json()
+
+    assert len(body["results"]) == 1
+    assert body["window_days"] == 30
+    assert len(p.get("/me/results").json()["results"]) == 2
+
+
+@pytest.mark.parametrize("valor", ["0", "-1", "3651", "abc", ""])
+def test_days_invalido_e_recusado(client_report, valor: str):
+    p = Paciente(client_report, consentiu=True)
+
+    assert p.get(f"/me/report/longitudinal?days={valor}").status_code == 422
+    assert p.get(f"/me/results?days={valor}").status_code == 422
+
+
+def test_medico_com_days_ainda_passa_pelo_vinculo(client_report, db_session: Session):
+    """O gate do CareLink roda ANTES do recorte — `days` não é via de acesso."""
+    from app.repositories.user import UserRepository
+    from app.security.password import Argon2PasswordHasher
+
+    paciente = Paciente(client_report, consentiu=True)
+    _seed_result_features(db_session, paciente.email, 0.10, 0.7, _ha_dias(120))
+    _seed_result_features(db_session, paciente.email, 0.30, 0.9, _ha_dias(3))
+
+    medico_email = _email()
+    client_report.post(
+        "/auth/register",
+        json={"email": medico_email, "password": SENHA, "role": "doctor", "display_name": "Dr"},
+    )
+    token = client_report.post(
+        "/auth/login", json={"email": medico_email, "password": SENHA, "client": "mobile"}
+    ).json()["access_token"]
+    cab = {"Authorization": f"Bearer {token}"}
+
+    hasher = Argon2PasswordHasher(memory_cost=8, time_cost=1, parallelism=1)
+    pid = UserRepository(db_session, hasher).get_by_email(paciente.email).id
+
+    # Sem vínculo: 403 mesmo com janela.
+    assert client_report.get(
+        f"/patients/{pid}/report/longitudinal?days=30", headers=cab
+    ).status_code == 403
+    assert client_report.get(f"/patients/{pid}/results?days=30", headers=cab).status_code == 403
+
+    # Com vínculo: 200 e a janela recorta igual à do titular.
+    paciente.post("/care-links", {"email": medico_email})
+    relatorio = client_report.get(
+        f"/patients/{pid}/report/longitudinal?days=30", headers=cab
+    ).json()
+    assert relatorio["n_sessions"] == 1
+    assert relatorio["window_days"] == 30
+
+    lista = client_report.get(f"/patients/{pid}/results?days=30", headers=cab).json()
+    assert len(lista["results"]) == 1
+    assert lista["window_days"] == 30

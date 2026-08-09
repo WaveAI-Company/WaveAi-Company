@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import uuid
+from datetime import datetime
 
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
@@ -36,13 +37,18 @@ class ResultRepository:
         self._session.flush()
         return result
 
-    def listar_do_paciente(self, patient_user_id: uuid.UUID) -> list[Result]:
-        stmt = (
-            select(Result)
-            .where(Result.patient_user_id == patient_user_id)
-            .order_by(Result.created_at.desc())
-        )
-        return list(self._session.scalars(stmt))
+    def listar_do_paciente(
+        self, patient_user_id: uuid.UUID, *, desde: datetime | None = None
+    ) -> list[Result]:
+        """Result do titular, do mais recente ao mais antigo.
+
+        `desde` recorta a janela **no banco**: além de devolver menos, evita
+        decifrar blob que ninguém vai ler. Borda inclusiva (`>=`).
+        """
+        stmt = select(Result).where(Result.patient_user_id == patient_user_id)
+        if desde is not None:
+            stmt = stmt.where(Result.created_at >= desde)
+        return list(self._session.scalars(stmt.order_by(Result.created_at.desc())))
 
     def apagar_do_paciente(self, patient_user_id: uuid.UUID) -> int:
         """Exclusão (erasure): apaga TODOS os Result do titular. Devolve quantos."""
