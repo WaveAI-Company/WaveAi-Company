@@ -8,6 +8,7 @@
  */
 
 import { request } from "../auth/api";
+import type { IconName } from "../components/Icon";
 
 /** Direção da tendência de uma feature — direção NUMÉRICA, sem juízo de valor. */
 export type TrendDirection = "subindo" | "descendo" | "estável";
@@ -95,9 +96,15 @@ export function featureLabel(key: string): string {
   return FEATURE_LABELS[key] ?? key;
 }
 
-/** Símbolo neutro da direção — seta, não cor de "bom/ruim" (não há juízo aqui). */
-export function directionSymbol(direction: TrendDirection): string {
-  if (direction === "subindo") return "↑";
-  if (direction === "descendo") return "↓";
-  return "→";
+/**
+ * Ícone neutro da direção — seta, não cor de "bom/ruim" (não há juízo aqui).
+ *
+ * Passou de glifo (`↑ ↓ →`) a nome de ícone na P8-b: seta tipográfica carrega
+ * o desenho, o peso e a caixa da fonte do sistema, e ao lado de um conjunto de
+ * traço isso aparece.
+ */
+export function directionIcon(direction: TrendDirection): IconName {
+  if (direction === "subindo") return "arrowUp";
+  if (direction === "descendo") return "arrowDown";
+  return "arrowRight";
 }
