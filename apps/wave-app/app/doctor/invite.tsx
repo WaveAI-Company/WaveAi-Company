@@ -2,7 +2,13 @@ import { useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { StyleSheet, Text, useWindowDimensions, View } from "react-native";
 
-import { inviteCareLink, listCareLinks, revokeCareLink, type CareLink } from "../../src/api/care";
+import {
+  INVITE_MESSAGE_MAX_LENGTH,
+  inviteCareLink,
+  listCareLinks,
+  revokeCareLink,
+  type CareLink,
+} from "../../src/api/care";
 import { Avatar } from "../../src/components/Avatar";
 import { Button } from "../../src/components/Button";
 import { Chip } from "../../src/components/Chip";
@@ -60,10 +66,14 @@ export default function DoctorInviteScreen() {
   const emColunas = useWindowDimensions().width > bp.duasColunas;
 
   const [email, setEmail] = useState("");
+  /** Recado opcional que a pessoa lê junto do convite (ADR-0043). */
+  const [mensagem, setMensagem] = useState("");
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   /** E-mail do último envio — marca a passagem para a tela de confirmação. */
   const [enviadoPara, setEnviadoPara] = useState<string | null>(null);
+  /** Se o convite recém-registrado levava recado — muda só a confirmação. */
+  const [enviadoComRecado, setEnviadoComRecado] = useState(false);
 
   const [vinculos, setVinculos] = useState<CareLink[]>([]);
   const [carregando, setCarregando] = useState(true);
@@ -94,16 +104,18 @@ export default function DoctorInviteScreen() {
     setEnviando(true);
     setErro(null);
     try {
-      await inviteCareLink(alvo);
+      await inviteCareLink(alvo, mensagem);
       setEnviadoPara(alvo);
+      setEnviadoComRecado(mensagem.trim().length > 0);
       setEmail("");
+      setMensagem("");
       await carregar();
     } catch {
       setErro("Não foi possível registrar o convite. Tente de novo.");
     } finally {
       setEnviando(false);
     }
-  }, [email, carregar]);
+  }, [email, mensagem, carregar]);
 
   const cancelar = useCallback(async (id: string) => {
     setCancelando(id);
@@ -138,6 +150,19 @@ export default function DoctorInviteScreen() {
         editable={!enviando}
         error={erro}
       />
+      {/* `convidar.html:267`: o recado é opcional e a pessoa lê junto do
+          convite. O teto é o mesmo do servidor — 500 é decisão de produto
+          (ADR-0043): campo grande convida a virar prontuário. */}
+      <Field
+        label="Mensagem (opcional)"
+        value={mensagem}
+        onChangeText={setMensagem}
+        placeholder="Ex.: Oi! Posso acompanhar suas tendências entre os nossos encontros?"
+        hint="A pessoa vê essa mensagem junto do convite, com o seu nome."
+        multiline
+        maxLength={INVITE_MESSAGE_MAX_LENGTH}
+        editable={!enviando}
+      />
       <View style={styles.acao}>
         <Button label="Enviar convite" onPress={convidar} loading={enviando} />
       </View>
@@ -156,8 +181,9 @@ export default function DoctorInviteScreen() {
             (ADR-0024). Afirmar entrega aqui contradiria essa proteção. */}
         <Text style={styles.enviadoTexto}>
           Registramos o pedido para <Text style={styles.forte}>{enviadoPara}</Text>. Se
-          houver uma conta com esse e-mail, o convite aparece para a pessoa aceitar — e o
-          acompanhamento só começa se ela aceitar.
+          houver uma conta com esse e-mail, o convite
+          {enviadoComRecado ? " (com a sua mensagem) " : " "}
+          aparece para a pessoa aceitar. O acompanhamento só começa se ela aceitar.
         </Text>
         <View style={styles.enviadoAcoes}>
           <View style={styles.enviadoBotao}>
