@@ -9,8 +9,10 @@ from ..config import Settings, get_settings
 from ..db.session import get_session
 from ..emails import (
     ASSUNTO_CADASTRO_EXISTENTE,
+    ASSUNTO_RECUPERACAO,
     ASSUNTO_VERIFICACAO,
     corpo_cadastro_existente,
+    corpo_recuperacao,
     corpo_verificacao,
 )
 from ..models.single_use_token import SingleUseTokenPurpose
@@ -37,10 +39,12 @@ from .deps import (
 from .schemas import (
     ChangePasswordRequest,
     ClientPlatform,
+    ForgotPasswordRequest,
     LoginRequest,
     RefreshRequest,
     RegisterRequest,
     ResendVerificationRequest,
+    ResetPasswordRequest,
     TokenResponse,
     UpdateMeRequest,
     UserResponse,
@@ -65,6 +69,29 @@ REENVIO_REGISTRADO = {"detail": "se houver conta pendente, o codigo foi reenviad
 #: Recusa única da verificação: não distingue código errado, expirado, já usado
 #: e e-mail sem conta.
 CODIGO_INVALIDO = "codigo invalido ou expirado"
+
+#: Resposta única do "esqueci minha senha".
+RECUPERACAO_REGISTRADA = {"detail": "se houver conta, o codigo foi enviado"}
+
+
+def _enviar_recuperacao_de_senha(
+    *, user: User, tokens: SingleUseTokenService, sender: EmailSender, settings: Settings
+) -> None:
+    """Emite o segredo de recuperação e manda **link e código** (o design pede
+    os dois na mesma tela — `Design/round1/login.html`)."""
+    emitido = tokens.emitir(user=user, purpose=SingleUseTokenPurpose.PASSWORD_RESET)
+    sender.send(
+        to=user.email,
+        subject=ASSUNTO_RECUPERACAO,
+        body=corpo_recuperacao(
+            codigo=emitido.codigo,
+            link=(
+                f"{settings.email_link_base_url.rstrip('/')}"
+                f"/reset-password?token={emitido.valor}"
+            ),
+            minutos=settings.single_use_token_ttl_minutes,
+        ),
+    )
 
 
 def _enviar_codigo_de_verificacao(
@@ -292,6 +319,95 @@ def login(
 
     session.commit()
     return _aplicar_refresh(response, tokens, payload.client, settings)
+
+
+@router.post("/forgot-password", status_code=status.HTTP_202_ACCEPTED)
+def forgot_password(
+    payload: ForgotPasswordRequest,
+    request: Request,
+    session: Session = Depends(get_session),
+    service: AuthService = Depends(get_auth_service),
+    settings: Settings = Depends(get_settings),
+    limiter: SlidingWindowRateLimiter = Depends(get_register_limiter),
+    tokens: SingleUseTokenService = Depends(get_single_use_token_service),
+    sender: EmailSender = Depends(get_email_sender),
+) -> dict[str, str]:
+    """Inicia a recuperação. Resposta única, exista ou não a conta (ADR-0024).
+
+    Funciona para conta **não verificada** de propósito: redefinir a senha vale
+    como prova de posse do endereço (2ª emenda à ADR-0044), então este é também
+    o caminho de quem nunca conseguiu verificar.
+    """
+    ip = client_ip(request)
+    if not limiter.is_allowed(f"forgot:{ip}"):
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="tentativas demais; tente novamente em instantes",
+        )
+
+    user = service.buscar_por_email(payload.email)
+    # Conta inexistente, inativa ou pedido repetido dentro do cooldown: nada a
+    # fazer — e, nos três casos, a resposta é exatamente a mesma.
+    if (
+        user is not None
+        and user.is_active
+        and not tokens.em_cooldown(user=user, purpose=SingleUseTokenPurpose.PASSWORD_RESET)
+    ):
+        _enviar_recuperacao_de_senha(
+            user=user, tokens=tokens, sender=sender, settings=settings
+        )
+    session.commit()
+    return RECUPERACAO_REGISTRADA
+
+
+@router.post("/reset-password", status_code=status.HTTP_204_NO_CONTENT)
+def reset_password(
+    payload: ResetPasswordRequest,
+    session: Session = Depends(get_session),
+    service: AuthService = Depends(get_auth_service),
+    tokens: SingleUseTokenService = Depends(get_single_use_token_service),
+) -> Response:
+    """Redefine a senha por **código digitado** ou **token do link**.
+
+    Não emite sessão: o design manda de volta para o login ("Senha atualizada ·
+    Entre com a sua nova senha").
+    """
+    if payload.token is not None:
+        # O link não carrega o endereço — o próprio token identifica a linha.
+        token = tokens.consumir(
+            valor=payload.token, purpose=SingleUseTokenPurpose.PASSWORD_RESET
+        )
+        user = token.user if token is not None else None
+    else:
+        user = service.buscar_por_email(payload.email or "")
+        token = (
+            None
+            if user is None
+            else tokens.consumir_codigo(
+                user=user,
+                purpose=SingleUseTokenPurpose.PASSWORD_RESET,
+                codigo=payload.code or "",
+            )
+        )
+
+    if token is None or user is None:
+        session.commit()  # preserva a tentativa contabilizada no token
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail=CODIGO_INVALIDO
+        )
+
+    if service.senha_igual_a_atual(user=user, new_password=payload.new_password):
+        # O segredo já foi queimado acima; recusar aqui é sobre a senha, não
+        # sobre o direito de redefinir — quem repetiu pede outro código.
+        session.commit()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="a nova senha precisa ser diferente da atual",
+        )
+
+    service.redefinir_senha(user=user, new_password=payload.new_password)
+    session.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.post("/refresh", response_model=TokenResponse)

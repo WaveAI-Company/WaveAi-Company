@@ -398,3 +398,24 @@ def test_troca_de_senha_exige_autenticacao(client: TestClient):
         json={"current_password": SENHA, "new_password": "qualquer-senha-longa"},
     )
     assert resp.status_code == 401
+
+
+def test_troca_de_senha_tambem_derruba_o_access_token_antigo(client: TestClient):
+    """O access token é JWT e não era consultado no banco: até a P9-f ele
+    sobrevivia ao "revoga tudo" por até 15 minutos.
+
+    A claim `tv` (cópia do `token_version`) fecha isso — e o mesmo vale para o
+    logout global e para a redefinição de senha.
+    """
+    email = _email()
+    antigo = _login_token(client, email)
+    cabecalho = {"Authorization": f"Bearer {antigo}"}
+    assert client.get("/auth/me", headers=cabecalho).status_code == 200
+
+    client.post(
+        "/auth/password",
+        json={"current_password": SENHA, "new_password": "senha-novissima-bem-longa"},
+        headers=cabecalho,
+    )
+
+    assert client.get("/auth/me", headers=cabecalho).status_code == 401
