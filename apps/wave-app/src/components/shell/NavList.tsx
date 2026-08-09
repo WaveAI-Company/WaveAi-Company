@@ -4,6 +4,7 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { activeHref, navItemsFor } from "../../navigation/navItems";
 import type { UserRole } from "../../auth/api";
+import { Icon, type IconName } from "../Icon";
 import {
   anelFoco,
   motion,
@@ -69,7 +70,7 @@ function ItemNav({
   styles,
 }: {
   label: string;
-  icone: string;
+  icone: IconName;
   selecionado: boolean;
   accent: string;
   onPress: () => void;
@@ -99,9 +100,13 @@ function ItemNav({
       <View
         style={[styles.barra, { backgroundColor: selecionado ? accent : "transparent" }]}
       />
-      <Text style={[styles.icone, { color: selecionado ? accent : t.colors.textMuted }]}>
-        {icone}
-      </Text>
+      <View style={styles.icone}>
+        <Icon
+          name={icone}
+          size={19}
+          color={selecionado ? accent : realce ? t.colors.text : t.colors.textMuted}
+        />
+      </View>
       <Text
         style={[
           styles.rotulo,
@@ -137,9 +142,10 @@ const criarEstilos = (t: Theme) =>
       marginVertical: t.spacing.xs,
       width: 3,
     },
+    // Largura fixa para os rótulos alinharem entre si, independente do ícone.
     icone: {
-      ...t.typography.bodyStrong,
-      textAlign: "center",
+      alignItems: "center",
+      justifyContent: "center",
       width: 20,
     },
     rotulo: {

@@ -1,4 +1,4 @@
-import Svg, { Circle, Path } from "react-native-svg";
+import Svg, { Circle, Ellipse, Path, Rect } from "react-native-svg";
 
 import { useTheme } from "../theme";
 
@@ -10,11 +10,17 @@ import { useTheme } from "../theme";
  * nos dois temas sem uma segunda arte. Antes da `react-native-svg` o app
  * desenhava com `View`, o que serve para uma marca e não para um conjunto.
  *
+ * **Os traçados são os do Fable** (P8-b): cada `d` aqui foi conferido contra o
+ * SVG inline correspondente em `Design/round1/*.html`. Onde o mockup usa
+ * `<rect rx>`, aqui também usa — desenhar a mesma caixa com `h/v/Z` dava
+ * cantos vivos, e era boa parte do que fazia o conjunto parecer de outra
+ * família.
+ *
  * O conjunto cresce **sob demanda**, tela a tela — um catálogo especulativo só
  * junta peso de bundle e arte sem uso.
  */
 
-/** Cada ícone é uma função do traço, porque alguns misturam `Path` e `Circle`. */
+/** Cada ícone é uma função do traço, porque alguns misturam formas. */
 const ICONES = {
   /** Revelar senha. */
   eye: (c: string, w: number) => (
@@ -72,13 +78,17 @@ const ICONES = {
   /** Tema seguindo o sistema — a tela do aparelho. */
   monitor: (c: string, w: number) => (
     <>
-      <Path
-        d="M3.2 5.5h17.6v11H3.2Z"
+      <Rect
+        x={3}
+        y={4}
+        width={18}
+        height={13}
+        rx={2.5}
         stroke={c}
         strokeWidth={w}
-        strokeLinejoin="round"
+        strokeLinecap="round"
       />
-      <Path d="M9 20.5h6M12 16.5v4" stroke={c} strokeWidth={w} strokeLinecap="round" />
+      <Path d="M9 21h6M12 17.5V21" stroke={c} strokeWidth={w} strokeLinecap="round" />
     </>
   ),
   /** Consentimento — escudo com visto. */
@@ -88,6 +98,7 @@ const ICONES = {
         d="M12 3 4.5 6v5c0 4.5 3 8.2 7.5 10 4.5-1.8 7.5-5.5 7.5-10V6Z"
         stroke={c}
         strokeWidth={w}
+        strokeLinecap="round"
         strokeLinejoin="round"
       />
       <Path
@@ -112,14 +123,19 @@ const ICONES = {
   /** Convites — envelope. */
   mail: (c: string, w: number) => (
     <>
-      <Path
-        d="M3.5 5.5h17v13h-17Z"
+      <Rect
+        x={3}
+        y={5}
+        width={18}
+        height={14}
+        rx={3}
         stroke={c}
         strokeWidth={w}
+        strokeLinecap="round"
         strokeLinejoin="round"
       />
       <Path
-        d="m3.9 6.6 8.1 5.8 8.1-5.8"
+        d="m3.5 7 8.5 6 8.5-6"
         stroke={c}
         strokeWidth={w}
         strokeLinecap="round"
@@ -130,14 +146,15 @@ const ICONES = {
   /** O que é guardado — cilindro de dados. */
   database: (c: string, w: number) => (
     <>
+      <Ellipse cx={12} cy={6} rx={8} ry={3} stroke={c} strokeWidth={w} />
       <Path
-        d="M20 6c0 1.66-3.58 3-8 3S4 7.66 4 6s3.58-3 8-3 8 1.34 8 3Z"
+        d="M4 6v12c0 1.7 3.6 3 8 3s8-1.3 8-3V6"
         stroke={c}
         strokeWidth={w}
-        strokeLinejoin="round"
+        strokeLinecap="round"
       />
       <Path
-        d="M4 6v12c0 1.7 3.58 3 8 3s8-1.3 8-3V6M4 12c0 1.7 3.58 3 8 3s8-1.3 8-3"
+        d="M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"
         stroke={c}
         strokeWidth={w}
         strokeLinecap="round"
@@ -151,27 +168,59 @@ const ICONES = {
       <Path d="m8.5 8.5 7 7M15.5 8.5l-7 7" stroke={c} strokeWidth={w} strokeLinecap="round" />
     </>
   ),
+  /** Fechar. */
+  x: (c: string, w: number) => (
+    <Path
+      d="m6.5 6.5 11 11M17.5 6.5l-11 11"
+      stroke={c}
+      strokeWidth={w}
+      strokeLinecap="round"
+    />
+  ),
   /** Controle do titular — cadeado. */
   lock: (c: string, w: number) => (
     <>
-      <Path
-        d="M4.5 10.5h15v10h-15Z"
+      <Rect
+        x={4}
+        y={10}
+        width={16}
+        height={10}
+        rx={2.5}
         stroke={c}
         strokeWidth={w}
+        strokeLinecap="round"
         strokeLinejoin="round"
       />
-      <Path d="M8 10.5V7a4 4 0 0 1 8 0v3.5" stroke={c} strokeWidth={w} strokeLinecap="round" />
+      <Path
+        d="M8 10V7a4 4 0 0 1 8 0v3"
+        stroke={c}
+        strokeWidth={w}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </>
   ),
-  /** Gerenciar — engrenagem simplificada. */
+  /**
+   * Gerenciar — engrenagem.
+   *
+   * **Redesenhada na P8-b.** O que existia aqui era o `sun` com o círculo
+   * menor — mesmo miolo, mesmos oito raios retos —, o que não lê como
+   * engrenagem. O corpo do mockup (`consentimento.html`) também não servia
+   * para copiar: o traçado dele descreve **só a metade de baixo** e não fecha;
+   * à risca, renderizaria uma engrenagem cortada.
+   *
+   * Então esta é gerada por geometria, não desenhada à mão: oito dentes entre
+   * os raios 7,0 e 9,3 em torno do centro (12,12), com o `strokeLinejoin`
+   * arredondando os cantos. Simétrica por construção e contida no viewBox.
+   */
   gear: (c: string, w: number) => (
     <>
       <Circle cx={12} cy={12} r={3} stroke={c} strokeWidth={w} />
       <Path
-        d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.2 5.2l2.1 2.1M16.7 16.7l2.1 2.1M18.8 5.2l-2.1 2.1M7.3 16.7l-2.1 2.1"
+        d="M10.5 2.8L13.5 2.8L13.1 5.1L16.1 6.3L17.4 4.4L19.6 6.6L17.7 7.9L18.9 10.9L21.2 10.5L21.2 13.5L18.9 13.1L17.7 16.1L19.6 17.4L17.4 19.6L16.1 17.7L13.1 18.9L13.5 21.2L10.5 21.2L10.9 18.9L7.9 17.7L6.6 19.6L4.4 17.4L6.3 16.1L5.1 13.1L2.8 13.5L2.8 10.5L5.1 10.9L6.3 7.9L4.4 6.6L6.6 4.4L7.9 6.3L10.9 5.1Z"
         stroke={c}
         strokeWidth={w}
-        strokeLinecap="round"
+        strokeLinejoin="round"
       />
     </>
   ),
@@ -236,6 +285,143 @@ const ICONES = {
       strokeLinejoin="round"
     />
   ),
+  /** Início. */
+  home: (c: string, w: number) => (
+    <>
+      <Path
+        d="M3 11 12 3l9 8"
+        stroke={c}
+        strokeWidth={w}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <Path
+        d="M5 10v10h14V10"
+        stroke={c}
+        strokeWidth={w}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </>
+  ),
+  /** Histórico de sessões — calendário. */
+  calendar: (c: string, w: number) => (
+    <>
+      <Rect
+        x={3}
+        y={4}
+        width={18}
+        height={17}
+        rx={3}
+        stroke={c}
+        strokeWidth={w}
+        strokeLinecap="round"
+      />
+      <Path
+        d="M3 9h18M8 2.5V6M16 2.5V6"
+        stroke={c}
+        strokeWidth={w}
+        strokeLinecap="round"
+      />
+    </>
+  ),
+  /** Painel do profissional — grade de cartões. */
+  grid: (c: string, w: number) => (
+    <>
+      <Rect x={3} y={3} width={8} height={8} rx={2} stroke={c} strokeWidth={w} />
+      <Rect x={13} y={3} width={8} height={8} rx={2} stroke={c} strokeWidth={w} />
+      <Rect x={3} y={13} width={8} height={8} rx={2} stroke={c} strokeWidth={w} />
+      <Rect x={13} y={13} width={8} height={8} rx={2} stroke={c} strokeWidth={w} />
+    </>
+  ),
+  /** Voltar. */
+  chevronLeft: (c: string, w: number) => (
+    <Path
+      d="m15 6-6 6 6 6"
+      stroke={c}
+      strokeWidth={w}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  ),
+  /** Avançar. */
+  chevronRight: (c: string, w: number) => (
+    <Path
+      d="m9 6 6 6-6 6"
+      stroke={c}
+      strokeWidth={w}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  ),
+  /** Abrir a explicação de um termo (camada didática). */
+  info: (c: string, w: number) => (
+    <>
+      <Circle cx={12} cy={12} r={9.2} stroke={c} strokeWidth={w} />
+      <Path d="M12 8v5" stroke={c} strokeWidth={w} strokeLinecap="round" />
+      <Circle cx={12} cy={16.5} r={0.5} fill={c} />
+    </>
+  ),
+  /** Abrir o menu de navegação (telas estreitas). */
+  menu: (c: string, w: number) => (
+    <Path
+      d="M3 6h18M3 12h18M3 18h18"
+      stroke={c}
+      strokeWidth={w}
+      strokeLinecap="round"
+    />
+  ),
+  /** Registro escrito — anotação de uma sessão. */
+  fileText: (c: string, w: number) => (
+    <>
+      <Path
+        d="M5 4h11l3 3v13H5z"
+        stroke={c}
+        strokeWidth={w}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <Path d="M9 10h6M9 14h4" stroke={c} strokeWidth={w} strokeLinecap="round" />
+    </>
+  ),
+  /**
+   * Guia por voz ligada.
+   *
+   * **Desenhado aqui, não copiado:** o protocolo guiado por voz é nosso (P4) e
+   * o round 1 não tem esse botão. O lugar dele era um emoji colorido (🔊), que
+   * num conjunto monocromático de traço lê como corpo estranho — e não herda a
+   * cor do papel.
+   */
+  volume: (c: string, w: number) => (
+    <>
+      <Path
+        d="M4 9.5h3.5L12 6v12l-4.5-3.5H4z"
+        stroke={c}
+        strokeWidth={w}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <Path
+        d="M15.5 9.8a3.2 3.2 0 0 1 0 4.4M18 7.5a6.5 6.5 0 0 1 0 9"
+        stroke={c}
+        strokeWidth={w}
+        strokeLinecap="round"
+      />
+    </>
+  ),
+  /** Guia por voz silenciada — o mesmo alto-falante, com as ondas cortadas. */
+  volumeOff: (c: string, w: number) => (
+    <>
+      <Path
+        d="M4 9.5h3.5L12 6v12l-4.5-3.5H4z"
+        stroke={c}
+        strokeWidth={w}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <Path d="m16 9.5 5 5M21 9.5l-5 5" stroke={c} strokeWidth={w} strokeLinecap="round" />
+    </>
+  ),
 } as const;
 
 export type IconName = keyof typeof ICONES;
@@ -245,13 +431,25 @@ type Props = {
   size?: number;
   /** Padrão: a cor de texto do tema. */
   color?: string;
-  /** Espessura do traço na grade 24×24. */
+  /** Espessura do traço na grade 24×24. Sem valor, segue a regra do Fable. */
   strokeWidth?: number;
 };
 
-export function Icon({ name, size = 20, color, strokeWidth = 1.7 }: Props) {
+/**
+ * Espessura padrão, medida no mockup: **1,8** em quase todo ícone de interface,
+ * e **1,6** nos grandes (28px para cima).
+ *
+ * O motivo não é estético e sim óptico: o traço é declarado na grade de 24 e
+ * escala junto com o ícone, então 1,8 num selo de 52px vira um traço gordo. O
+ * Fable afina os grandes; nós fazíamos 1,7 em tudo.
+ */
+const TRACO_GRANDE = 28;
+const tracoPadrao = (size: number) => (size >= TRACO_GRANDE ? 1.6 : 1.8);
+
+export function Icon({ name, size = 20, color, strokeWidth }: Props) {
   const t = useTheme();
   const cor = color ?? t.colors.text;
+  const traco = strokeWidth ?? tracoPadrao(size);
 
   return (
     // `aria-hidden` mantém o ícone fora do leitor de tela: quem descreve a ação
@@ -259,7 +457,7 @@ export function Icon({ name, size = 20, color, strokeWidth = 1.7 }: Props) {
     // navegação. É o atributo que vale nas duas pontas — no web vira o atributo
     // do próprio `<svg>`, sem prop desconhecida vazando para o DOM.
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden>
-      {ICONES[name](cor, strokeWidth)}
+      {ICONES[name](cor, traco)}
     </Svg>
   );
 }
