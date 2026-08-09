@@ -25,6 +25,12 @@ type Props = TextInputProps & {
   /** Mensagem de erro do campo; também marca o input para leitores de tela. */
   error?: string | null;
   /**
+   * Texto de apoio sob o campo — o `.hint` do design. Explica o que o campo
+   * faz **antes** de a pessoa errar; o `error` fala depois. Some quando há
+   * erro, para as duas linhas não competirem.
+   */
+  hint?: string;
+  /**
    * Mostra um botão **Mostrar/Ocultar** para campos de senha. Controla o
    * `secureTextEntry` internamente — passe também `secureTextEntry` para o
    * estado inicial oculto.
@@ -33,7 +39,7 @@ type Props = TextInputProps & {
 };
 
 /** Campo de formulário rotulado, com foco visível e revelar-senha opcional. */
-export function Field({ label, error, revealable, ...input }: Props) {
+export function Field({ label, error, hint, revealable, ...input }: Props) {
   const t = useTheme();
   const { accent } = useRoleAccent();
   const styles = useMemo(() => criarEstilos(t), [t]);
@@ -65,6 +71,10 @@ export function Field({ label, error, revealable, ...input }: Props) {
           }}
           style={[
             styles.input,
+            // `.field textarea` do mockup: 88px de altura mínima. O
+            // `textAlignVertical` é o que impede o texto de nascer centrado
+            // verticalmente no Android.
+            input.multiline && styles.inputMultilinha,
             revealable && styles.inputComBotao,
             // Anel em vez de engrossar a borda: o mockup faz
             // `border-color: accent; box-shadow: 0 0 0 3px accent-soft`, e
@@ -98,6 +108,7 @@ export function Field({ label, error, revealable, ...input }: Props) {
         ) : null}
       </View>
       {error ? <Text style={styles.erro}>{error}</Text> : null}
+      {!error && hint ? <Text style={styles.hint}>{hint}</Text> : null}
     </View>
   );
 }
@@ -113,6 +124,16 @@ const criarEstilos = (t: Theme) =>
     },
     inputRow: {
       justifyContent: "center",
+    },
+    inputMultilinha: {
+      minHeight: 88,
+      paddingTop: t.spacing.sm + 2,
+      textAlignVertical: "top",
+    },
+    hint: {
+      ...t.typography.caption,
+      color: t.colors.textSubtle,
+      fontSize: 12,
     },
     input: {
       ...t.typography.body,
