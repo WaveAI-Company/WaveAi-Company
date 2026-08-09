@@ -60,7 +60,7 @@ const criarEstilos = (t: Theme) =>
     },
     rotulo: {
       ...t.typography.caption,
-      color: t.colors.textMuted,
+      color: t.colors.textSubtle,
     },
     valor: {
       color: t.colors.text,

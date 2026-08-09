@@ -106,7 +106,7 @@ const criarEstilos = (t: Theme) =>
     },
     sobrancelha: {
       ...t.typography.caption,
-      color: t.colors.textMuted,
+      color: t.colors.textSubtle,
       fontWeight: "700",
       letterSpacing: 1.1,
     },

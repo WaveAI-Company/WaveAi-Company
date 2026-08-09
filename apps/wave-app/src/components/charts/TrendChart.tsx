@@ -233,7 +233,7 @@ const criarEstilos = (t: Theme) =>
     },
     rotuloY: {
       ...t.typography.caption,
-      color: t.colors.textMuted,
+      color: t.colors.textSubtle,
       fontSize: 11,
       left: 0,
       position: "absolute",
@@ -253,7 +253,7 @@ const criarEstilos = (t: Theme) =>
     rotuloX: {
       ...t.typography.caption,
       bottom: 4,
-      color: t.colors.textMuted,
+      color: t.colors.textSubtle,
       fontSize: 11,
       position: "absolute",
     },

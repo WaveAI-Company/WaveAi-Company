@@ -106,7 +106,7 @@ const criarEstilos = (t: Theme) =>
     },
     seloMes: {
       ...t.typography.caption,
-      color: t.colors.textMuted,
+      color: t.colors.textSubtle,
       fontSize: 11,
       textTransform: "uppercase",
     },
@@ -121,7 +121,7 @@ const criarEstilos = (t: Theme) =>
     },
     metaNota: {
       ...t.typography.caption,
-      color: t.colors.textMuted,
+      color: t.colors.textSubtle,
     },
     composicao: {
       flex: 1,
@@ -133,7 +133,7 @@ const criarEstilos = (t: Theme) =>
     },
     composicaoNota: {
       ...t.typography.caption,
-      color: t.colors.textMuted,
+      color: t.colors.textSubtle,
       fontSize: 11,
     },
     alfa: {
@@ -147,7 +147,7 @@ const criarEstilos = (t: Theme) =>
     },
     alfaRotulo: {
       ...t.typography.caption,
-      color: t.colors.textMuted,
+      color: t.colors.textSubtle,
       fontSize: 11,
     },
   });

@@ -92,7 +92,7 @@ const criarEstilos = (t: Theme) =>
     },
     faixa: {
       ...t.typography.caption,
-      color: t.colors.textMuted,
+      color: t.colors.textSubtle,
       fontSize: 11,
     },
     trilho: {

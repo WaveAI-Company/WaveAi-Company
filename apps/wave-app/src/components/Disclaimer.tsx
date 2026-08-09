@@ -38,7 +38,7 @@ const criarEstilos = (t: Theme) =>
   StyleSheet.create({
     texto: {
       ...t.typography.caption,
-      color: t.colors.textMuted,
+      color: t.colors.textSubtle,
       marginTop: t.spacing.md,
     },
   });

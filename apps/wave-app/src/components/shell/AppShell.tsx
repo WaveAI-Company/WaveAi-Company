@@ -290,7 +290,7 @@ const criarEstilos = (t: Theme) =>
     },
     rodapePapel: {
       ...t.typography.caption,
-      color: t.colors.textMuted,
+      color: t.colors.textSubtle,
       marginBottom: t.spacing.xs,
     },
     backdrop: {
