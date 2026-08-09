@@ -7,25 +7,44 @@ from sqlalchemy.orm import Session
 
 from ..config import Settings, get_settings
 from ..db.session import get_session
+from ..emails import (
+    ASSUNTO_CADASTRO_EXISTENTE,
+    ASSUNTO_VERIFICACAO,
+    corpo_cadastro_existente,
+    corpo_verificacao,
+)
+from ..models.single_use_token import SingleUseTokenPurpose
 from ..models.user import User
 from ..security.rate_limit import SlidingWindowRateLimiter
 from ..services.auth import (
     AuthError,
     AuthService,
-    EmailAlreadyRegisteredError,
+    EmailNotVerifiedError,
     TokenPair,
     WrongPasswordError,
 )
-from .deps import client_ip, get_auth_service, get_current_user, get_login_limiter
+from ..services.email import EmailSender
+from ..services.single_use_token import SingleUseTokenService
+from .deps import (
+    client_ip,
+    get_auth_service,
+    get_current_user,
+    get_email_sender,
+    get_login_limiter,
+    get_register_limiter,
+    get_single_use_token_service,
+)
 from .schemas import (
     ChangePasswordRequest,
     ClientPlatform,
     LoginRequest,
     RefreshRequest,
     RegisterRequest,
+    ResendVerificationRequest,
     TokenResponse,
     UpdateMeRequest,
     UserResponse,
+    VerifyEmailRequest,
 )
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -33,6 +52,38 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 #: Mensagem única para qualquer falha de credencial: não revela se o e-mail
 #: existe, se a senha está errada ou se a conta está inativa (ADR-0023).
 CREDENCIAIS_INVALIDAS = "credenciais invalidas"
+
+#: Resposta única do cadastro: exista ou não a conta, quem pediu vê isto. Quem
+#: precisa saber que houve uma tentativa é a **dona do endereço**, e ela fica
+#: sabendo por e-mail — não por esta resposta (ADR-0024, mesmo princípio do
+#: convite de vínculo).
+CADASTRO_REGISTRADO = {"detail": "cadastro registrado; confira seu e-mail"}
+
+#: Resposta única do reenvio, pelo mesmo motivo.
+REENVIO_REGISTRADO = {"detail": "se houver conta pendente, o codigo foi reenviado"}
+
+#: Recusa única da verificação: não distingue código errado, expirado, já usado
+#: e e-mail sem conta.
+CODIGO_INVALIDO = "codigo invalido ou expirado"
+
+
+def _enviar_codigo_de_verificacao(
+    *, user: User, tokens: SingleUseTokenService, sender: EmailSender, settings: Settings
+) -> None:
+    """Emite o código e manda o e-mail. Falha de envio **derruba** a operação.
+
+    De propósito: uma conta criada sem nenhum jeito de verificá-la é pior que um
+    cadastro que falhou e pode ser repetido — e, com o gate ligado, ela ficaria
+    inacessível para sempre.
+    """
+    emitido = tokens.emitir(user=user, purpose=SingleUseTokenPurpose.EMAIL_VERIFICATION)
+    sender.send(
+        to=user.email,
+        subject=ASSUNTO_VERIFICACAO,
+        body=corpo_verificacao(
+            codigo=emitido.codigo, minutos=settings.single_use_token_ttl_minutes
+        ),
+    )
 
 
 def _resposta_usuario(user: User) -> UserResponse:
@@ -80,25 +131,128 @@ def _ler_refresh(request: Request, payload: RefreshRequest, settings: Settings) 
     return token
 
 
-@router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/register", status_code=status.HTTP_202_ACCEPTED)
 def register(
     payload: RegisterRequest,
+    request: Request,
     session: Session = Depends(get_session),
     service: AuthService = Depends(get_auth_service),
-) -> UserResponse:
-    try:
-        user = service.register(
-            email=payload.email,
-            password=payload.password,
-            role=payload.role,
-            display_name=payload.display_name,
-        )
-    except EmailAlreadyRegisteredError:
+    settings: Settings = Depends(get_settings),
+    limiter: SlidingWindowRateLimiter = Depends(get_register_limiter),
+    tokens: SingleUseTokenService = Depends(get_single_use_token_service),
+    sender: EmailSender = Depends(get_email_sender),
+) -> dict[str, str]:
+    """Cria a conta e manda o código de verificação — **sem** dizer se o e-mail
+    já tinha dono.
+
+    Antes respondia 409 "e-mail ja cadastrado", o que era um oráculo de
+    existência de conta. Agora a resposta é única e quem é avisado é a pessoa
+    certa: a dona do endereço recebe um e-mail dizendo que houve uma tentativa.
+    """
+    # Throttle por IP. O e-mail **não** entra na chave: a própria chave viraria
+    # o oráculo que esta rota passou a evitar.
+    ip = client_ip(request)
+    if not limiter.is_allowed(f"register:{ip}"):
         raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT, detail="e-mail ja cadastrado"
-        ) from None
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="tentativas demais; tente novamente em instantes",
+        )
+
+    resultado = service.cadastrar(
+        email=payload.email,
+        password=payload.password,
+        role=payload.role,
+        display_name=payload.display_name,
+    )
+    if resultado.user is not None:
+        _enviar_codigo_de_verificacao(
+            user=resultado.user, tokens=tokens, sender=sender, settings=settings
+        )
+    else:
+        sender.send(
+            to=payload.email,
+            subject=ASSUNTO_CADASTRO_EXISTENTE,
+            body=corpo_cadastro_existente(),
+        )
     session.commit()
-    return _resposta_usuario(user)
+    return CADASTRO_REGISTRADO
+
+
+@router.post("/verify-email", status_code=status.HTTP_204_NO_CONTENT)
+def verify_email(
+    payload: VerifyEmailRequest,
+    session: Session = Depends(get_session),
+    service: AuthService = Depends(get_auth_service),
+    tokens: SingleUseTokenService = Depends(get_single_use_token_service),
+) -> Response:
+    """Confirma a posse do endereço pelo código de 6 dígitos.
+
+    Não emite sessão: o design mostra um botão "Entrar no WaveAI" depois do
+    "Tudo pronto!" (`criar-conta.html`, passo 3 de 3), então quem entra é o
+    login de sempre.
+    """
+    user = service.buscar_por_email(payload.email)
+    token = (
+        None
+        if user is None
+        else tokens.consumir_codigo(
+            user=user,
+            purpose=SingleUseTokenPurpose.EMAIL_VERIFICATION,
+            codigo=payload.code,
+        )
+    )
+    if token is None:
+        # Mesma recusa para código errado, expirado, já usado e e-mail sem
+        # conta — senão a rota vira oráculo pelo caminho do erro.
+        session.commit()  # preserva a tentativa contabilizada no token
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail=CODIGO_INVALIDO
+        )
+
+    service.marcar_verificado(user)
+    session.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.post("/resend-verification", status_code=status.HTTP_202_ACCEPTED)
+def resend_verification(
+    payload: ResendVerificationRequest,
+    request: Request,
+    session: Session = Depends(get_session),
+    service: AuthService = Depends(get_auth_service),
+    settings: Settings = Depends(get_settings),
+    limiter: SlidingWindowRateLimiter = Depends(get_register_limiter),
+    tokens: SingleUseTokenService = Depends(get_single_use_token_service),
+    sender: EmailSender = Depends(get_email_sender),
+) -> dict[str, str]:
+    """Reenvia o código de verificação. Resposta única, exista ou não a conta.
+
+    É a **outra porta**: quem fechou o app no meio do cadastro volta por aqui.
+    O cooldown mora no banco (último token vivo), então vale com N réplicas —
+    diferente do rate limit por IP, que é do processo.
+    """
+    ip = client_ip(request)
+    if not limiter.is_allowed(f"resend:{ip}"):
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="tentativas demais; tente novamente em instantes",
+        )
+
+    user = service.buscar_por_email(payload.email)
+    # Nada a fazer se não há conta, se ela já está verificada, ou se o último
+    # código saiu agora há pouco — e, nos três casos, a resposta é a mesma.
+    if (
+        user is not None
+        and user.email_verified_at is None
+        and not tokens.em_cooldown(
+            user=user, purpose=SingleUseTokenPurpose.EMAIL_VERIFICATION
+        )
+    ):
+        _enviar_codigo_de_verificacao(
+            user=user, tokens=tokens, sender=sender, settings=settings
+        )
+    session.commit()
+    return REENVIO_REGISTRADO
 
 
 @router.post("/login", response_model=TokenResponse)
@@ -123,6 +277,14 @@ def login(
 
     try:
         tokens = service.login(email=payload.email, password=payload.password)
+    except EmailNotVerifiedError:
+        # 403 (e não 401): a credencial está certa, o que falta é a posse do
+        # endereço. Só chega aqui quem acertou a senha, então contar o estado
+        # da conta não revela nada a quem não sabia — e é o que permite o app
+        # oferecer "reenviar código" (a outra porta).
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="e-mail nao verificado"
+        ) from None
     except AuthError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail=CREDENCIAIS_INVALIDAS

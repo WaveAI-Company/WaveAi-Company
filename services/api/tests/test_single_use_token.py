@@ -73,9 +73,13 @@ def test_emitir_guarda_so_o_hash(db_session: Session):
     assert emitido.valor not in todos
 
 
-def test_prazo_por_proposito(db_session: Session):
-    """Assimetria proposital (ADR-0044): reset é vetor de tomada de conta."""
-    settings = get_settings()
+def test_prazo_curto_e_igual_nos_dois_propositos(db_session: Session):
+    """Emenda à ADR-0044: a assimetria 24 h/30 min caiu.
+
+    O design verifica **com a pessoa na tela** (`criar-conta.html`, passo 2 de
+    3), então prazo longo não tinha função — e o curto já era o certo.
+    """
+    ttl = timedelta(minutes=get_settings().single_use_token_ttl_minutes)
     service = _service(db_session)
     user = _usuario(db_session)
     antes = datetime.now(UTC)
@@ -83,14 +87,35 @@ def test_prazo_por_proposito(db_session: Session):
     verificacao = service.emitir(user=user, purpose=VERIFICACAO)
     reset = service.emitir(user=user, purpose=RESET)
 
-    assert verificacao.expires_at - antes >= timedelta(
-        hours=settings.email_verification_ttl_hours
-    ) - timedelta(seconds=5)
-    assert reset.expires_at - antes <= timedelta(
-        minutes=settings.password_reset_ttl_minutes
-    ) + timedelta(seconds=5)
-    # O de verificação dura muito mais que o de reset — é o ponto da decisão.
-    assert verificacao.expires_at > reset.expires_at
+    for emitido in (verificacao, reset):
+        assert emitido.expires_at - antes <= ttl + timedelta(seconds=5)
+        assert emitido.expires_at - antes >= ttl - timedelta(seconds=5)
+
+
+def test_emissao_traz_as_duas_formas_do_segredo(db_session: Session):
+    """Código digitável e valor opaco na MESMA linha (emenda à ADR-0044)."""
+    service = _service(db_session)
+    user = _usuario(db_session)
+
+    emitido = service.emitir(user=user, purpose=VERIFICACAO)
+
+    assert len(emitido.codigo) == 6 and emitido.codigo.isdigit()
+    assert len(emitido.valor) > 40  # opaco, para o link da recuperação
+    guardado = db_session.scalars(
+        select(SingleUseToken).where(SingleUseToken.user_id == user.id)
+    ).one()
+    assert guardado.code_hash == hash_opaque_token(emitido.codigo)
+
+
+def test_consumir_por_uma_forma_queima_a_outra(db_session: Session):
+    """São duas formas do mesmo segredo — não dois segredos."""
+    service = _service(db_session)
+    user = _usuario(db_session)
+    emitido = service.emitir(user=user, purpose=RESET)
+
+    assert service.consumir(valor=emitido.valor, purpose=RESET) is not None
+
+    assert service.consumir_codigo(user=user, purpose=RESET, codigo=emitido.codigo) is None
 
 
 # -- consumo -------------------------------------------------------------

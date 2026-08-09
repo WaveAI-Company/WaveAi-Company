@@ -99,6 +99,16 @@ def hash_opaque_token(token: str) -> str:
     return hashlib.sha256(token.encode("utf-8")).hexdigest()
 
 
+def generate_numeric_code(digits: int) -> str:
+    """Código numérico digitável, com zeros à esquerda preservados.
+
+    `secrets` (e não `random`) porque é segredo. O espaço é pequeno de
+    propósito — quem defende o código é o **contador de tentativas** na linha
+    do token, não a entropia (emenda à ADR-0044).
+    """
+    return f"{secrets.randbelow(10**digits):0{digits}d}"
+
+
 def generate_refresh_token() -> str:
     return generate_opaque_token(REFRESH_TOKEN_BYTES)
 
