@@ -158,6 +158,24 @@ export default function PatientInvitesScreen() {
               <Chip label={enviadoEm(convite.created_at, agora)} />
             </View>
 
+            {/* `.inv-msg` do mockup (`convites.html:256`): o recado aparece
+                como CITAÇÃO ATRIBUÍDA — aspas, itálico, com o nome de quem
+                escreveu no cartão logo acima —, nunca como texto do sistema
+                (ADR-0043, item 6). Some junto com as ações quando o convite é
+                aceito, como no mockup (`.inv.accepted .inv-msg{display:none}`).
+
+                É `<Text>`: não interpreta markup e **não faz autolink**. Convite
+                com texto de terceiro é vetor clássico de phishing, e o autolink
+                do RN é opt-in — a decisão é não ligar. */}
+            {!aceito && convite.message ? (
+              <Text
+                style={styles.recado}
+                accessibilityLabel={`Mensagem de ${convite.counterpart_display_name ?? "quem convidou"}: ${convite.message}`}
+              >
+                {`“${convite.message}”`}
+              </Text>
+            ) : null}
+
             {aceito ? (
               <View style={styles.recibo}>
                 <Chip
@@ -271,6 +289,18 @@ const criarEstilos = (t: Theme) =>
     papel: {
       ...t.typography.caption,
       color: t.colors.textSubtle,
+    },
+    //: `.inv-msg`: fundo `surface-2`, raio médio, 13,5px, `ink-2`, itálico.
+    recado: {
+      ...t.typography.body,
+      backgroundColor: t.colors.surfaceAlt,
+      borderRadius: t.radius.md,
+      color: t.colors.textMuted,
+      fontSize: 13.5,
+      fontStyle: "italic",
+      marginTop: t.spacing.md,
+      paddingHorizontal: 14,
+      paddingVertical: 12,
     },
     escopo: {
       gap: t.spacing.sm,
