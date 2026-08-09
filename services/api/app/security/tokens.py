@@ -81,15 +81,27 @@ def decode_access_token(token: str, settings: Settings) -> AccessClaims:
     return AccessClaims(user_id=user_id, role=role, jti=payload.get("jti", ""))
 
 
-def generate_refresh_token() -> str:
-    """Gera o valor opaco entregue ao cliente (nunca é armazenado como está)."""
-    return secrets.token_urlsafe(REFRESH_TOKEN_BYTES)
+def generate_opaque_token(nbytes: int) -> str:
+    """Valor opaco aleatório entregue ao cliente (nunca armazenado como está).
+
+    Usado pelo refresh (ADR-0021) e pelos tokens de uso único (ADR-0044): o
+    mecanismo é o mesmo, só muda o ciclo de vida de quem o guarda.
+    """
+    return secrets.token_urlsafe(nbytes)
 
 
-def hash_refresh_token(token: str) -> str:
-    """Hash determinístico para busca/armazenamento do refresh.
+def hash_opaque_token(token: str) -> str:
+    """Hash determinístico para busca/armazenamento de token opaco.
 
     SHA-256 (e não Argon2) porque o token já é aleatório de alta entropia: não
     há o que forçar por dicionário, e a busca precisa ser determinística.
     """
     return hashlib.sha256(token.encode("utf-8")).hexdigest()
+
+
+def generate_refresh_token() -> str:
+    return generate_opaque_token(REFRESH_TOKEN_BYTES)
+
+
+def hash_refresh_token(token: str) -> str:
+    return hash_opaque_token(token)

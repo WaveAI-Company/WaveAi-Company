@@ -97,6 +97,21 @@ class Settings(BaseSettings):
     #: (ADR-0035 pondera custo). Trocar de tier é só mudar esta constante.
     narrative_model: str = "claude-haiku-4-5"
 
+    # -- Fluxos por e-mail (ADR-0044) ----------------------------------------
+    #: Remetente dos e-mails transacionais. O provedor real (P5) costuma exigir
+    #: domínio verificado; até lá isto só aparece no adapter de console.
+    email_from: str = "WaveAI <nao-responda@waveai.local>"
+    #: Base dos links que vão no e-mail. Aponta para o **app web** (ADR-0044,
+    #: item 5): não há deep link nativo nesta fase — quem está no celular
+    #: verifica no navegador, e universal links dependem do domínio do P5.
+    email_link_base_url: str = "http://localhost:8081"
+    #: Prazo do token de verificação de endereço. Largo de propósito: a pessoa
+    #: abre quando lê o e-mail.
+    email_verification_ttl_hours: int = 24
+    #: Prazo do token de recuperação de senha. Curto de propósito: é vetor de
+    #: tomada de conta (ADR-0044, item 7).
+    password_reset_ttl_minutes: int = 30
+
     # -- CORS ----------------------------------------------------------------
     #: Origens permitidas (separadas por vírgula) para o app web.
     #: Em produção o MVP assume **same-origin** (app e API atrás do mesmo
