@@ -15,7 +15,7 @@ import enum
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, Enum, ForeignKey, Index, Uuid, func, text
+from sqlalchemy import DateTime, Enum, ForeignKey, Index, LargeBinary, Uuid, func, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from ..db.base import Base
@@ -78,6 +78,14 @@ class CareLink(Base):
     )
     initiated_by: Mapped[CareLinkParty] = mapped_column(
         _enum(CareLinkParty, "care_link_party"), nullable=False
+    )
+
+    #: Recado opcional de quem convidou, **cifrado** em repouso (ADR-0043) —
+    #: mesmo tratamento da anotação (ADR-0037), porque é texto livre escrito por
+    #: uma pessoa sobre outra. Nulo quando o convite foi sem recado. Imutável:
+    #: não há caminho para reescrevê-lo depois que a contraparte já leu.
+    invite_message_encrypted: Mapped[bytes | None] = mapped_column(
+        LargeBinary, nullable=True
     )
 
     created_at: Mapped[datetime] = mapped_column(

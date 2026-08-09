@@ -175,10 +175,9 @@ def main() -> int:
     with Session(get_engine()) as session:
         users = UserRepository(session, hasher)
         links = CareLinkRepository(session)
-        care = CareService(session=session, hasher=hasher)
-        results = ResultService(
-            session=session, settings=settings, cipher=get_metrics_cipher(settings)
-        )
+        cipher = get_metrics_cipher(settings)
+        care = CareService(session=session, hasher=hasher, cipher=cipher)
+        results = ResultService(session=session, settings=settings, cipher=cipher)
 
         medico = _garantir_usuario(users, MEDICO[0], MEDICO[1], UserRole.DOCTOR)
 
