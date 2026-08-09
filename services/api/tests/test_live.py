@@ -22,6 +22,7 @@ from app.db.session import get_session
 from app.main import app
 from app.models import (
     CaptureSession,
+    LiveShareEvent,
     LiveViewAccessEvent,
     SessionStatus,
     User,
@@ -279,7 +280,9 @@ def test_profissional_so_assiste_com_vinculo(client: TestClient, db_session: Ses
         )
         return _status_do_primeiro_chunk(await _primeiro_evento(resp))
 
-    assert asyncio.run(abrir()) == {"live": False}
+    # O espectador recebe tambem `shared` (ADR-0045): sem captacao ativa nao
+    # ha o que compartilhar.
+    assert asyncio.run(abrir()) == {"live": False, "shared": False}
 
     eventos = db_session.scalars(
         select(LiveViewAccessEvent).where(LiveViewAccessEvent.patient_user_id == pid)

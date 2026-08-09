@@ -287,9 +287,11 @@ export default function PatientDetailScreen() {
           ) : (
             <Panel title="Ao vivo" eyebrow="acesso registrado">
               <Text style={styles.nota}>
-                Se esta pessoa estiver captando agora, você acompanha as medidas em tempo
-                real — nunca o sinal bruto. O acesso passa pela mesma autorização dela e
-                fica registrado em trilha de acesso.
+                Se esta pessoa estiver captando agora <Text style={styles.notaForte}>e
+                tiver ligado o compartilhamento desta sessão</Text>, você acompanha as
+                medidas em tempo real — nunca o sinal bruto. É um aceite separado, que
+                ela liga e desliga na própria sessão, e o acesso fica registrado em
+                trilha.
               </Text>
               <View style={styles.acaoVivo}>
                 <Button
@@ -528,6 +530,12 @@ const criarEstilos = (t: Theme) =>
       ...t.typography.caption,
       color: t.colors.textSubtle,
       lineHeight: 18,
+    },
+    //: Realce dentro da nota: a condição que decide se o botão vai funcionar
+    //: não pode ficar no mesmo peso do resto da frase.
+    notaForte: {
+      color: t.colors.textMuted,
+      fontWeight: "600",
     },
     acaoVivo: {
       alignSelf: "flex-start",
