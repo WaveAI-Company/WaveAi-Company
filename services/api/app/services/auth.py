@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy.orm import Session
 
@@ -31,7 +31,41 @@ class AuthError(Exception):
 
 
 class EmailAlreadyRegisteredError(Exception):
-    """E-mail já cadastrado."""
+    """E-mail já cadastrado.
+
+    Continua existindo para quem chama o serviço direto (seed, scripts). A
+    **rota** de cadastro não a usa mais: responder 409 seria contar a quem
+    perguntou que o endereço tem dono (ver `ResultadoCadastro`).
+    """
+
+
+class EmailNotVerifiedError(Exception):
+    """Senha correta, mas o endereço nunca foi confirmado.
+
+    **Não** herda de `AuthError` de propósito: quem trata a falha genérica de
+    login não pode capturar isto por engano. E só é levantada **depois** de a
+    senha conferir — antes disso, contar que a conta existe seria oráculo de
+    enumeração (ADR-0024).
+    """
+
+    def __init__(self, user: User) -> None:
+        super().__init__("e-mail nao verificado")
+        #: Quem chama precisa do usuário para reemitir o código de verificação.
+        self.user = user
+
+
+@dataclass(frozen=True)
+class ResultadoCadastro:
+    """O que aconteceu no cadastro — para a rota **não** precisar contar.
+
+    A rota responde igual nos dois casos; é o e-mail que informa a pessoa certa
+    (a dona do endereço), em vez de a API informar quem perguntou.
+    """
+
+    #: Conta criada. `None` quando o endereço já tinha dono.
+    user: User | None
+    #: Verdadeiro quando havia conta e nada foi criado.
+    ja_existia: bool
 
 
 class RefreshReuseError(AuthError):
@@ -69,11 +103,77 @@ class AuthService:
     def register(
         self, *, email: str, password: str, role: UserRole, display_name: str
     ) -> User:
+        """Cadastro direto, que **levanta** se o e-mail já existe.
+
+        Usado por scripts e pelo seed, onde saber do conflito é o certo. A rota
+        pública usa `cadastrar`, que não distingue.
+        """
         if self._users.get_by_email(email) is not None:
             raise EmailAlreadyRegisteredError
         return self._users.create(
             email=email, password=password, role=role, display_name=display_name
         )
+
+    def cadastrar(
+        self, *, email: str, password: str, role: UserRole, display_name: str
+    ) -> ResultadoCadastro:
+        """Cadastro da rota pública: nunca revela se o endereço já tem dono.
+
+        Antes de desistir, tenta **reciclar** uma conta não verificada e vencida
+        (o endereço volta a ficar livre). A verificação sozinha não devolve
+        e-mail nenhum nem impede o banco de acumular cadastros mortos — é esta
+        reciclagem que faz isso, e ela acontece no único momento em que importa:
+        quando alguém quer aquele endereço.
+        """
+        existente = self._users.get_by_email(email)
+        if existente is not None:
+            if not self._pode_reciclar(existente):
+                # Gasta o mesmo tempo de CPU do caminho que cria a conta. Sem
+                # isto, a resposta uniforme seria desmentida pelo relógio: o
+                # caminho "já existe" voltaria sem pagar o Argon2 (ADR-0023).
+                self._hasher.verify(self._dummy_hash, password)
+                return ResultadoCadastro(user=None, ja_existia=True)
+            self._users.delete(existente)
+            self._session.flush()
+
+        user = self._users.create(
+            email=email, password=password, role=role, display_name=display_name
+        )
+        return ResultadoCadastro(user=user, ja_existia=False)
+
+    def _pode_reciclar(self, user: User) -> bool:
+        """Uma conta não verificada e vencida pode ceder o endereço?
+
+        **Só com o gate ligado.** Com ele desligado, uma conta não verificada
+        entra e usa o produto normalmente — reciclá-la apagaria dados de alguém
+        que estava usando a plataforma. A reciclagem só é segura quando "não
+        verificada" implica "inutilizável".
+        """
+        if not self._settings.email_verification_required:
+            return False
+        if user.email_verified_at is not None:
+            return False
+        vencimento = user.created_at + timedelta(
+            days=self._settings.unverified_account_ttl_days
+        )
+        return datetime.now(UTC) >= vencimento
+
+    def buscar_por_email(self, email: str) -> User | None:
+        """Busca tolerante para os fluxos de e-mail: formato inválido vira `None`.
+
+        Quem chama trata "não achei" e "e-mail malformado" do mesmo jeito — as
+        rotas de verificação e reenvio respondem igual nos dois casos.
+        """
+        try:
+            return self._users.get_by_email(email)
+        except ValueError:
+            return None
+
+    def marcar_verificado(self, user: User) -> None:
+        """Registra a posse do endereço. Idempotente: reverificar não muda a data."""
+        if user.email_verified_at is None:
+            user.email_verified_at = datetime.now(UTC)
+            self._session.flush()
 
     # -- login -----------------------------------------------------------
 
@@ -97,6 +197,12 @@ class AuthService:
         senha_ok = self._users.verify_password(user, password)
         if not senha_ok or not user.is_active:
             raise AuthError
+
+        # SÓ depois da senha correta. Quem acertou a senha já provou ter a
+        # credencial: dizer a essa pessoa que falta verificar não revela nada
+        # que ela não saiba. Antes disso, seria oráculo de existência de conta.
+        if self._settings.email_verification_required and user.email_verified_at is None:
+            raise EmailNotVerifiedError(user)
 
         return self._emitir(user)
 

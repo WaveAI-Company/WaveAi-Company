@@ -22,11 +22,13 @@ class SingleUseTokenRepository:
         purpose: SingleUseTokenPurpose,
         token_hash: str,
         expires_at: datetime,
+        code_hash: str | None = None,
     ) -> SingleUseToken:
         token = SingleUseToken(
             user_id=user_id,
             purpose=purpose,
             token_hash=token_hash,
+            code_hash=code_hash,
             expires_at=expires_at,
         )
         self._session.add(token)
@@ -37,6 +39,29 @@ class SingleUseTokenRepository:
         """Busca pelo hash — nunca pelo valor em claro, que não é guardado."""
         stmt = select(SingleUseToken).where(SingleUseToken.token_hash == token_hash)
         return self._session.scalars(stmt).one_or_none()
+
+    def ultimo_vivo(
+        self, *, user_id: uuid.UUID, purpose: SingleUseTokenPurpose
+    ) -> SingleUseToken | None:
+        """Token ainda utilizável do par (usuário, propósito), se houver.
+
+        "Vivo" = não usado e não substituído. Como a emissão supersede os
+        anteriores, no máximo um sobrevive — o `order by` é cinto e suspensório.
+        Expirado ainda conta como vivo aqui: quem decide sobre prazo é o
+        serviço, para que "expirado" e "inexistente" caiam na mesma recusa.
+        """
+        stmt = (
+            select(SingleUseToken)
+            .where(
+                SingleUseToken.user_id == user_id,
+                SingleUseToken.purpose == purpose,
+                SingleUseToken.used_at.is_(None),
+                SingleUseToken.superseded_at.is_(None),
+            )
+            .order_by(SingleUseToken.created_at.desc())
+            .limit(1)
+        )
+        return self._session.scalars(stmt).first()
 
     def superseder_vivos(
         self, *, user_id: uuid.UUID, purpose: SingleUseTokenPurpose, quando: datetime

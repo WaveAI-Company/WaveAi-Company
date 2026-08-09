@@ -41,6 +41,33 @@ class LoginRequest(BaseModel):
     client: ClientPlatform = ClientPlatform.WEB
 
 
+#: Dígitos do código de verificação, como o design mostra.
+VERIFICATION_CODE_DIGITS = 6
+
+
+class VerifyEmailRequest(BaseModel):
+    """Confirmação de posse do endereço pelo código de 6 dígitos."""
+
+    email: EmailStr
+    code: str = Field(
+        min_length=VERIFICATION_CODE_DIGITS, max_length=VERIFICATION_CODE_DIGITS
+    )
+
+    @field_validator("code")
+    @classmethod
+    def _so_digitos(cls, v: str) -> str:
+        podado = v.strip()
+        if not podado.isdigit():
+            raise ValueError("o codigo tem apenas digitos")
+        return podado
+
+
+class ResendVerificationRequest(BaseModel):
+    """Pedido de reenvio do código. Responde igual exista ou não a conta."""
+
+    email: EmailStr
+
+
 class RefreshRequest(BaseModel):
     #: Só o mobile envia no corpo; no web o token vem pelo cookie.
     refresh_token: str | None = None

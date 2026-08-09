@@ -89,3 +89,35 @@ def db_session(db_engine: Engine) -> Iterator[Session]:
 def hasher() -> PasswordHasher:
     """Hasher com parâmetros reduzidos: testes rápidos, comportamento idêntico."""
     return Argon2PasswordHasher(memory_cost=8, time_cost=1, parallelism=1)
+
+
+# -- envio de e-mail (ADR-0044) ------------------------------------------
+
+
+class EmailRecorder:
+    """Duplo do `EmailSender`: guarda o que teria sido enviado.
+
+    Autouse para toda a suíte por dois motivos: o adapter de console imprimiria
+    um e-mail a cada cadastro (a suíte inteira registra usuários), e os testes
+    dos fluxos precisam ler o código sem depender de stdout.
+    """
+
+    def __init__(self) -> None:
+        self.enviados: list[dict[str, str]] = []
+
+    def send(self, *, to: str, subject: str, body: str) -> None:
+        self.enviados.append({"to": to, "subject": subject, "body": body})
+
+    def para(self, email: str) -> list[dict[str, str]]:
+        return [e for e in self.enviados if e["to"] == email]
+
+
+@pytest.fixture(autouse=True)
+def emails() -> Iterator[EmailRecorder]:
+    from app.api.deps import get_email_sender
+    from app.main import app
+
+    gravador = EmailRecorder()
+    app.dependency_overrides[get_email_sender] = lambda: gravador
+    yield gravador
+    app.dependency_overrides.pop(get_email_sender, None)

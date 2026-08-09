@@ -58,13 +58,15 @@ class Ator:
                 "display_name": f"{role} ficticio",
             },
         )
-        assert resp.status_code == 201
-        self.id = resp.json()["id"]
+        # O cadastro não devolve mais o usuário criado (P9-e: resposta uniforme,
+        # sem oráculo de existência), então o id vem do `/auth/me`.
+        assert resp.status_code == 202
         login = client.post(
             "/auth/login",
             json={"email": self.email, "password": SENHA, "client": "mobile"},
         )
         self.token = login.json()["access_token"]
+        self.id = client.get("/auth/me", headers=self.headers).json()["id"]
 
     @property
     def headers(self) -> dict[str, str]:

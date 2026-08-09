@@ -58,9 +58,16 @@ ENGINE_FICTICIO = "SEED-FICTICIO/0.1.0"
 
 def _garantir_usuario(repo: UserRepository, email: str, nome: str, papel: UserRole):
     existente = repo.get_by_email(email)
-    if existente is not None:
-        return existente
-    return repo.create(email=email, password=SENHA_DEV, role=papel, display_name=nome)
+    if existente is None:
+        existente = repo.create(
+            email=email, password=SENHA_DEV, role=papel, display_name=nome
+        )
+    # Conta de seed nasce VERIFICADA (ADR-0044 + emenda): com o gate ligado,
+    # uma conta sem esta marca não faz login — e um seed cujas contas não
+    # entram não serve para nada. Aqui não há e-mail para confirmar.
+    if existente.email_verified_at is None:
+        existente.email_verified_at = datetime.now(UTC)
+    return existente
 
 
 def _metricas_ficticias(indice: int) -> dict:
