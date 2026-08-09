@@ -12,7 +12,16 @@ import {
 
 import { useAuth } from "../../auth/AuthContext";
 import { activeHref, routeTitle } from "../../navigation/navItems";
-import { useRoleAccent, useTheme, type Theme } from "../../theme";
+import {
+  anelFoco,
+  motion,
+  semContornoNativo,
+  transicao,
+  useInteracao,
+  useRoleAccent,
+  useTheme,
+  type Theme,
+} from "../../theme";
 import { Logo } from "../brand/Logo";
 import { Button } from "../Button";
 import { NavList } from "./NavList";
@@ -164,31 +173,49 @@ function Header({
   return (
     <View style={styles.header}>
       {onBack ? (
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Voltar"
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          onPress={onBack}
-          style={styles.hamburger}
-        >
-          <Text style={styles.hamburgerTexto}>‹</Text>
-        </Pressable>
+        <BotaoIcone label="Voltar" glifo="‹" onPress={onBack} styles={styles} />
       ) : null}
       {onMenu ? (
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Abrir menu"
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          onPress={onMenu}
-          style={styles.hamburger}
-        >
-          <Text style={styles.hamburgerTexto}>☰</Text>
-        </Pressable>
+        <BotaoIcone label="Abrir menu" glifo="☰" onPress={onMenu} styles={styles} />
       ) : null}
       <Text style={styles.headerTitulo} numberOfLines={1}>
         {titulo}
       </Text>
     </View>
+  );
+}
+
+/** Botão só-ícone da barra superior — o `.iconbtn` do mockup. */
+function BotaoIcone({
+  label,
+  glifo,
+  onPress,
+  styles,
+}: {
+  label: string;
+  glifo: string;
+  onPress: () => void;
+  styles: ReturnType<typeof criarEstilos>;
+}) {
+  const t = useTheme();
+  const { accent } = useRoleAccent();
+  const { estado, handlers } = useInteracao();
+
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+      onPress={onPress}
+      {...handlers}
+      style={[
+        styles.hamburger,
+        estado.hovered && { backgroundColor: t.colors.surfaceAlt },
+        estado.focoVisivel ? { boxShadow: anelFoco(accent, t.colors.surface) } : null,
+      ]}
+    >
+      <Text style={styles.hamburgerTexto}>{glifo}</Text>
+    </Pressable>
   );
 }
 
@@ -227,9 +254,12 @@ const criarEstilos = (t: Theme) =>
     },
     hamburger: {
       alignItems: "center",
+      borderRadius: t.radius.sm,
       justifyContent: "center",
       minHeight: t.minTouch,
       minWidth: t.minTouch,
+      ...transicao("background-color, box-shadow", motion.media),
+      ...semContornoNativo(),
     },
     hamburgerTexto: {
       color: t.colors.text,

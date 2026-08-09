@@ -8,7 +8,16 @@ import {
   type TextInputProps,
 } from "react-native";
 
-import { useRoleAccent, useTheme, type Theme } from "../theme";
+import {
+  anelCampo,
+  motion,
+  semContornoNativo,
+  transicao,
+  useInteracao,
+  useRoleAccent,
+  useTheme,
+  type Theme,
+} from "../theme";
 import { Icon } from "./Icon";
 
 type Props = TextInputProps & {
@@ -30,6 +39,8 @@ export function Field({ label, error, revealable, ...input }: Props) {
   const styles = useMemo(() => criarEstilos(t), [t]);
   const [focado, setFocado] = useState(false);
   const [revelado, setRevelado] = useState(false);
+  // Estado do botão de revelar senha — `.reveal` no mockup.
+  const revelar = useInteracao();
 
   // Com o toggle, a visibilidade é controlada aqui; sem ele, respeita a prop.
   const oculto = revealable ? !revelado : input.secureTextEntry;
@@ -55,7 +66,11 @@ export function Field({ label, error, revealable, ...input }: Props) {
           style={[
             styles.input,
             revealable && styles.inputComBotao,
-            focado && { borderColor: accent, borderWidth: 2 },
+            // Anel em vez de engrossar a borda: o mockup faz
+            // `border-color: accent; box-shadow: 0 0 0 3px accent-soft`, e
+            // engrossar de 1px para 2px empurrava o texto do campo 1px a cada
+            // foco — um tremor visível ao percorrer o formulário com Tab.
+            focado && { borderColor: accent, boxShadow: anelCampo(accent) },
             Boolean(error) && { borderColor: t.colors.danger },
           ]}
           placeholderTextColor={t.colors.textMuted}
@@ -66,7 +81,14 @@ export function Field({ label, error, revealable, ...input }: Props) {
             accessibilityRole="button"
             accessibilityLabel={revelado ? "Ocultar senha" : "Mostrar senha"}
             onPress={() => setRevelado((v) => !v)}
-            style={styles.revelar}
+            {...revelar.handlers}
+            style={[
+              styles.revelar,
+              revelar.estado.hovered && { backgroundColor: t.colors.surfaceStrong },
+              revelar.estado.focoVisivel
+                ? { boxShadow: anelCampo(accent), backgroundColor: t.colors.surfaceStrong }
+                : null,
+            ]}
             hitSlop={8}
           >
             {/* Ícone, não a palavra "Mostrar": o rótulo acessível já diz a ação
@@ -105,6 +127,8 @@ const criarEstilos = (t: Theme) =>
       minHeight: t.minTouch,
       paddingHorizontal: t.spacing.md,
       paddingVertical: t.spacing.sm + 2,
+      ...transicao("border-color, box-shadow", motion.rapida),
+      ...semContornoNativo(),
     },
     // Espaço à direita para o texto não correr sob o botão de revelar.
     inputComBotao: {
@@ -114,9 +138,15 @@ const criarEstilos = (t: Theme) =>
       position: "absolute",
       right: t.spacing.xs,
       alignItems: "center",
+      borderRadius: t.radius.sm,
       justifyContent: "center",
-      minHeight: t.minTouch,
-      width: t.minTouch,
+      // Menor que o campo para o fundo do hover não encostar na borda. O alvo
+      // real continua acima do piso de 44px pelo `hitSlop={8}` (36 + 8 + 8).
+      height: t.minTouch - 8,
+      marginRight: 2,
+      width: t.minTouch - 8,
+      ...transicao("background-color, box-shadow", motion.media),
+      ...semContornoNativo(),
     },
     erro: {
       ...t.typography.caption,

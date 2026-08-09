@@ -31,7 +31,13 @@ import { describeContact } from "../../src/device/contactQuality";
 import { deviceConnection } from "../../src/device/connection";
 import type { DeviceInfo, Esense } from "../../src/device/DeviceConnection";
 import { SignalSimulator } from "../../src/mocks/signalSimulator";
-import { useAccentFor, useRoleAccent, useTheme, type Theme } from "../../src/theme";
+import {
+  useAccentFor,
+  useInteracao,
+  useRoleAccent,
+  useTheme,
+  type Theme,
+} from "../../src/theme";
 
 /** Por que o relatório não foi guardado, em português para o titular. */
 const MOTIVO_NAO_GUARDADO: Record<string, string> = {
@@ -419,13 +425,13 @@ export default function PatientLiveScreen() {
                 accent={aparelhoAccent.accent}
               />
               {aparelhos.map((d) => (
-                <Pressable
+                <ItemAparelho
                   key={d.id}
-                  accessibilityRole="button"
+                  nome={d.name}
+                  id={d.id}
+                  accent={aparelhoAccent.accent}
                   onPress={() => void iniciarComAparelho(d)}
-                >
-                  <Card title={d.name} subtitle={d.id} accent={aparelhoAccent.accent} />
-                </Pressable>
+                />
               ))}
             </Panel>
           ) : null}
@@ -681,6 +687,35 @@ export default function PatientLiveScreen() {
 
       <Disclaimer variant="medidas" />
     </ScreenContainer>
+  );
+}
+
+/**
+ * Um aparelho pareado na lista. Só reage ao toque: a lista aparece em captação
+ * por Bluetooth, que é caminho de celular — não há ponteiro para pairar aqui.
+ */
+function ItemAparelho({
+  nome,
+  id,
+  accent,
+  onPress,
+}: {
+  nome: string;
+  id: string;
+  accent: string;
+  onPress: () => void;
+}) {
+  const { estado, handlers } = useInteracao();
+
+  return (
+    <Pressable
+      accessibilityRole="button"
+      onPress={onPress}
+      {...handlers}
+      style={estado.pressed ? { opacity: 0.85 } : null}
+    >
+      <Card title={nome} subtitle={id} accent={accent} />
+    </Pressable>
   );
 }
 
