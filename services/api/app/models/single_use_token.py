@@ -20,7 +20,7 @@ import enum
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, Enum, ForeignKey, Index, String, Uuid, func
+from sqlalchemy import DateTime, Enum, ForeignKey, Index, Integer, String, Uuid, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from ..db.base import Base
@@ -55,9 +55,18 @@ class SingleUseToken(Base):
     )
     #: SHA-256 hex do valor opaco. O valor em claro só existe no e-mail e na
     #: memória de quem o gerou — vazar o banco não entrega token utilizável.
+    #: É a forma **link** do segredo (recuperação de senha, fatia 6).
     token_hash: Mapped[str] = mapped_column(
         String(64), unique=True, index=True, nullable=False
     )
+    #: SHA-256 hex do **código de 6 dígitos** — a forma digitável do mesmo
+    #: segredo (emenda à ADR-0044). Mesma linha, mesmo prazo, mesmo uso único:
+    #: consumir por um queima o outro.
+    code_hash: Mapped[str | None] = mapped_column(String(64), index=True, nullable=True)
+    #: Tentativas erradas de código. Ao atingir o teto, o token queima — é esta
+    #: a defesa contra adivinhação de 6 dígitos, e ela vale com N réplicas
+    #: porque mora aqui, e não na memória do processo.
+    attempts: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
 
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     created_at: Mapped[datetime] = mapped_column(
