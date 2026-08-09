@@ -25,8 +25,10 @@ from ..services.analysis_client import AnalysisClient, HttpAnalysisClient
 from ..services.auth import AuthService
 from ..services.care import CareService
 from ..services.annotation import AnnotationService
+from ..services.email import EmailSender, build_email_sender
 from ..services.narrator import Narrator, build_narrator
 from ..services.results import ResultService
+from ..services.single_use_token import SingleUseTokenService
 
 _bearer = HTTPBearer(auto_error=False)
 
@@ -138,6 +140,23 @@ def get_annotation_service(
     cipher: MetricsCipher = Depends(get_metrics_cipher),
 ) -> AnnotationService:
     return AnnotationService(session=session, cipher=cipher)
+
+
+def get_email_sender(settings: Settings = Depends(get_settings)) -> EmailSender:
+    """Adapter de envio de e-mail (ADR-0044).
+
+    Fora de `development` sem provedor, `build_email_sender` levanta — e é para
+    levantar: a alternativa seria engolir a mensagem em silêncio num fluxo em
+    que a pessoa fica do lado de fora sem ela.
+    """
+    return build_email_sender(settings)
+
+
+def get_single_use_token_service(
+    session: Session = Depends(get_session),
+    settings: Settings = Depends(get_settings),
+) -> SingleUseTokenService:
+    return SingleUseTokenService(session=session, settings=settings)
 
 
 def get_care_service(
