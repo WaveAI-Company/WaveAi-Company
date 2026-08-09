@@ -45,7 +45,10 @@ def test_payload_nao_expoe_dado_sensivel(settings: Settings):
     # JWT é apenas base64: qualquer um lê o payload (ADR-0021).
     payload = jwt.decode(_token(settings), SEGREDO, algorithms=["HS256"])
 
-    assert set(payload) == {"sub", "role", "typ", "jti", "iat", "exp"}
+    # `tv` é a versão de token da conta — um contador, não dado da pessoa. Ele
+    # entrou para que logout global e redefinição de senha derrubem também os
+    # access tokens já emitidos (P9-f).
+    assert set(payload) == {"sub", "role", "tv", "typ", "jti", "iat", "exp"}
     assert "email" not in payload
     assert "password_hash" not in payload
 

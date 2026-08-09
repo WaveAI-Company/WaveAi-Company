@@ -12,6 +12,7 @@ from __future__ import annotations
 
 ASSUNTO_VERIFICACAO = "Seu código de verificação do WaveAI"
 ASSUNTO_CADASTRO_EXISTENTE = "Alguém tentou criar uma conta com o seu e-mail"
+ASSUNTO_RECUPERACAO = "Recuperar o acesso à sua conta WaveAI"
 
 
 def corpo_verificacao(*, codigo: str, minutos: int) -> str:
@@ -28,6 +29,28 @@ def corpo_verificacao(*, codigo: str, minutos: int) -> str:
         f"Ele vale por {minutos} minutos e pode ser usado uma única vez.\n\n"
         "Se não foi você quem pediu, ignore esta mensagem — sem o código, a "
         "conta não é ativada.\n\n"
+        "WaveAI"
+    )
+
+
+def corpo_recuperacao(*, codigo: str, link: str, minutos: int) -> str:
+    """Recuperação de senha: **link e código**, as duas formas do mesmo segredo.
+
+    O design oferece os dois na mesma tela (`Design/round1/login.html`) — abrir
+    o link ou digitar o código. Usar um queima o outro: é um segredo só.
+
+    O aviso final não é enfeite: um e-mail de recuperação que a pessoa não
+    pediu é o primeiro sinal de que alguém está tentando entrar na conta dela.
+    """
+    return (
+        "Olá!\n\n"
+        "Recebemos um pedido para redefinir a senha da sua conta WaveAI.\n\n"
+        f"Seu código é: {codigo}\n\n"
+        f"Ou abra este link: {link}\n\n"
+        f"Vale por {minutos} minutos e só pode ser usado uma vez. Ao redefinir "
+        "a senha, todas as sessões abertas serão encerradas.\n\n"
+        "Se não foi você quem pediu, ignore esta mensagem — sua senha continua "
+        "a mesma. Vale conferir se mais alguém tem acesso ao seu e-mail.\n\n"
         "WaveAI"
     )
 
