@@ -61,6 +61,15 @@ class User(Base):
     #: O logout global aumenta esta versão; a rotação por token vem na #7.
     token_version: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
 
+    #: Prova de posse do endereço (ADR-0044 + emenda). `None` = não verificada.
+    #: **Não é KYC** (ADR-0041 é sobre não exigir documento/identidade): provar
+    #: que se controla um endereço é outra coisa. Com o gate ligado, conta não
+    #: verificada não faz login — e a migration que criou esta coluna marcou
+    #: toda conta preexistente como verificada, senão ninguém entraria.
+    email_verified_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
     #: Consentimento para persistir dados biométricos derivados (ADR-0026).
     #: `None` = sem consentimento → nenhum Result é gravado.
     consent_given_at: Mapped[datetime | None] = mapped_column(

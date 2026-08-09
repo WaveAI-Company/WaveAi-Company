@@ -46,10 +46,33 @@ def get_login_limiter(settings: Settings = Depends(get_settings)) -> SlidingWind
     return _login_limiter
 
 
+#: Limiter do cadastro (fatia P9-e). Separado do login: as janelas são de
+#: ordens diferentes (tentar entrar é rotina; criar conta, não).
+_register_limiter: SlidingWindowRateLimiter | None = None
+
+
+def get_register_limiter(
+    settings: Settings = Depends(get_settings),
+) -> SlidingWindowRateLimiter:
+    global _register_limiter
+    if _register_limiter is None:
+        _register_limiter = SlidingWindowRateLimiter(
+            max_attempts=settings.register_rate_limit_attempts,
+            window_seconds=settings.register_rate_limit_window_seconds,
+        )
+    return _register_limiter
+
+
 def reset_login_limiter() -> None:
-    """Usado pelos testes para isolar cenários."""
-    global _login_limiter
+    """Usado pelos testes para isolar cenários.
+
+    Zera **todos** os limiters do processo: o nome ficou por compatibilidade
+    com as fixtures que já existiam, e um único ponto de reset evita que um
+    limiter novo passe despercebido por elas.
+    """
+    global _login_limiter, _register_limiter
     _login_limiter = None
+    _register_limiter = None
 
 
 def get_hasher(settings: Settings = Depends(get_settings)) -> PasswordHasher:

@@ -60,20 +60,30 @@ def _registrar(client: TestClient, email: str, role: str = "patient"):
 # -- registro ------------------------------------------------------------
 
 
-def test_registro_devolve_201_sem_expor_credencial(client: TestClient):
+def test_registro_responde_202_sem_expor_nada(client: TestClient):
+    """O cadastro não devolve mais o usuário criado.
+
+    Devolver o `id`/`role` do recém-criado seria, por si só, contar que a conta
+    foi criada — e portanto que o e-mail não existia (P9-e).
+    """
     resp = _registrar(client, _email())
 
-    assert resp.status_code == 201
+    assert resp.status_code == 202
     corpo = resp.json()
-    assert corpo["role"] == "patient"
+    assert corpo == {"detail": "cadastro registrado; confira seu e-mail"}
+    assert "id" not in corpo
     assert "password" not in corpo
-    assert "password_hash" not in corpo
 
 
-def test_registro_duplicado_devolve_409(client: TestClient):
+def test_registro_duplicado_responde_igual(client: TestClient):
+    """Antes era 409 "e-mail ja cadastrado" — um oráculo de existência."""
     email = _email()
-    _registrar(client, email)
-    assert _registrar(client, email).status_code == 409
+    primeiro = _registrar(client, email)
+
+    segundo = _registrar(client, email)
+
+    assert segundo.status_code == primeiro.status_code == 202
+    assert segundo.json() == primeiro.json()
 
 
 def test_registro_recusa_senha_curta(client: TestClient):

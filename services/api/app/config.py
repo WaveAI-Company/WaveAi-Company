@@ -105,12 +105,35 @@ class Settings(BaseSettings):
     #: item 5): não há deep link nativo nesta fase — quem está no celular
     #: verifica no navegador, e universal links dependem do domínio do P5.
     email_link_base_url: str = "http://localhost:8081"
-    #: Prazo do token de verificação de endereço. Largo de propósito: a pessoa
-    #: abre quando lê o e-mail.
-    email_verification_ttl_hours: int = 24
-    #: Prazo do token de recuperação de senha. Curto de propósito: é vetor de
-    #: tomada de conta (ADR-0044, item 7).
-    password_reset_ttl_minutes: int = 30
+    #: Prazo do código/token, igual para os dois propósitos (emenda à ADR-0044):
+    #: o design verifica **com a pessoa na tela**, então prazo longo não teria
+    #: função. `Design/round1/criar-conta.html` diz "vale por 10 minutos".
+    single_use_token_ttl_minutes: int = 10
+    #: Tentativas erradas antes de o código **queimar**. É esta a defesa contra
+    #: adivinhação de 6 dígitos — e ela mora no banco, então vale com N réplicas
+    #: (diferente do rate limiter em memória, ADR-0023).
+    single_use_token_max_attempts: int = 5
+    #: Espera entre reenvios, por (usuário, propósito). O protótipo mostra 42 s
+    #: (valor de demonstração); 60 s é o número redondo.
+    verification_resend_cooldown_seconds: int = 60
+
+    # -- Verificação de e-mail (fatia P9-e) ----------------------------------
+    #: GATE: quando `True`, conta não verificada **não faz login**. Nasce
+    #: desligado para que o backend possa ir para `main` antes das telas — o
+    #: fluxo inteiro (emitir, verificar, reenviar) funciona com ele desligado;
+    #: só o bloqueio do login espera. A fase A de front liga isto junto com a
+    #: tela de verificação. Mesmo padrão de gate do `result_persistence_enabled`.
+    email_verification_required: bool = False
+    #: Prazo até uma conta **não verificada** poder ser reciclada, devolvendo o
+    #: e-mail. Sem isto a verificação sozinha não impede o banco de acumular
+    #: cadastros mortos segurando endereços.
+    unverified_account_ttl_days: int = 7
+
+    # -- Rate limiting do cadastro (fatia P9-e) ------------------------------
+    #: Por **IP apenas**: pôr o e-mail na chave transformaria a própria chave
+    #: num oráculo de existência, que é o que este fluxo evita.
+    register_rate_limit_attempts: int = 10
+    register_rate_limit_window_seconds: int = 3600
 
     # -- CORS ----------------------------------------------------------------
     #: Origens permitidas (separadas por vírgula) para o app web.
