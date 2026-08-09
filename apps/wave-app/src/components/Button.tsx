@@ -72,7 +72,7 @@ export function Button({
   const noAr = reagindo && estado.hovered && !estado.pressed;
 
   const sombra = comporSombras(
-    noAr && preenchido && sombraDestaque(fundo),
+    noAr && preenchido && sombraDestaque(fundo, t.isDark),
     estado.focoVisivel && anelFoco(destaque, t.colors.background),
   );
 

@@ -58,6 +58,7 @@ export function LiveBandTrend({ history, accent }: Props) {
             label={label}
             ativa={key === banda}
             cor={cor}
+            sobreCor={papel.onAccent}
             onPress={() => setBanda(key)}
             styles={styles}
           />
@@ -99,12 +100,15 @@ function ChipBanda({
   label,
   ativa,
   cor,
+  sobreCor,
   onPress,
   styles,
 }: {
   label: string;
   ativa: boolean;
   cor: string;
+  /** Tinta sobre o preenchimento — por papel desde a P8-c. */
+  sobreCor: string;
   onPress: () => void;
   styles: ReturnType<typeof criarEstilos>;
 }) {
@@ -130,7 +134,7 @@ function ChipBanda({
         estado.focoVisivel ? { boxShadow: anelFoco(cor, t.colors.surface) } : null,
       ]}
     >
-      <Text style={[styles.chipTexto, { color: ativa ? t.colors.onAccent : t.colors.text }]}>
+      <Text style={[styles.chipTexto, { color: ativa ? sobreCor : t.colors.text }]}>
         {label}
       </Text>
     </Pressable>
@@ -166,6 +170,6 @@ const criarEstilos = (t: Theme) =>
     },
     aguardando: {
       ...t.typography.caption,
-      color: t.colors.textMuted,
+      color: t.colors.textSubtle,
     },
   });

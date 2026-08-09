@@ -365,7 +365,7 @@ const criarEstilos = (t: Theme) =>
     },
     nota: {
       ...t.typography.caption,
-      color: t.colors.textMuted,
+      color: t.colors.textSubtle,
       lineHeight: 18,
       marginTop: t.spacing.xs,
     },
@@ -390,7 +390,7 @@ const criarEstilos = (t: Theme) =>
     },
     linhaNota: {
       ...t.typography.caption,
-      color: t.colors.textMuted,
+      color: t.colors.textSubtle,
       fontSize: 11,
     },
     linhaAcao: {

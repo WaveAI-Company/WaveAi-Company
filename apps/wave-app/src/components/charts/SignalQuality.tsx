@@ -86,7 +86,7 @@ const criarEstilos = (t: Theme) =>
     },
     nota: {
       ...t.typography.caption,
-      color: t.colors.textMuted,
+      color: t.colors.textSubtle,
       fontSize: 11,
       lineHeight: 16,
     },
@@ -97,7 +97,7 @@ const criarEstilos = (t: Theme) =>
     },
     aviso: {
       ...t.typography.caption,
-      color: t.colors.textMuted,
+      color: t.colors.textSubtle,
       fontSize: 11,
       fontStyle: "italic",
       lineHeight: 16,

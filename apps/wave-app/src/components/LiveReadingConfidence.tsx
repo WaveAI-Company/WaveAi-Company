@@ -67,7 +67,7 @@ const criarEstilos = (t: Theme) =>
     },
     nota: {
       ...t.typography.body,
-      color: t.colors.textMuted,
+      color: t.colors.textSubtle,
       fontSize: 14,
       lineHeight: 20,
     },

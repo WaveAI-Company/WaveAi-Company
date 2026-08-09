@@ -220,7 +220,7 @@ const criarEstilos = (t: Theme) =>
     },
     salvo: {
       ...t.typography.caption,
-      color: t.colors.textMuted,
+      color: t.colors.textSubtle,
       marginTop: t.spacing.xs,
     },
   });

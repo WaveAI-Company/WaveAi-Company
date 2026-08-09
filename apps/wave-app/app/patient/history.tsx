@@ -316,7 +316,7 @@ const criarEstilos = (t: Theme) =>
   StyleSheet.create({
     carregandoNota: {
       ...t.typography.body,
-      color: t.colors.textMuted,
+      color: t.colors.textSubtle,
       fontSize: 14,
     },
     esqueletoLinha: {
@@ -350,7 +350,7 @@ const criarEstilos = (t: Theme) =>
     },
     subtitulo: {
       ...t.typography.caption,
-      color: t.colors.textMuted,
+      color: t.colors.textSubtle,
     },
     grade: {
       gap: t.spacing.md,
@@ -412,7 +412,7 @@ const criarEstilos = (t: Theme) =>
     },
     resumoNota: {
       ...t.typography.caption,
-      color: t.colors.textMuted,
+      color: t.colors.textSubtle,
       lineHeight: 18,
     },
     vazio: {
@@ -433,7 +433,7 @@ const criarEstilos = (t: Theme) =>
     },
     vazioNota: {
       ...t.typography.caption,
-      color: t.colors.textMuted,
+      color: t.colors.textSubtle,
       maxWidth: 420,
       textAlign: "center",
     },

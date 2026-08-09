@@ -202,7 +202,7 @@ const criarEstilos = (t: Theme) =>
     },
     props: {
       ...t.typography.body,
-      color: t.colors.textMuted,
+      color: t.colors.textSubtle,
       fontSize: 12,
     },
   });
