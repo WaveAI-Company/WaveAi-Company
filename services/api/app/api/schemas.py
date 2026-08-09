@@ -124,10 +124,35 @@ class AnnotationRequest(BaseModel):
     note: str = Field(min_length=1, max_length=ANNOTATION_MAX_LENGTH)
 
 
+#: Teto do recado do convite (ADR-0043). É decisão de PRODUTO, não de coluna:
+#: campo grande convida a virar prontuário, e o enquadramento é não-clínico
+#: (Medical/71). 500 cabe as três/quatro frases do design e não cabe um
+#: histórico.
+INVITE_MESSAGE_MAX_LENGTH = 500
+
+
 class CareLinkRequest(BaseModel):
-    """E-mail da contraparte (paciente, se quem pede é médico — e vice-versa)."""
+    """E-mail da contraparte (paciente, se quem pede é médico — e vice-versa).
+
+    `message` é o recado opcional que a contraparte lê junto do convite
+    (ADR-0043) — dar contexto à decisão é o que reduz aceite no escuro.
+    """
 
     email: EmailStr
+    message: str | None = Field(default=None, max_length=INVITE_MESSAGE_MAX_LENGTH)
+
+    @field_validator("message")
+    @classmethod
+    def _recado_vazio_e_ausencia(cls, v: str | None) -> str | None:
+        """Poda as bordas; recado só de espaço vira **ausência**, não string vazia.
+
+        Mesmo motivo do `display_name`: `max_length` e `min_length` contam
+        espaço, então `"   "` chegaria ao banco como uma mensagem que a tela
+        exibiria entre aspas — um balão vazio ao lado do nome de quem convidou.
+        """
+        if v is None:
+            return None
+        return v.strip() or None
 
 
 class CareLinkResponse(BaseModel):
@@ -140,6 +165,11 @@ class CareLinkResponse(BaseModel):
     counterpart_user_id: uuid.UUID
     counterpart_display_name: str | None
     counterpart_role: UserRole
+    #: Recado de quem convidou (ADR-0043), decifrado. `None` quando não houve.
+    #: A tela exibe como **citação atribuída** — aspas e nome de quem escreveu —
+    #: nunca como texto do sistema, e sem autolink: convite com texto de
+    #: terceiro é vetor clássico de phishing.
+    message: str | None = None
     created_at: datetime
     consented_at: datetime | None
 
