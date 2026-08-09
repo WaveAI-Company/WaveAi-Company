@@ -16,9 +16,21 @@ export type CareLink = {
   counterpart_user_id: string;
   counterpart_display_name: string | null;
   counterpart_role: UserRole;
+  /**
+   * Recado que a contraparte escreveu junto do convite (ADR-0043), decifrado
+   * pelo servidor. `null` quando não houve.
+   *
+   * **A tela exibe como citação atribuída** — aspas e nome de quem escreveu —,
+   * nunca como texto do sistema, e **sem autolink**: convite com texto de
+   * terceiro é vetor clássico de phishing.
+   */
+  message: string | null;
   created_at: string;
   consented_at: string | null;
 };
+
+/** Teto do recado, igual ao do servidor (ADR-0043). */
+export const INVITE_MESSAGE_MAX_LENGTH = 500;
 
 export type PatientSummary = {
   id: string;
@@ -36,8 +48,15 @@ export async function listCareLinks(): Promise<CareLink[]> {
  * A resposta é **sempre a mesma** (202) exista ou não a conta — o backend não
  * revela quem tem WaveAI (ADR-0024). Por isso não devolvemos nada útil aqui.
  */
-export async function inviteCareLink(email: string): Promise<void> {
-  await request("/care-links", { method: "POST", body: { email }, auth: true });
+export async function inviteCareLink(email: string, message?: string): Promise<void> {
+  const recado = message?.trim();
+  await request("/care-links", {
+    method: "POST",
+    // Recado vazio é **ausência**, não string vazia: o servidor já poda, e
+    // mandar `""` faria a tela da outra pessoa desenhar um balão em branco.
+    body: recado ? { email, message: recado } : { email },
+    auth: true,
+  });
 }
 
 /** Convites que o paciente recebeu e ainda não respondeu. */
