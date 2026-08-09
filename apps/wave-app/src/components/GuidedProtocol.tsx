@@ -12,6 +12,7 @@ import {
   type Theme,
 } from "../theme";
 import { Button } from "./Button";
+import { Icon } from "./Icon";
 import { InfoButton } from "./InfoButton";
 
 /**
@@ -173,9 +174,7 @@ export function GuidedProtocol({ accent, onPhaseChange, embedded }: Props) {
                 : null,
             ]}
           >
-            <Text style={[styles.somIcone, { color: accent }]}>
-              {somLigado ? "🔊" : "🔇"}
-            </Text>
+            <Icon name={somLigado ? "volume" : "volumeOff"} size={18} color={accent} />
           </Pressable>
           <InfoButton term="protocolo_contraste" accent={accent} />
         </View>
@@ -259,9 +258,7 @@ const criarEstilos = (t: Theme) =>
       ...transicao("background-color, box-shadow", motion.media),
       ...semContornoNativo(),
     },
-    somIcone: {
-      ...t.typography.bodyStrong,
-    },
+
     titulo: {
       ...t.typography.heading,
       color: t.colors.text,

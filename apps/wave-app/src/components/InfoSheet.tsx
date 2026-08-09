@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import type { GlossaryEntry } from "../didactic/glossary";
+import { Icon } from "./Icon";
 import {
   anelFoco,
   motion,
@@ -67,11 +68,12 @@ export function InfoSheet({ entry, visivel, onFechar }: Props) {
                   : null,
               ]}
             >
-              <Text
-                style={[styles.fechar, fechar.estado.hovered && { color: t.colors.text }]}
-              >
-                ✕
-              </Text>
+              <Icon
+                name="x"
+                size={16}
+                color={fechar.estado.hovered ? t.colors.text : t.colors.textMuted}
+                strokeWidth={2}
+              />
             </Pressable>
           </View>
 
@@ -146,11 +148,7 @@ const criarEstilos = (t: Theme) =>
       ...transicao("background-color, box-shadow", motion.media),
       ...semContornoNativo(),
     },
-    fechar: {
-      ...t.typography.heading,
-      color: t.colors.textMuted,
-      ...transicao("color", motion.media),
-    },
+
     corpo: {
       ...t.typography.body,
       color: t.colors.text,
