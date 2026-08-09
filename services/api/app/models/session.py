@@ -16,7 +16,16 @@ import enum
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, Enum, ForeignKey, Integer, String, Uuid, func
+from sqlalchemy import (
+    Boolean,
+    DateTime,
+    Enum,
+    ForeignKey,
+    Integer,
+    String,
+    Uuid,
+    func,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from ..db.base import Base
@@ -53,6 +62,16 @@ class CaptureSession(Base):
     )
     #: Quantas amostras o gateway recebeu (não implica persistência do sinal).
     sample_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+
+    #: Compartilhamento ao vivo com os profissionais vinculados (ADR-0045).
+    #: **Nasce desligado e vale só para esta sessão** — é o "aceite separado,
+    #: sessão a sessão" que o design promete. Eixo independente do consentimento
+    #: de guarda (ADR-0026): assistir agora e guardar depois são decisões
+    #: diferentes. Esta coluna é a **fonte da verdade**; o barramento ao vivo não
+    #: guarda espelho dela.
+    live_sharing_enabled: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default="false"
+    )
 
     started_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False

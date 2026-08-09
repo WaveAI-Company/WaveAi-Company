@@ -36,6 +36,11 @@ export function LiveSpectator({ subscribe, accent, semCaptacaoTexto }: Props) {
   const [esense, setEsense] = useState<LiveEsense | null>(null);
   const [encerrou, setEncerrou] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
+  /**
+   * O titular ligou o compartilhamento desta sessão (ADR-0045)? `null` = ainda
+   * não sabemos, ou é o stream do próprio titular (que não depende da chave).
+   */
+  const [compartilhado, setCompartilhado] = useState<boolean | null>(null);
 
   const pararRef = useRef<(() => void) | null>(null);
   const subscribeRef = useRef(subscribe);
@@ -44,7 +49,13 @@ export function LiveSpectator({ subscribe, accent, semCaptacaoTexto }: Props) {
     setEncerrou(false);
     setErro(null);
     pararRef.current = subscribeRef.current({
-      onStatus: setLive,
+      onStatus: (aoVivo, shared) => {
+        setLive(aoVivo);
+        if (shared !== undefined) setCompartilhado(shared);
+      },
+      // O titular mexeu na chave durante a transmissão. Ao desligar, o servidor
+      // encerra o stream logo em seguida — aqui só trocamos o que a tela diz.
+      onShare: setCompartilhado,
       onFeatures: (f) => {
         setFeatures(f);
         setEncerrou(false);
@@ -65,6 +76,10 @@ export function LiveSpectator({ subscribe, accent, semCaptacaoTexto }: Props) {
 
   const alfa = features?.rel_alpha;
   const semCaptacao = live === false && features === null;
+  //: Captando, mas sem autorização de acompanhar ao vivo. É estado próprio: não
+  //: é "não está captando" nem erro — e dizer a coisa certa é o que impede a
+  //: tela de afirmar o que não é verdade (ADR-0027).
+  const semCompartilhamento = live === true && compartilhado === false;
 
   return (
     <View style={styles.wrapper}>
@@ -78,7 +93,15 @@ export function LiveSpectator({ subscribe, accent, semCaptacaoTexto }: Props) {
         <Card title="Nenhuma captação ao vivo agora" subtitle={semCaptacaoTexto} accent={t.colors.warningText} />
       ) : null}
 
-      {live && features === null && !encerrou ? (
+      {semCompartilhamento ? (
+        <Card
+          title="Esta pessoa não está compartilhando ao vivo"
+          subtitle="Ela está captando agora, mas o acompanhamento ao vivo é um aceite separado, que ela liga e desliga na própria sessão. Suas tendências e resumos seguem disponíveis."
+          accent={t.colors.warningText}
+        />
+      ) : null}
+
+      {live && !semCompartilhamento && features === null && !encerrou ? (
         <Card
           title="Ao vivo — aguardando a primeira leitura…"
           subtitle="A primeira leitura aparece quando a janela fecha (~2 s)."

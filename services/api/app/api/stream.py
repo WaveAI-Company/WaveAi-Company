@@ -33,12 +33,19 @@ router = APIRouter(tags=["stream"])
 
 
 def _publicar_ao_vivo(bus: LiveBus, protocolo: StreamProtocol, resposta: dict) -> None:
-    """Espelha a resposta do gateway para os espectadores ao vivo (ADR-0039)."""
+    """Espelha a resposta do gateway para os espectadores ao vivo (ADR-0039).
+
+    Quem publica informa se a sessão está **compartilhada** (ADR-0045): o objeto
+    da sessão está aqui, e é ele a fonte da verdade — o barramento não guarda
+    espelho do estado, para um reinício da API não decidir sozinho.
+    """
     user = protocolo.state.user
     sessao = protocolo.state.session
     if user is None or sessao is None:
         return
-    publicar_janela(bus, user.id, sessao.id, resposta)
+    publicar_janela(
+        bus, user.id, sessao.id, resposta, compartilhado=sessao.live_sharing_enabled
+    )
 
 
 def _publicar_encerrada_se_ativa(bus: LiveBus, protocolo: StreamProtocol) -> None:
@@ -47,7 +54,9 @@ def _publicar_encerrada_se_ativa(bus: LiveBus, protocolo: StreamProtocol) -> Non
     sessao = protocolo.state.session
     if user is None or sessao is None:
         return
-    publicar_encerrada(bus, user.id, sessao.id)
+    publicar_encerrada(
+        bus, user.id, sessao.id, compartilhado=sessao.live_sharing_enabled
+    )
 
 
 @router.websocket("/stream")

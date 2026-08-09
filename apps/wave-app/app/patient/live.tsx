@@ -25,6 +25,8 @@ import { MockBadge } from "../../src/components/MockBadge";
 import { ScreenContainer } from "../../src/components/ScreenContainer";
 import { SensorPrepGuide } from "../../src/components/SensorPrepGuide";
 import { SessionAnnotation } from "../../src/components/SessionAnnotation";
+import { Switch } from "../../src/components/Switch";
+import { setLiveSharing } from "../../src/api/liveWatch";
 import { Disclaimer } from "../../src/components/Disclaimer";
 import { GuidedProtocol, type ProtocolPhase } from "../../src/components/GuidedProtocol";
 import { SIMULADOR_HABILITADO } from "../../src/capture/availability";
@@ -101,6 +103,42 @@ export default function PatientLiveScreen() {
   const [bandHistory, setBandHistory] = useState<Array<Record<string, number>>>([]);
   const [erro, setErro] = useState<string | null>(null);
   const [sessionId, setSessionId] = useState<string | null>(null);
+  /**
+   * Compartilhamento ao vivo desta sessão (ADR-0045). Nasce DESLIGADO a cada
+   * sessão — é o "aceite separado, sessão a sessão" que o produto promete.
+   */
+  const [compartilhando, setCompartilhando] = useState(false);
+  const [erroCompartilhar, setErroCompartilhar] = useState<string | null>(null);
+
+  /**
+   * Sessão nova: o compartilhamento **volta a nascer desligado** (ADR-0045).
+   * Sem este reset, a escolha de uma captação vazaria para a seguinte — e
+   * "sessão a sessão" deixaria de ser verdade.
+   */
+  const aoAbrirSessao = useCallback((id: string) => {
+    setSessionId(id);
+    setCompartilhando(false);
+    setErroCompartilhar(null);
+  }, []);
+
+  const alternarCompartilhamento = useCallback(
+    async (proximo: boolean) => {
+      if (!sessionId) return;
+      // Otimista: o gesto responde na hora e volta atrás se o servidor recusar
+      // — desligar é o caso urgente, e esperar a rede para ele seria pior.
+      setCompartilhando(proximo);
+      setErroCompartilhar(null);
+      try {
+        setCompartilhando(await setLiveSharing(sessionId, proximo));
+      } catch {
+        setCompartilhando(!proximo);
+        setErroCompartilhar(
+          "Não foi possível mudar o compartilhamento agora. Tente de novo.",
+        );
+      }
+    },
+    [sessionId],
+  );
 
   const [aparelhos, setAparelhos] = useState<DeviceInfo[]>([]);
   const [poorSignal, setPoorSignal] = useState<number | null>(null);
@@ -220,7 +258,7 @@ export default function PatientLiveScreen() {
     esensePendente.current = {};
 
     const stream = new StreamSession({
-      onSession: setSessionId,
+      onSession: aoAbrirSessao,
       onFeatures: aoReceberFeatures,
       onEsense: setEsense,
       onClosed: aoEncerrar,
@@ -284,7 +322,7 @@ export default function PatientLiveScreen() {
     limparParaNovaSessao();
 
     const stream = new StreamSession({
-      onSession: setSessionId,
+      onSession: aoAbrirSessao,
       onFeatures: aoReceberFeatures,
       onEsense: setEsense,
       onClosed: aoEncerrar,
@@ -599,6 +637,29 @@ export default function PatientLiveScreen() {
           </View>
         ) : null}
       </View>
+
+      {/* Compartilhamento ao vivo (ADR-0045): o aceite separado que o design
+          promete em quatro telas e não desenha em nenhuma. Só aparece com
+          sessão em andamento — compartilhar captação encerrada não significa
+          nada. A cópia diz o que a pessoa autoriza, sem prometer entrega. */}
+      {ativo && sessionId ? (
+        <Panel title="Compartilhar ao vivo" eyebrow="opcional · só esta sessão">
+          <Switch
+            value={compartilhando}
+            onChange={alternarCompartilhamento}
+            label="Deixar quem me acompanha ver esta captação"
+            description="Somente as medidas calculadas no servidor — nunca o sinal bruto."
+          />
+          <Text style={styles.notaPainel}>
+            {compartilhando
+              ? "Quem você autorizou pode acompanhar esta sessão agora. Desligar interrompe na hora."
+              : "Ninguém acompanha esta captação. A escolha vale só para esta sessão — a próxima começa desligada."}
+          </Text>
+          {erroCompartilhar ? (
+            <Text style={styles.notaPainel}>{erroCompartilhar}</Text>
+          ) : null}
+        </Panel>
+      ) : null}
 
       {/* Protocolo guiado olhos abertos/fechados (P4-c): contraste de estado na
           mesma captação. Client-only — não persiste fase; contexto vai na
