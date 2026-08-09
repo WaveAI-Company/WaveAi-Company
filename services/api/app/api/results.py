@@ -27,11 +27,13 @@ from ..services.annotation import AnnotationService
 from ..services.results import ResultService
 from ..services.narrator import Narrator
 from .deps import (
+    Janela,
     get_analysis_client,
     get_annotation_service,
     get_current_user,
     get_narrator,
     get_result_service,
+    janela_periodo,
     require_active_care_link,
     require_role,
 )
@@ -110,11 +112,16 @@ def meus_results(
     session: Session = Depends(get_session),
     user: User = Depends(get_current_user),
     service: ResultService = Depends(get_result_service),
+    janela: Janela | None = Depends(janela_periodo),
 ) -> dict:
-    """Direito de **acesso**: o titular vê seus próprios Result."""
-    results = service.listar(titular=user, ator=user)
+    """Direito de **acesso**: o titular vê seus próprios Result.
+
+    `?days=N` recorta a janela (ausente = tudo). `window_days` devolve o que foi
+    aplicado, para a tela não depender só do próprio estado ao rotular o período.
+    """
+    results = service.listar(titular=user, ator=user, desde=janela.desde if janela else None)
     session.commit()
-    return {"results": results}
+    return {"results": results, "window_days": janela.days if janela else None}
 
 
 @router.get("/me/results/export")
@@ -164,12 +171,22 @@ def results_do_paciente(
     ator: User = Depends(require_role(UserRole.DOCTOR)),
     session: Session = Depends(get_session),
     service: ResultService = Depends(get_result_service),
+    janela: Janela | None = Depends(janela_periodo),
 ) -> dict:
     """Médico lê os Result de um paciente. Exige CareLink `active` (403 sem) e
-    o acesso fica auditado em nome do titular."""
-    results = service.listar(titular=paciente, ator=ator)
+    o acesso fica auditado em nome do titular.
+
+    `?days=N` recorta a janela — o gate do vínculo roda antes e não muda.
+    """
+    results = service.listar(
+        titular=paciente, ator=ator, desde=janela.desde if janela else None
+    )
     session.commit()
-    return {"patient_id": str(paciente.id), "results": results}
+    return {
+        "patient_id": str(paciente.id),
+        "results": results,
+        "window_days": janela.days if janela else None,
+    }
 
 
 # -- relatório longitudinal (N5) ----------------------------------------
@@ -178,14 +195,22 @@ def results_do_paciente(
 def _relatorio_longitudinal(
     *, titular: User, ator: User, session: Session,
     service: ResultService, analysis: AnalysisClient, narrator: Narrator,
+    janela: Janela | None = None,
 ) -> dict:
     """Monta a série do titular (audita leitura) e pede o relatório à Analysis.
 
     A ciência (tendências) vive atrás do `AnalysisEngine`; o gateway só entrega a
     série cronológica de features + qualidade e serializa o resultado. A
     `narrative` (N6-b) é a camada de linguagem opcional por cima do sumário
-    determinístico — `None` quando desligada ou indisponível (ADR-0035)."""
-    serie = service.serie_longitudinal(titular=titular, ator=ator)
+    determinístico — `None` quando desligada ou indisponível (ADR-0035).
+
+    O recorte de período é aplicado **aqui**, no gateway: a Analysis recebe uma
+    lista de features sem carimbo de tempo e é cega a data por construção —
+    mandar janela para lá seria empurrar regra de domínio para dentro do
+    `AnalysisEngine`."""
+    serie = service.serie_longitudinal(
+        titular=titular, ator=ator, desde=janela.desde if janela else None
+    )
     session.commit()
     try:
         resposta = analysis.longitudinal_report(
@@ -201,7 +226,14 @@ def _relatorio_longitudinal(
     return {
         "patient_id": str(titular.id),
         "n_sessions": len(serie["sessions"]),
+        #: Intervalo **observado** (primeira e última sessão que entraram) — pode
+        #: ser menor que a janela pedida, e é `None` quando não entrou nenhuma.
         "period": serie["period"],
+        #: Janela **pedida** em dias (`None` = histórico inteiro). Separado do
+        #: `period` de propósito: o design mostra os dois ("últimos 30 dias" na
+        #: sobrancelha, "6 jul – 2 ago" embaixo), e sem isto uma janela vazia
+        #: viraria um card sem nenhum rótulo de período.
+        "window_days": janela.days if janela else None,
         "engine_version": resposta.get("engine_version"),
         "report": report,
         "summary": summary,
@@ -219,11 +251,15 @@ def meu_relatorio_longitudinal(
     service: ResultService = Depends(get_result_service),
     analysis: AnalysisClient = Depends(get_analysis_client),
     narrator: Narrator = Depends(get_narrator),
+    janela: Janela | None = Depends(janela_periodo),
 ) -> dict:
-    """Titular vê o **relatório longitudinal** das próprias sessões (N5)."""
+    """Titular vê o **relatório longitudinal** das próprias sessões (N5).
+
+    `?days=N` restringe as tendências às últimas N dias (ausente = tudo).
+    """
     return _relatorio_longitudinal(
         titular=user, ator=user, session=session, service=service,
-        analysis=analysis, narrator=narrator,
+        analysis=analysis, narrator=narrator, janela=janela,
     )
 
 
@@ -236,10 +272,14 @@ def relatorio_longitudinal_do_paciente(
     service: ResultService = Depends(get_result_service),
     analysis: AnalysisClient = Depends(get_analysis_client),
     narrator: Narrator = Depends(get_narrator),
+    janela: Janela | None = Depends(janela_periodo),
 ) -> dict:
     """Médico vê o relatório longitudinal de um paciente. Exige CareLink `active`
-    (403 sem) e o acesso fica auditado em nome do titular."""
+    (403 sem) e o acesso fica auditado em nome do titular.
+
+    `?days=N` restringe as tendências — é o seletor de período do painel.
+    """
     return _relatorio_longitudinal(
         titular=paciente, ator=ator, session=session, service=service,
-        analysis=analysis, narrator=narrator,
+        analysis=analysis, narrator=narrator, janela=janela,
     )
