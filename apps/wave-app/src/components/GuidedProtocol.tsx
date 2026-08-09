@@ -2,7 +2,15 @@ import { useEffect, useMemo, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { protocolCues } from "../audio/protocolCues";
-import { useTheme, type Theme } from "../theme";
+import {
+  anelFoco,
+  motion,
+  semContornoNativo,
+  transicao,
+  useInteracao,
+  useTheme,
+  type Theme,
+} from "../theme";
 import { Button } from "./Button";
 import { InfoButton } from "./InfoButton";
 
@@ -71,6 +79,8 @@ type Props = {
 export function GuidedProtocol({ accent, onPhaseChange, embedded }: Props) {
   const t = useTheme();
   const styles = useMemo(() => criarEstilos(t), [t]);
+  // Estado do botão de silenciar a guia por voz.
+  const som = useInteracao();
   const [indice, setIndice] = useState(OCIOSO);
   const [restante, setRestante] = useState(0);
   /** Guia por voz/vibração ligada (P4-d). É o ponto do protocolo, mas dá p/ calar. */
@@ -154,6 +164,14 @@ export function GuidedProtocol({ accent, onPhaseChange, embedded }: Props) {
             }
             hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
             onPress={alternarSom}
+            {...som.handlers}
+            style={[
+              styles.somAlvo,
+              som.estado.hovered && { backgroundColor: t.colors.surfaceAlt },
+              som.estado.focoVisivel
+                ? { boxShadow: anelFoco(accent, t.colors.surface) }
+                : null,
+            ]}
           >
             <Text style={[styles.somIcone, { color: accent }]}>
               {somLigado ? "🔊" : "🔇"}
@@ -231,6 +249,15 @@ const criarEstilos = (t: Theme) =>
       flexDirection: "row",
       alignItems: "center",
       gap: t.spacing.md,
+    },
+    somAlvo: {
+      alignItems: "center",
+      borderRadius: t.radius.sm,
+      height: 26,
+      justifyContent: "center",
+      width: 26,
+      ...transicao("background-color, box-shadow", motion.media),
+      ...semContornoNativo(),
     },
     somIcone: {
       ...t.typography.bodyStrong,

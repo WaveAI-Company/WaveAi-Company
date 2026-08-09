@@ -10,6 +10,10 @@ import { AccessibilityInfo } from "react-native";
  * No web o `AccessibilityInfo` do react-native-web lê
  * `prefers-reduced-motion`; no mobile, a preferência do sistema. A escuta
  * existe porque a pessoa pode mudar isso com o app aberto.
+ *
+ * **Mudou de lugar na P8-a** (era `components/brand/`): deixou de servir só à
+ * marca quando os estados de interação passaram a deslocar controles, e o
+ * `theme/` não pode depender de `components/`.
  */
 export function useReduzirMovimento(): boolean {
   const [reduzir, setReduzir] = useState(false);

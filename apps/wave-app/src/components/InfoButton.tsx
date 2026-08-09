@@ -2,7 +2,16 @@ import { useMemo, useState } from "react";
 import { Pressable, StyleSheet, Text } from "react-native";
 
 import { glossaryEntry } from "../didactic/glossary";
-import { useTheme, type Theme } from "../theme";
+import {
+  anelFoco,
+  motion,
+  semContornoNativo,
+  transicao,
+  useInteracao,
+  useRoleAccent,
+  useTheme,
+  type Theme,
+} from "../theme";
 import { InfoSheet } from "./InfoSheet";
 
 type Props = {
@@ -23,6 +32,8 @@ export function InfoButton({ term, accent }: Props) {
   const t = useTheme();
   const styles = useMemo(() => criarEstilos(t), [t]);
   const [aberto, setAberto] = useState(false);
+  const { estado, handlers } = useInteracao();
+  const papel = useRoleAccent();
   const entry = glossaryEntry(term);
   if (!entry) return null;
 
@@ -33,8 +44,25 @@ export function InfoButton({ term, accent }: Props) {
         accessibilityLabel={`O que é: ${entry.label}`}
         hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
         onPress={() => setAberto(true)}
+        {...handlers}
+        // `.iconbtn:hover{color:var(--ink); background:var(--surface-2)}`.
+        style={[
+          styles.alvo,
+          estado.hovered && { backgroundColor: t.colors.surfaceAlt },
+          estado.focoVisivel
+            ? { boxShadow: anelFoco(accent ?? papel.accent, t.colors.background) }
+            : null,
+        ]}
       >
-        <Text style={[styles.icone, accent ? { color: accent } : null]}>ⓘ</Text>
+        <Text
+          style={[
+            styles.icone,
+            accent ? { color: accent } : null,
+            estado.hovered && !accent && { color: t.colors.text },
+          ]}
+        >
+          ⓘ
+        </Text>
       </Pressable>
       <InfoSheet entry={entry} visivel={aberto} onFechar={() => setAberto(false)} />
     </>
@@ -43,8 +71,20 @@ export function InfoButton({ term, accent }: Props) {
 
 const criarEstilos = (t: Theme) =>
   StyleSheet.create({
+    // O alvo é só um pouco maior que o glifo; quem garante o toque confortável
+    // continua sendo o `hitSlop`, não este quadrado.
+    alvo: {
+      alignItems: "center",
+      borderRadius: t.radius.sm,
+      height: 24,
+      justifyContent: "center",
+      width: 24,
+      ...transicao("background-color, box-shadow", motion.media),
+      ...semContornoNativo(),
+    },
     icone: {
       ...t.typography.bodyStrong,
       color: t.colors.textMuted,
+      ...transicao("color", motion.media),
     },
   });

@@ -4,7 +4,16 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { activeHref, navItemsFor } from "../../navigation/navItems";
 import type { UserRole } from "../../auth/api";
-import { useRoleAccent, useTheme, type Theme } from "../../theme";
+import {
+  anelFoco,
+  motion,
+  semContornoNativo,
+  transicao,
+  useInteracao,
+  useRoleAccent,
+  useTheme,
+  type Theme,
+} from "../../theme";
 
 type Props = {
   role: UserRole;
@@ -26,50 +35,84 @@ export function NavList({ role, pathname, onNavigate }: Props) {
 
   return (
     <View style={styles.lista}>
-      {itens.map((item) => {
-        const selecionado = item.href === ativo;
-        return (
-          <Pressable
-            key={item.href}
-            accessibilityRole="link"
-            accessibilityState={{ selected: selecionado }}
-            accessibilityLabel={item.label}
-            onPress={() => {
-              // `navigate` (não `push`) não empilha: a casca substitui o fluxo
-              // de "voltar" por navegação lateral.
-              router.navigate(item.href as never);
-              onNavigate?.();
-            }}
-            style={({ pressed }) => [
-              styles.item,
-              selecionado && { backgroundColor: t.colors.surfaceAlt },
-              pressed && styles.pressionado,
-            ]}
-          >
-            {/* Barra de seleção no tom do papel. */}
-            <View
-              style={[
-                styles.barra,
-                { backgroundColor: selecionado ? accent : "transparent" },
-              ]}
-            />
-            <Text style={[styles.icone, { color: selecionado ? accent : t.colors.textMuted }]}>
-              {item.icon}
-            </Text>
-            <Text
-              style={[
-                styles.rotulo,
-                { color: selecionado ? t.colors.text : t.colors.textMuted },
-                selecionado && styles.rotuloAtivo,
-              ]}
-              numberOfLines={1}
-            >
-              {item.label}
-            </Text>
-          </Pressable>
-        );
-      })}
+      {itens.map((item) => (
+        <ItemNav
+          key={item.href}
+          label={item.label}
+          icone={item.icon}
+          selecionado={item.href === ativo}
+          accent={accent}
+          styles={styles}
+          onPress={() => {
+            // `navigate` (não `push`) não empilha: a casca substitui o fluxo
+            // de "voltar" por navegação lateral.
+            router.navigate(item.href as never);
+            onNavigate?.();
+          }}
+        />
+      ))}
     </View>
+  );
+}
+
+/**
+ * Um item da navegação — o `.nav a` do mockup, que ao ponteiro pinta o fundo e
+ * acende o texto. Componente próprio porque cada linha tem seu estado de
+ * interação, e hook não vive dentro de `map`.
+ */
+function ItemNav({
+  label,
+  icone,
+  selecionado,
+  accent,
+  onPress,
+  styles,
+}: {
+  label: string;
+  icone: string;
+  selecionado: boolean;
+  accent: string;
+  onPress: () => void;
+  styles: ReturnType<typeof criarEstilos>;
+}) {
+  const t = useTheme();
+  const { estado, handlers } = useInteracao();
+  const realce = estado.hovered || estado.pressed;
+
+  return (
+    <Pressable
+      accessibilityRole="link"
+      accessibilityState={{ selected: selecionado }}
+      // `accessibilityState` não vira ARIA no RN-web; `aria-current` vira.
+      aria-current={selecionado ? "page" : undefined}
+      accessibilityLabel={label}
+      onPress={onPress}
+      {...handlers}
+      style={[
+        styles.item,
+        (selecionado || realce) && { backgroundColor: t.colors.surfaceAlt },
+        estado.pressed && { backgroundColor: t.colors.surfaceStrong },
+        estado.focoVisivel ? { boxShadow: anelFoco(accent, t.colors.surface) } : null,
+      ]}
+    >
+      {/* Barra de seleção no tom do papel. */}
+      <View
+        style={[styles.barra, { backgroundColor: selecionado ? accent : "transparent" }]}
+      />
+      <Text style={[styles.icone, { color: selecionado ? accent : t.colors.textMuted }]}>
+        {icone}
+      </Text>
+      <Text
+        style={[
+          styles.rotulo,
+          { color: selecionado || realce ? t.colors.text : t.colors.textMuted },
+          selecionado && styles.rotuloAtivo,
+        ]}
+        numberOfLines={1}
+      >
+        {label}
+      </Text>
+    </Pressable>
   );
 }
 
@@ -85,9 +128,8 @@ const criarEstilos = (t: Theme) =>
       gap: t.spacing.sm,
       minHeight: t.minTouch,
       paddingRight: t.spacing.sm,
-    },
-    pressionado: {
-      opacity: 0.7,
+      ...transicao("background-color, box-shadow", motion.media),
+      ...semContornoNativo(),
     },
     barra: {
       alignSelf: "stretch",
@@ -103,6 +145,7 @@ const criarEstilos = (t: Theme) =>
     rotulo: {
       ...t.typography.body,
       flexShrink: 1,
+      ...transicao("color", motion.media),
     },
     rotuloAtivo: {
       fontWeight: "600",

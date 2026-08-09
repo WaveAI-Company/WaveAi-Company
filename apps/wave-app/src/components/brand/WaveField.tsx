@@ -9,8 +9,7 @@ import Animated, {
 } from "react-native-reanimated";
 import Svg, { Path } from "react-native-svg";
 
-import { useTheme } from "../../theme";
-import { useReduzirMovimento } from "./useReduzirMovimento";
+import { useReduzirMovimento, useTheme } from "../../theme";
 
 /**
  * "Maré" — campo de ondas da identidade (ADR-0042).

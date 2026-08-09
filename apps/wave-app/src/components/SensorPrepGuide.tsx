@@ -1,7 +1,15 @@
 import { useMemo, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
-import { useTheme, type Theme } from "../theme";
+import {
+  anelFoco,
+  motion,
+  semContornoNativo,
+  transicao,
+  useInteracao,
+  useTheme,
+  type Theme,
+} from "../theme";
 import { InfoButton } from "./InfoButton";
 
 /**
@@ -33,6 +41,7 @@ export function SensorPrepGuide({ accent }: Props) {
   const t = useTheme();
   const styles = useMemo(() => criarEstilos(t), [t]);
   const [aberto, setAberto] = useState(true);
+  const toggle = useInteracao();
 
   return (
     <View style={[styles.card, { borderLeftColor: accent }]}>
@@ -42,12 +51,26 @@ export function SensorPrepGuide({ accent }: Props) {
         <Pressable
           accessibilityRole="button"
           accessibilityState={{ expanded: aberto }}
+          aria-expanded={aberto}
           accessibilityLabel="Como conseguir bom contato do sensor"
           onPress={() => setAberto((v) => !v)}
-          style={styles.toggle}
+          {...toggle.handlers}
+          style={[
+            styles.toggle,
+            toggle.estado.focoVisivel
+              ? { boxShadow: anelFoco(accent, t.colors.surface) }
+              : null,
+          ]}
         >
           <Text style={styles.titulo}>Como conseguir bom contato</Text>
-          <Text style={styles.chevron}>{aberto ? "–" : "+"}</Text>
+          <Text
+            style={[
+              styles.chevron,
+              (toggle.estado.hovered || toggle.estado.pressed) && { color: t.colors.text },
+            ]}
+          >
+            {aberto ? "–" : "+"}
+          </Text>
         </Pressable>
         <InfoButton term="poor_signal" accent={accent} />
       </View>
@@ -87,6 +110,9 @@ const criarEstilos = (t: Theme) =>
       justifyContent: "space-between",
       gap: t.spacing.sm,
       minHeight: t.minTouch,
+      borderRadius: t.radius.sm,
+      ...transicao("box-shadow", motion.media),
+      ...semContornoNativo(),
     },
     titulo: {
       ...t.typography.heading,
@@ -98,6 +124,7 @@ const criarEstilos = (t: Theme) =>
       color: t.colors.textMuted,
       width: 16,
       textAlign: "center",
+      ...transicao("color", motion.media),
     },
     passos: {
       gap: t.spacing.sm,

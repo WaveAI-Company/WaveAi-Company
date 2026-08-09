@@ -14,7 +14,16 @@ import { Icon } from "../Icon";
 import { HeadFigure } from "../brand/HeadFigure";
 import { Logo } from "../brand/Logo";
 import { WaveField } from "../brand/WaveField";
-import { palettes, useTheme, withAlpha, type Theme } from "../../theme";
+import {
+  anelFoco,
+  motion,
+  palettes,
+  transicao,
+  useInteracao,
+  useTheme,
+  withAlpha,
+  type Theme,
+} from "../../theme";
 
 /**
  * Palco das telas de autenticação — porte do design "Maré" (ADR-0042).
@@ -110,13 +119,23 @@ function AlternarTema() {
   const t = useTheme();
   const styles = useMemo(() => criarEstilos(t), [t]);
   const irPara = t.isDark ? "light" : "dark";
+  const { estado, handlers } = useInteracao();
 
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={`Mudar para o tema ${t.isDark ? "claro" : "escuro"}`}
       onPress={() => t.setPreference(irPara)}
-      style={styles.botaoTema}
+      {...handlers}
+      // `.theme-toggle:hover` — só acende; o ícone já é o assunto do botão.
+      style={[
+        styles.botaoTema,
+        estado.hovered && { backgroundColor: t.colors.surfaceAlt },
+        estado.pressed && { backgroundColor: t.colors.surfaceStrong },
+        estado.focoVisivel
+          ? { boxShadow: anelFoco(t.colors.text, t.colors.background) }
+          : null,
+      ]}
       hitSlop={8}
     >
       <Icon name={t.isDark ? "sun" : "moon"} size={18} color={t.colors.text} />
@@ -322,6 +341,7 @@ const criarEstilos = (t: Theme) =>
       height: t.minTouch,
       justifyContent: "center",
       width: t.minTouch,
+      ...transicao("background-color, box-shadow", motion.media),
     },
     marcaCompacta: {
       alignItems: "center",
