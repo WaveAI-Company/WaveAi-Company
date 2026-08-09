@@ -9,7 +9,19 @@ import { Button } from "../src/components/Button";
 import { Field } from "../src/components/Field";
 import { Icon, type IconName } from "../src/components/Icon";
 import { StateView } from "../src/components/StateView";
-import { useAccentFor, useTheme, withAlpha, type Theme } from "../src/theme";
+import { TextLink } from "../src/components/TextLink";
+import {
+  anelFoco,
+  elevar,
+  motion,
+  semContornoNativo,
+  transicao,
+  useAccentFor,
+  useInteracao,
+  useTheme,
+  withAlpha,
+  type Theme,
+} from "../src/theme";
 
 /** Alinhado aos limites validados pela API (schemas.py). */
 const SENHA_MIN = 8;
@@ -257,42 +269,16 @@ export default function RegisterScreen() {
       <View style={styles.papeis}>
         <Text style={styles.papeisTitulo}>Como você vai usar o WaveAI?</Text>
         <View style={styles.papeisGrade} accessibilityRole="radiogroup">
-          {PAPEIS.map((opcao) => {
-            const selecionado = role === opcao.valor;
-            const cor = opcao.valor === "doctor" ? profissional.accent : paciente.accent;
-            return (
-              <Pressable
-                key={opcao.valor}
-                accessibilityRole="radio"
-                accessibilityState={{ checked: selecionado, selected: selecionado }}
-                aria-checked={selecionado}
-                accessibilityLabel={`${opcao.nome}. ${opcao.descricao}`}
-                onPress={() => setRole(opcao.valor)}
-                style={[
-                  styles.papel,
-                  selecionado
-                    ? { backgroundColor: t.colors.surface, borderColor: cor }
-                    : { borderColor: t.colors.border },
-                ]}
-              >
-                <View
-                  style={[
-                    styles.papelIcone,
-                    selecionado && { backgroundColor: withAlpha(cor, 0.14) },
-                  ]}
-                >
-                  <Icon
-                    name={opcao.icone}
-                    size={17}
-                    color={selecionado ? cor : t.colors.textMuted}
-                    strokeWidth={1.8}
-                  />
-                </View>
-                <Text style={styles.papelNome}>{opcao.nome}</Text>
-                <Text style={styles.papelDescricao}>{opcao.descricao}</Text>
-              </Pressable>
-            );
-          })}
+          {PAPEIS.map((opcao) => (
+            <OpcaoPapel
+              key={opcao.valor}
+              opcao={opcao}
+              selecionado={role === opcao.valor}
+              cor={opcao.valor === "doctor" ? profissional.accent : paciente.accent}
+              onPress={() => setRole(opcao.valor)}
+              styles={styles}
+            />
+          ))}
         </View>
       </View>
 
@@ -309,16 +295,68 @@ export default function RegisterScreen() {
 
       <View style={styles.alternativa}>
         <Text style={styles.alternativaTexto}>Já tem conta? </Text>
-        <Pressable
-          accessibilityRole="link"
-          accessibilityLabel="Entrar"
+        <TextLink
+          label="Entrar"
           onPress={() => router.push("/login")}
-          hitSlop={8}
-        >
-          <Text style={[styles.alternativaLink, { color: destaque.accentText }]}>Entrar</Text>
-        </Pressable>
+          accent={destaque.accentText}
+        />
       </View>
     </AuthStage>
+  );
+}
+
+/**
+ * Um cartão de escolha de papel — o `.role-opt` do mockup, que ao ponteiro
+ * puxa a borda para o destaque e sobe 2px. Componente próprio porque cada
+ * cartão tem seu estado de interação, e hook não vive dentro de `map`.
+ */
+function OpcaoPapel({
+  opcao,
+  selecionado,
+  cor,
+  onPress,
+  styles,
+}: {
+  opcao: (typeof PAPEIS)[number];
+  selecionado: boolean;
+  cor: string;
+  onPress: () => void;
+  styles: ReturnType<typeof criarEstilos>;
+}) {
+  const t = useTheme();
+  const { estado, handlers, reduzirMovimento } = useInteracao();
+  const noAr = estado.hovered && !estado.pressed;
+
+  return (
+    <Pressable
+      accessibilityRole="radio"
+      accessibilityState={{ checked: selecionado, selected: selecionado }}
+      aria-checked={selecionado}
+      accessibilityLabel={`${opcao.nome}. ${opcao.descricao}`}
+      onPress={onPress}
+      {...handlers}
+      style={[
+        styles.papel,
+        selecionado
+          ? { backgroundColor: t.colors.surface, borderColor: cor }
+          : { borderColor: noAr ? cor : t.colors.border },
+        noAr && elevar(-2, reduzirMovimento),
+        estado.focoVisivel ? { boxShadow: anelFoco(cor, t.colors.background) } : null,
+      ]}
+    >
+      <View
+        style={[styles.papelIcone, selecionado && { backgroundColor: withAlpha(cor, 0.14) }]}
+      >
+        <Icon
+          name={opcao.icone}
+          size={17}
+          color={selecionado || noAr ? cor : t.colors.textMuted}
+          strokeWidth={1.8}
+        />
+      </View>
+      <Text style={styles.papelNome}>{opcao.nome}</Text>
+      <Text style={styles.papelDescricao}>{opcao.descricao}</Text>
+    </Pressable>
   );
 }
 
@@ -404,6 +442,12 @@ const criarEstilos = (t: Theme) =>
       gap: 2,
       minWidth: 170,
       padding: t.spacing.md - 2,
+      ...transicao("transform, border-color, box-shadow", [
+        motion.rapida,
+        motion.media,
+        motion.media,
+      ]),
+      ...semContornoNativo(),
     },
     papelIcone: {
       alignItems: "center",
@@ -441,8 +485,5 @@ const criarEstilos = (t: Theme) =>
     alternativaTexto: {
       ...t.typography.body,
       color: t.colors.textMuted,
-    },
-    alternativaLink: {
-      ...t.typography.bodyStrong,
     },
   });

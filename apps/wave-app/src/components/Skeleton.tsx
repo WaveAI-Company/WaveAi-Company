@@ -8,8 +8,7 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 
-import { useTheme, type Theme } from "../theme";
-import { useReduzirMovimento } from "./brand/useReduzirMovimento";
+import { useReduzirMovimento, useTheme, type Theme } from "../theme";
 
 /**
  * Bloco cinza que ocupa o lugar de um conteúdo em carregamento.

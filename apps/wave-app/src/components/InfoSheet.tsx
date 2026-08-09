@@ -2,7 +2,15 @@ import { useMemo } from "react";
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import type { GlossaryEntry } from "../didactic/glossary";
-import { useTheme, type Theme } from "../theme";
+import {
+  anelFoco,
+  motion,
+  semContornoNativo,
+  transicao,
+  useInteracao,
+  useTheme,
+  type Theme,
+} from "../theme";
 
 type Props = {
   entry: GlossaryEntry;
@@ -27,6 +35,7 @@ export function InfoSheet({ entry, visivel, onFechar }: Props) {
   const t = useTheme();
   const styles = useMemo(() => criarEstilos(t), [t]);
   const cautela = entry.reliability !== undefined && entry.reliability !== "defensável";
+  const fechar = useInteracao();
 
   return (
     <Modal visible={visivel} transparent animationType="fade" onRequestClose={onFechar}>
@@ -48,8 +57,21 @@ export function InfoSheet({ entry, visivel, onFechar }: Props) {
               accessibilityRole="button"
               accessibilityLabel="Fechar"
               hitSlop={12}
+              {...fechar.handlers}
+              // `.iconbtn:hover` — o ✕ acende e ganha fundo.
+              style={[
+                styles.alvoFechar,
+                fechar.estado.hovered && { backgroundColor: t.colors.surfaceAlt },
+                fechar.estado.focoVisivel
+                  ? { boxShadow: anelFoco(t.colors.text, t.colors.surface) }
+                  : null,
+              ]}
             >
-              <Text style={styles.fechar}>✕</Text>
+              <Text
+                style={[styles.fechar, fechar.estado.hovered && { color: t.colors.text }]}
+              >
+                ✕
+              </Text>
             </Pressable>
           </View>
 
@@ -115,9 +137,19 @@ const criarEstilos = (t: Theme) =>
       color: t.colors.text,
       flexShrink: 1,
     },
+    alvoFechar: {
+      alignItems: "center",
+      borderRadius: t.radius.sm,
+      height: 32,
+      justifyContent: "center",
+      width: 32,
+      ...transicao("background-color, box-shadow", motion.media),
+      ...semContornoNativo(),
+    },
     fechar: {
       ...t.typography.heading,
       color: t.colors.textMuted,
+      ...transicao("color", motion.media),
     },
     corpo: {
       ...t.typography.body,

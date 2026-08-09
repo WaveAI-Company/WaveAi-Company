@@ -1,12 +1,13 @@
 import { useRouter } from "expo-router";
 import { useMemo, useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 
 import { useAuth } from "../src/auth/AuthContext";
 import { AuthStage } from "../src/components/auth/AuthStage";
 import { Button } from "../src/components/Button";
 import { Field } from "../src/components/Field";
 import { StateView } from "../src/components/StateView";
+import { TextLink } from "../src/components/TextLink";
 import { useTheme, type Theme } from "../src/theme";
 
 /**
@@ -87,14 +88,11 @@ export default function LoginScreen() {
 
       <View style={styles.alternativa}>
         <Text style={styles.alternativaTexto}>Primeiro acesso? </Text>
-        <Pressable
-          accessibilityRole="link"
-          accessibilityLabel="Criar conta"
+        <TextLink
+          label="Criar conta"
           onPress={() => router.push("/register")}
-          hitSlop={8}
-        >
-          <Text style={styles.alternativaLink}>Criar conta</Text>
-        </Pressable>
+          accent={t.colors.accentPatientText}
+        />
       </View>
     </AuthStage>
   );
@@ -131,9 +129,5 @@ const criarEstilos = (t: Theme) =>
     alternativaTexto: {
       ...t.typography.body,
       color: t.colors.textMuted,
-    },
-    alternativaLink: {
-      ...t.typography.bodyStrong,
-      color: t.colors.accentPatientText,
     },
   });

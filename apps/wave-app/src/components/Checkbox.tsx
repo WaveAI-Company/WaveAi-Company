@@ -2,7 +2,16 @@ import { useMemo } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { Icon } from "./Icon";
-import { useRoleAccent, useTheme, type Theme } from "../theme";
+import {
+  anelFoco,
+  motion,
+  semContornoNativo,
+  transicao,
+  useInteracao,
+  useRoleAccent,
+  useTheme,
+  type Theme,
+} from "../theme";
 
 /**
  * Caixa de marcação com rótulo.
@@ -25,6 +34,14 @@ export function Checkbox({ checked, onChange, label, disabled }: Props) {
   const t = useTheme();
   const { accent, onAccent } = useRoleAccent();
   const styles = useMemo(() => criarEstilos(t), [t]);
+  const { estado, handlers } = useInteracao();
+
+  // O anel de foco vai na **caixa**, não na linha: o alvo de toque é a linha
+  // inteira (rótulo incluído), e um anel de 300px de largura em volta de um
+  // parágrafo não lê como "este controle está focado".
+  const realce = estado.focoVisivel
+    ? { boxShadow: anelFoco(accent, t.colors.background) }
+    : null;
 
   return (
     <Pressable
@@ -34,14 +51,16 @@ export function Checkbox({ checked, onChange, label, disabled }: Props) {
       accessibilityLabel={label}
       disabled={disabled}
       onPress={() => onChange(!checked)}
-      style={({ pressed }) => [styles.linha, pressed && styles.pressionada]}
+      {...handlers}
+      style={[styles.linha, estado.pressed && styles.pressionada]}
     >
       <View
         style={[
           styles.caixa,
           checked
             ? { backgroundColor: accent, borderColor: accent }
-            : { borderColor: t.colors.borderStrong },
+            : { borderColor: estado.hovered && !disabled ? accent : t.colors.borderStrong },
+          realce,
         ]}
       >
         {checked ? <Icon name="check" size={13} color={onAccent} strokeWidth={3} /> : null}
@@ -60,6 +79,7 @@ const criarEstilos = (t: Theme) =>
       // O alvo é a linha toda, não os 22px da caixa.
       minHeight: t.minTouch,
       paddingVertical: t.spacing.sm,
+      ...semContornoNativo(),
     },
     pressionada: {
       opacity: 0.7,
@@ -73,6 +93,7 @@ const criarEstilos = (t: Theme) =>
       justifyContent: "center",
       marginTop: 1,
       width: 22,
+      ...transicao("background-color, border-color, box-shadow", motion.media),
     },
     rotulo: {
       ...t.typography.body,
