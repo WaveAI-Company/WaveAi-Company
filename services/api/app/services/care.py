@@ -22,6 +22,7 @@ from ..models.care_link import (
 from ..models.user import User, UserRole
 from ..repositories.care_link import CareLinkRepository
 from ..repositories.user import UserRepository
+from ..security.crypto import MetricsCipher
 from ..security.password import PasswordHasher
 
 
@@ -34,19 +35,26 @@ class NotAllowedError(CareLinkError):
 
 
 class CareService:
-    def __init__(self, *, session: Session, hasher: PasswordHasher) -> None:
+    def __init__(
+        self, *, session: Session, hasher: PasswordHasher, cipher: MetricsCipher
+    ) -> None:
         self._session = session
         self._links = CareLinkRepository(session)
         self._users = UserRepository(session, hasher)
+        self._cipher = cipher
 
     # -- criação ---------------------------------------------------------
 
-    def solicitar(self, *, solicitante: User, email_contraparte: str) -> CareLink | None:
+    def solicitar(
+        self, *, solicitante: User, email_contraparte: str, mensagem: str | None = None
+    ) -> CareLink | None:
         """Cria (ou reaproveita) um vínculo entre o solicitante e a contraparte.
 
         Devolve `None` quando não há nada a fazer — conta inexistente, papel
         incompatível ou auto-vínculo. **A rota responde igual nos dois casos**:
         quem chama não pode descobrir se o e-mail tem conta (ADR-0023/0024).
+        Consequência para o recado: sem conta **nada é gravado**, e a mensagem
+        desaparece com o convite — não existe caixa onde ela espere.
         """
         try:
             contraparte = self._users.get_by_email(email_contraparte)
@@ -73,6 +81,9 @@ class CareService:
         existente = self._links.get_vivo(doctor_id=doctor.id, patient_id=patient.id)
         if existente is not None:
             # Já há vínculo vivo: não duplica nem "reativa" nada silenciosamente.
+            # O recado do reconvite é DESCARTADO de propósito (ADR-0043): quem
+            # está lendo um pedido para decidir sobre ele não pode ter o texto
+            # trocado por baixo. Reescrever exige cancelar e convidar de novo.
             return existente
 
         link = self._links.criar(
@@ -80,6 +91,11 @@ class CareService:
             patient_id=patient.id,
             status=status,
             initiated_by=quem,
+            # Cifrado como a anotação (ADR-0037/0043): texto livre de uma pessoa
+            # sobre outra não fica em claro no banco.
+            invite_message_encrypted=(
+                self._cipher.encrypt({"message": mensagem}) if mensagem else None
+            ),
         )
         self._links.registrar_evento(
             care_link=link,
@@ -171,6 +187,19 @@ class CareService:
 
     def listar(self, user: User) -> list[CareLink]:
         return self._links.listar_do_usuario(user.id)
+
+    def mensagem_do_convite(self, link: CareLink) -> str | None:
+        """Decifra o recado do convite (ADR-0043), ou `None` se não houve.
+
+        Quem pode ler já foi decidido antes de chegar aqui: `listar` só devolve
+        vínculos vivos em que o usuário participa, e vínculo terminal
+        (recusado/revogado) some da vista levando o recado junto.
+        """
+        if link.invite_message_encrypted is None:
+            return None
+        conteudo = self._cipher.decrypt(link.invite_message_encrypted)
+        mensagem = conteudo.get("message")
+        return str(mensagem) if mensagem else None
 
     def acesso_ativo(self, *, doctor: User, patient_id: uuid.UUID) -> CareLink | None:
         """Base do RBAC: devolve o vínculo **ativo**, ou `None`."""

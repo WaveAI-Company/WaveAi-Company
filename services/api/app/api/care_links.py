@@ -21,7 +21,7 @@ router = APIRouter(tags=["care-links"])
 SOLICITACAO_REGISTRADA = {"detail": "solicitacao registrada"}
 
 
-def _para_resposta(link: CareLink, eu: User) -> CareLinkResponse:
+def _para_resposta(link: CareLink, eu: User, care: CareService) -> CareLinkResponse:
     """Mostra a contraparte — cada lado vê o outro, nunca dados de terceiros."""
     contraparte = link.patient if eu.role is UserRole.DOCTOR else link.doctor
     perfil = contraparte.patient_profile or contraparte.doctor_profile
@@ -32,6 +32,10 @@ def _para_resposta(link: CareLink, eu: User) -> CareLinkResponse:
         counterpart_user_id=contraparte.id,
         counterpart_display_name=perfil.display_name if perfil else None,
         counterpart_role=contraparte.role,
+        #: Recado do convite (ADR-0043). Vai para os DOIS lados: quem escreveu
+        #: precisa ver o que mandou na lista de convites enviados, e quem
+        #: recebeu é o destinatário. Ninguém além das duas partes chega aqui.
+        message=care.mensagem_do_convite(link),
         created_at=link.created_at,
         consented_at=link.consented_at,
     )
@@ -51,7 +55,11 @@ def solicitar_vinculo(
 
     A resposta é **sempre a mesma**, mesmo se o e-mail não existir.
     """
-    care.solicitar(solicitante=user, email_contraparte=payload.email)
+    care.solicitar(
+        solicitante=user,
+        email_contraparte=payload.email,
+        mensagem=payload.message,
+    )
     session.commit()
     return SOLICITACAO_REGISTRADA
 
@@ -62,7 +70,7 @@ def listar_vinculos(
     care: CareService = Depends(get_care_service),
 ) -> list[CareLinkResponse]:
     """Vínculos vivos do usuário (médico vê pacientes; paciente vê médicos)."""
-    return [_para_resposta(link, user) for link in care.listar(user)]
+    return [_para_resposta(link, user, care) for link in care.listar(user)]
 
 
 @router.post("/care-links/{care_link_id}/accept", response_model=CareLinkResponse)
@@ -87,7 +95,7 @@ def aceitar_vinculo(
             status_code=status.HTTP_409_CONFLICT, detail="vinculo nao esta pendente"
         ) from None
     session.commit()
-    return _para_resposta(link, user)
+    return _para_resposta(link, user, care)
 
 
 @router.post("/care-links/{care_link_id}/decline", response_model=CareLinkResponse)
@@ -110,7 +118,7 @@ def recusar_vinculo(
             status_code=status.HTTP_409_CONFLICT, detail="vinculo nao esta pendente"
         ) from None
     session.commit()
-    return _para_resposta(link, user)
+    return _para_resposta(link, user, care)
 
 
 @router.post("/care-links/{care_link_id}/revoke", response_model=CareLinkResponse)
@@ -126,7 +134,7 @@ def revogar_vinculo(
     except NotAllowedError:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="vinculo nao encontrado") from None
     session.commit()
-    return _para_resposta(link, user)
+    return _para_resposta(link, user, care)
 
 
 @router.get("/patients/{patient_id}", response_model=PatientSummary)
