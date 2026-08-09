@@ -165,7 +165,7 @@ export default function DoctorScreen() {
 
   if (carregando) {
     return (
-      <ScreenContainer wide>
+      <ScreenContainer largura="app">
         <Skeleton width={260} height={32} />
         <Text style={styles.carregandoNota}>
           Carregando as pessoas que autorizaram seu acompanhamento…
@@ -176,7 +176,7 @@ export default function DoctorScreen() {
   }
 
   return (
-    <ScreenContainer wide>
+    <ScreenContainer largura="app">
       {/* ===== cabeçalho ===== */}
       <View style={styles.topo}>
         <View style={styles.topoTextos}>

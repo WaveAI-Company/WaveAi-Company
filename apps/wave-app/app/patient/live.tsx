@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useMemo } from "react";
-import { Pressable, StyleSheet, Text, useWindowDimensions, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { formatPercent } from "../../src/api/results";
 import {
@@ -33,7 +33,9 @@ import { deviceConnection } from "../../src/device/connection";
 import type { DeviceInfo, Esense } from "../../src/device/DeviceConnection";
 import { SignalSimulator } from "../../src/mocks/signalSimulator";
 import {
+  larguras,
   useAccentFor,
+  useFaixa,
   useInteracao,
   useRoleAccent,
   useTheme,
@@ -60,7 +62,8 @@ const MAX_PONTOS = 40;
 /** Pior contato possível relatado pelo aparelho (0 = bom, 200 = solto). */
 const POOR_SIGNAL_MAX = 200;
 /** A partir daqui a tela se organiza em colunas. */
-const LARGURA_COLUNAS = 900;
+// `.grid` do mockup: `minmax(0,1fr) 360px` acima de 1199 e uma coluna
+// abaixo — o trilho lateral não sobrevive à faixa média.
 
 function relogio(segundos: number): string {
   const m = Math.floor(segundos / 60);
@@ -87,7 +90,7 @@ export default function PatientLiveScreen() {
   const papel = useRoleAccent();
   const aparelhoAccent = useAccentFor("doctor");
   const styles = useMemo(() => criarEstilos(t), [t]);
-  const emColunas = useWindowDimensions().width >= LARGURA_COLUNAS;
+  const emColunas = useFaixa() === "largo";
 
   const [ativo, setAtivo] = useState(false);
   const [features, setFeatures] = useState<LiveFeatures | null>(null);
@@ -325,7 +328,7 @@ export default function PatientLiveScreen() {
           : t.colors.warningText;
 
   return (
-    <ScreenContainer wide>
+    <ScreenContainer largura="app">
       {/* ===== faixa superior: cronômetro e situação da sessão ===== */}
       <View style={styles.topo}>
         {ativo || encerrando ? (
@@ -760,7 +763,9 @@ const criarEstilos = (t: Theme) =>
       gap: t.spacing.md,
     },
     trilhoLateral: {
-      width: 320,
+      flexGrow: 0,
+      flexShrink: 0,
+      width: larguras.trilhoLive,
     },
     heroiChips: {
       flexDirection: "row",
