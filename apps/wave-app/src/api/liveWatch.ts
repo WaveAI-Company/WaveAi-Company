@@ -8,13 +8,20 @@
  * corpo em stream (a tela é oferecida só no web).
  */
 
-import { API_URL, getAccessToken } from "../auth/api";
+import { API_URL, getAccessToken, request } from "../auth/api";
 import type { LiveEsense, LiveFeatures } from "./stream";
 
 export type WatchClosed = { report: unknown; result: unknown };
 
 export type WatchHandlers = {
-  onStatus?(live: boolean): void;
+  /**
+   * Estado inicial. `shared` só vem para o **espectador** (ADR-0045): diz se o
+   * titular ligou o compartilhamento desta sessão. `undefined` no stream do
+   * próprio titular, que não depende da chave para ver o próprio dado.
+   */
+  onStatus?(live: boolean, shared?: boolean): void;
+  /** O titular ligou/desligou o compartilhamento durante a transmissão. */
+  onShare?(shared: boolean): void;
   onFeatures?(features: LiveFeatures): void;
   onEsense?(esense: LiveEsense): void;
   onClosed?(closed: WatchClosed): void;
@@ -25,6 +32,7 @@ export type WatchHandlers = {
 type EventoSSE = {
   type?: string;
   live?: boolean;
+  shared?: boolean;
   features?: LiveFeatures;
   esense?: LiveEsense;
   report?: unknown;
@@ -41,10 +49,30 @@ export function watchMyLive(handlers: WatchHandlers): () => void {
 
 /**
  * Assina a transmissão ao vivo de um **paciente vinculado** (profissional). O
- * servidor exige CareLink ativo e audita a visualização (ADR-0039).
+ * servidor exige CareLink ativo e audita a visualização (ADR-0039) — e só
+ * entrega as janelas se o titular tiver ligado o compartilhamento desta sessão
+ * (ADR-0045). Quando ele desliga no meio, chega um `share` com `false` e o
+ * servidor encerra o stream.
  */
 export function watchPatientLive(patientId: string, handlers: WatchHandlers): () => void {
   return assinar(`/patients/${patientId}/live`, handlers);
+}
+
+/**
+ * Liga/desliga o compartilhamento ao vivo **desta** sessão (ADR-0045).
+ *
+ * É ato do titular e vale só enquanto a sessão está ativa. Desligar corta a
+ * transmissão dos profissionais na hora — o servidor encerra o stream deles.
+ */
+export async function setLiveSharing(
+  sessionId: string,
+  enabled: boolean,
+): Promise<boolean> {
+  const resposta = await request<{ live_sharing_enabled: boolean }>(
+    `/me/sessions/${sessionId}/live-sharing`,
+    { method: "PUT", body: { enabled }, auth: true },
+  );
+  return resposta.live_sharing_enabled;
 }
 
 function assinar(path: string, handlers: WatchHandlers): () => void {
@@ -112,7 +140,10 @@ function despachar(bruto: string, h: WatchHandlers): void {
   const nomeEvento = linhas.find((l) => l.startsWith("event:"))?.slice("event:".length).trim();
   switch (evento.type ?? nomeEvento) {
     case "status":
-      h.onStatus?.(Boolean(evento.live));
+      h.onStatus?.(Boolean(evento.live), evento.shared);
+      break;
+    case "share":
+      h.onShare?.(Boolean(evento.shared));
       break;
     case "features":
       if (evento.features) h.onFeatures?.(evento.features);

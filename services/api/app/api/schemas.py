@@ -253,6 +253,12 @@ class CareLinkResponse(BaseModel):
     consented_at: datetime | None
 
 
+class LiveSharingRequest(BaseModel):
+    """Chave do compartilhamento ao vivo de uma sessão (ADR-0045)."""
+
+    enabled: bool
+
+
 class PatientSummary(BaseModel):
     """Dados mínimos do paciente (ADR-0022: minimização)."""
 
