@@ -385,6 +385,43 @@ const ICONES = {
     </>
   ),
   /**
+   * Direção de uma tendência ao longo das sessões.
+   *
+   * Setas e não cor: subir não é bom nem ruim aqui (ADR-0027). São três
+   * ícones e não uma seta rotacionada porque `transform` no `Svg` do
+   * react-native-svg gira também a caixa, e o alinhamento com o texto ao lado
+   * deixaria de ser previsível.
+   */
+  arrowUp: (c: string, w: number) => (
+    <Path
+      d="M12 19.5V4.5M6 10.5 12 4.5l6 6"
+      stroke={c}
+      strokeWidth={w}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  ),
+  /** Ver `arrowUp`. */
+  arrowDown: (c: string, w: number) => (
+    <Path
+      d="M12 4.5v15M6 13.5l6 6 6-6"
+      stroke={c}
+      strokeWidth={w}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  ),
+  /** Ver `arrowUp`. Direção estável. */
+  arrowRight: (c: string, w: number) => (
+    <Path
+      d="M4.5 12h15M13.5 6l6 6-6 6"
+      stroke={c}
+      strokeWidth={w}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  ),
+  /**
    * Guia por voz ligada.
    *
    * **Desenhado aqui, não copiado:** o protocolo guiado por voz é nosso (P4) e

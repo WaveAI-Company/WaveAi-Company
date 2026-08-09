@@ -198,9 +198,12 @@ export const GLOSSARY: Record<string, GlossaryEntry> = {
   trend_direction: {
     label: "Tendência",
     plain:
-      "A direção de uma medida ao longo das suas sessões: ↑ subindo, ↓ " +
-      "descendo, → estável, com a variação em %. É direção numérica — sem " +
-      "juízo de 'bom' ou 'ruim'.",
+      // Sem os glifos ↑ ↓ → que estavam aqui: a tela mostra ícones de traço
+      // (P8-b), e um verbete que descreve setas de fonte descreveria outra
+      // coisa. As palavras bastam, e quem ouve o texto não perde nada.
+      "A direção de uma medida ao longo das suas sessões — subindo, descendo " +
+      "ou estável —, com a variação em %. É direção numérica: sem juízo de " +
+      "'bom' ou 'ruim'.",
     source: "Motor de análise (relatório longitudinal, N5)",
   },
   live_band_trend: {

@@ -3,11 +3,12 @@ import { StyleSheet, Text, View } from "react-native";
 
 import { formatDate, formatNumber } from "../api/results";
 import {
-  directionSymbol,
+  directionIcon,
   featureLabel,
   type LongitudinalReport as Report,
 } from "../api/report";
 import { useTheme, type Theme } from "../theme";
+import { Icon } from "./Icon";
 import { Panel } from "./Panel";
 import { InfoButton } from "./InfoButton";
 
@@ -75,9 +76,9 @@ export function LongitudinalReport({ report }: Props) {
           </Text>
           {trends.map(([chave, tr]) => (
             <View key={chave} style={styles.linha}>
-              <Text style={styles.seta} accessibilityLabel={tr.direction}>
-                {directionSymbol(tr.direction)}
-              </Text>
+              <View style={styles.seta} accessibilityLabel={tr.direction}>
+                <Icon name={directionIcon(tr.direction)} size={15} color={t.colors.textMuted} />
+              </View>
               <Text style={styles.medida} numberOfLines={1}>
                 {featureLabel(chave)}
               </Text>
@@ -130,10 +131,9 @@ const criarEstilos = (t: Theme) =>
       paddingVertical: 2,
     },
     seta: {
-      ...t.typography.bodyStrong,
-      color: t.colors.textMuted,
+      alignItems: "center",
+      justifyContent: "center",
       width: 16,
-      textAlign: "center",
     },
     medida: {
       ...t.typography.body,
