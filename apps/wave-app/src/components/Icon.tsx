@@ -285,6 +285,25 @@ const ICONES = {
       strokeLinejoin="round"
     />
   ),
+  /** Encerrar a sessão. */
+  logOut: (c: string, w: number) => (
+    <>
+      <Path
+        d="M9 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h3"
+        stroke={c}
+        strokeWidth={w}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <Path
+        d="m16 17 5-5-5-5M21 12H9"
+        stroke={c}
+        strokeWidth={w}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </>
+  ),
   /** Início. */
   home: (c: string, w: number) => (
     <>

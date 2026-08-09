@@ -13,6 +13,14 @@ export {
   type RoleAccent,
   type Theme,
 } from "./ThemeProvider";
+export {
+  bp,
+  larguras,
+  teto,
+  useAoMenosMedio,
+  useFaixa,
+  type FaixaLargura,
+} from "./breakpoints";
 export { withAlpha } from "./color";
 export {
   accentSoft,

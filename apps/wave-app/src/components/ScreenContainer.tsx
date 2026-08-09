@@ -1,22 +1,30 @@
 import { useMemo, type ReactNode } from "react";
 import { ScrollView, StyleSheet, View } from "react-native";
 
-import { useTheme, type Theme } from "../theme";
+import { teto, useTheme, type Theme } from "../theme";
+
+/**
+ * Quanto a tela pode ocupar.
+ *
+ * **O teto é por tela, e sai do mockup** (P8-d): o painel do profissional vai a
+ * 1720px, as telas de app com colunas a 1600, o perfil a 1400, as listas mais
+ * leves a 1100 e um documento corrido para em 720. Antes havia um teto único
+ * de 1280 para tudo, e num monitor largo isso deixava quase meio milhar de
+ * pixels vazios de cada lado da tela mais densa do produto.
+ */
+export type LarguraTela = keyof typeof teto;
 
 type Props = {
   children: ReactNode;
   /**
-   * Solta o teto de largura para telas que se organizam em colunas.
-   *
-   * O padrão de 720 serve a texto e listas — linha longa demais cansa de ler.
-   * Mas numa tela de painéis lado a lado esse teto deixava o conteúdo boiando
-   * ao lado da barra lateral, que foi uma das queixas do teste em grupo.
+   * Teto de largura. O padrão `documento` serve a texto e listas — linha longa
+   * demais cansa de ler. Telas que se organizam em colunas pedem o seu.
    */
-  wide?: boolean;
+  largura?: LarguraTela;
 };
 
 /** Container padrão das telas: fundo, respiro e rolagem (útil no web estreito). */
-export function ScreenContainer({ children, wide }: Props) {
+export function ScreenContainer({ children, largura = "documento" }: Props) {
   const t = useTheme();
   const styles = useMemo(() => criarEstilos(t), [t]);
 
@@ -26,7 +34,7 @@ export function ScreenContainer({ children, wide }: Props) {
       contentContainerStyle={styles.content}
       keyboardShouldPersistTaps="handled"
     >
-      <View style={[styles.inner, wide && styles.innerLargo]}>{children}</View>
+      <View style={[styles.inner, { maxWidth: teto[largura] }]}>{children}</View>
     </ScrollView>
   );
 }
@@ -45,10 +53,6 @@ const criarEstilos = (t: Theme) =>
       alignSelf: "center",
       flex: 1,
       gap: t.spacing.md,
-      maxWidth: 720,
       width: "100%",
-    },
-    innerLargo: {
-      maxWidth: 1280,
     },
   });

@@ -14,27 +14,36 @@ import { useAuth } from "../../auth/AuthContext";
 import { activeHref, routeTitle } from "../../navigation/navItems";
 import {
   anelFoco,
+  larguras,
   motion,
   semContornoNativo,
   transicao,
+  useFaixa,
   useInteracao,
   useRoleAccent,
   useTheme,
+  withAlpha,
   type Theme,
 } from "../../theme";
+import { Avatar } from "../Avatar";
 import { Logo } from "../brand/Logo";
 import { Icon, type IconName } from "../Icon";
 import { Button } from "../Button";
 import { NavList } from "./NavList";
 
-/** A partir desta largura a navegação vira sidebar fixa; abaixo, drawer. */
-const BREAKPOINT = 768;
-const PAINEL_W = 280;
+const PAINEL_W = larguras.navegacao;
+const RAIL_W = larguras.navegacaoRail;
 const HEADER_H = 56;
 
 /**
  * Casca do app (P6-a): header persistente + navegação **lateral no web** e
  * **drawer + hambúrguer no mobile**, no lugar do fluxo empilhado com "voltar".
+ *
+ * **Três estados de largura desde a P8-d**, como no mockup: navegação completa
+ * de 240px acima de 1199, **recolhida a ícones em 76px** entre 768 e 1199, e
+ * gaveta abaixo disso. O estado do meio não existia — a coluna de 280px
+ * seguia inteira até 768px e sufocava o conteúdo justamente onde a tela já
+ * era apertada.
  *
  * Sem dependência nativa nova (ADR-0038): o layout responsivo usa
  * `useWindowDimensions` e o drawer desliza com `Animated` (built-in) — nada de
@@ -49,7 +58,9 @@ export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
 
-  const lateral = width >= BREAKPOINT;
+  const faixa = useFaixa();
+  const lateral = faixa !== "movel";
+  const rail = faixa === "medio";
   const [aberto, setAberto] = useState(false);
   const tx = useRef(new Animated.Value(-PAINEL_W)).current;
 
@@ -79,12 +90,14 @@ export function AppShell({ children }: { children: ReactNode }) {
     activeHref(pathname, user.role) === null && router.canGoBack()
       ? () => router.back()
       : undefined;
-  const painel = <PainelLateral onNavigate={() => setAberto(false)} pathname={pathname} />;
+  const painel = (
+    <PainelLateral onNavigate={() => setAberto(false)} pathname={pathname} rail={rail} />
+  );
 
   if (lateral) {
     return (
       <View style={styles.rootRow}>
-        <View style={styles.sidebar}>{painel}</View>
+        <View style={[styles.sidebar, rail && styles.sidebarRail]}>{painel}</View>
         <View style={styles.principal}>
           <Header titulo={titulo} onBack={onVoltar} />
           <View style={styles.conteudo}>{children}</View>
@@ -128,9 +141,11 @@ export function AppShell({ children }: { children: ReactNode }) {
 function PainelLateral({
   onNavigate,
   pathname,
+  rail,
 }: {
   onNavigate: () => void;
   pathname: string;
+  rail?: boolean;
 }) {
   const t = useTheme();
   const { accent } = useRoleAccent();
@@ -141,25 +156,47 @@ function PainelLateral({
   const papel = user.role === "doctor" ? "profissional de bem-estar" : "paciente";
 
   return (
-    <View style={styles.painel}>
-      <View style={styles.marca}>
-        <Logo size={36} tint={accent} withWordmark tagline="análise de bem-estar" />
+    <View style={[styles.painel, rail && styles.painelRail]}>
+      <View style={[styles.marca, rail && styles.marcaRail]}>
+        {/* No rail cabe o ladrilho, não o letreiro. */}
+        <Logo size={rail ? 32 : 36} tint={accent} withWordmark={!rail} tagline={rail ? undefined : "análise de bem-estar"} />
       </View>
 
-      <NavList role={user.role} pathname={pathname} onNavigate={onNavigate} />
+      <NavList role={user.role} pathname={pathname} onNavigate={onNavigate} rail={rail} />
 
-      <View style={styles.rodape}>
-        <Text style={styles.rodapeNome} numberOfLines={1}>
-          {user.display_name}
-        </Text>
-        <Text style={styles.rodapePapel}>{papel}</Text>
-        <Button label="Sair" onPress={signOut} variant="secondary" />
-      </View>
+      {/* O texto de identidade sai no rail — é o que o mockup esconde lá
+          (`.side-foot { display:none }`). A **saída não sai**: escondê-la
+          junto deixaria o profissional sem como encerrar a sessão sem antes
+          voltar ao início. Ela vira ícone e continua no mesmo canto. */}
+      {rail ? (
+        <View style={styles.rodapeRail}>
+          <BotaoIcone
+            label="Sair"
+            icone="logOut"
+            onPress={signOut}
+            styles={styles}
+          />
+        </View>
+      ) : (
+        <View style={styles.rodape}>
+          <Text style={styles.rodapeNome} numberOfLines={1}>
+            {user.display_name}
+          </Text>
+          <Text style={styles.rodapePapel}>{papel}</Text>
+          <Button label="Sair" onPress={signOut} variant="secondary" />
+        </View>
+      )}
     </View>
   );
 }
 
-/** Barra superior: voltar (detalhe) + hambúrguer (estreito) + título da seção. */
+/**
+ * Barra superior — o `.app-head` do mockup:
+ * `[voltar/menu] [título] [espaçador] [tema] [avatar]`.
+ *
+ * O tema e o avatar entraram na P8-d. Antes, trocar o tema exigia ir ao perfil
+ * (e nas telas de autenticação havia um botão que a casca não tinha).
+ */
 function Header({
   titulo,
   onMenu,
@@ -170,7 +207,16 @@ function Header({
   onBack?: () => void;
 }) {
   const t = useTheme();
+  const router = useRouter();
   const styles = useMemo(() => criarEstilos(t), [t]);
+  const { user } = useAuth();
+  const { accent } = useRoleAccent();
+
+  // O avatar leva ao perfil, e **só o paciente tem essa tela**. Mostrá-lo ao
+  // profissional seria desenhar uma afordância sem destino; o perfil dele é
+  // uma tela que ainda não existe, não um detalhe de casca.
+  const temPerfil = user?.role === "patient";
+
   return (
     <View style={styles.header}>
       {onBack ? (
@@ -182,7 +228,57 @@ function Header({
       <Text style={styles.headerTitulo} numberOfLines={1}>
         {titulo}
       </Text>
+      <View style={styles.headerEspaco} />
+      <BotaoIcone
+        label={`Mudar para o tema ${t.isDark ? "claro" : "escuro"}`}
+        icone={t.isDark ? "sun" : "moon"}
+        onPress={() => t.setPreference(t.isDark ? "light" : "dark")}
+        styles={styles}
+      />
+      {temPerfil ? (
+        <AvatarPerfil
+          nome={user?.display_name}
+          accent={accent}
+          styles={styles}
+          onPress={() => router.navigate("/patient/profile")}
+        />
+      ) : null}
     </View>
+  );
+}
+
+/** Avatar do header — atalho para o perfil (o `.avatar` do mockup). */
+function AvatarPerfil({
+  nome,
+  accent,
+  onPress,
+  styles,
+}: {
+  nome: string | null | undefined;
+  accent: string;
+  onPress: () => void;
+  styles: ReturnType<typeof criarEstilos>;
+}) {
+  const t = useTheme();
+  const { estado, handlers } = useInteracao();
+
+  return (
+    <Pressable
+      accessibilityRole="link"
+      accessibilityLabel="Abrir perfil"
+      onPress={onPress}
+      {...handlers}
+      style={[
+        styles.avatarAlvo,
+        // `.avatar:hover{box-shadow:0 0 0 3px var(--accent-soft)}`.
+        estado.hovered && !estado.focoVisivel
+          ? { boxShadow: `0px 0px 0px 3px ${withAlpha(accent, t.isDark ? 0.12 : 0.1)}` }
+          : null,
+        estado.focoVisivel ? { boxShadow: anelFoco(accent, t.colors.surface) } : null,
+      ]}
+    >
+      <Avatar name={nome} size={36} tone={accent} />
+    </Pressable>
   );
 }
 
@@ -237,6 +333,9 @@ const criarEstilos = (t: Theme) =>
       borderRightWidth: 1,
       width: PAINEL_W,
     },
+    sidebarRail: {
+      width: RAIL_W,
+    },
     principal: {
       flex: 1,
     },
@@ -268,14 +367,37 @@ const criarEstilos = (t: Theme) =>
       color: t.colors.text,
       flexShrink: 1,
     },
+    // Empurra tema e avatar para a direita — o `.sp` do mockup.
+    headerEspaco: {
+      flex: 1,
+    },
+    avatarAlvo: {
+      borderRadius: 18,
+      ...transicao("box-shadow", motion.media),
+      ...semContornoNativo(),
+    },
     // Painel (sidebar ou conteúdo do drawer).
     painel: {
       flex: 1,
       gap: t.spacing.md,
       padding: t.spacing.md,
     },
+    painelRail: {
+      alignItems: "stretch",
+      paddingHorizontal: t.spacing.sm + 2,
+    },
     marca: {
       paddingVertical: t.spacing.xs,
+    },
+    marcaRail: {
+      alignItems: "center",
+    },
+    rodapeRail: {
+      alignItems: "center",
+      borderTopColor: t.colors.border,
+      borderTopWidth: 1,
+      marginTop: "auto",
+      paddingTop: t.spacing.md,
     },
     rodape: {
       borderTopColor: t.colors.border,
