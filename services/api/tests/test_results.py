@@ -439,12 +439,22 @@ def test_medico_le_results_so_com_vinculo_ativo(client: TestClient, db_session: 
 
 
 class _AnalysisReportFake:
-    """Duplo da Analysis para o relatório: registra a série recebida."""
+    """Duplo da Analysis para o relatório: registra a série recebida.
+
+    **Recusa lista vazia, como o serviço real** (`LongitudinalRequest.sessions`
+    tem `min_length=1`). Um duplo mais permissivo que o original transforma o
+    teste em ficção: foi assim que a janela vazia passou verde aqui e devolveu
+    503 no ambiente de verdade (P11-a).
+    """
 
     def __init__(self) -> None:
         self.calls: list[tuple] = []
 
     def longitudinal_report(self, sessions, quality_scores=None):
+        if not sessions:
+            raise AssertionError(
+                "a Analysis real recusa série vazia; o gateway não deve chamá-la"
+            )
         self.calls.append((sessions, quality_scores))
         return {
             "engine_version": "fake/1.0",
@@ -664,11 +674,18 @@ def test_me_report_longitudinal_com_days(client_report, db_session: Session, ana
     assert tudo["window_days"] is None
 
 
-def test_report_com_janela_vazia_responde_200(client_report, db_session: Session):
+def test_report_com_janela_vazia_responde_200(client_report, db_session: Session, analysis_fake):
     """Janela sem sessão é 200 vazio, não 404: a tela diz "nenhuma sessão neste
-    período" — erro faria a tela inteira cair."""
+    período" — erro faria a tela inteira cair.
+
+    E a Analysis **não é chamada**: ela recusa lista vazia (`min_length=1`), o
+    que virava 503 "analise indisponivel" — mentira, porque o serviço está de
+    pé; é que não há o que analisar. O duplo desta suíte aceitava lista vazia e
+    escondeu o defeito até o smoke (P11-a).
+    """
     p = Paciente(client_report, consentiu=True)
     _seed_result_features(db_session, p.email, 0.30, 0.9, _ha_dias(90))
+    chamadas_antes = len(analysis_fake.calls)
 
     resp = p.get("/me/report/longitudinal?days=7")
 
@@ -677,6 +694,21 @@ def test_report_com_janela_vazia_responde_200(client_report, db_session: Session
     assert body["n_sessions"] == 0
     assert body["period"] is None
     assert body["window_days"] == 7
+    assert body["report"] == {"n_sessions": 0, "features": {}}
+    assert body["summary"] == []
+    # Nenhum motor rodou, então não há versão a carimbar.
+    assert body["engine_version"] is None
+    assert len(analysis_fake.calls) == chamadas_antes
+
+
+def test_conta_sem_nenhuma_sessao_nao_chama_a_analysis(client_report, analysis_fake):
+    """Mesmo caminho, sem recorte: conta nova também não tem o que analisar."""
+    p = Paciente(client_report, consentiu=True)
+
+    body = p.get("/me/report/longitudinal").json()
+
+    assert body["n_sessions"] == 0
+    assert analysis_fake.calls == []
 
 
 def test_me_results_recorta_pela_janela(client: TestClient, db_session: Session):
