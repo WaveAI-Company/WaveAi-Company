@@ -35,16 +35,26 @@ class AccessClaims:
     user_id: uuid.UUID
     role: str
     jti: str
+    #: Cópia do `User.token_version` no momento da emissão. É o que permite ao
+    #: logout global (e à troca/redefinição de senha) derrubar também os access
+    #: tokens já emitidos — sem isto, eles sobreviveriam até expirar.
+    token_version: int = 0
 
 
 def create_access_token(
-    *, user_id: uuid.UUID, role: str, settings: Settings, now: datetime | None = None
+    *,
+    user_id: uuid.UUID,
+    role: str,
+    settings: Settings,
+    now: datetime | None = None,
+    token_version: int = 0,
 ) -> str:
-    """Emite um access token assinado (claims: sub, role, exp, iat, jti, typ)."""
+    """Emite um access token assinado (claims: sub, role, tv, exp, iat, jti, typ)."""
     now = now or datetime.now(UTC)
     payload = {
         "sub": str(user_id),
         "role": role,
+        "tv": token_version,
         "typ": "access",
         "jti": uuid.uuid4().hex,
         "iat": int(now.timestamp()),
@@ -78,7 +88,15 @@ def decode_access_token(token: str, settings: Settings) -> AccessClaims:
     if not isinstance(role, str):
         raise InvalidTokenError("role ausente")
 
-    return AccessClaims(user_id=user_id, role=role, jti=payload.get("jti", ""))
+    # `tv` ausente vira 0: token emitido antes desta claim existir continua
+    # valendo para quem nunca fez logout global (`token_version` também é 0).
+    versao = payload.get("tv", 0)
+    return AccessClaims(
+        user_id=user_id,
+        role=role,
+        jti=payload.get("jti", ""),
+        token_version=int(versao) if isinstance(versao, int) else 0,
+    )
 
 
 def generate_opaque_token(nbytes: int) -> str:
