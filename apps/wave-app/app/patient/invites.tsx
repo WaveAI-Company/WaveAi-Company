@@ -117,7 +117,7 @@ export default function PatientInvitesScreen() {
   const pendentes = convites.filter((c) => !aceitos.includes(c.id));
 
   return (
-    <ScreenContainer>
+    <ScreenContainer largura="lista">
       <ScreenHeading
         title="Convites para te acompanhar"
         lead="Profissionais de bem-estar pediram para acompanhar suas tendências. Aceitar é opcional — e você pode revogar o acesso a qualquer momento, com efeito imediato."

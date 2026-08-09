@@ -1,6 +1,6 @@
 import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useMemo, useState } from "react";
-import { StyleSheet, Text, useWindowDimensions, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 
 import { listCareLinks, listPendingInvites, type CareLink } from "../../src/api/care";
 import { getConsentStatus } from "../../src/api/consent";
@@ -28,10 +28,16 @@ import { NavAction } from "../../src/components/NavAction";
 import { Panel } from "../../src/components/Panel";
 import { ScreenContainer } from "../../src/components/ScreenContainer";
 import { Skeleton } from "../../src/components/Skeleton";
-import { useRoleAccent, useTheme, type Theme } from "../../src/theme";
+import {
+  useFaixa,
+  useRoleAccent,
+  useTheme,
+  type Theme,
+} from "../../src/theme";
 
 /** A partir daqui o herói e o resumo da última sessão ficam lado a lado. */
-const LARGURA_COLUNAS = 900;
+// A home do mockup (`.home-grid`) tem **três** arranjos: 1,4fr/1fr acima de
+// 1199, colunas iguais entre 768 e 1199, e empilhado no celular.
 /** Quantas sessões entram nos gráficos rápidos da home. */
 const JANELA_TENDENCIA = 8;
 
@@ -84,7 +90,8 @@ export default function PatientHomeScreen() {
   const t = useTheme();
   const papel = useRoleAccent();
   const styles = useMemo(() => criarEstilos(t), [t]);
-  const emColunas = useWindowDimensions().width >= LARGURA_COLUNAS;
+  const faixa = useFaixa();
+  const emColunas = faixa !== "movel";
 
   const [consentido, setConsentido] = useState<boolean | null>(null);
   const [pendentes, setPendentes] = useState(0);
@@ -155,12 +162,12 @@ export default function PatientHomeScreen() {
 
   if (carregando) {
     return (
-      <ScreenContainer wide>
+      <ScreenContainer largura="app">
         <Skeleton width={280} height={32} />
         <Skeleton width={190} height={14} />
         <Text style={styles.carregandoNota}>Sincronizando suas sessões com o servidor…</Text>
         <View style={[styles.grade, emColunas && styles.gradeLinha]}>
-          <View style={styles.coluna}>
+          <View style={[styles.coluna, faixa === "largo" && styles.colunaPrincipalLarga]}>
             <Panel>
               <Skeleton width="60%" height={22} />
               <Skeleton width="85%" height={14} />
@@ -168,7 +175,7 @@ export default function PatientHomeScreen() {
               <Skeleton width={160} height={44} radius={t.radius.md} />
             </Panel>
           </View>
-          <View style={emColunas ? styles.colunaLateral : styles.coluna}>
+          <View style={[styles.coluna, faixa === "largo" && styles.colunaLateralLarga]}>
             <Panel>
               <Skeleton width="45%" height={18} />
               <Skeleton width="100%" height={22} radius={6} />
@@ -182,7 +189,7 @@ export default function PatientHomeScreen() {
   }
 
   return (
-    <ScreenContainer wide>
+    <ScreenContainer largura="app">
       {/* ===== saudação ===== */}
       <View style={styles.ola}>
         <View style={styles.olaTextos}>
@@ -286,7 +293,7 @@ export default function PatientHomeScreen() {
       {/* ===== herói + última sessão ===== */}
       {sessoes.length > 0 ? (
         <View style={[styles.grade, emColunas && styles.gradeLinha]}>
-          <View style={styles.coluna}>
+          <View style={[styles.coluna, faixa === "largo" && styles.colunaPrincipalLarga]}>
             <Panel grow>
               <Text style={styles.heroiTitulo}>Um bom momento para uma nova onda?</Text>
               <Text style={styles.heroiTexto}>
@@ -312,7 +319,7 @@ export default function PatientHomeScreen() {
           </View>
 
           {ultima ? (
-            <View style={emColunas ? styles.colunaLateral : styles.coluna}>
+            <View style={[styles.coluna, faixa === "largo" && styles.colunaLateralLarga]}>
               <Panel title="Última sessão" eyebrow={carimbo(ultima.created_at)} grow>
                 {ultima.metrics?.relative_band_powers ? (
                   <>
@@ -470,14 +477,13 @@ const criarEstilos = (t: Theme) =>
       gap: t.spacing.md,
       minWidth: 0,
     },
-    // Largura fixa, **sem** compor com `coluna`: aquela tem `flex: 1`, que no
-    // RN-web vira `flex-basis: 0%` e vence a largura no eixo principal — a
-    // coluna encolhia até o texto quebrar letra a letra.
-    colunaLateral: {
-      flexGrow: 0,
-      flexShrink: 0,
-      gap: t.spacing.md,
-      width: 360,
+    // Proporção, não largura fixa: o mockup pede `1.4fr 1fr`, e uma coluna
+    // fixa de 360px não acompanharia o teto de 1600px desta tela.
+    colunaPrincipalLarga: {
+      flex: 1.4,
+    },
+    colunaLateralLarga: {
+      flex: 1,
     },
     heroiTitulo: {
       ...t.typography.title,

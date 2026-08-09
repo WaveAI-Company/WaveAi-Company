@@ -1,6 +1,6 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Pressable, StyleSheet, Text, useWindowDimensions, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { listCareLinks, type CareLink } from "../../../src/api/care";
 import { watchPatientLive } from "../../../src/api/liveWatch";
@@ -29,9 +29,11 @@ import { BandLegend } from "../../../src/components/charts/BandLegend";
 import { TrendChart, type TrendPoint } from "../../../src/components/charts/TrendChart";
 import {
   anelFoco,
+  larguras,
   motion,
   semContornoNativo,
   transicao,
+  useFaixa,
   useInteracao,
   useRoleAccent,
   useTheme,
@@ -39,7 +41,8 @@ import {
 } from "../../../src/theme";
 
 /** A partir daqui o trilho de pessoas fica ao lado do conteúdo. */
-const LARGURA_TRILHO = 1024;
+// `.pro-wrap` do mockup: `280px minmax(0,1fr)` acima de 1199, uma coluna
+// abaixo.
 /** Quantas sessões entram nos gráficos do painel. */
 const JANELA = 8;
 
@@ -89,7 +92,14 @@ export default function PatientDetailScreen() {
   const t = useTheme();
   const { accent } = useRoleAccent();
   const styles = useMemo(() => criarEstilos(t), [t]);
-  const comTrilho = useWindowDimensions().width >= LARGURA_TRILHO;
+  const faixa = useFaixa();
+  const comTrilho = faixa === "largo";
+  const estiloTile =
+    faixa === "largo"
+      ? styles.tileLargo
+      : faixa === "medio"
+        ? styles.tileMedio
+        : styles.tileEstreito;
 
   const [vinculos, setVinculos] = useState<CareLink[]>([]);
   const [results, setResults] = useState<SessionResult[]>([]);
@@ -162,9 +172,16 @@ export default function PatientDetailScreen() {
     ? `${formatDate(report.period.first)} – ${formatDate(report.period.last)}`
     : null;
 
-  /** Tile de número — um fato por painel, como no design. */
+  /**
+   * Tile de número — um fato por painel, como no design.
+   *
+   * O mockup põe quatro por linha e cai para duas em 1280; aqui são **três**
+   * fatos (o quarto do mockup era o motor de análise, que já vive no rastro do
+   * rodapé), então a faixa larga divide a linha em três em vez de deixar um
+   * buraco na grade.
+   */
   const tile = (rotulo: string, valor: string, sub?: string) => (
-    <View key={rotulo} style={styles.tile}>
+    <View key={rotulo} style={[styles.tile, estiloTile]}>
       <Panel grow>
         <Text style={styles.tileRotulo}>{rotulo}</Text>
         <Text style={styles.tileValor}>{valor}</Text>
@@ -213,7 +230,7 @@ export default function PatientDetailScreen() {
 
   if (carregando) {
     return (
-      <ScreenContainer wide>
+      <ScreenContainer largura="painel">
         <Skeleton width={64} height={64} radius={32} />
         <Skeleton width={260} height={28} />
         <Skeleton width={340} height={14} />
@@ -227,7 +244,7 @@ export default function PatientDetailScreen() {
 
   if (erro) {
     return (
-      <ScreenContainer wide>
+      <ScreenContainer largura="painel">
         <Text style={styles.erro} accessibilityRole="alert">
           {erro}
         </Text>
@@ -236,7 +253,7 @@ export default function PatientDetailScreen() {
   }
 
   return (
-    <ScreenContainer wide>
+    <ScreenContainer largura="painel">
       <View style={[styles.grade, comTrilho && styles.gradeLinha]}>
         {comTrilho ? <View style={styles.colunaTrilho}>{trilho}</View> : null}
 
@@ -310,7 +327,11 @@ export default function PatientDetailScreen() {
                 {tile("Última sessão", ultima ? formatDate(ultima.created_at) : "—")}
                 {/* Espaçadores: sem eles um tile sozinho na última fila estica. */}
                 {[0, 1, 2].map((i) => (
-                  <View key={`espaco-${i}`} style={styles.espacador} aria-hidden />
+                  <View
+                    key={`espaco-${i}`}
+                    style={[styles.espacador, estiloTile]}
+                    aria-hidden
+                  />
                 ))}
               </View>
 
@@ -447,7 +468,7 @@ const criarEstilos = (t: Theme) =>
     colunaTrilho: {
       flexGrow: 0,
       flexShrink: 0,
-      width: 300,
+      width: larguras.listaPessoas,
     },
     conteudo: {
       flex: 1,
@@ -519,17 +540,20 @@ const criarEstilos = (t: Theme) =>
       gap: t.spacing.md,
     },
     tile: {
-      flexBasis: 200,
       flexGrow: 1,
       minWidth: 0,
     },
     espacador: {
-      flexBasis: 200,
       flexGrow: 1,
       height: 0,
       marginBottom: -t.spacing.md,
       minWidth: 0,
     },
+    // Quantos cabem por linha, por faixa. A base fica abaixo da fração exata
+    // para o `gap` caber sem empurrar o último para a linha de baixo.
+    tileLargo: { flexBasis: "30%" },
+    tileMedio: { flexBasis: "46%" },
+    tileEstreito: { flexBasis: "100%" },
     tileRotulo: {
       ...t.typography.caption,
       color: t.colors.textSubtle,
