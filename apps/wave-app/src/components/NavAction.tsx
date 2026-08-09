@@ -1,7 +1,18 @@
 import { useMemo } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
-import { useRoleAccent, useTheme, type Theme } from "../theme";
+import {
+  anelFoco,
+  comporSombras,
+  elevar,
+  motion,
+  semContornoNativo,
+  transicao,
+  useInteracao,
+  useRoleAccent,
+  useTheme,
+  type Theme,
+} from "../theme";
 
 type Props = {
   label: string;
@@ -17,11 +28,17 @@ type Props = {
  *
  * Substitui os `Pressable` soltos que cada tela montava à mão — que variavam
  * em altura, borda e cor, e não garantiam alvo de toque mínimo.
+ *
+ * **Estados (P8-a).** Segue o cartão clicável do mockup (`.sess`, `.pcard`):
+ * ao ponteiro sobe 1px, pinta o fundo um nível acima e — quando a borda é
+ * neutra — puxa a borda para o destaque, que é a única pista de que a linha
+ * leva a algum lugar.
  */
 export function NavAction({ label, onPress, description, tone = "accent" }: Props) {
   const t = useTheme();
   const papel = useRoleAccent();
   const styles = useMemo(() => criarEstilos(t), [t]);
+  const { estado, handlers, reduzirMovimento } = useInteracao();
 
   const corBorda =
     tone === "attention"
@@ -36,15 +53,24 @@ export function NavAction({ label, onPress, description, tone = "accent" }: Prop
         ? papel.accentText
         : t.colors.text;
 
+  const noAr = estado.hovered && !estado.pressed;
+  const sombra = comporSombras(
+    estado.focoVisivel && anelFoco(papel.accent, t.colors.background),
+  );
+
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={description ? `${label}. ${description}` : label}
       onPress={onPress}
-      style={({ pressed }) => [
+      {...handlers}
+      style={[
         styles.base,
-        { borderColor: corBorda },
-        pressed && styles.pressionado,
+        { borderColor: noAr && tone === "neutral" ? papel.accent : corBorda },
+        noAr && styles.noAr,
+        noAr && elevar(-1, reduzirMovimento),
+        estado.pressed && styles.pressionado,
+        sombra ? { boxShadow: sombra } : null,
       ]}
     >
       <View style={styles.conteudo}>
@@ -64,9 +90,17 @@ const criarEstilos = (t: Theme) =>
       minHeight: t.minTouch,
       paddingHorizontal: t.spacing.md,
       paddingVertical: t.spacing.md,
+      ...transicao(
+        "transform, box-shadow, background-color, border-color",
+        [motion.rapida, motion.media, motion.media, motion.media],
+      ),
+      ...semContornoNativo(),
+    },
+    noAr: {
+      backgroundColor: t.colors.surfaceAlt,
     },
     pressionado: {
-      opacity: 0.7,
+      opacity: 0.85,
     },
     conteudo: {
       gap: t.spacing.xs,

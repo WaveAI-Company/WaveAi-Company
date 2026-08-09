@@ -15,6 +15,20 @@ export {
 } from "./ThemeProvider";
 export { withAlpha } from "./color";
 export {
+  accentSoft,
+  anelCampo,
+  anelFoco,
+  comporSombras,
+  elevar,
+  semContornoNativo,
+  sombraDestaque,
+  transicao,
+  useInteracao,
+  type EstadoInteracao,
+} from "./interaction";
+export { easing, motion } from "./motion";
+export { useReduzirMovimento } from "./useReduzirMovimento";
+export {
   BAND_COLORS,
   MIN_TOUCH,
   palettes,

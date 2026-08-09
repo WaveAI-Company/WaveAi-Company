@@ -1,7 +1,17 @@
 import { useMemo, type ReactNode } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
-import { useRoleAccent, useTheme, withAlpha, type Theme } from "../theme";
+import {
+  anelFoco,
+  motion,
+  semContornoNativo,
+  transicao,
+  useInteracao,
+  useRoleAccent,
+  useTheme,
+  withAlpha,
+  type Theme,
+} from "../theme";
 
 /**
  * Grupo de opções mutuamente exclusivas, no estilo do design "Maré".
@@ -44,32 +54,77 @@ export function SegmentedFilter<T extends string>({
 
   return (
     <View style={styles.grupo} accessibilityRole="radiogroup" accessibilityLabel={label}>
-      {options.map((opcao) => {
-        const ativo = opcao.value === value;
-        return (
-          <Pressable
-            key={opcao.value}
-            accessibilityRole="radio"
-            accessibilityState={{ checked: ativo, selected: ativo }}
-            // Um `role="radio"` anuncia a escolha por `aria-checked`, e o
-            // `accessibilityState` **não** vira esse atributo no RN-web: o
-            // leitor de tela ouvia três opções e nenhuma marcada — a seleção
-            // existia só como cor. A prop `aria-checked` vale nas duas pontas.
-            aria-checked={ativo}
-            accessibilityLabel={opcao.label}
-            onPress={() => onChange(opcao.value)}
-            style={[
-              styles.item,
-              fill && styles.itemLargo,
-              ativo && { backgroundColor: withAlpha(cor, 0.14) },
-            ]}
-          >
-            {opcao.icon}
-            <Text style={[styles.texto, ativo && { color: cor }]}>{opcao.label}</Text>
-          </Pressable>
-        );
-      })}
+      {options.map((opcao) => (
+        <Item
+          key={opcao.value}
+          opcao={opcao}
+          ativo={opcao.value === value}
+          cor={cor}
+          fill={fill}
+          onPress={() => onChange(opcao.value)}
+          styles={styles}
+        />
+      ))}
     </View>
+  );
+}
+
+/**
+ * Uma opção. É componente de verdade — e não uma função que devolve JSX —
+ * porque cada item precisa do **próprio** estado de interação, e hook não pode
+ * morar dentro de um `map`.
+ */
+function Item<T extends string>({
+  opcao,
+  ativo,
+  cor,
+  fill,
+  onPress,
+  styles,
+}: {
+  opcao: SegmentedOption<T>;
+  ativo: boolean;
+  cor: string;
+  fill?: boolean;
+  onPress: () => void;
+  styles: ReturnType<typeof criarEstilos>;
+}) {
+  const t = useTheme();
+  const { estado, handlers } = useInteracao();
+
+  return (
+    <Pressable
+      accessibilityRole="radio"
+      accessibilityState={{ checked: ativo, selected: ativo }}
+      // Um `role="radio"` anuncia a escolha por `aria-checked`, e o
+      // `accessibilityState` **não** vira esse atributo no RN-web: o
+      // leitor de tela ouvia três opções e nenhuma marcada — a seleção
+      // existia só como cor. A prop `aria-checked` vale nas duas pontas.
+      aria-checked={ativo}
+      accessibilityLabel={opcao.label}
+      onPress={onPress}
+      {...handlers}
+      style={[
+        styles.item,
+        fill && styles.itemLargo,
+        ativo && { backgroundColor: withAlpha(cor, 0.14) },
+        // `.seg button:hover{color:var(--ink)}`: no mockup o item inativo só
+        // acende o texto — pintar o fundo faria dois itens parecerem escolhidos.
+        estado.pressed && !ativo && { backgroundColor: t.colors.surfaceStrong },
+        estado.focoVisivel ? { boxShadow: anelFoco(cor, t.colors.surfaceAlt) } : null,
+      ]}
+    >
+      {opcao.icon}
+      <Text
+        style={[
+          styles.texto,
+          ativo && { color: cor },
+          !ativo && estado.hovered && { color: t.colors.text },
+        ]}
+      >
+        {opcao.label}
+      </Text>
+    </Pressable>
   );
 }
 
@@ -91,6 +146,8 @@ const criarEstilos = (t: Theme) =>
       justifyContent: "center",
       minHeight: 38,
       paddingHorizontal: t.spacing.md,
+      ...transicao("background-color, box-shadow", motion.media),
+      ...semContornoNativo(),
     },
     itemLargo: {
       flex: 1,
@@ -98,5 +155,6 @@ const criarEstilos = (t: Theme) =>
     texto: {
       ...t.typography.label,
       color: t.colors.textMuted,
+      ...transicao("color", motion.media),
     },
   });

@@ -2,7 +2,16 @@ import { useMemo, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { BANDS, formatPercent, type BandKey } from "../../api/results";
-import { useRoleAccent, useTheme, type Theme } from "../../theme";
+import {
+  anelFoco,
+  motion,
+  semContornoNativo,
+  transicao,
+  useInteracao,
+  useRoleAccent,
+  useTheme,
+  type Theme,
+} from "../../theme";
 import { TrendChart, type TrendPoint } from "./TrendChart";
 
 type Props = {
@@ -43,33 +52,16 @@ export function LiveBandTrend({ history, accent }: Props) {
     <View style={styles.wrapper}>
       {/* Seletor: a cor marca a SELEÇÃO, não uma banda "melhor". */}
       <View style={styles.seletor}>
-        {BANDS.map(({ key, label }) => {
-          const ativa = key === banda;
-          return (
-            <Pressable
-              key={key}
-              accessibilityRole="button"
-              accessibilityState={{ selected: ativa }}
-              accessibilityLabel={`Ver banda ${label}`}
-              onPress={() => setBanda(key)}
-              style={[
-                styles.chip,
-                ativa
-                  ? { backgroundColor: cor, borderColor: cor }
-                  : { borderColor: t.colors.borderStrong },
-              ]}
-            >
-              <Text
-                style={[
-                  styles.chipTexto,
-                  { color: ativa ? t.colors.onAccent : t.colors.text },
-                ]}
-              >
-                {label}
-              </Text>
-            </Pressable>
-          );
-        })}
+        {BANDS.map(({ key, label }) => (
+          <ChipBanda
+            key={key}
+            label={label}
+            ativa={key === banda}
+            cor={cor}
+            onPress={() => setBanda(key)}
+            styles={styles}
+          />
+        ))}
       </View>
 
       {atual !== undefined ? (
@@ -96,6 +88,55 @@ export function LiveBandTrend({ history, accent }: Props) {
   );
 }
 
+/**
+ * Um chip do seletor de banda.
+ *
+ * O realce de ponteiro puxa a borda para o **texto**, não para a cor da banda:
+ * a cor da banda é categórica e marca a *seleção* — usá-la só por passar o
+ * mouse sugeriria que a banda mudou de estado (ADR-0027).
+ */
+function ChipBanda({
+  label,
+  ativa,
+  cor,
+  onPress,
+  styles,
+}: {
+  label: string;
+  ativa: boolean;
+  cor: string;
+  onPress: () => void;
+  styles: ReturnType<typeof criarEstilos>;
+}) {
+  const t = useTheme();
+  const { estado, handlers } = useInteracao();
+
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityState={{ selected: ativa }}
+      accessibilityLabel={`Ver banda ${label}`}
+      onPress={onPress}
+      {...handlers}
+      style={[
+        styles.chip,
+        ativa
+          ? { backgroundColor: cor, borderColor: cor }
+          : {
+              borderColor:
+                estado.hovered || estado.pressed ? t.colors.text : t.colors.borderStrong,
+            },
+        !ativa && estado.pressed && { backgroundColor: t.colors.surfaceAlt },
+        estado.focoVisivel ? { boxShadow: anelFoco(cor, t.colors.surface) } : null,
+      ]}
+    >
+      <Text style={[styles.chipTexto, { color: ativa ? t.colors.onAccent : t.colors.text }]}>
+        {label}
+      </Text>
+    </Pressable>
+  );
+}
+
 const criarEstilos = (t: Theme) =>
   StyleSheet.create({
     wrapper: {
@@ -112,6 +153,8 @@ const criarEstilos = (t: Theme) =>
       borderWidth: 1,
       paddingHorizontal: t.spacing.sm,
       paddingVertical: t.spacing.xs,
+      ...transicao("background-color, border-color, box-shadow", motion.media),
+      ...semContornoNativo(),
     },
     chipTexto: {
       ...t.typography.label,

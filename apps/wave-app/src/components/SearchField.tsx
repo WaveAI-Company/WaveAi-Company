@@ -2,7 +2,15 @@ import { useMemo, useState } from "react";
 import { StyleSheet, TextInput, View } from "react-native";
 
 import { Icon } from "./Icon";
-import { useRoleAccent, useTheme, withAlpha, type Theme } from "../theme";
+import {
+  anelCampo,
+  motion,
+  semContornoNativo,
+  transicao,
+  useRoleAccent,
+  useTheme,
+  type Theme,
+} from "../theme";
 
 /**
  * Campo de busca do design "Maré".
@@ -31,7 +39,9 @@ export function SearchField({ value, onChangeText, label, placeholder }: Props) 
     <View
       style={[
         styles.caixa,
-        focado && { borderColor: accent, boxShadow: `0 0 0 3px ${withAlpha(accent, 0.18)}` },
+        // `.search:focus-within` do mockup. O alfa vem do `anelCampo`, que é o
+        // mesmo do `Field` — antes daqui eram 0,18 aqui e nada lá.
+        focado && { borderColor: accent, boxShadow: anelCampo(accent) },
       ]}
     >
       <Icon name="search" size={16} color={t.colors.textMuted} strokeWidth={2} />
@@ -63,6 +73,7 @@ const criarEstilos = (t: Theme) =>
       gap: 9,
       minHeight: t.minTouch,
       paddingHorizontal: t.spacing.md - 2,
+      ...transicao("border-color, box-shadow", motion.rapida),
     },
     entrada: {
       ...t.typography.body,
@@ -70,5 +81,6 @@ const criarEstilos = (t: Theme) =>
       flex: 1,
       fontSize: 14,
       paddingVertical: t.spacing.sm,
+      ...semContornoNativo(),
     },
   });

@@ -27,7 +27,16 @@ import { Skeleton } from "../../../src/components/Skeleton";
 import { BandColumns, type BandColumn } from "../../../src/components/charts/BandColumns";
 import { BandLegend } from "../../../src/components/charts/BandLegend";
 import { TrendChart, type TrendPoint } from "../../../src/components/charts/TrendChart";
-import { useRoleAccent, useTheme, type Theme } from "../../../src/theme";
+import {
+  anelFoco,
+  motion,
+  semContornoNativo,
+  transicao,
+  useInteracao,
+  useRoleAccent,
+  useTheme,
+  type Theme,
+} from "../../../src/theme";
 
 /** A partir daqui o trilho de pessoas fica ao lado do conteúdo. */
 const LARGURA_TRILHO = 1024;
@@ -173,34 +182,16 @@ export default function PatientDetailScreen() {
         placeholder="Buscar pessoa"
       />
 
-      {ativos.filter(casa).map((v) => {
-        const selecionado = v.counterpart_user_id === id;
-        return (
-          <Pressable
-            key={v.id}
-            accessibilityRole="button"
-            accessibilityState={{ selected: selecionado }}
-            aria-current={selecionado ? "true" : undefined}
-            accessibilityLabel={`${v.counterpart_display_name ?? "Paciente"}${selecionado ? ", em exibição" : ""}`}
-            onPress={() => router.replace(`/doctor/patient/${v.counterpart_user_id}`)}
-            style={({ pressed }) => [
-              styles.pessoa,
-              selecionado && { backgroundColor: t.colors.surfaceAlt, borderColor: accent },
-              pressed && styles.pessoaPressionada,
-            ]}
-          >
-            <Avatar name={v.counterpart_display_name} size={36} tone={accent} />
-            <View style={styles.pessoaTextos}>
-              <Text style={styles.pessoaNome} numberOfLines={1}>
-                {v.counterpart_display_name ?? "Paciente"}
-              </Text>
-              <Text style={styles.pessoaNota} numberOfLines={1}>
-                {selecionado ? "em exibição" : "autorizou seu acesso"}
-              </Text>
-            </View>
-          </Pressable>
-        );
-      })}
+      {ativos.filter(casa).map((v) => (
+        <LinhaPessoa
+          key={v.id}
+          nome={v.counterpart_display_name}
+          selecionado={v.counterpart_user_id === id}
+          accent={accent}
+          styles={styles}
+          onPress={() => router.replace(`/doctor/patient/${v.counterpart_user_id}`)}
+        />
+      ))}
 
       {/* Pendentes aparecem, mas não abrem nada: convite pendente não concede
           acesso (ADR-0024), então um item clicável mentiria. */}
@@ -387,6 +378,56 @@ export default function PatientDetailScreen() {
   );
 }
 
+/**
+ * Uma pessoa na lista lateral — o `.person` do mockup, que ao ponteiro só
+ * pinta o fundo. Sem deslocamento aqui de propósito: é uma linha de lista
+ * densa, e um pulo por item transformaria percorrer a lista num tremor.
+ */
+function LinhaPessoa({
+  nome,
+  selecionado,
+  accent,
+  onPress,
+  styles,
+}: {
+  nome: string | null | undefined;
+  selecionado: boolean;
+  accent: string;
+  onPress: () => void;
+  styles: ReturnType<typeof criarEstilos>;
+}) {
+  const t = useTheme();
+  const { estado, handlers } = useInteracao();
+
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityState={{ selected: selecionado }}
+      aria-current={selecionado ? "true" : undefined}
+      accessibilityLabel={`${nome ?? "Paciente"}${selecionado ? ", em exibição" : ""}`}
+      onPress={onPress}
+      {...handlers}
+      style={[
+        styles.pessoa,
+        selecionado && { backgroundColor: t.colors.surfaceAlt, borderColor: accent },
+        !selecionado && estado.hovered && { backgroundColor: t.colors.surfaceAlt },
+        estado.pressed && { backgroundColor: t.colors.surfaceStrong },
+        estado.focoVisivel ? { boxShadow: anelFoco(accent, t.colors.surface) } : null,
+      ]}
+    >
+      <Avatar name={nome} size={36} tone={accent} />
+      <View style={styles.pessoaTextos}>
+        <Text style={styles.pessoaNome} numberOfLines={1}>
+          {nome ?? "Paciente"}
+        </Text>
+        <Text style={styles.pessoaNota} numberOfLines={1}>
+          {selecionado ? "em exibição" : "autorizou seu acesso"}
+        </Text>
+      </View>
+    </Pressable>
+  );
+}
+
 const criarEstilos = (t: Theme) =>
   StyleSheet.create({
     erro: {
@@ -422,9 +463,8 @@ const criarEstilos = (t: Theme) =>
       gap: t.spacing.sm,
       minHeight: t.minTouch,
       padding: t.spacing.sm,
-    },
-    pessoaPressionada: {
-      opacity: 0.7,
+      ...transicao("background-color, border-color, box-shadow", motion.media),
+      ...semContornoNativo(),
     },
     pessoaPendente: {
       opacity: 0.7,

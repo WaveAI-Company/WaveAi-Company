@@ -10,8 +10,7 @@ import Animated, {
 } from "react-native-reanimated";
 import Svg, { Circle, G, Line, Path, Rect, Text as SvgText } from "react-native-svg";
 
-import { palettes, withAlpha } from "../../theme";
-import { useReduzirMovimento } from "./useReduzirMovimento";
+import { palettes, useReduzirMovimento, withAlpha } from "../../theme";
 
 /**
  * Figura da identidade: perfil abstrato sob um domo de sensores, com uma

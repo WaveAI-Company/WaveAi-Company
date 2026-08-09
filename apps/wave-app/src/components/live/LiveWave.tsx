@@ -9,8 +9,7 @@ import Animated, {
 } from "react-native-reanimated";
 import Svg, { Line, Path } from "react-native-svg";
 
-import { useTheme, withAlpha } from "../../theme";
-import { useReduzirMovimento } from "../brand/useReduzirMovimento";
+import { useReduzirMovimento, useTheme, withAlpha } from "../../theme";
 
 /**
  * Onda do herói da tela ao vivo — porte de `Design/round1/estado-ao-vivo.html`.
