@@ -4,11 +4,13 @@ import { StyleSheet, Text, View } from "react-native";
 
 import { getMyReport, type LongitudinalReport as Report } from "../../src/api/report";
 import {
+  dias,
   formatDuration,
   formatNumber,
   formatPercent,
   listMyResults,
   sessionDurationSeconds,
+  type PeriodoOpcao,
   type SessionResult,
 } from "../../src/api/results";
 import { capturaDisponivel } from "../../src/capture/availability";
@@ -36,12 +38,11 @@ import {
 // `.sess-grid` do mockup: `minmax(0,1fr) 320px` acima de 1199, uma coluna
 // abaixo.
 
-type Periodo = "30" | "90" | "tudo";
-
-const PERIODOS = [
-  { value: "30" as const, label: "30 dias" },
-  { value: "90" as const, label: "90 dias" },
-  { value: "tudo" as const, label: "Tudo" },
+/** Rótulos como o mockup do paciente escreve (`sessoes.html:342`). */
+const PERIODOS: Array<{ value: PeriodoOpcao; label: string }> = [
+  { value: "30", label: "30 dias" },
+  { value: "90", label: "90 dias" },
+  { value: "tudo", label: "Tudo" },
 ];
 
 /** Sessão mais recente (por data) — alvo da anotação editável no histórico. */
@@ -92,13 +93,18 @@ export default function PatientHistoryScreen() {
   const [report, setReport] = useState<Report | null>(null);
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
-  const [periodo, setPeriodo] = useState<Periodo>("tudo");
+  /**
+   * Padrão **30 dias**, como o design marca (`sessoes.html`, botão com `.on`).
+   * O estado vazio diz explicitamente como ver tudo — sem isso, quem capta de
+   * vez em quando abriria a tela vazia e leria "perdi meus dados".
+   */
+  const [periodo, setPeriodo] = useState<PeriodoOpcao>("30");
 
   const carregar = useCallback(async () => {
     setLoading(true);
     setErro(null);
     try {
-      setResults(await listMyResults());
+      setResults(await listMyResults(dias(periodo)));
     } catch {
       setErro("Não foi possível carregar suas sessões.");
     } finally {
@@ -107,11 +113,11 @@ export default function PatientHistoryScreen() {
     // O relatório depende da Analysis estar de pé; sua falha (ex.: 503) não pode
     // esconder as sessões — por isso carrega à parte e some sem alarde.
     try {
-      setReport(await getMyReport());
+      setReport(await getMyReport(dias(periodo)));
     } catch {
       setReport(null);
     }
-  }, []);
+  }, [periodo]);
 
   // Recarrega **ao focar**, não só ao montar: voltando de uma captação, a
   // sessão recém-encerrada precisa aparecer sem recarregar o app (#17).
@@ -121,12 +127,10 @@ export default function PatientHistoryScreen() {
     }, [carregar]),
   );
 
-  const filtradas = useMemo(() => {
-    if (periodo === "tudo") return results;
-    const dias = Number(periodo);
-    const corte = Date.now() - dias * 24 * 60 * 60 * 1000;
-    return results.filter((r) => new Date(r.created_at).getTime() >= corte);
-  }, [results, periodo]);
+  // O recorte é do **servidor** (P9-b): `results` já vem só com a janela
+  // pedida. Antes o filtro era do cliente e a tela misturava dois períodos —
+  // sessões filtradas aqui, qualidade e tendências vindas do histórico inteiro.
+  const filtradas = results;
 
   // Resumo do período: médias **descritivas**, sem veredito (ADR-0027).
   const resumo = useMemo(() => {
@@ -147,7 +151,16 @@ export default function PatientHistoryScreen() {
   }, [filtradas, report]);
 
   const grupos = useMemo(() => porMes(filtradas), [filtradas]);
-  const temSessoes = !loading && !erro && results.length > 0;
+  /**
+   * "Nunca captou" e "captou, mas não neste recorte" são coisas diferentes — e
+   * confundi-las diria a alguém com histórico que ela não tem nenhum. O convite
+   * da primeira sessão só aparece com o período em "Tudo".
+   */
+  const pronto = !loading && !erro;
+  const nuncaCaptou = pronto && results.length === 0 && periodo === "tudo";
+  //: A moldura (título + seletor) fica de pé mesmo com a janela vazia: é ela
+  //: que dá a saída do recorte. Escondê-la prenderia a pessoa no filtro.
+  const temSessoes = pronto && !nuncaCaptou;
 
   return (
     <ScreenContainer largura="app">
@@ -170,7 +183,7 @@ export default function PatientHistoryScreen() {
       <StateView error={erro} />
 
       {/* Vazio: convite, não erro — a tela ainda não tem o que mostrar. */}
-      {!loading && !erro && results.length === 0 ? (
+      {nuncaCaptou ? (
         <Panel>
           <View style={styles.vazio}>
             <HeadFigure width={190} />
@@ -203,9 +216,12 @@ export default function PatientHistoryScreen() {
             <View style={styles.topoTextos}>
               <Text style={styles.titulo}>Suas sessões</Text>
               <Text style={styles.subtitulo}>
-                {filtradas.length === results.length
-                  ? `${results.length} ${results.length === 1 ? "sessão" : "sessões"}`
-                  : `mostrando ${filtradas.length} de ${results.length}`}
+                {/* O mockup diz "mostrando 8 de 12", mas o total só existiria
+                    com uma segunda busca sem recorte — pedir o histórico
+                    inteiro só para exibir um número desfaria a minimização que
+                    o corte no servidor comprou. Dizemos o que sabemos. */}
+                {`${results.length} ${results.length === 1 ? "sessão" : "sessões"}`}
+                {periodo === "tudo" ? "" : ` nos últimos ${periodo} dias`}
               </Text>
             </View>
             <SegmentedFilter
@@ -222,8 +238,8 @@ export default function PatientHistoryScreen() {
               {filtradas.length === 0 ? (
                 <Panel>
                   <Text style={styles.vazioTexto}>
-                    Nenhuma sessão neste período. Escolha “Tudo” para ver o histórico
-                    inteiro.
+                    Nenhuma sessão nos últimos {periodo} dias. Você pode ter captado
+                    antes — escolha “Tudo” para ver o histórico inteiro.
                   </Text>
                 </Panel>
               ) : (

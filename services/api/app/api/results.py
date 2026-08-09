@@ -212,6 +212,26 @@ def _relatorio_longitudinal(
         titular=titular, ator=ator, desde=janela.desde if janela else None
     )
     session.commit()
+
+    if not serie["sessions"]:
+        # Série vazia (janela sem sessões, ou conta nova): **não** chama a
+        # Analysis. Ela recusa lista vazia (`min_length=1`), o que virava um 503
+        # "analise indisponivel" — uma mentira: o serviço está de pé, é que não
+        # há o que analisar. Com o padrão de 30 dias na tela, este deixou de ser
+        # um caso de borda. `engine_version` fica nulo porque **nenhum motor
+        # rodou** — nada foi computado para carimbar.
+        return {
+            "patient_id": str(titular.id),
+            "n_sessions": 0,
+            "period": None,
+            "window_days": janela.days if janela else None,
+            "engine_version": None,
+            "report": {"n_sessions": 0, "features": {}},
+            "summary": [],
+            "narrative": None,
+            "disclaimer": None,
+        }
+
     try:
         resposta = analysis.longitudinal_report(
             serie["sessions"], quality_scores=serie["quality_scores"]

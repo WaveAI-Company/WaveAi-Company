@@ -8,6 +8,7 @@
  */
 
 import { request } from "../auth/api";
+import type { Periodo } from "./results";
 import type { IconName } from "../components/Icon";
 
 /** Direção da tendência de uma feature — direção NUMÉRICA, sem juízo de valor. */
@@ -45,7 +46,15 @@ export type LongitudinalData = {
 export type LongitudinalReport = {
   patient_id: string;
   n_sessions: number;
+  /** Intervalo **observado**: primeira e última sessão que entraram. */
   period: { first: string; last: string } | null;
+  /**
+   * Janela **pedida**, em dias (`null` = histórico inteiro). Separado do
+   * `period` de propósito: o design mostra os dois — "últimos 30 dias" na
+   * sobrancelha e o intervalo real embaixo —, e sem isto uma janela vazia
+   * ficaria sem rótulo nenhum de período.
+   */
+  window_days: number | null;
   engine_version: string | null;
   report: LongitudinalData;
   /** Frases do sumário determinístico (N5-c). Já vêm rotuladas não-clínicas. */
@@ -60,13 +69,20 @@ export type LongitudinalReport = {
 };
 
 /** Relatório longitudinal do próprio titular. */
-export async function getMyReport(): Promise<LongitudinalReport> {
-  return request<LongitudinalReport>("/me/report/longitudinal", { auth: true });
+export async function getMyReport(days: Periodo = null): Promise<LongitudinalReport> {
+  const path = days === null
+    ? "/me/report/longitudinal"
+    : `/me/report/longitudinal?days=${days}`;
+  return request<LongitudinalReport>(path, { auth: true });
 }
 
 /** Relatório de um paciente. A API devolve 403 sem vínculo ativo. */
-export async function getPatientReport(patientId: string): Promise<LongitudinalReport> {
-  return request<LongitudinalReport>(`/patients/${patientId}/report/longitudinal`, {
+export async function getPatientReport(
+  patientId: string,
+  days: Periodo = null,
+): Promise<LongitudinalReport> {
+  const base = `/patients/${patientId}/report/longitudinal`;
+  return request<LongitudinalReport>(days === null ? base : `${base}?days=${days}`, {
     auth: true,
   });
 }

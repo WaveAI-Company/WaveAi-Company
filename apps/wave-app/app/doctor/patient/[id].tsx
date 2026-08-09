@@ -6,10 +6,12 @@ import { listCareLinks, type CareLink } from "../../../src/api/care";
 import { watchPatientLive } from "../../../src/api/liveWatch";
 import { getPatientReport, type LongitudinalReport as Report } from "../../../src/api/report";
 import {
+  dias,
   formatDate,
   formatNumber,
   formatPercent,
   listPatientResults,
+  type PeriodoOpcao,
   type SessionResult,
 } from "../../../src/api/results";
 import { Avatar } from "../../../src/components/Avatar";
@@ -19,6 +21,7 @@ import { Disclaimer } from "../../../src/components/Disclaimer";
 import { LiveSpectator } from "../../../src/components/LiveSpectator";
 import { LongitudinalReport } from "../../../src/components/LongitudinalReport";
 import { Panel } from "../../../src/components/Panel";
+import { Select } from "../../../src/components/Select";
 import { ScreenContainer } from "../../../src/components/ScreenContainer";
 import { SearchField } from "../../../src/components/SearchField";
 import { SessionAnnotation } from "../../../src/components/SessionAnnotation";
@@ -67,6 +70,13 @@ function rotuloDia(iso: string): string {
   return `${d.getDate()} ${MESES[d.getMonth()]}`;
 }
 
+/** Rótulos como o mockup do profissional escreve (`painel-profissional.html`). */
+const PERIODOS: Array<{ value: PeriodoOpcao; label: string }> = [
+  { value: "30", label: "últimos 30 dias" },
+  { value: "90", label: "últimos 90 dias" },
+  { value: "tudo", label: "tudo" },
+];
+
 /** Normaliza para busca: sem acento, sem caixa. */
 function chave(texto: string): string {
   return texto.normalize("NFD").replace(/\p{Diacritic}/gu, "").toLowerCase();
@@ -109,15 +119,23 @@ export default function PatientDetailScreen() {
   const [busca, setBusca] = useState("");
   /** Assistir ao vivo é opt-in: só ao ativar é que se assina (e audita). */
   const [assistindo, setAssistindo] = useState(false);
+  /**
+   * Recorte de período (P9-b), o quarto tile do mockup. O corte é do
+   * **servidor**: sessões, gráficos e relatório saem todos da mesma janela —
+   * senão a tela misturaria dois períodos diferentes no mesmo painel.
+   */
+  const [periodo, setPeriodo] = useState<PeriodoOpcao>("30");
 
   const carregar = useCallback(async () => {
     if (!id) return;
     setCarregando(true);
     setErro(null);
-    setAssistindo(false);
     try {
       // `listCareLinks` não lê dado de ninguém — não entra na trilha de acesso.
-      const [links, sessoes] = await Promise.all([listCareLinks(), listPatientResults(id)]);
+      const [links, sessoes] = await Promise.all([
+        listCareLinks(),
+        listPatientResults(id, dias(periodo)),
+      ]);
       setVinculos(links);
       setResults(sessoes);
     } catch {
@@ -130,15 +148,22 @@ export default function PatientDetailScreen() {
     // O relatório depende da Analysis; sua falha não pode blindar o resto da
     // tela — carrega à parte e some sem alarde.
     try {
-      setReport(await getPatientReport(id));
+      setReport(await getPatientReport(id, dias(periodo)));
     } catch {
       setReport(null);
     }
-  }, [id]);
+  }, [id, periodo]);
 
   useEffect(() => {
     void carregar();
   }, [carregar]);
+
+  // Trocar de PESSOA fecha o ao vivo (a assinatura é por paciente e o opt-in é
+  // deliberado). Trocar de PERÍODO não: o recorte é do histórico, e derrubar a
+  // transmissão por causa dele seria efeito colateral sem relação.
+  useEffect(() => {
+    setAssistindo(false);
+  }, [id]);
 
   const ativos = vinculos.filter((v) => v.status === "active");
   const pendentes = vinculos.filter((v) => v.status === "pending");
@@ -168,7 +193,10 @@ export default function PatientDetailScreen() {
 
   const ultima = maisRecente(results);
   const qualidadeMedia = report?.report.quality?.mean;
-  const periodo = report?.period
+  //: Intervalo **observado** (primeira e última sessão que entraram) — coisa
+  //: diferente da janela **pedida**, que é o `periodo` do seletor. O design
+  //: mostra os dois: o rótulo da opção no seletor, o intervalo real embaixo.
+  const intervaloObservado = report?.period
     ? `${formatDate(report.period.first)} – ${formatDate(report.period.last)}`
     : null;
 
@@ -303,39 +331,55 @@ export default function PatientDetailScreen() {
             </Panel>
           )}
 
+          {/* ===== tiles =====
+              A linha aparece SEMPRE, inclusive com a janela vazia: é nela que
+              mora o seletor de período, e escondê-la deixaria a pessoa presa
+              num recorte sem nenhuma forma de sair dele. */}
+          <View style={styles.tiles}>
+            {tile(
+              "Sessões no período",
+              String(report?.n_sessions ?? results.length),
+              intervaloObservado ?? undefined,
+            )}
+            {tile(
+              "Qualidade média do sinal",
+              typeof qualidadeMedia === "number" ? formatNumber(qualidadeMedia, 2) : "—",
+              "índice 0–1 calculado no servidor",
+            )}
+            {tile("Última sessão", ultima ? formatDate(ultima.created_at) : "—")}
+            {/* O quarto tile do mockup (`painel-profissional.html:419`): o
+                seletor de período, que faltava desde o porte. */}
+            <View key="Período" style={[styles.tile, estiloTile]}>
+              <Panel grow>
+                <Text style={styles.tileRotulo}>Período</Text>
+                <Select
+                  label="Selecionar período"
+                  options={PERIODOS}
+                  value={periodo}
+                  onChange={setPeriodo}
+                  accent={accent}
+                />
+                {intervaloObservado ? (
+                  <Text style={styles.tileSub}>{intervaloObservado}</Text>
+                ) : null}
+              </Panel>
+            </View>
+            {/* Espaçadores: sem eles um tile sozinho na última fila estica. */}
+            {[0, 1, 2].map((i) => (
+              <View key={`espaco-${i}`} style={[styles.espacador, estiloTile]} aria-hidden />
+            ))}
+          </View>
+
           {results.length === 0 ? (
             <Panel>
               <Text style={styles.nota}>
-                Esta pessoa ainda não tem sessões guardadas. Elas aparecem aqui assim que
-                ela captar — e só se tiver autorizado a guarda dos resultados.
+                {periodo === "tudo"
+                  ? "Esta pessoa ainda não tem sessões guardadas. Elas aparecem aqui assim que ela captar — e só se tiver autorizado a guarda dos resultados."
+                  : "Nenhuma sessão neste período. Ela pode ter captado antes — escolha “tudo” no seletor de período para ver o histórico inteiro."}
               </Text>
             </Panel>
           ) : (
             <>
-              {/* ===== tiles ===== */}
-              <View style={styles.tiles}>
-                {tile(
-                  "Sessões guardadas",
-                  String(report?.n_sessions ?? results.length),
-                  periodo ?? undefined,
-                )}
-                {tile(
-                  "Qualidade média do sinal",
-                  typeof qualidadeMedia === "number" ? formatNumber(qualidadeMedia, 2) : "—",
-                  "índice 0–1 calculado no servidor",
-                )}
-                {/* O motor fica só no rastro do rodapé: aqui ele estoura o
-                    tile e repete o que já está três painéis abaixo. */}
-                {tile("Última sessão", ultima ? formatDate(ultima.created_at) : "—")}
-                {/* Espaçadores: sem eles um tile sozinho na última fila estica. */}
-                {[0, 1, 2].map((i) => (
-                  <View
-                    key={`espaco-${i}`}
-                    style={[styles.espacador, estiloTile]}
-                    aria-hidden
-                  />
-                ))}
-              </View>
 
               {/* ===== gráficos ===== */}
               {tendenciaAlfa.length > 1 ? (
