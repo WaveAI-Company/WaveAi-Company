@@ -14,14 +14,17 @@ from ..services.auth import (
     AuthService,
     EmailAlreadyRegisteredError,
     TokenPair,
+    WrongPasswordError,
 )
 from .deps import client_ip, get_auth_service, get_current_user, get_login_limiter
 from .schemas import (
+    ChangePasswordRequest,
     ClientPlatform,
     LoginRequest,
     RefreshRequest,
     RegisterRequest,
     TokenResponse,
+    UpdateMeRequest,
     UserResponse,
 )
 
@@ -30,6 +33,17 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 #: Mensagem única para qualquer falha de credencial: não revela se o e-mail
 #: existe, se a senha está errada ou se a conta está inativa (ADR-0023).
 CREDENCIAIS_INVALIDAS = "credenciais invalidas"
+
+
+def _resposta_usuario(user: User) -> UserResponse:
+    perfil = user.patient_profile or user.doctor_profile
+    return UserResponse(
+        id=user.id,
+        email=user.email,
+        role=user.role,
+        display_name=perfil.display_name if perfil else None,
+        created_at=user.created_at,
+    )
 
 
 def _aplicar_refresh(
@@ -84,9 +98,7 @@ def register(
             status_code=status.HTTP_409_CONFLICT, detail="e-mail ja cadastrado"
         ) from None
     session.commit()
-    return UserResponse(
-        id=user.id, email=user.email, role=user.role, display_name=payload.display_name
-    )
+    return _resposta_usuario(user)
 
 
 @router.post("/login", response_model=TokenResponse)
@@ -162,10 +174,57 @@ def logout(
 
 @router.get("/me", response_model=UserResponse)
 def me(user: User = Depends(get_current_user)) -> UserResponse:
-    perfil = user.patient_profile or user.doctor_profile
-    return UserResponse(
-        id=user.id,
-        email=user.email,
-        role=user.role,
-        display_name=perfil.display_name if perfil else None,
-    )
+    return _resposta_usuario(user)
+
+
+@router.patch("/me", response_model=UserResponse)
+def update_me(
+    payload: UpdateMeRequest,
+    session: Session = Depends(get_session),
+    service: AuthService = Depends(get_auth_service),
+    user: User = Depends(get_current_user),
+) -> UserResponse:
+    """Edita o próprio cadastro. Só o titular, e só o nome de exibição."""
+    service.update_display_name(user=user, display_name=payload.display_name)
+    session.commit()
+    return _resposta_usuario(user)
+
+
+@router.post("/password", response_model=TokenResponse)
+def change_password(
+    payload: ChangePasswordRequest,
+    request: Request,
+    response: Response,
+    client: ClientPlatform = ClientPlatform.WEB,
+    session: Session = Depends(get_session),
+    service: AuthService = Depends(get_auth_service),
+    settings: Settings = Depends(get_settings),
+    user: User = Depends(get_current_user),
+    limiter: SlidingWindowRateLimiter = Depends(get_login_limiter),
+) -> TokenResponse:
+    """Troca a senha do titular e devolve um par de tokens novo.
+
+    **Throttled como o login**, e pela mesma razão: o campo "senha atual" é um
+    oráculo de senha, e sem limite ele seria um caminho mais silencioso do que
+    o próprio login para adivinhá-la.
+    """
+    ip = client_ip(request)
+    if not limiter.is_allowed(f"senha:{ip}|{user.id}"):
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="tentativas demais; tente novamente em instantes",
+        )
+
+    try:
+        tokens = service.change_password(
+            user=user,
+            current_password=payload.current_password,
+            new_password=payload.new_password,
+        )
+    except WrongPasswordError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail=CREDENCIAIS_INVALIDAS
+        ) from None
+
+    session.commit()
+    return _aplicar_refresh(response, tokens, client, settings)
