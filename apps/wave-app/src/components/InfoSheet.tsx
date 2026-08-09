@@ -175,13 +175,13 @@ const criarEstilos = (t: Theme) =>
     },
     nota: {
       ...t.typography.body,
-      color: t.colors.textMuted,
+      color: t.colors.textSubtle,
       fontSize: 14,
       marginTop: t.spacing.sm,
     },
     fonte: {
       ...t.typography.caption,
-      color: t.colors.textMuted,
+      color: t.colors.textSubtle,
       marginTop: t.spacing.sm,
     },
   });

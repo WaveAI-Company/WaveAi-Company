@@ -478,7 +478,7 @@ const criarEstilos = (t: Theme) =>
     },
     eyebrow: {
       ...t.typography.caption,
-      color: t.colors.textMuted,
+      color: t.colors.textSubtle,
       fontSize: 11,
       fontWeight: "700",
       letterSpacing: 0.9,
@@ -539,7 +539,7 @@ const criarEstilos = (t: Theme) =>
       ...t.typography.caption,
       backgroundColor: t.colors.surfaceAlt,
       borderRadius: t.radius.md,
-      color: t.colors.textMuted,
+      color: t.colors.textSubtle,
       lineHeight: 20,
       marginTop: t.spacing.md,
       padding: t.spacing.md,
@@ -556,7 +556,7 @@ const criarEstilos = (t: Theme) =>
     },
     rodape: {
       ...t.typography.caption,
-      color: t.colors.textMuted,
+      color: t.colors.textSubtle,
       textAlign: "center",
     },
     faixa: {
@@ -585,7 +585,7 @@ const criarEstilos = (t: Theme) =>
     },
     faixaNota: {
       ...t.typography.caption,
-      color: t.colors.textMuted,
+      color: t.colors.textSubtle,
     },
     gerenciarLinha: {
       alignItems: "center",
@@ -608,7 +608,7 @@ const criarEstilos = (t: Theme) =>
     },
     gerenciarNota: {
       ...t.typography.caption,
-      color: t.colors.textMuted,
+      color: t.colors.textSubtle,
       lineHeight: 18,
     },
     gerenciarAcao: {

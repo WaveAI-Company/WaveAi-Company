@@ -352,7 +352,7 @@ const criarEstilos = (t: Theme) =>
     },
     marcaCompactaTexto: {
       ...t.typography.caption,
-      color: t.colors.textMuted,
+      color: t.colors.textSubtle,
       textAlign: "center",
     },
     ondaCompacta: {

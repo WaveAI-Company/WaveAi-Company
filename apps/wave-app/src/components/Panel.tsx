@@ -70,7 +70,7 @@ const criarEstilos = (t: Theme) =>
     },
     eyebrow: {
       ...t.typography.caption,
-      color: t.colors.textMuted,
+      color: t.colors.textSubtle,
       flexShrink: 1,
       fontSize: 11,
       fontWeight: "700",

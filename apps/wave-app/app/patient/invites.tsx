@@ -270,7 +270,7 @@ const criarEstilos = (t: Theme) =>
     },
     papel: {
       ...t.typography.caption,
-      color: t.colors.textMuted,
+      color: t.colors.textSubtle,
     },
     escopo: {
       gap: t.spacing.sm,
@@ -278,7 +278,7 @@ const criarEstilos = (t: Theme) =>
     },
     escopoTitulo: {
       ...t.typography.caption,
-      color: t.colors.textMuted,
+      color: t.colors.textSubtle,
     },
     escopoChips: {
       flexDirection: "row",
@@ -297,7 +297,7 @@ const criarEstilos = (t: Theme) =>
     },
     nota: {
       ...t.typography.caption,
-      color: t.colors.textMuted,
+      color: t.colors.textSubtle,
       lineHeight: 18,
     },
     recibo: {
@@ -306,7 +306,7 @@ const criarEstilos = (t: Theme) =>
     },
     emDia: {
       ...t.typography.caption,
-      color: t.colors.textMuted,
+      color: t.colors.textSubtle,
       marginTop: t.spacing.sm,
       textAlign: "center",
     },

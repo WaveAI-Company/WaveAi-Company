@@ -70,10 +70,10 @@ export function Field({ label, error, revealable, ...input }: Props) {
             // `border-color: accent; box-shadow: 0 0 0 3px accent-soft`, e
             // engrossar de 1px para 2px empurrava o texto do campo 1px a cada
             // foco — um tremor visível ao percorrer o formulário com Tab.
-            focado && { borderColor: accent, boxShadow: anelCampo(accent) },
+            focado && { borderColor: accent, boxShadow: anelCampo(accent, t.isDark) },
             Boolean(error) && { borderColor: t.colors.danger },
           ]}
-          placeholderTextColor={t.colors.textMuted}
+          placeholderTextColor={t.colors.textSubtle}
           autoCapitalize={input.autoCapitalize ?? "none"}
         />
         {revealable ? (
@@ -86,7 +86,7 @@ export function Field({ label, error, revealable, ...input }: Props) {
               styles.revelar,
               revelar.estado.hovered && { backgroundColor: t.colors.surfaceStrong },
               revelar.estado.focoVisivel
-                ? { boxShadow: anelCampo(accent), backgroundColor: t.colors.surfaceStrong }
+                ? { boxShadow: anelCampo(accent, t.isDark), backgroundColor: t.colors.surfaceStrong }
                 : null,
             ]}
             hitSlop={8}

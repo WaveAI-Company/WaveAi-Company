@@ -109,7 +109,7 @@ const criarEstilos = (t: Theme) =>
     },
     eixoRotulo: {
       ...t.typography.caption,
-      color: t.colors.textMuted,
+      color: t.colors.textSubtle,
       flex: 1,
       fontSize: 10,
       textAlign: "center",

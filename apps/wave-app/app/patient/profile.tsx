@@ -299,7 +299,7 @@ const criarEstilos = (t: Theme) =>
     },
     email: {
       ...t.typography.caption,
-      color: t.colors.textMuted,
+      color: t.colors.textSubtle,
       fontSize: 13,
     },
     erro: {
@@ -328,7 +328,7 @@ const criarEstilos = (t: Theme) =>
     },
     secaoTexto: {
       ...t.typography.caption,
-      color: t.colors.textMuted,
+      color: t.colors.textSubtle,
       fontSize: 11,
       fontWeight: "700",
       letterSpacing: 0.9,
@@ -362,7 +362,7 @@ const criarEstilos = (t: Theme) =>
     },
     nota: {
       ...t.typography.caption,
-      color: t.colors.textMuted,
+      color: t.colors.textSubtle,
       lineHeight: 18,
     },
     vazio: {
@@ -396,14 +396,14 @@ const criarEstilos = (t: Theme) =>
     },
     pessoaNota: {
       ...t.typography.caption,
-      color: t.colors.textMuted,
+      color: t.colors.textSubtle,
     },
     pessoaAcao: {
       minWidth: 160,
     },
     recibo: {
       ...t.typography.caption,
-      color: t.colors.textMuted,
+      color: t.colors.textSubtle,
       fontWeight: "700",
     },
   });

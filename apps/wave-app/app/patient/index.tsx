@@ -435,7 +435,7 @@ const criarEstilos = (t: Theme) =>
   StyleSheet.create({
     carregandoNota: {
       ...t.typography.body,
-      color: t.colors.textMuted,
+      color: t.colors.textSubtle,
       fontSize: 13,
     },
     ola: {
@@ -493,7 +493,7 @@ const criarEstilos = (t: Theme) =>
     },
     heroiNota: {
       ...t.typography.caption,
-      color: t.colors.textMuted,
+      color: t.colors.textSubtle,
     },
     alfaLinha: {
       alignItems: "center",
@@ -508,24 +508,24 @@ const criarEstilos = (t: Theme) =>
     },
     alfaUnidade: {
       ...t.typography.caption,
-      color: t.colors.textMuted,
+      color: t.colors.textSubtle,
       flexShrink: 1,
       lineHeight: 17,
       maxWidth: 190,
     },
     ultimaMeta: {
       ...t.typography.caption,
-      color: t.colors.textMuted,
+      color: t.colors.textSubtle,
       fontSize: 11,
     },
     figuraLegenda: {
       ...t.typography.caption,
-      color: t.colors.textMuted,
+      color: t.colors.textSubtle,
       marginTop: t.spacing.sm,
     },
     nota: {
       ...t.typography.caption,
-      color: t.colors.textMuted,
+      color: t.colors.textSubtle,
       lineHeight: 18,
     },
     acompanhante: {
@@ -543,7 +543,7 @@ const criarEstilos = (t: Theme) =>
     },
     acompanhanteNota: {
       ...t.typography.caption,
-      color: t.colors.textMuted,
+      color: t.colors.textSubtle,
     },
     vazio: {
       alignItems: "center",
@@ -598,12 +598,12 @@ const criarEstilos = (t: Theme) =>
     },
     passoTexto: {
       ...t.typography.caption,
-      color: t.colors.textMuted,
+      color: t.colors.textSubtle,
       lineHeight: 17,
     },
     vazioNota: {
       ...t.typography.caption,
-      color: t.colors.textMuted,
+      color: t.colors.textSubtle,
       maxWidth: 440,
       textAlign: "center",
     },

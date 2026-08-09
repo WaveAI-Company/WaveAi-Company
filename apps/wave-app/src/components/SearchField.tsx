@@ -41,7 +41,7 @@ export function SearchField({ value, onChangeText, label, placeholder }: Props) 
         styles.caixa,
         // `.search:focus-within` do mockup. O alfa vem do `anelCampo`, que é o
         // mesmo do `Field` — antes daqui eram 0,18 aqui e nada lá.
-        focado && { borderColor: accent, boxShadow: anelCampo(accent) },
+        focado && { borderColor: accent, boxShadow: anelCampo(accent, t.isDark) },
       ]}
     >
       <Icon name="search" size={16} color={t.colors.textMuted} strokeWidth={2} />
@@ -50,7 +50,7 @@ export function SearchField({ value, onChangeText, label, placeholder }: Props) 
         onChangeText={onChangeText}
         accessibilityLabel={label}
         placeholder={placeholder ?? label}
-        placeholderTextColor={t.colors.textMuted}
+        placeholderTextColor={t.colors.textSubtle}
         autoCapitalize="none"
         autoCorrect={false}
         onFocus={() => setFocado(true)}

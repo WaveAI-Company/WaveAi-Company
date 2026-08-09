@@ -333,7 +333,7 @@ const criarEstilos = (t: Theme) =>
   StyleSheet.create({
     carregandoNota: {
       ...t.typography.body,
-      color: t.colors.textMuted,
+      color: t.colors.textSubtle,
       fontSize: 13,
     },
     topo: {
@@ -419,11 +419,11 @@ const criarEstilos = (t: Theme) =>
     },
     nota: {
       ...t.typography.caption,
-      color: t.colors.textMuted,
+      color: t.colors.textSubtle,
     },
     explicacao: {
       ...t.typography.caption,
-      color: t.colors.textMuted,
+      color: t.colors.textSubtle,
       lineHeight: 18,
     },
     acao: {
@@ -433,7 +433,7 @@ const criarEstilos = (t: Theme) =>
     },
     semResultado: {
       ...t.typography.caption,
-      color: t.colors.textMuted,
+      color: t.colors.textSubtle,
       textAlign: "center",
     },
     vazio: {
@@ -469,7 +469,7 @@ const criarEstilos = (t: Theme) =>
     },
     aparenciaTitulo: {
       ...t.typography.caption,
-      color: t.colors.textMuted,
+      color: t.colors.textSubtle,
       fontSize: 11,
       fontWeight: "700",
       letterSpacing: 0.9,

@@ -51,6 +51,9 @@ export function Logo({ size = 36, tint, withWordmark = false, tagline }: Props) 
         <Path
           // A onda do mockup (grade 24) reescalada para a grade 36 do ladrilho.
           d="M9.67 18c2.083 0 2.083-4.167 4.167-4.167s2.083 6.667 4.167 6.667 2.083-6.667 4.166-6.667 2.084 4.167 4.167 4.167"
+          // A tinta **neutra**, e não a de um papel: o ladrilho é um gradiente
+          // do turquesa do paciente ao azul do profissional, e a onda cruza os
+          // dois — nenhuma das duas tintas de papel serviria à travessia.
           stroke={t.colors.onAccent}
           strokeWidth={2}
           strokeLinecap="round"
@@ -87,6 +90,6 @@ const criarEstilos = (t: Theme) =>
     },
     tagline: {
       ...t.typography.caption,
-      color: t.colors.textMuted,
+      color: t.colors.textSubtle,
     },
   });
