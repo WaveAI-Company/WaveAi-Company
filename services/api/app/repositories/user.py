@@ -57,6 +57,14 @@ class UserRepository:
         self._session.flush()
         return user
 
+    def set_display_name(self, user: User, display_name: str) -> None:
+        """Renomeia no perfil do papel — o nome não mora no `User`."""
+        perfil = user.patient_profile or user.doctor_profile
+        if perfil is None:  # pragma: no cover - todo usuário nasce com perfil
+            raise ValueError("usuario sem perfil")
+        perfil.display_name = display_name
+        self._session.flush()
+
     def set_password(self, user: User, password: str) -> None:
         user.password_hash = self._hasher.hash(password)
         self._session.flush()

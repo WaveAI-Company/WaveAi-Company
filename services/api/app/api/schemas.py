@@ -6,7 +6,7 @@ import uuid
 from datetime import datetime
 from enum import Enum
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
 from ..models.care_link import CareLinkParty, CareLinkStatus
 from ..models.user import UserRole
@@ -62,6 +62,46 @@ class UserResponse(BaseModel):
     email: str
     role: UserRole
     display_name: str | None = None
+    #: Quando a conta foi criada — o "membro desde" do painel de conta. Já
+    #: existia no modelo; faltava sair pela API.
+    created_at: datetime
+
+
+class UpdateMeRequest(BaseModel):
+    """Edição do próprio cadastro.
+
+    Só `display_name`: o e-mail é a identidade de login e trocá-lo é outro
+    fluxo (precisa reverificar o endereço novo antes de valer). O papel não se
+    edita — mudar de paciente para profissional mudaria o que a pessoa pode
+    ver, e isso não é um campo de formulário.
+    """
+
+    display_name: str = Field(min_length=1, max_length=120)
+
+    @field_validator("display_name")
+    @classmethod
+    def _sem_espaco_a_toa(cls, v: str) -> str:
+        """Poda as bordas e recusa nome só de espaço.
+
+        `min_length` conta os espaços, então `"   "` passava pelo schema e
+        chegava vazio ao banco. Normalizar aqui — e não na rota — mantém a
+        regra junto do contrato, onde ela é testável sem HTTP.
+        """
+        podado = v.strip()
+        if not podado:
+            raise ValueError("nome nao pode ser vazio")
+        return podado
+
+
+class ChangePasswordRequest(BaseModel):
+    """Troca de senha do próprio titular.
+
+    Pede a senha atual mesmo com a sessão válida: um token roubado não deve
+    bastar para tomar a conta em definitivo.
+    """
+
+    current_password: str = Field(min_length=1, max_length=PASSWORD_MAX_LENGTH)
+    new_password: str = Field(min_length=PASSWORD_MIN_LENGTH, max_length=PASSWORD_MAX_LENGTH)
 
 
 class ConsentRequest(BaseModel):
