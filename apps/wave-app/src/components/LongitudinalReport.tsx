@@ -114,14 +114,14 @@ const criarEstilos = (t: Theme) =>
     },
     aiLabel: {
       ...t.typography.caption,
-      color: t.colors.textMuted,
+      color: t.colors.textSubtle,
       fontSize: 11,
       fontStyle: "italic",
       marginTop: t.spacing.xs,
     },
     legenda: {
       ...t.typography.caption,
-      color: t.colors.textMuted,
+      color: t.colors.textSubtle,
       marginBottom: t.spacing.xs,
     },
     linha: {
@@ -149,7 +149,7 @@ const criarEstilos = (t: Theme) =>
     },
     engine: {
       ...t.typography.caption,
-      color: t.colors.textMuted,
+      color: t.colors.textSubtle,
       fontSize: 11,
     },
   });

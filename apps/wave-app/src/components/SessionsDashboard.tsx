@@ -170,7 +170,7 @@ const criarEstilos = (t: Theme) =>
     },
     engine: {
       ...t.typography.caption,
-      color: t.colors.textMuted,
+      color: t.colors.textSubtle,
       fontSize: 11,
       marginTop: t.spacing.xs,
     },

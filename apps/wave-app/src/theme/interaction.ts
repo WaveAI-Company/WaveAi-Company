@@ -168,15 +168,20 @@ export function elevar(y: number, reduzirMovimento: boolean): ViewStyle {
 }
 
 /**
- * `--accent-soft` do mockup: o próprio destaque a ~12% — halo de hover e anel
- * de foco de campo. É deliberadamente fraco; **não** carrega informação
+ * `--accent-soft` do mockup: o próprio destaque, bem diluído — halo de hover e
+ * anel de foco de campo. É deliberadamente fraco; **não** carrega informação
  * sozinho, sempre acompanha uma mudança de borda ou de posição.
+ *
+ * **O alfa muda com o tema (P8-c):** 12% no escuro e 10% no claro, como no
+ * mockup. Não é capricho — sobre fundo claro o mesmo alfa rende um halo mais
+ * pesado, porque a diferença de luminância entre o destaque e o fundo é maior.
  */
-export const accentSoft = (accent: string) => withAlpha(accent, 0.12);
+export const accentSoft = (accent: string, escuro: boolean) =>
+  withAlpha(accent, escuro ? 0.12 : 0.1);
 
 /** Halo do botão primário no ponteiro: `0 6px 18px var(--accent-soft)`. */
-export const sombraDestaque = (accent: string) =>
-  `0px 6px 18px ${accentSoft(accent)}, 0px 2px 6px rgba(0, 0, 0, 0.15)`;
+export const sombraDestaque = (accent: string, escuro: boolean) =>
+  `0px 6px 18px ${accentSoft(accent, escuro)}, 0px 2px 6px rgba(0, 0, 0, 0.15)`;
 
 /**
  * Anel de foco de teclado: equivale a `outline: 2px solid accent` com
@@ -193,7 +198,8 @@ export const anelFoco = (accent: string, fundo: string) =>
   `0px 0px 0px 2px ${fundo}, 0px 0px 0px 4px ${accent}`;
 
 /** Anel suave de foco de campo: `0 0 0 3px var(--accent-soft)`. */
-export const anelCampo = (accent: string) => `0px 0px 0px 3px ${accentSoft(accent)}`;
+export const anelCampo = (accent: string, escuro: boolean) =>
+  `0px 0px 0px 3px ${accentSoft(accent, escuro)}`;
 
 /** Junta sombras não vazias numa única `boxShadow`. */
 export const comporSombras = (...partes: (string | false | null | undefined)[]) =>

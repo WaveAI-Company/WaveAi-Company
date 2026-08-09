@@ -29,17 +29,43 @@ const darkColors = {
   surfaceAlt: "#1C2740",
   /** Terceiro nível de elevação — fundo de controle dentro de um cartão. */
   surfaceStrong: "#233152",
-  /** Divisor decorativo — não carrega significado, pode ter baixo contraste. */
-  border: "#243049",
+  /**
+   * Divisor decorativo — não carrega significado, pode ter baixo contraste.
+   *
+   * **Com alfa e não sólido (P8-c):** é assim no mockup, e a diferença é real
+   * — a mesma borda resulta em `#2B3446` sobre um cartão e `#222936` sobre o
+   * fundo da página. Um valor sólido acerta um dos dois e erra o outro.
+   */
+  border: "rgba(245, 247, 250, 0.10)",
   /** Divisor ainda mais discreto (separar seções dentro do mesmo cartão). */
-  borderSoft: "#1B2438",
+  borderSoft: "rgba(245, 247, 250, 0.055)",
   /** Limite de controle interativo: exige 3:1 (WCAG 1.4.11) — inclusive
-   *  sobre `surface`, que é o fundo mais claro e portanto o caso limite. */
+   *  sobre `surface`, que é o fundo mais claro e portanto o caso limite.
+   *  Segue **sólido**: é o único limite que carrega requisito, e com alfa o
+   *  contraste passaria a depender do que estiver atrás. */
   borderStrong: "#5F719A",
   text: "#F5F7FA",
-  textMuted: "#9AA7BD",
-  /** Texto sobre preenchimento de destaque. */
+  /**
+   * Texto de apoio — o `--ink-2` do mockup.
+   *
+   * **Eram um só (P8-c).** O design tem **dois** níveis abaixo do texto
+   * principal, e o nosso `textMuted` caía exatamente no meio dos dois: tudo
+   * que era secundário saía com o mesmo peso, e a hierarquia achatava.
+   */
+  textMuted: "#B6C1D4",
+  /** Terceiro nível — legenda, unidade, ressalva, sobrancelha, placeholder. */
+  textSubtle: "#8291A9",
+  /** Texto sobre preenchimento que **não** é de papel (estado, alerta). */
   onAccent: "#0B1220",
+  /**
+   * Texto sobre o preenchimento de cada papel.
+   *
+   * O mockup **tinge** essa tinta com o matiz do próprio destaque — um
+   * verde-escuro sobre o turquesa, um azul-escuro sobre o azul — em vez de
+   * reusar o fundo da página, que era o que fazíamos.
+   */
+  onAccentPatient: "#06231F",
+  onAccentDoctor: "#0A1430",
   accentPatient: "#4FD1C5",
   accentPatientText: "#4FD1C5",
   accentDoctor: "#7AA2F7",
@@ -59,14 +85,29 @@ const darkColors = {
 const lightColors = {
   background: "#F5F7FA",
   surface: "#FFFFFF",
-  surfaceAlt: "#EDF1F7",
+  surfaceAlt: "#EDF1F6",
   surfaceStrong: "#E2E8F1",
-  border: "#D7DEE9",
-  borderSoft: "#E8EDF4",
+  border: "rgba(15, 23, 38, 0.12)",
+  borderSoft: "rgba(15, 23, 38, 0.06)",
   borderStrong: "#6B7890",
   text: "#0F1726",
-  textMuted: "#55637A",
+  textMuted: "#44526A",
+  /**
+   * O `--ink-3` do mockup é `#68778F`, e ele **reprova** como texto no tema
+   * claro: 4,23 sobre o fundo da página e 4,00 sobre o trilho, contra o mínimo
+   * de 4,5. O round 1 nasceu no escuro e não auditou o claro — mesma história
+   * do `ok`/`warn`/`bad`.
+   *
+   * Aqui a **intenção** (um terceiro nível) fica e o valor desce: matiz 216,9°
+   * e saturação 0,158 são os do Fable, só a luminosidade caiu de 0,484 para
+   * 0,449, o mínimo para passar nos três fundos.
+   */
+  textSubtle: "#606E85",
   onAccent: "#FFFFFF",
+  // No claro os dois papéis convergem para branco, como no mockup: os
+  // preenchimentos são escuros o suficiente para sustentá-lo.
+  onAccentPatient: "#FFFFFF",
+  onAccentDoctor: "#FFFFFF",
   // Preenchimentos escuros o suficiente para texto branco por cima…
   accentPatient: "#0F7A70",
   accentDoctor: "#2A5BC7",
@@ -79,8 +120,8 @@ const lightColors = {
   dangerText: "#B3261E",
   bandDelta: "#3E63DD",
   bandTheta: "#963061",
-  bandAlpha: "#00857A",
-  bandBeta: "#A96C00",
+  bandAlpha: "#009184",
+  bandBeta: "#B87500",
   bandGamma: "#6D5AC4",
 };
 
@@ -131,10 +172,14 @@ export const radius = {
  * pintar alfa de verde ou beta de vermelho inventaria um juízo que a análise
  * não faz (ADR-0027).
  *
- * Os tons vêm do design "Maré", com dois ajustes de contraste: teta no escuro e
- * alfa/beta no claro foram abertos até passarem de 3:1 **sobre o trilho da
- * barra** (`surfaceAlt`), que é o fundo real do preenchimento — não sobre a
- * superfície do cartão.
+ * Os tons vêm do design "Maré". **Alfa e beta no claro voltaram ao valor
+ * original na P8-c**: eles passavam de 3:1 sobre o trilho (`surfaceAlt`) e o
+ * afastamento da P7 era margem, não necessidade.
+ *
+ * **Teta no escuro continua nosso** (`#CC5C7E` e não `#B24468`): o tom do
+ * mockup rende 2,77:1 sobre o trilho e reprova o mínimo de 3:1 da WCAG
+ * 1.4.11. É o fundo real do preenchimento — não a superfície do cartão — que
+ * manda aqui.
  */
 export const BAND_COLORS = {
   delta: "bandDelta",

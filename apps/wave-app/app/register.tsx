@@ -368,7 +368,7 @@ const criarEstilos = (t: Theme) =>
     },
     sobrancelha: {
       ...t.typography.caption,
-      color: t.colors.textMuted,
+      color: t.colors.textSubtle,
       fontWeight: "700",
       letterSpacing: 1.1,
     },
@@ -393,7 +393,7 @@ const criarEstilos = (t: Theme) =>
     },
     medidorTexto: {
       ...t.typography.caption,
-      color: t.colors.textMuted,
+      color: t.colors.textSubtle,
       minWidth: 48,
       textAlign: "right",
     },
@@ -416,7 +416,7 @@ const criarEstilos = (t: Theme) =>
     },
     requisitoTexto: {
       ...t.typography.caption,
-      color: t.colors.textMuted,
+      color: t.colors.textSubtle,
     },
     dica: {
       ...t.typography.caption,
@@ -465,12 +465,12 @@ const criarEstilos = (t: Theme) =>
     },
     papelDescricao: {
       ...t.typography.caption,
-      color: t.colors.textMuted,
+      color: t.colors.textSubtle,
       lineHeight: 17,
     },
     legal: {
       ...t.typography.caption,
-      color: t.colors.textMuted,
+      color: t.colors.textSubtle,
       lineHeight: 17,
       textAlign: "center",
     },

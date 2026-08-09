@@ -50,16 +50,26 @@ function pares(c) {
     ["text", "surface", AA_TEXTO],
     ["textMuted", "background", AA_TEXTO],
     ["textMuted", "surface", AA_TEXTO],
+    // Terceiro nível de texto (legenda, unidade, sobrancelha, placeholder).
+    // Entrou na P8-c e é o mais apertado dos três: o tom do mockup reprovava
+    // no tema claro, e este par é o que impede a regressão.
+    ["textSubtle", "background", AA_TEXTO],
+    ["textSubtle", "surface", AA_TEXTO],
+    ["textSubtle", "surfaceAlt", AA_TEXTO],
     ["accentPatientText", "background", AA_TEXTO],
     ["accentPatientText", "surface", AA_TEXTO],
     ["accentDoctorText", "background", AA_TEXTO],
     ["accentDoctorText", "surface", AA_TEXTO],
     ["warningText", "background", AA_TEXTO],
     ["warningText", "surface", AA_TEXTO],
-    // Texto sobre preenchimento de destaque (botões).
-    ["onAccent", "accentPatient", AA_TEXTO],
-    ["onAccent", "accentDoctor", AA_TEXTO],
+    // Texto sobre preenchimento de destaque (botões). Desde a P8-c a tinta é
+    // **por papel** — o design a tinge com o matiz do próprio destaque —,
+    // então cada par tem de se sustentar sozinho.
+    ["onAccentPatient", "accentPatient", AA_TEXTO],
+    ["onAccentDoctor", "accentDoctor", AA_TEXTO],
+    // Alerta não é cor de papel: usa a tinta neutra.
     ["onAccent", "warning", AA_TEXTO],
+    ["onAccent", "danger", AA_TEXTO],
     // Campo de formulário: desde o porte do design "Maré" o input é preenchido
     // com `surfaceAlt`, então é sobre ele que o texto digitado, o placeholder e
     // o limite do controle precisam se sustentar.

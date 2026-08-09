@@ -219,7 +219,7 @@ const criarEstilos = (t: Theme) =>
     },
     esenseRotulo: {
       ...t.typography.caption,
-      color: t.colors.textMuted,
+      color: t.colors.textSubtle,
     },
     esenseNota: {
       ...t.typography.caption,

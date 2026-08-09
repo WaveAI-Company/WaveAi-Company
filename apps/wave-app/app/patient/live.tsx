@@ -741,7 +741,7 @@ const criarEstilos = (t: Theme) =>
     },
     topoNota: {
       ...t.typography.caption,
-      color: t.colors.textMuted,
+      color: t.colors.textSubtle,
     },
     grade: {
       gap: t.spacing.md,
@@ -769,7 +769,7 @@ const criarEstilos = (t: Theme) =>
     },
     heroiNota: {
       ...t.typography.caption,
-      color: t.colors.textMuted,
+      color: t.colors.textSubtle,
     },
     veu: {
       backgroundColor: t.colors.surfaceAlt,
@@ -803,7 +803,7 @@ const criarEstilos = (t: Theme) =>
     },
     controleNota: {
       ...t.typography.caption,
-      color: t.colors.textMuted,
+      color: t.colors.textSubtle,
       flexShrink: 1,
     },
     valorLinha: {
@@ -817,11 +817,11 @@ const criarEstilos = (t: Theme) =>
     },
     valorUnidade: {
       ...t.typography.caption,
-      color: t.colors.textMuted,
+      color: t.colors.textSubtle,
     },
     notaPainel: {
       ...t.typography.caption,
-      color: t.colors.textMuted,
+      color: t.colors.textSubtle,
       lineHeight: 18,
     },
     notaCautela: {
@@ -874,7 +874,7 @@ const criarEstilos = (t: Theme) =>
     },
     destaqueNota: {
       ...t.typography.caption,
-      color: t.colors.textMuted,
+      color: t.colors.textSubtle,
     },
     subsecao: {
       ...t.typography.body,
@@ -890,7 +890,7 @@ const criarEstilos = (t: Theme) =>
     },
     rastro: {
       ...t.typography.caption,
-      color: t.colors.textMuted,
+      color: t.colors.textSubtle,
       fontSize: 11,
       marginTop: t.spacing.sm,
     },

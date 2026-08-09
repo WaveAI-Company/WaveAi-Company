@@ -106,19 +106,24 @@ export type RoleAccent = {
   onAccent: string;
 };
 
-/** Destaque de um papel específico. */
+/**
+ * Destaque de um papel específico.
+ *
+ * O `onAccent` vem **por papel** desde a P8-c: o design tinge a tinta do botão
+ * com o matiz do próprio destaque, em vez de reusar o fundo da página.
+ */
 export function useAccentFor(role: Role): RoleAccent {
   const t = useTheme();
   return role === "doctor"
     ? {
         accent: t.colors.accentDoctor,
         accentText: t.colors.accentDoctorText,
-        onAccent: t.colors.onAccent,
+        onAccent: t.colors.onAccentDoctor,
       }
     : {
         accent: t.colors.accentPatient,
         accentText: t.colors.accentPatientText,
-        onAccent: t.colors.onAccent,
+        onAccent: t.colors.onAccentPatient,
       };
 }
 

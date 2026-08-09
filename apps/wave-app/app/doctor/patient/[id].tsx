@@ -481,7 +481,7 @@ const criarEstilos = (t: Theme) =>
     },
     pessoaNota: {
       ...t.typography.caption,
-      color: t.colors.textMuted,
+      color: t.colors.textSubtle,
       fontSize: 11,
     },
     cabeca: {
@@ -501,11 +501,11 @@ const criarEstilos = (t: Theme) =>
     },
     cabecaNota: {
       ...t.typography.caption,
-      color: t.colors.textMuted,
+      color: t.colors.textSubtle,
     },
     nota: {
       ...t.typography.caption,
-      color: t.colors.textMuted,
+      color: t.colors.textSubtle,
       lineHeight: 18,
     },
     acaoVivo: {
@@ -532,7 +532,7 @@ const criarEstilos = (t: Theme) =>
     },
     tileRotulo: {
       ...t.typography.caption,
-      color: t.colors.textMuted,
+      color: t.colors.textSubtle,
       fontSize: 11,
     },
     tileValor: {
@@ -542,12 +542,12 @@ const criarEstilos = (t: Theme) =>
     },
     tileSub: {
       ...t.typography.caption,
-      color: t.colors.textMuted,
+      color: t.colors.textSubtle,
       fontSize: 11,
     },
     rastro: {
       ...t.typography.caption,
-      color: t.colors.textMuted,
+      color: t.colors.textSubtle,
       fontSize: 11,
       marginTop: t.spacing.xs,
       textAlign: "center",
