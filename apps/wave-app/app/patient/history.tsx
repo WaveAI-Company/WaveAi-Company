@@ -1,6 +1,6 @@
 import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useMemo, useState } from "react";
-import { StyleSheet, Text, useWindowDimensions, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 
 import { getMyReport, type LongitudinalReport as Report } from "../../src/api/report";
 import {
@@ -24,10 +24,17 @@ import { SessionsDashboard } from "../../src/components/SessionsDashboard";
 import { SessionRow } from "../../src/components/sessions/SessionRow";
 import { Skeleton } from "../../src/components/Skeleton";
 import { StateView } from "../../src/components/StateView";
-import { useRoleAccent, useTheme, type Theme } from "../../src/theme";
+import {
+  larguras,
+  useFaixa,
+  useRoleAccent,
+  useTheme,
+  type Theme,
+} from "../../src/theme";
 
 /** A partir daqui a linha do tempo e o resumo ficam lado a lado. */
-const LARGURA_COLUNAS = 900;
+// `.sess-grid` do mockup: `minmax(0,1fr) 320px` acima de 1199, uma coluna
+// abaixo.
 
 type Periodo = "30" | "90" | "tudo";
 
@@ -79,7 +86,7 @@ export default function PatientHistoryScreen() {
   const papel = useRoleAccent();
   const router = useRouter();
   const styles = useMemo(() => criarEstilos(t), [t]);
-  const emColunas = useWindowDimensions().width >= LARGURA_COLUNAS;
+  const emColunas = useFaixa() === "largo";
 
   const [results, setResults] = useState<SessionResult[]>([]);
   const [report, setReport] = useState<Report | null>(null);
@@ -143,7 +150,7 @@ export default function PatientHistoryScreen() {
   const temSessoes = !loading && !erro && results.length > 0;
 
   return (
-    <ScreenContainer wide>
+    <ScreenContainer largura="app">
       {loading ? (
         <>
           <Text style={styles.carregandoNota}>Buscando suas sessões no servidor…</Text>
@@ -368,7 +375,9 @@ const criarEstilos = (t: Theme) =>
       gap: t.spacing.md,
     },
     trilhoLateral: {
-      width: 320,
+      flexGrow: 0,
+      flexShrink: 0,
+      width: larguras.trilhoSessoes,
     },
     grupo: {
       gap: t.spacing.sm,

@@ -12,10 +12,16 @@ import { Icon } from "../../src/components/Icon";
 import { Panel } from "../../src/components/Panel";
 import { ScreenContainer } from "../../src/components/ScreenContainer";
 import { Skeleton } from "../../src/components/Skeleton";
-import { useRoleAccent, useTheme, withAlpha, type Theme } from "../../src/theme";
+import {
+  bp,
+  useRoleAccent,
+  useTheme,
+  withAlpha,
+  type Theme,
+} from "../../src/theme";
 
 /** A partir daqui o formulário e o painel lateral ficam lado a lado. */
-const LARGURA_COLUNAS = 900;
+// `.inv-grid` do mockup: `1.25fr 1fr`, empilhando em 960.
 /** Janela da lista "Convites enviados", como no design. */
 const DIAS_RECENTES = 30;
 
@@ -51,7 +57,7 @@ export default function DoctorInviteScreen() {
   const router = useRouter();
   const { accent } = useRoleAccent();
   const styles = useMemo(() => criarEstilos(t), [t]);
-  const emColunas = useWindowDimensions().width >= LARGURA_COLUNAS;
+  const emColunas = useWindowDimensions().width > bp.duasColunas;
 
   const [email, setEmail] = useState("");
   const [enviando, setEnviando] = useState(false);
@@ -170,7 +176,7 @@ export default function DoctorInviteScreen() {
   );
 
   return (
-    <ScreenContainer wide>
+    <ScreenContainer largura="lista">
       <View style={styles.topo}>
         <Text style={styles.titulo}>Convidar uma pessoa</Text>
         <Text style={styles.lead}>

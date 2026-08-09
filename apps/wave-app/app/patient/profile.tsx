@@ -15,10 +15,16 @@ import { Panel } from "../../src/components/Panel";
 import { ScreenContainer } from "../../src/components/ScreenContainer";
 import { Skeleton } from "../../src/components/Skeleton";
 import { ThemeSelector } from "../../src/components/ThemeSelector";
-import { useAccentFor, useRoleAccent, useTheme, type Theme } from "../../src/theme";
+import {
+  bp,
+  useAccentFor,
+  useRoleAccent,
+  useTheme,
+  type Theme,
+} from "../../src/theme";
 
 /** A partir daqui configurações e acompanhamento ficam lado a lado. */
-const LARGURA_COLUNAS = 900;
+// `.prof-grid` do mockup: duas colunas iguais, empilhando em 960.
 
 const MESES = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
 
@@ -46,7 +52,7 @@ export default function PatientProfileScreen() {
   const { accent } = useRoleAccent();
   const profissional = useAccentFor("doctor");
   const styles = useMemo(() => criarEstilos(t), [t]);
-  const emColunas = useWindowDimensions().width >= LARGURA_COLUNAS;
+  const emColunas = useWindowDimensions().width > bp.duasColunas;
 
   const [links, setLinks] = useState<CareLink[]>([]);
   const [pendentes, setPendentes] = useState(0);
@@ -119,7 +125,7 @@ export default function PatientProfileScreen() {
   );
 
   return (
-    <ScreenContainer wide>
+    <ScreenContainer largura="perfil">
       {/* ===== cabeçalho ===== */}
       <View style={styles.cabecalho}>
         <Avatar name={user?.display_name} size={64} />
