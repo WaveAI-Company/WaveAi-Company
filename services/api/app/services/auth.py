@@ -38,6 +38,10 @@ class RefreshReuseError(AuthError):
     """Refresh já utilizado reapareceu: a família foi revogada."""
 
 
+class WrongPasswordError(AuthError):
+    """A senha atual não confere na troca de senha."""
+
+
 @dataclass(frozen=True)
 class TokenPair:
     access_token: str
@@ -123,6 +127,33 @@ class AuthService:
 
         self._refresh.mark_used(registro, now=agora)
         return self._emitir(user, family_id=registro.family_id, now=agora)
+
+    # -- conta -----------------------------------------------------------
+
+    def change_password(
+        self, *, user: User, current_password: str, new_password: str
+    ) -> TokenPair:
+        """Troca a senha do titular e derruba todas as sessões antigas.
+
+        Pede a senha atual mesmo com a sessão já autenticada: se um token
+        vazasse, sem esta conferência ele bastaria para tomar a conta em
+        definitivo.
+
+        **Revoga tudo o que já foi emitido** — trocar a senha é o gesto de quem
+        suspeita de acesso indevido, e sessões antigas sobrevivendo à troca
+        anulariam o gesto. Em troca, quem trocou recebe um par novo aqui mesmo
+        e não é expulso do próprio aparelho.
+        """
+        if not self._users.verify_password(user, current_password):
+            raise WrongPasswordError
+
+        self._users.set_password(user, new_password)
+        self.logout_all(user)
+        return self._emitir(user)
+
+    def update_display_name(self, *, user: User, display_name: str) -> User:
+        self._users.set_display_name(user, display_name)
+        return user
 
     # -- logout ----------------------------------------------------------
 
