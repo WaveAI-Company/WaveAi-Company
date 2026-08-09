@@ -5,6 +5,7 @@ titular (ADR-0026 / Medical/72).
 from __future__ import annotations
 
 import uuid
+from datetime import datetime
 from typing import Any
 
 from sqlalchemy.orm import Session
@@ -82,7 +83,9 @@ class ResultService:
 
     # -- relatório longitudinal (N5) ------------------------------------
 
-    def serie_longitudinal(self, *, titular: User, ator: User) -> dict[str, Any]:
+    def serie_longitudinal(
+        self, *, titular: User, ator: User, desde: datetime | None = None
+    ) -> dict[str, Any]:
         """Série **cronológica** (mais antiga → mais recente) de features +
         qualidade das sessões do titular, para o relatório longitudinal (N5).
 
@@ -90,8 +93,12 @@ class ResultService:
         **acesso humano** aos dados derivados do titular — o titular vê os
         próprios, ou o médico com CareLink — então **audita como leitura** (como
         `listar`). Result sem `features` (anteriores ao Catálogo N2) são ignorados.
+
+        `desde` recorta a janela; o corte vai para o banco e a auditoria registra
+        o que foi **de fato** lido, não o histórico inteiro. A tendência passa a
+        ser a da janela pedida — é isso que o seletor de período do painel quer.
         """
-        results = list(reversed(self._repo.listar_do_paciente(titular.id)))  # ASC
+        results = list(reversed(self._repo.listar_do_paciente(titular.id, desde=desde)))  # ASC
         sessions: list[dict[str, Any]] = []
         quality_scores: list[float | None] = []
         times: list[Any] = []
@@ -121,9 +128,16 @@ class ResultService:
 
     # -- direito de acesso ----------------------------------------------
 
-    def listar(self, *, titular: User, ator: User) -> list[dict[str, Any]]:
-        """Lê os Result do titular (decifrando) e audita quem leu."""
-        results = self._repo.listar_do_paciente(titular.id)
+    def listar(
+        self, *, titular: User, ator: User, desde: datetime | None = None
+    ) -> list[dict[str, Any]]:
+        """Lê os Result do titular (decifrando) e audita quem leu.
+
+        `desde` recorta a janela. Minimização: quem pede "últimos 30 dias" não
+        recebe (nem faz o servidor decifrar) três anos para o cliente esconder o
+        resto — e a trilha de acesso conta o que a pessoa realmente viu.
+        """
+        results = self._repo.listar_do_paciente(titular.id, desde=desde)
         if results:
             self._repo.auditar(
                 patient_user_id=titular.id,
@@ -136,7 +150,12 @@ class ResultService:
     # -- direito de exportação (portabilidade) --------------------------
 
     def exportar(self, *, titular: User) -> dict[str, Any]:
-        """Empacota tudo do titular em formato aberto (JSON)."""
+        """Empacota tudo do titular em formato aberto (JSON).
+
+        **Sem recorte de período, de propósito:** portabilidade é o direito a
+        *tudo* (Medical/72). Uma janela aqui devolveria uma cópia parcial com
+        cara de completa — o oposto do que o direito garante.
+        """
         results = self._repo.listar_do_paciente(titular.id)
         self._repo.auditar(
             patient_user_id=titular.id,

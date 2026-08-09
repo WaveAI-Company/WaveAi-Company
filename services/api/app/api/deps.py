@@ -1,12 +1,14 @@
-"""Dependências de autenticação e autorização por papel."""
+"""Dependências de rota: autenticação, autorização por papel e recorte de período."""
 
 from __future__ import annotations
 
 import os
 import uuid
 from collections.abc import Callable, Iterator
+from dataclasses import dataclass
+from datetime import UTC, datetime, timedelta
 
-from fastapi import Depends, HTTPException, Request, status
+from fastapi import Depends, HTTPException, Query, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
@@ -166,6 +168,48 @@ def require_active_care_link(
             status_code=status.HTTP_403_FORBIDDEN, detail="sem vinculo ativo com este paciente"
         )
     return link.patient
+
+
+# -- recorte de período --------------------------------------------------
+
+#: Teto do `?days=`: ~10 anos. Não é limite de produto — é sanidade de entrada.
+#: Acima disso o pedido é indistinguível de "tudo", e recusar é mais honesto do
+#: que fingir que a janela recortou alguma coisa.
+PERIODO_MAX_DIAS = 3650
+
+
+@dataclass(frozen=True)
+class Janela:
+    """Recorte temporal pedido pelo cliente (`?days=N`) já traduzido em corte."""
+
+    days: int
+    desde: datetime
+
+
+def janela_periodo(
+    days: int | None = Query(
+        None,
+        ge=1,
+        le=PERIODO_MAX_DIAS,
+        description=(
+            "Recorta a resposta às últimas N dias (janela rolante de N×24h). "
+            "Ausente = histórico inteiro."
+        ),
+    ),
+) -> Janela | None:
+    """Traduz `?days=N` numa data de corte — janela **rolante**, em UTC.
+
+    Rolante e não mês-calendário: "últimos 30 dias" no design é o que a pessoa
+    captou nas últimas 720 horas, e assim o corte independe do fuso de quem lê.
+
+    Ausente devolve `None` e a rota se comporta como antes desta fatia. O
+    parâmetro só **estreita** o que sai do servidor, nunca alarga — por isso não
+    é uma nova via de acesso: os gates (token, papel, CareLink ativo) rodam
+    antes e continuam iguais.
+    """
+    if days is None:
+        return None
+    return Janela(days=days, desde=datetime.now(UTC) - timedelta(days=days))
 
 
 def client_ip(request: Request) -> str:
