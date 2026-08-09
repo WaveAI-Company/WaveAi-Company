@@ -6,7 +6,14 @@ import uuid
 from datetime import datetime
 from enum import Enum
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    EmailStr,
+    Field,
+    field_validator,
+    model_validator,
+)
 
 from ..models.care_link import CareLinkParty, CareLinkStatus
 from ..models.user import UserRole
@@ -66,6 +73,51 @@ class ResendVerificationRequest(BaseModel):
     """Pedido de reenvio do código. Responde igual exista ou não a conta."""
 
     email: EmailStr
+
+
+class ForgotPasswordRequest(BaseModel):
+    """Pedido de recuperação. Responde igual exista ou não a conta (ADR-0024)."""
+
+    email: EmailStr
+
+
+class ResetPasswordRequest(BaseModel):
+    """Redefinição por **uma** das duas formas do segredo (ADR-0044 + emendas).
+
+    `email` + `code` é o caminho de quem digita os 6 dígitos; `token` é o de
+    quem abriu o link do e-mail — e o link não carrega o endereço, por isso ele
+    vale sozinho.
+    """
+
+    email: EmailStr | None = None
+    code: str | None = Field(
+        default=None, min_length=VERIFICATION_CODE_DIGITS, max_length=VERIFICATION_CODE_DIGITS
+    )
+    token: str | None = Field(default=None, min_length=16, max_length=512)
+    new_password: str = Field(min_length=PASSWORD_MIN_LENGTH, max_length=PASSWORD_MAX_LENGTH)
+
+    @field_validator("code")
+    @classmethod
+    def _so_digitos(cls, v: str | None) -> str | None:
+        if v is None:
+            return None
+        podado = v.strip()
+        if not podado.isdigit():
+            raise ValueError("o codigo tem apenas digitos")
+        return podado
+
+    @model_validator(mode="after")
+    def _uma_forma_so(self) -> "ResetPasswordRequest":
+        """Exige exatamente uma das duas formas.
+
+        Aceitar as duas juntas obrigaria a decidir qual vence — e "qual dos dois
+        segredos mandou" não é pergunta que deva existir.
+        """
+        por_codigo = self.email is not None and self.code is not None
+        por_link = self.token is not None
+        if por_codigo == por_link:
+            raise ValueError("envie e-mail + codigo, ou o token do link")
+        return self
 
 
 class RefreshRequest(BaseModel):

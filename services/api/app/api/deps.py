@@ -112,6 +112,11 @@ def get_current_user(
     user = UserRepository(session, hasher).get_by_id(claims.user_id)
     if user is None or not user.is_active:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="token invalido")
+    # Logout global, troca e redefinição de senha incrementam `token_version`.
+    # Sem esta conferência, o access token já emitido sobreviveria ao gesto por
+    # até 15 minutos — justamente a janela em que se quer o intruso fora.
+    if claims.token_version != user.token_version:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="token invalido")
     return user
 
 

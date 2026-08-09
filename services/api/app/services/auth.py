@@ -257,6 +257,32 @@ class AuthService:
         self.logout_all(user)
         return self._emitir(user)
 
+    def redefinir_senha(self, *, user: User, new_password: str) -> None:
+        """Redefine a senha de quem provou posse do e-mail (2ª emenda à ADR-0044).
+
+        Três efeitos, e nenhum deles é acessório:
+
+        - **revoga todas as sessões** — recuperar senha é o gesto de quem perdeu
+          o controle da conta; sessão antiga sobrevivendo anularia o gesto;
+        - **marca o e-mail como verificado** — quem digitou o código que chegou
+          ao endereço provou controlá-lo. Sem isto, com o gate ligado, uma conta
+          não verificada recuperaria a senha e continuaria sem entrar: um beco
+          sem saída criado por nós;
+        - **não emite sessão**: a pessoa não está autenticada, e o design a manda
+          de volta para o login ("Entre com a sua nova senha").
+        """
+        self._users.set_password(user, new_password)
+        self.marcar_verificado(user)
+        self.logout_all(user)
+
+    def senha_igual_a_atual(self, *, user: User, new_password: str) -> bool:
+        """A senha nova repete a vigente?
+
+        Só isto — impedir **qualquer** senha já usada exigiria guardar histórico
+        de hashes, que é dado pessoal novo com custo permanente (2ª emenda).
+        """
+        return self._users.verify_password(user, new_password)
+
     def update_display_name(self, *, user: User, display_name: str) -> User:
         self._users.set_display_name(user, display_name)
         return user
@@ -270,7 +296,13 @@ class AuthService:
             self._refresh.revoke_family(registro.family_id)
 
     def logout_all(self, user: User) -> None:
-        """Logout global: invalida tudo o que já foi emitido."""
+        """Logout global: invalida tudo o que já foi emitido.
+
+        Inclui os **access tokens** já entregues: o incremento de
+        `token_version` não bate mais com a claim `tv` que eles carregam, e a
+        dependência de autenticação recusa. Sem essa conferência, "invalida
+        tudo" seria falso por até 15 minutos — justamente na janela em que
+        quem redefine a senha quer o intruso fora."""
         self._users.revoke_tokens(user)
         self._refresh.revoke_all_for_user(user)
 
@@ -284,7 +316,11 @@ class AuthService:
         now: datetime | None = None,
     ) -> TokenPair:
         access = create_access_token(
-            user_id=user.id, role=user.role.value, settings=self._settings, now=now
+            user_id=user.id,
+            role=user.role.value,
+            settings=self._settings,
+            now=now,
+            token_version=user.token_version,
         )
         raw_refresh = generate_refresh_token()
         self._refresh.issue(
