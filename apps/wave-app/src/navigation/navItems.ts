@@ -8,29 +8,42 @@
 
 import type { UserRole } from "../auth/api";
 import { capturaDisponivel, espectadorDisponivel } from "../capture/availability";
+import type { IconName } from "../components/Icon";
 
 export type NavItem = {
   label: string;
   href: string;
-  /** Glifo monocromático (identidade fina; ícones de marca vêm na P6-c). */
-  icon: string;
+  /**
+   * Ícone de traço do conjunto "Maré".
+   *
+   * **Era um glifo Unicode** (`⌂`, `≡`, `✉`…) desde a P6-a, com a nota de que
+   * os ícones viriam depois. Vieram na P8-b: caractere de fonte tem peso,
+   * grade e desenho próprios de cada tipografia do sistema — ao lado de um
+   * conjunto de traço, lê como outra família.
+   */
+  icon: IconName;
 };
 
-const LIVE_ITEM: NavItem = { label: "Estado ao vivo", href: "/patient/live", icon: "◉" };
-const WATCH_ITEM: NavItem = { label: "Assistir ao vivo", href: "/patient/watch", icon: "◉" };
+// Os pares rota→ícone são os do mockup: `Design/round1/inicio-paciente.html` e
+// `inicio-profissional.html`.
+const LIVE_ITEM: NavItem = { label: "Estado ao vivo", href: "/patient/live", icon: "wave" };
+// "Assistir ao vivo" não existe no round 1 (é nosso, ADR-0039). `monitor` e
+// não `users`: quem assiste aqui é o próprio titular, pelo navegador, a
+// captação que corre no celular — a tela do aparelho é o assunto, não gente.
+const WATCH_ITEM: NavItem = { label: "Assistir ao vivo", href: "/patient/watch", icon: "monitor" };
 
 const PATIENT: NavItem[] = [
-  { label: "Início", href: "/patient", icon: "⌂" },
+  { label: "Início", href: "/patient", icon: "home" },
   LIVE_ITEM,
   WATCH_ITEM,
-  { label: "Histórico", href: "/patient/history", icon: "≡" },
-  { label: "Convites", href: "/patient/invites", icon: "✉" },
-  { label: "Perfil", href: "/patient/profile", icon: "◔" },
+  { label: "Histórico", href: "/patient/history", icon: "calendar" },
+  { label: "Convites", href: "/patient/invites", icon: "mail" },
+  { label: "Perfil", href: "/patient/profile", icon: "user" },
 ];
 
 const DOCTOR: NavItem[] = [
-  { label: "Início", href: "/doctor", icon: "⌂" },
-  { label: "Convidar paciente", href: "/doctor/invite", icon: "✚" },
+  { label: "Início", href: "/doctor", icon: "home" },
+  { label: "Convidar paciente", href: "/doctor/invite", icon: "userPlus" },
 ];
 
 export function navItemsFor(role: UserRole): NavItem[] {
