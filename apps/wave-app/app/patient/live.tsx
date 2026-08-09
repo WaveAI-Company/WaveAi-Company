@@ -12,6 +12,7 @@ import {
 import { Button } from "../../src/components/Button";
 import { Card } from "../../src/components/Card";
 import { Chip } from "../../src/components/Chip";
+import { Icon } from "../../src/components/Icon";
 import { InfoButton } from "../../src/components/InfoButton";
 import { LiveReadingConfidence } from "../../src/components/LiveReadingConfidence";
 import { Meter } from "../../src/components/Meter";
@@ -413,7 +414,10 @@ export default function PatientLiveScreen() {
                   />
                 </View>
               ) : null}
-              <Text style={styles.controleNota}>🔒 só você vê esta sessão</Text>
+              <View style={styles.controleNotaLinha}>
+                <Icon name="lock" size={13} color={t.colors.textMuted} strokeWidth={2} />
+                <Text style={styles.controleNota}>só você vê esta sessão</Text>
+              </View>
             </View>
           </Panel>
 
@@ -792,9 +796,15 @@ const criarEstilos = (t: Theme) =>
       flexGrow: 1,
       minWidth: 220,
     },
+    controleNotaLinha: {
+      alignItems: "center",
+      flexDirection: "row",
+      gap: 6,
+    },
     controleNota: {
       ...t.typography.caption,
       color: t.colors.textMuted,
+      flexShrink: 1,
     },
     valorLinha: {
       alignItems: "baseline",

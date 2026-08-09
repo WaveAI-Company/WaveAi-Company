@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Pressable, StyleSheet, Text } from "react-native";
+import { Pressable, StyleSheet } from "react-native";
 
 import { glossaryEntry } from "../didactic/glossary";
 import {
@@ -12,6 +12,7 @@ import {
   useTheme,
   type Theme,
 } from "../theme";
+import { Icon } from "./Icon";
 import { InfoSheet } from "./InfoSheet";
 
 type Props = {
@@ -54,15 +55,12 @@ export function InfoButton({ term, accent }: Props) {
             : null,
         ]}
       >
-        <Text
-          style={[
-            styles.icone,
-            accent ? { color: accent } : null,
-            estado.hovered && !accent && { color: t.colors.text },
-          ]}
-        >
-          ⓘ
-        </Text>
+        <Icon
+          name="info"
+          size={17}
+          color={accent ?? (estado.hovered ? t.colors.text : t.colors.textMuted)}
+          strokeWidth={2}
+        />
       </Pressable>
       <InfoSheet entry={entry} visivel={aberto} onFechar={() => setAberto(false)} />
     </>
@@ -82,9 +80,5 @@ const criarEstilos = (t: Theme) =>
       ...transicao("background-color, box-shadow", motion.media),
       ...semContornoNativo(),
     },
-    icone: {
-      ...t.typography.bodyStrong,
-      color: t.colors.textMuted,
-      ...transicao("color", motion.media),
-    },
+
   });

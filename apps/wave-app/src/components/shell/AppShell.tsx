@@ -23,6 +23,7 @@ import {
   type Theme,
 } from "../../theme";
 import { Logo } from "../brand/Logo";
+import { Icon, type IconName } from "../Icon";
 import { Button } from "../Button";
 import { NavList } from "./NavList";
 
@@ -173,10 +174,10 @@ function Header({
   return (
     <View style={styles.header}>
       {onBack ? (
-        <BotaoIcone label="Voltar" glifo="‹" onPress={onBack} styles={styles} />
+        <BotaoIcone label="Voltar" icone="chevronLeft" onPress={onBack} styles={styles} />
       ) : null}
       {onMenu ? (
-        <BotaoIcone label="Abrir menu" glifo="☰" onPress={onMenu} styles={styles} />
+        <BotaoIcone label="Abrir menu" icone="menu" onPress={onMenu} styles={styles} />
       ) : null}
       <Text style={styles.headerTitulo} numberOfLines={1}>
         {titulo}
@@ -188,12 +189,12 @@ function Header({
 /** Botão só-ícone da barra superior — o `.iconbtn` do mockup. */
 function BotaoIcone({
   label,
-  glifo,
+  icone,
   onPress,
   styles,
 }: {
   label: string;
-  glifo: string;
+  icone: IconName;
   onPress: () => void;
   styles: ReturnType<typeof criarEstilos>;
 }) {
@@ -214,7 +215,7 @@ function BotaoIcone({
         estado.focoVisivel ? { boxShadow: anelFoco(accent, t.colors.surface) } : null,
       ]}
     >
-      <Text style={styles.hamburgerTexto}>{glifo}</Text>
+      <Icon name={icone} size={20} color={t.colors.text} />
     </Pressable>
   );
 }
@@ -261,10 +262,7 @@ const criarEstilos = (t: Theme) =>
       ...transicao("background-color, box-shadow", motion.media),
       ...semContornoNativo(),
     },
-    hamburgerTexto: {
-      color: t.colors.text,
-      fontSize: 22,
-    },
+
     headerTitulo: {
       ...t.typography.heading,
       color: t.colors.text,
