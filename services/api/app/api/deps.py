@@ -143,8 +143,9 @@ def get_annotation_service(
 def get_care_service(
     session: Session = Depends(get_session),
     hasher: PasswordHasher = Depends(get_hasher),
+    cipher: MetricsCipher = Depends(get_metrics_cipher),
 ) -> CareService:
-    return CareService(session=session, hasher=hasher)
+    return CareService(session=session, hasher=hasher, cipher=cipher)
 
 
 def require_active_care_link(

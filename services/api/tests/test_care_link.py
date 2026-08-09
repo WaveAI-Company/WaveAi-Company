@@ -76,8 +76,11 @@ class Ator:
     def post(self, url: str, json: dict | None = None):
         return self._client.post(url, json=json or {}, headers=self.headers)
 
-    def convidar(self, outro: "Ator"):
-        return self.post("/care-links", {"email": outro.email})
+    def convidar(self, outro: "Ator", mensagem: str | None = None):
+        corpo: dict = {"email": outro.email}
+        if mensagem is not None:
+            corpo["message"] = mensagem
+        return self.post("/care-links", corpo)
 
     def ver_paciente(self, paciente: "Ator"):
         return self.get(f"/patients/{paciente.id}")
@@ -394,3 +397,118 @@ def test_lista_mostra_apenas_a_contraparte(medico: Ator, paciente: Ator):
     assert visao_medico["counterpart_role"] == "patient"
     assert visao_paciente["counterpart_user_id"] == medico.id
     assert visao_paciente["counterpart_role"] == "doctor"
+
+
+# -- mensagem opcional do convite (ADR-0043) -----------------------------
+#
+# Recado que o solicitante escreve junto do convite. Texto livre de uma pessoa
+# sobre outra: cifrado em repouso, limitado, imutável e só visível às partes.
+
+#: Recado SINTÉTICO, no tom do mockup (convites.html) — pessoa fictícia.
+RECADO = "Oi! Posso acompanhar suas tendências entre os nossos encontros?"
+
+
+def test_convite_carrega_o_recado_para_a_contraparte(client: TestClient):
+    medico, paciente = Ator(client, "doctor"), Ator(client, "patient")
+
+    assert medico.convidar(paciente, RECADO).status_code == 202
+
+    # Quem recebeu lê o recado no convite pendente...
+    assert paciente.vinculos()[0]["message"] == RECADO
+    # ...e quem escreveu vê o que mandou (lista de convites enviados).
+    assert medico.vinculos()[0]["message"] == RECADO
+
+
+def test_convite_sem_recado_responde_nulo(client: TestClient):
+    """Ausência é `None`, nunca string vazia — a tela não desenha balão vazio."""
+    medico, paciente = Ator(client, "doctor"), Ator(client, "patient")
+
+    medico.convidar(paciente)
+
+    assert paciente.vinculos()[0]["message"] is None
+
+
+def test_recado_so_de_espaco_vira_ausencia(client: TestClient):
+    """`max_length`/`min_length` contam espaço: "   " passaria pelo schema."""
+    medico, paciente = Ator(client, "doctor"), Ator(client, "patient")
+
+    assert medico.convidar(paciente, "   ").status_code == 202
+
+    assert paciente.vinculos()[0]["message"] is None
+
+
+def test_recado_e_podado_nas_bordas(client: TestClient):
+    medico, paciente = Ator(client, "doctor"), Ator(client, "patient")
+
+    medico.convidar(paciente, f"  {RECADO}\n")
+
+    assert paciente.vinculos()[0]["message"] == RECADO
+
+
+def test_recado_acima_do_teto_e_recusado(client: TestClient):
+    """500 é decisão de produto (ADR-0043): campo grande vira prontuário."""
+    from app.api.schemas import INVITE_MESSAGE_MAX_LENGTH
+
+    medico, paciente = Ator(client, "doctor"), Ator(client, "patient")
+
+    no_limite = "a" * INVITE_MESSAGE_MAX_LENGTH
+    assert medico.convidar(paciente, no_limite).status_code == 202
+
+    outro = Ator(client, "patient")
+    assert medico.convidar(outro, "a" * (INVITE_MESSAGE_MAX_LENGTH + 1)).status_code == 422
+
+
+def test_recado_fica_cifrado_no_banco(client: TestClient, db_session: Session):
+    """ADR-0043/0037: texto livre sobre uma pessoa não fica em claro no dump."""
+    medico, paciente = Ator(client, "doctor"), Ator(client, "patient")
+    medico.convidar(paciente, RECADO)
+
+    bruto = db_session.execute(select(CareLink.invite_message_encrypted)).scalars().all()
+
+    assert bruto and bruto[0] is not None
+    assert b"tend" not in bruto[0]  # nenhum pedaco do texto em claro
+    assert RECADO.encode("utf-8") not in bruto[0]
+
+
+def test_paciente_tambem_pode_mandar_recado(client: TestClient):
+    """Mesmo endpoint nos dois sentidos — o vínculo do paciente já nasce ativo."""
+    medico, paciente = Ator(client, "doctor"), Ator(client, "patient")
+
+    paciente.convidar(medico, "Quero que você acompanhe minhas tendências.")
+
+    vinculo = medico.vinculos()[0]
+    assert vinculo["status"] == "active"
+    assert vinculo["message"] == "Quero que você acompanhe minhas tendências."
+
+
+def test_reconvite_nao_reescreve_o_recado(client: TestClient):
+    """Imutável (ADR-0043): quem está decidindo não tem o texto trocado por baixo."""
+    medico, paciente = Ator(client, "doctor"), Ator(client, "patient")
+    medico.convidar(paciente, RECADO)
+
+    assert medico.convidar(paciente, "Texto novo, depois de ela já ter lido.").status_code == 202
+
+    assert paciente.vinculos()[0]["message"] == RECADO
+
+
+def test_recado_some_com_o_convite_recusado(client: TestClient):
+    """Vínculo terminal sai de todas as listagens — o recado vai junto."""
+    medico, paciente = Ator(client, "doctor"), Ator(client, "patient")
+    medico.convidar(paciente, RECADO)
+
+    paciente.recusar(paciente.vinculos()[0]["id"])
+
+    assert paciente.vinculos() == []
+    assert medico.vinculos() == []
+
+
+def test_recado_para_email_sem_conta_nao_e_gravado(client: TestClient, db_session: Session):
+    """Anti-enumeração (ADR-0024): sem conta, nada é gravado — nem o recado."""
+    medico = Ator(client, "doctor")
+
+    resp = medico.post("/care-links", {"email": _email(), "message": RECADO})
+
+    # Resposta uniforme, como se a conta existisse...
+    assert resp.status_code == 202
+    # ...e nenhuma linha (logo, nenhum recado) ficou para trás.
+    assert db_session.execute(select(CareLink)).scalars().all() == []

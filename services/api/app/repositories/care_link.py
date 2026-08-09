@@ -72,12 +72,14 @@ class CareLinkRepository:
         patient_id: uuid.UUID,
         status: CareLinkStatus,
         initiated_by: CareLinkParty,
+        invite_message_encrypted: bytes | None = None,
     ) -> CareLink:
         link = CareLink(
             doctor_user_id=doctor_id,
             patient_user_id=patient_id,
             status=status,
             initiated_by=initiated_by,
+            invite_message_encrypted=invite_message_encrypted,
         )
         self._session.add(link)
         self._session.flush()
