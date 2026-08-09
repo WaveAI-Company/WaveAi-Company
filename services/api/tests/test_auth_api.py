@@ -260,3 +260,131 @@ def test_papel_correto_e_autorizado(client: TestClient):
     resp = client.get("/_test/doctor-only", headers={"Authorization": f"Bearer {token}"})
 
     assert resp.status_code == 200
+
+
+# -- edição do próprio cadastro (P9-a) -----------------------------------
+
+
+def test_me_expoe_quando_a_conta_foi_criada(client: TestClient):
+    token = _login_token(client, _email())
+
+    resp = client.get("/auth/me", headers={"Authorization": f"Bearer {token}"})
+
+    assert resp.status_code == 200
+    # O painel "Dados da conta" mostra "membro desde"; o dado já existia no
+    # modelo e não saía pela API.
+    assert resp.json()["created_at"]
+
+
+def test_patch_me_renomeia_o_titular(client: TestClient):
+    token = _login_token(client, _email())
+
+    resp = client.patch(
+        "/auth/me",
+        json={"display_name": "Nome Novo"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert resp.status_code == 200
+    assert resp.json()["display_name"] == "Nome Novo"
+    depois = client.get("/auth/me", headers={"Authorization": f"Bearer {token}"})
+    assert depois.json()["display_name"] == "Nome Novo"
+
+
+def test_patch_me_exige_autenticacao(client: TestClient):
+    assert client.patch("/auth/me", json={"display_name": "X"}).status_code == 401
+
+
+def test_patch_me_recusa_nome_vazio(client: TestClient):
+    token = _login_token(client, _email())
+
+    resp = client.patch(
+        "/auth/me",
+        json={"display_name": "   "},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    # Espaço em branco não é nome. `min_length` sozinho não pega isso — conta
+    # os espaços —, então quem recusa é o validador do schema.
+    assert resp.status_code == 422
+
+
+def test_troca_de_senha_passa_a_valer_para_o_login(client: TestClient):
+    email = _email()
+    token = _login_token(client, email)
+    nova = "outra-senha-de-teste-longa"
+
+    resp = client.post(
+        "/auth/password",
+        json={"current_password": SENHA, "new_password": nova},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert resp.status_code == 200
+    assert client.post("/auth/login", json={"email": email, "password": nova}).status_code == 200
+    assert client.post("/auth/login", json={"email": email, "password": SENHA}).status_code == 401
+
+
+def test_troca_de_senha_recusa_senha_atual_errada(client: TestClient):
+    token = _login_token(client, _email())
+
+    resp = client.post(
+        "/auth/password",
+        json={"current_password": "nao-e-a-senha-atual", "new_password": "nova-senha-longa-ok"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    # Um token roubado não pode bastar para tomar a conta em definitivo.
+    assert resp.status_code == 401
+
+
+def test_troca_de_senha_derruba_as_sessoes_antigas(client: TestClient):
+    email = _email()
+    _registrar(client, email)
+    antigo = client.post(
+        "/auth/login", json={"email": email, "password": SENHA, "client": "mobile"}
+    ).json()["refresh_token"]
+    token = client.post(
+        "/auth/login", json={"email": email, "password": SENHA, "client": "mobile"}
+    ).json()["access_token"]
+
+    trocou = client.post(
+        "/auth/password",
+        json={"current_password": SENHA, "new_password": "mais-uma-senha-bem-longa"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert trocou.status_code == 200
+    # Trocar a senha é o gesto de quem suspeita de acesso indevido: o refresh
+    # emitido antes não pode sobreviver a ele.
+    reusar = client.post("/auth/refresh", json={"refresh_token": antigo, "client": "mobile"})
+    assert reusar.status_code == 401
+
+
+def test_troca_de_senha_devolve_par_novo_a_quem_trocou(client: TestClient):
+    email = _email()
+    token = _login_token(client, email)
+
+    resp = client.post(
+        "/auth/password",
+        json={"current_password": SENHA, "new_password": "senha-nova-para-continuar"},
+        headers={"Authorization": f"Bearer {token}"},
+        params={"client": "mobile"},
+    )
+
+    # Quem trocou não é expulso do próprio aparelho.
+    assert resp.status_code == 200
+    assert resp.json()["refresh_token"]
+    seguinte = client.post(
+        "/auth/refresh",
+        json={"refresh_token": resp.json()["refresh_token"], "client": "mobile"},
+    )
+    assert seguinte.status_code == 200
+
+
+def test_troca_de_senha_exige_autenticacao(client: TestClient):
+    resp = client.post(
+        "/auth/password",
+        json={"current_password": SENHA, "new_password": "qualquer-senha-longa"},
+    )
+    assert resp.status_code == 401
