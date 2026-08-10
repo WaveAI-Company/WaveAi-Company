@@ -29,7 +29,7 @@ from app.services.single_use_token import SingleUseTokenService
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-SENHA = "senha-de-teste-bem-longa"
+from .conftest import SENHA
 
 VERIFICACAO = SingleUseTokenPurpose.EMAIL_VERIFICATION
 RESET = SingleUseTokenPurpose.PASSWORD_RESET

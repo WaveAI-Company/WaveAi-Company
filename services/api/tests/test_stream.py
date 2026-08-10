@@ -21,9 +21,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 from starlette.websockets import WebSocketDisconnect
 
-from .conftest import registrar_conta
-
-SENHA = "senha-de-teste-bem-longa"
+from .conftest import SENHA, registrar_conta
 
 
 @pytest.fixture(autouse=True)

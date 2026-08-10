@@ -29,10 +29,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from .conftest import EmailRecorder, codigo_de_verificacao
-
-SENHA = "senha-de-teste-bem-longa"
-SENHA_NOVA = "outra-senha-de-teste-bem-longa"
+from .conftest import SENHA, SENHA_NOVA, EmailRecorder, codigo_de_verificacao
 
 
 @pytest.fixture(autouse=True)
@@ -184,6 +181,30 @@ def test_redefine_pelo_token_do_link(client: TestClient, emails: EmailRecorder):
     assert _entrar(client, email, SENHA_NOVA).status_code == 200
 
 
+def test_redefinicao_recusa_senha_sem_digito(client: TestClient, emails: EmailRecorder):
+    """A terceira porta de escrita de senha usa a mesma régua das outras duas.
+
+    Importa que o 422 chegue **antes** de gastar o segredo: reprovar a senha e
+    queimar o código junto obrigaria a pessoa a pedir outro por ter digitado
+    uma senha fraca.
+    """
+    email = _conta_pronta(client, emails)
+    codigo = _codigo(emails, email)
+
+    resp = client.post(
+        "/auth/reset-password",
+        json={"email": email, "code": codigo, "new_password": "senha-nova-sem-digito"},
+    )
+
+    assert resp.status_code == 422
+    # O código continua valendo — só a senha foi recusada.
+    segunda = client.post(
+        "/auth/reset-password",
+        json={"email": email, "code": codigo, "new_password": SENHA_NOVA},
+    )
+    assert segunda.status_code == 204
+
+
 def test_usar_uma_forma_queima_a_outra(client: TestClient, emails: EmailRecorder):
     """É um segredo só, em duas formas — não dois segredos."""
     email = _conta_pronta(client, emails)
@@ -196,7 +217,7 @@ def test_usar_uma_forma_queima_a_outra(client: TestClient, emails: EmailRecorder
 
     resp = client.post(
         "/auth/reset-password",
-        json={"token": token, "new_password": "terceira-senha-bem-longa"},
+        json={"token": token, "new_password": "terceira-senha-bem-longa-9"},
     )
 
     assert resp.status_code == 400
