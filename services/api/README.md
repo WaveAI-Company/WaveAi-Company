@@ -222,9 +222,20 @@ Perder o "ao vivo" é aceitável; perder a sessão do paciente não.
 Cria um médico e três pacientes **fictícios** com vínculos `active`, para
 exercitar as telas sem passar pelo fluxo de convite (que é a #20):
 
+Com o stack do compose de pé, rode **de dentro do container** — é onde o banco
+está alcançável e a config já vem do ambiente:
+
+```bash
+docker compose exec api python -m scripts.seed_dev
+# Medico de teste: dra.ficticia@example.com / senha-de-teste-bem-longa-7
+```
+
+Fora do container funciona igual, desde que você esteja em `services/api` com o
+venv ativo e as variáveis do `.env.example` no ambiente (a `DATABASE_URL`
+apontando para o banco **de desenvolvimento** — não para o dos testes):
+
 ```bash
 python -m scripts.seed_dev
-# Medico de teste: dra.ficticia@example.com / senha-de-teste-bem-longa-7
 ```
 
 É idempotente (rodar duas vezes não duplica) — e **redefine a senha** das contas
