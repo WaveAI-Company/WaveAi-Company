@@ -36,9 +36,14 @@ def _email() -> str:
 
 
 def _registrar(service: AuthService, email: str | None = None):
-    return service.register(
+    user = service.register(
         email=email or _email(), password=SENHA, role=UserRole.PATIENT, display_name="Fulano"
     )
+    # Com o gate ligado (P11-c), conta não verificada não faz login. Estes
+    # testes são sobre o par de tokens e a rotação, não sobre a posse do
+    # endereço — e usam o mesmo método que a rota `/auth/verify-email` chama.
+    service.marcar_verificado(user)
+    return user
 
 
 # -- registro / login ----------------------------------------------------

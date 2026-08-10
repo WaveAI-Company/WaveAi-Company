@@ -117,13 +117,18 @@ class Settings(BaseSettings):
     #: (valor de demonstração); 60 s é o número redondo.
     verification_resend_cooldown_seconds: int = 60
 
-    # -- Verificação de e-mail (fatia P9-e) ----------------------------------
-    #: GATE: quando `True`, conta não verificada **não faz login**. Nasce
-    #: desligado para que o backend possa ir para `main` antes das telas — o
-    #: fluxo inteiro (emitir, verificar, reenviar) funciona com ele desligado;
-    #: só o bloqueio do login espera. A fase A de front liga isto junto com a
-    #: tela de verificação. Mesmo padrão de gate do `result_persistence_enabled`.
-    email_verification_required: bool = False
+    # -- Verificação de e-mail (fatia P9-e, ligada na P11-c) -----------------
+    #: GATE: quando `True`, conta não verificada **não faz login**. Nasceu
+    #: desligado para o backend ir para `main` antes das telas; **ligado desde
+    #: a fatia P11-c**, que trouxe a tela de código de 6 dígitos.
+    #:
+    #: O padrão vive aqui, e não numa variável de ambiente, porque é o valor
+    #: que a suíte inteira passa a exercitar: com o gate desligado nos testes,
+    #: nenhum deles atravessaria o login que o produto de fato tem.
+    #:
+    #: Contas anteriores não são afetadas — a migration 0012 marcou como
+    #: verificadas todas as que já existiam.
+    email_verification_required: bool = True
     #: Prazo até uma conta **não verificada** poder ser reciclada, devolvendo o
     #: e-mail. Sem isto a verificação sozinha não impede o banco de acumular
     #: cadastros mortos segurando endereços.

@@ -17,6 +17,12 @@ type Props = {
   onPress: () => void;
   /** Cor do texto — padrão: o destaque do papel. */
   accent?: string;
+  /**
+   * Link no tamanho da legenda (13px), para frases que já são de apoio — a
+   * linha "Não chegou? Reenviar código" do design. No tamanho de corpo, o link
+   * ficaria maior que o texto que o cerca.
+   */
+  compacto?: boolean;
 };
 
 /**
@@ -31,7 +37,7 @@ type Props = {
  * já se distingue do texto ao redor pela cor **e** pelo peso, então não é a
  * cor sozinha que carrega a informação.
  */
-export function TextLink({ label, onPress, accent }: Props) {
+export function TextLink({ label, onPress, accent, compacto }: Props) {
   const t = useTheme();
   const papel = useRoleAccent();
   const styles = useMemo(() => criarEstilos(t), [t]);
@@ -53,6 +59,7 @@ export function TextLink({ label, onPress, accent }: Props) {
       <Text
         style={[
           styles.texto,
+          compacto && styles.textoCompacto,
           { color: cor },
           (estado.hovered || estado.pressed) && styles.sublinhado,
         ]}
@@ -72,6 +79,9 @@ const criarEstilos = (t: Theme) =>
     },
     texto: {
       ...t.typography.bodyStrong,
+    },
+    textoCompacto: {
+      fontSize: 13,
     },
     sublinhado: {
       textDecorationLine: "underline",

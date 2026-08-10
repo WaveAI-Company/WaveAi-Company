@@ -22,6 +22,8 @@ from app.models import CaptureSession, SessionStatus
 from app.services.analysis_client import AnalysisUnavailableError
 from app.services.streaming import CloseCode
 
+from .conftest import registrar_conta
+
 SENHA = "senha-de-teste-bem-longa"
 
 
@@ -46,10 +48,7 @@ def _email() -> str:
 
 def _token(client: TestClient, role: str = "patient") -> str:
     email = _email()
-    client.post(
-        "/auth/register",
-        json={"email": email, "password": SENHA, "role": role, "display_name": "Ficticio"},
-    )
+    registrar_conta(client, email=email, senha=SENHA, role=role)
     resp = client.post(
         "/auth/login", json={"email": email, "password": SENHA, "client": "mobile"}
     )

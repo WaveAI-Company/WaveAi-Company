@@ -25,6 +25,8 @@ from app.main import app
 from app.models import CaptureSession, LiveShareEvent, SessionStatus, User
 from app.services.live_bus import LiveBus, publicar_janela, reset_live_bus
 
+from .conftest import registrar_conta
+
 SENHA = "senha-de-teste-bem-longa"
 
 
@@ -49,9 +51,8 @@ class Ator:
     def __init__(self, client: TestClient, *, role: str = "patient") -> None:
         self._client = client
         self.email = f"user-{uuid.uuid4().hex[:12]}@example.com"
-        client.post(
-            "/auth/register",
-            json={"email": self.email, "password": SENHA, "role": role, "display_name": "Sint"},
+        registrar_conta(
+            client, email=self.email, senha=SENHA, role=role, display_name="Sint"
         )
         self.token = client.post(
             "/auth/login", json={"email": self.email, "password": SENHA, "client": "mobile"}
