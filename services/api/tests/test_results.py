@@ -278,8 +278,11 @@ class Paciente:
         return self._client.delete(url, headers=self.headers)
 
 
-def _semear_result(db_session: Session, email: str) -> None:
-    """Grava um Result sintético para o paciente de `email`."""
+def _semear_result(db_session: Session, email: str) -> CaptureSession:
+    """Grava um Result sintético para o paciente de `email`.
+
+    Devolve a sessão para quem precisa dela depois (anotar, por exemplo).
+    """
     from app.repositories.user import UserRepository
     from app.security.password import Argon2PasswordHasher
 
@@ -290,6 +293,7 @@ def _semear_result(db_session: Session, email: str) -> None:
         patient=user, session_id=sessao.id, metrics=METRICS_FALSAS
     )
     db_session.commit()
+    return sessao
 
 
 def test_consentimento_liga_e_desliga(client: TestClient):
@@ -768,3 +772,123 @@ def test_medico_com_days_ainda_passa_pelo_vinculo(client_report, db_session: Ses
     lista = client_report.get(f"/patients/{pid}/results?days=30", headers=cab).json()
     assert len(lista["results"]) == 1
     assert lista["window_days"] == 30
+
+
+# -- selo de autorrelato na lista (emenda à ADR-0037) --------------------
+
+
+def _anotar(paciente: Paciente, session_id, texto: str) -> None:
+    resp = paciente._client.put(
+        f"/sessions/{session_id}/annotation",
+        json={"note": texto},
+        headers=paciente.headers,
+    )
+    assert resp.status_code == 200, resp.text
+
+
+def test_lista_diz_quais_sessoes_tem_autorrelato(client: TestClient, db_session: Session):
+    """O selo da linha do tempo sai daqui — sem uma consulta de nota por sessão."""
+    paciente = Paciente(client, consentiu=True)
+    com_nota = _semear_result(db_session, paciente.email)
+    _semear_result(db_session, paciente.email)
+    _anotar(paciente, com_nota.id, "dormi pouco")
+
+    results = paciente.get("/me/results").json()["results"]
+
+    por_sessao = {r["session_id"]: r["has_annotation"] for r in results}
+    assert por_sessao[str(com_nota.id)] is True
+    assert sum(1 for v in por_sessao.values() if v) == 1
+
+
+def test_apagar_a_nota_apaga_o_selo(client: TestClient, db_session: Session):
+    paciente = Paciente(client, consentiu=True)
+    sessao = _semear_result(db_session, paciente.email)
+    _anotar(paciente, sessao.id, "café tarde demais")
+
+    paciente.delete(f"/sessions/{sessao.id}/annotation")
+
+    results = paciente.get("/me/results").json()["results"]
+    assert results[0]["has_annotation"] is False
+
+
+def test_listar_nao_conta_como_leitura_de_nota(client: TestClient, db_session: Session):
+    """**O coração da emenda à ADR-0037.**
+
+    Dizer que uma sessão tem autorrelato não é ler o autorrelato: a trilha de
+    anotações registra quem leu a nota de alguém, e inflá-la com acessos que não
+    aconteceram é o que torna uma trilha inauditável.
+    """
+    paciente = Paciente(client, consentiu=True)
+    sessao = _semear_result(db_session, paciente.email)
+    _anotar(paciente, sessao.id, "nota sintetica")
+    pid = _paciente_id(db_session, paciente.email)
+    antes = _leituras_de_nota(db_session, pid)
+
+    paciente.get("/me/results")
+
+    assert _leituras_de_nota(db_session, pid) == antes
+
+
+def test_medico_ve_o_selo_e_nunca_o_texto(client: TestClient, db_session: Session):
+    """A existência é metadado do vínculo ativo; o texto continua a um ato de
+    distância, pela rota própria e auditado."""
+    paciente = Paciente(client, consentiu=True)
+    sessao = _semear_result(db_session, paciente.email)
+    segredo = "briga em casa na vespera"
+    _anotar(paciente, sessao.id, segredo)
+
+    medico_email = _email()
+    registrar_conta(client, email=medico_email, senha=SENHA, role="doctor", display_name="Dr")
+    medico_token = client.post(
+        "/auth/login", json={"email": medico_email, "password": SENHA, "client": "mobile"}
+    ).json()["access_token"]
+    paciente.post("/care-links", {"email": medico_email})
+    pid = _paciente_id(db_session, paciente.email)
+    antes = _leituras_de_nota(db_session, pid)
+
+    resp = client.get(
+        f"/patients/{pid}/results", headers={"Authorization": f"Bearer {medico_token}"}
+    )
+
+    assert resp.status_code == 200
+    assert resp.json()["results"][0]["has_annotation"] is True
+    assert segredo not in resp.text
+    # E o selo não gerou evento na trilha de anotações.
+    assert _leituras_de_nota(db_session, pid) == antes
+
+
+def test_selo_de_um_paciente_nao_vaza_para_a_lista_de_outro(
+    client: TestClient, db_session: Session
+):
+    """A consulta filtra por titular, não só pelos ids da página."""
+    com_nota = Paciente(client, consentiu=True)
+    sessao = _semear_result(db_session, com_nota.email)
+    _anotar(com_nota, sessao.id, "nota de outra pessoa")
+
+    sem_nota = Paciente(client, consentiu=True)
+    _semear_result(db_session, sem_nota.email)
+
+    results = sem_nota.get("/me/results").json()["results"]
+
+    assert all(r["has_annotation"] is False for r in results)
+
+
+def _paciente_id(db_session: Session, email: str):
+    from app.repositories.user import UserRepository
+    from app.security.password import Argon2PasswordHasher
+
+    hasher = Argon2PasswordHasher(memory_cost=8, time_cost=1, parallelism=1)
+    return UserRepository(db_session, hasher).get_by_email(email).id
+
+
+def _leituras_de_nota(db_session: Session, patient_user_id) -> int:
+    from app.models import AnnotationAccessAction, AnnotationAccessEvent
+
+    return len(
+        db_session.scalars(
+            select(AnnotationAccessEvent).where(
+                AnnotationAccessEvent.patient_user_id == patient_user_id,
+                AnnotationAccessEvent.action == AnnotationAccessAction.READ,
+            )
+        ).all()
+    )
