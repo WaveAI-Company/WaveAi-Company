@@ -18,10 +18,13 @@ import { useTheme, type Theme } from "../src/theme";
  * A cena (marca + formulário, nas três larguras) mora no `AuthStage`, que esta
  * tela divide com o cadastro.
  *
- * **Fora do porte por decisão (ADR-0041):** "esqueci minha senha" (depende de
- * envio de e-mail, nasce no P5) e "manter conectado" (a sessão já persiste pelo
- * cookie de refresh — o controle seria decorativo). Telar controle sem função
- * engana quem testa.
+ * "Esqueci minha senha" ficou fora do porte enquanto não havia envio de e-mail;
+ * a P9-f trouxe o fluxo e a P11-d as telas, então o link existe e leva a
+ * `/reset-password`.
+ *
+ * **Fora do porte por decisão (ADR-0041):** "manter conectado" — a sessão já
+ * persiste pelo cookie de refresh, e o controle seria decorativo. Telar
+ * controle sem função engana quem testa.
  */
 
 const CHIPS = ["composição por banda", "qualidade do sinal", "tendências"];
@@ -100,6 +103,18 @@ export default function LoginScreen() {
         placeholder="Sua senha"
       />
 
+      {/* A `.auth-aux` do mockup, que lá divide a linha com "Manter conectado".
+          Esse controle continua fora do porte (a sessão já persiste pelo cookie
+          de refresh), então sobra o link — no lugar dele, à direita. */}
+      <View style={styles.auxiliar}>
+        <TextLink
+          label="Esqueci minha senha"
+          onPress={() => router.push("/reset-password")}
+          accent={t.colors.accentPatientText}
+          compacto
+        />
+      </View>
+
       <StateView error={erro} />
 
       {faltaVerificar ? (
@@ -142,6 +157,12 @@ const criarEstilos = (t: Theme) =>
     subtitulo: {
       ...t.typography.body,
       color: t.colors.textMuted,
+    },
+    auxiliar: {
+      alignItems: "center",
+      flexDirection: "row",
+      justifyContent: "flex-end",
+      marginTop: -t.spacing.xs,
     },
     retomar: {
       alignItems: "center",

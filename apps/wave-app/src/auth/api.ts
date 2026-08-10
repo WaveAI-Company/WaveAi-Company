@@ -132,6 +132,33 @@ export async function resendVerification(email: string): Promise<void> {
   await request("/auth/resend-verification", { method: "POST", body: { email } });
 }
 
+/**
+ * Pede a recuperação de senha. Manda **link e código** — as duas formas do
+ * mesmo segredo. Responde igual exista ou não a conta (ADR-0024), então quem
+ * chama não pode concluir nada da resposta.
+ */
+export async function forgotPassword(email: string): Promise<void> {
+  await request("/auth/forgot-password", { method: "POST", body: { email } });
+}
+
+/**
+ * Redefine a senha por **uma** das duas formas: o código digitado (com o
+ * e-mail) ou o token do link (que vale sozinho — o link não carrega endereço).
+ * Mandar as duas é recusado pela API, de propósito.
+ *
+ * Não emite sessão: o design manda de volta ao login, e a redefinição derruba
+ * todas as sessões abertas.
+ */
+export async function resetPassword(
+  segredo: { email: string; code: string } | { token: string },
+  newPassword: string,
+): Promise<void> {
+  await request("/auth/reset-password", {
+    method: "POST",
+    body: { ...segredo, new_password: newPassword },
+  });
+}
+
 export async function login(email: string, password: string): Promise<AuthUser> {
   const tokens = await request<TokenResponse>("/auth/login", {
     method: "POST",
