@@ -53,11 +53,33 @@ pessoais/clínicos entram quando especificados pelo produto.
 
 | Rota | O que faz |
 |---|---|
-| `POST /auth/register` | Cria usuário + perfil do papel (`201`; `409` se e-mail já existe) |
-| `POST /auth/login` | Emite access + refresh (`401` genérico; `429` se exceder tentativas) |
+| `POST /auth/register` | Cria usuário + perfil e manda o código (`202` **sempre** — o `409` de e-mail existente era oráculo) |
+| `POST /auth/verify-email` | Confirma a posse do endereço pelo código de 6 dígitos (`204`) |
+| `POST /auth/resend-verification` | Reenvia o código (`202` sempre; cooldown no banco) |
+| `POST /auth/login` | Emite access + refresh (`401` genérico; `403` se falta verificar; `429` se exceder tentativas) |
+| `POST /auth/forgot-password` | Manda link **e** código de recuperação (`202` sempre) |
+| `POST /auth/reset-password` | Redefine com uma das duas formas do segredo (`204`) |
 | `POST /auth/refresh` | **Rotaciona** o refresh |
 | `POST /auth/logout` | Revoga a família do dispositivo (`204`) |
 | `GET /auth/me` | Usuário autenticado (exige Bearer) |
+| `PATCH /auth/me` | Edita o próprio cadastro — só o nome de exibição |
+| `POST /auth/password` | Troca a senha (exige a atual) e devolve par novo |
+| `POST /auth/email` | Pede a troca do endereço (exige a atual; `202` **sempre**) |
+| `POST /auth/email/confirm` | Confirma a troca com o código que foi ao endereço **novo** (`204`) |
+
+> A tabela acima estava desatualizada desde a P9-e (dizia `201`/`409` no
+> cadastro, justamente o que a anti-enumeração removeu). Corrigida junto com a
+> troca de e-mail — acrescentar uma linha a uma tabela errada espalharia o erro.
+
+**Senha (escrita):** mínimo 8, máximo 128, **uma letra e um número** — os
+mesmos três requisitos que o app mostra. Vale em cadastro, redefinição e troca;
+**não** vale no login, senão quem tem senha anterior à regra ficaria de fora.
+
+**Troca de e-mail (3ª emenda à ADR-0044):** quem prova posse é o endereço
+**novo** (código de 6 dígitos, 10 min, uso único). O endereço **atual** recebe
+um aviso — é o único sinal que chega a quem está perdendo a conta. A resposta é
+a mesma esteja o endereço livre ou ocupado; no segundo caso quem é avisado é a
+dona do endereço. A troca **não** derruba sessões: a credencial não mudou.
 
 **Access token:** JWT HS256, **15 min**, claims mínimas (`sub`, `role`, `exp`,
 `iat`, `jti`, `typ`) — nunca dado sensível, pois JWT é apenas base64.

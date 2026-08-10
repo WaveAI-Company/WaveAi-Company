@@ -70,11 +70,20 @@ class SingleUseTokenService:
         espera = timedelta(seconds=self._settings.verification_resend_cooldown_seconds)
         return datetime.now(UTC) - ultimo.created_at < espera
 
-    def emitir(self, *, user: User, purpose: SingleUseTokenPurpose) -> TokenEmitido:
+    def emitir(
+        self,
+        *,
+        user: User,
+        purpose: SingleUseTokenPurpose,
+        new_email: str | None = None,
+    ) -> TokenEmitido:
         """Emite um token novo, invalidando os que ainda valiam.
 
         A ordem importa: superseder **antes** de criar, senão o novo entraria no
         próprio lote de invalidação.
+
+        `new_email` só faz sentido em `EMAIL_CHANGE`: é o endereço pretendido,
+        que fica guardado na linha até a confirmação (3ª emenda à ADR-0044).
         """
         agora = datetime.now(UTC)
         self._repo.apagar_expirados(user_id=user.id, agora=agora)
@@ -89,6 +98,7 @@ class SingleUseTokenService:
             token_hash=hash_opaque_token(valor),
             code_hash=hash_opaque_token(codigo),
             expires_at=expires_at,
+            new_email=new_email,
         )
         return TokenEmitido(valor=valor, codigo=codigo, expires_at=expires_at)
 
