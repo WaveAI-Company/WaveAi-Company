@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+import re
 import uuid
 from datetime import datetime
 from enum import Enum
+from typing import Annotated
 
 from pydantic import (
+    AfterValidator,
     BaseModel,
     ConfigDict,
     EmailStr,
@@ -23,6 +26,36 @@ from ..models.user import UserRole
 PASSWORD_MIN_LENGTH = 8
 PASSWORD_MAX_LENGTH = 128
 
+#: Uma letra e um dígito **ASCII**, exatamente como a tela cobra em
+#: `PasswordStrength.tsx` (`/[a-zA-Z]/` e `/[0-9]/`). Deliberadamente NÃO são
+#: `str.isalpha()`/`str.isdigit()`: os dois aceitam unicode ("٣".isdigit() é
+#: True) e o front não — usar o idioma do Python mudaria a divergência de
+#: lugar em vez de fechá-la, que é justamente o motivo desta regra existir.
+_TEM_LETRA = re.compile(r"[A-Za-z]")
+_TEM_DIGITO = re.compile(r"[0-9]")
+
+
+def _validar_forca_da_senha(valor: str) -> str:
+    """Os mesmos três requisitos do medidor da tela (o comprimento vem do `Field`).
+
+    A regra vale só na **escrita** (cadastro, troca e redefinição). O `login`
+    segue aceitando qualquer comprimento: quem criou a conta antes desta regra
+    tem uma senha que ela recusaria, e trancar essas pessoas do lado de fora
+    seria trocar um desalinhamento por um incidente.
+    """
+    if not _TEM_LETRA.search(valor) or not _TEM_DIGITO.search(valor):
+        raise ValueError("a senha precisa de pelo menos uma letra e um numero")
+    return valor
+
+
+#: Senha em campo de ESCRITA. `Field` cuida do comprimento; o validador, do
+#: resto. Um tipo só para os três lugares não divergirem com o tempo.
+SenhaNova = Annotated[
+    str,
+    Field(min_length=PASSWORD_MIN_LENGTH, max_length=PASSWORD_MAX_LENGTH),
+    AfterValidator(_validar_forca_da_senha),
+]
+
 
 class ClientPlatform(str, Enum):
     """Onde o refresh será guardado (ADR-0021).
@@ -37,7 +70,7 @@ class ClientPlatform(str, Enum):
 
 class RegisterRequest(BaseModel):
     email: EmailStr
-    password: str = Field(min_length=PASSWORD_MIN_LENGTH, max_length=PASSWORD_MAX_LENGTH)
+    password: SenhaNova
     role: UserRole
     display_name: str = Field(min_length=1, max_length=120)
 
@@ -94,7 +127,7 @@ class ResetPasswordRequest(BaseModel):
         default=None, min_length=VERIFICATION_CODE_DIGITS, max_length=VERIFICATION_CODE_DIGITS
     )
     token: str | None = Field(default=None, min_length=16, max_length=512)
-    new_password: str = Field(min_length=PASSWORD_MIN_LENGTH, max_length=PASSWORD_MAX_LENGTH)
+    new_password: SenhaNova
 
     @field_validator("code")
     @classmethod
@@ -179,8 +212,10 @@ class ChangePasswordRequest(BaseModel):
     bastar para tomar a conta em definitivo.
     """
 
+    #: Conferência contra o hash guardado, não senha nascendo: fica fora da
+    #: regra de força, senão quem tem senha legada não consegue nem trocá-la.
     current_password: str = Field(min_length=1, max_length=PASSWORD_MAX_LENGTH)
-    new_password: str = Field(min_length=PASSWORD_MIN_LENGTH, max_length=PASSWORD_MAX_LENGTH)
+    new_password: SenhaNova
 
 
 class ConsentRequest(BaseModel):

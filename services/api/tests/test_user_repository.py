@@ -9,7 +9,7 @@ from app.security.password import Argon2PasswordHasher, PasswordHasher
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-SENHA = "senha-de-teste-bem-longa"
+from .conftest import SENHA
 
 
 @pytest.fixture
