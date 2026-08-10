@@ -1,19 +1,22 @@
 import { useFocusEffect, useRouter } from "expo-router";
-import { useCallback, useMemo, useState, type ReactNode } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { StyleSheet, Text, useWindowDimensions, View } from "react-native";
 
 import { listCareLinks, revokeCareLink, type CareLink } from "../../src/api/care";
 import { getConsentStatus, type ConsentStatus } from "../../src/api/consent";
 import { useAuth } from "../../src/auth/AuthContext";
+import { dataCurta } from "../../src/format/date";
 import { DIAGNOSTICO_BLE_HABILITADO } from "../../src/capture/availability";
-import { Avatar } from "../../src/components/Avatar";
 import { Button } from "../../src/components/Button";
 import { Chip } from "../../src/components/Chip";
 import { Disclaimer } from "../../src/components/Disclaimer";
 import { NavAction } from "../../src/components/NavAction";
 import { Panel } from "../../src/components/Panel";
+import { PersonRow, PersonRowSkeleton } from "../../src/components/profile/PersonRow";
+import { ProfileHeader } from "../../src/components/profile/ProfileHeader";
+import { ProfileSection } from "../../src/components/profile/ProfileSection";
+import { ReadOnlyField } from "../../src/components/profile/ReadOnlyField";
 import { ScreenContainer } from "../../src/components/ScreenContainer";
-import { Skeleton } from "../../src/components/Skeleton";
 import { ThemeSelector } from "../../src/components/ThemeSelector";
 import {
   bp,
@@ -25,14 +28,6 @@ import {
 
 /** A partir daqui configurações e acompanhamento ficam lado a lado. */
 // `.prof-grid` do mockup: duas colunas iguais, empilhando em 960.
-
-const MESES = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
-
-/** "12 jul 2026" — sem os "de" que o `toLocaleDateString` pt-BR insere. */
-function dataCurta(iso: string): string {
-  const d = new Date(iso);
-  return `${d.getDate()} ${MESES[d.getMonth()]} ${d.getFullYear()}`;
-}
 
 /**
  * Perfil do paciente — porte de `Design/round1/perfil.html` (ADR-0042).
@@ -106,42 +101,22 @@ export default function PatientProfileScreen() {
   const consentido = consent?.consent_given ?? false;
   const ativos = links.filter((link) => !revogados.includes(link.id));
 
-  /** Sobrancelha de seção com a régua do design. */
-  const rotuloSecao = (texto: string) => (
-    <View style={styles.secao}>
-      <Text style={styles.secaoTexto}>{texto}</Text>
-      <View style={styles.secaoRegua} />
-    </View>
-  );
-
-  /** Par rótulo/valor em leitura — a forma do campo, sem a promessa de editar. */
-  const campoLeitura = (rotulo: string, valor: ReactNode) => (
-    <View style={styles.campo}>
-      <Text style={styles.campoRotulo}>{rotulo}</Text>
-      <View style={styles.campoCaixa}>
-        <Text style={styles.campoValor}>{valor}</Text>
-      </View>
-    </View>
-  );
-
   return (
     <ScreenContainer largura="perfil">
-      {/* ===== cabeçalho ===== */}
-      <View style={styles.cabecalho}>
-        <Avatar name={user?.display_name} size={64} />
-        <View style={styles.cabecalhoTextos}>
-          <Text style={styles.nome}>{user?.display_name ?? "Paciente"}</Text>
-          <Text style={styles.email}>{user?.email}</Text>
-        </View>
-        <Chip label="Paciente" dot accent={accent} />
-      </View>
+      <ProfileHeader
+        name={user?.display_name}
+        email={user?.email}
+        fallback="Paciente"
+        role="Paciente"
+        accent={accent}
+      />
 
       {erro ? <Text style={styles.erro}>{erro}</Text> : null}
 
       <View style={[styles.grade, emColunas && styles.gradeLinha]}>
         {/* ============ configurações ============ */}
         <View style={styles.coluna}>
-          {rotuloSecao("Configurações")}
+          <ProfileSection label="Configurações" />
 
           <Panel title="Aparência" eyebrow="tema">
             <ThemeSelector />
@@ -151,8 +126,8 @@ export default function PatientProfileScreen() {
           </Panel>
 
           <Panel title="Dados da conta" eyebrow="identificação">
-            {campoLeitura("Nome", user?.display_name ?? "—")}
-            {campoLeitura("E-mail", user?.email ?? "—")}
+            <ReadOnlyField label="Nome" value={user?.display_name ?? "—"} />
+            <ReadOnlyField label="E-mail" value={user?.email ?? "—"} />
             <Text style={styles.nota}>
               Editar o nome, trocar o e-mail e alterar a senha ainda não existem no
               servidor — por isso não há um botão aqui que não faria nada.
@@ -162,7 +137,7 @@ export default function PatientProfileScreen() {
 
         {/* ============ quem me acompanha ============ */}
         <View style={styles.coluna}>
-          {rotuloSecao("Quem me acompanha")}
+          <ProfileSection label="Quem me acompanha" />
 
           <Panel
             title="Profissionais autorizados"
@@ -173,15 +148,7 @@ export default function PatientProfileScreen() {
               tendências, resumos e autorrelatos. Revogar o acesso tem efeito imediato.
             </Text>
 
-            {carregando ? (
-              <View style={styles.pessoa}>
-                <Skeleton width={46} height={46} radius={23} />
-                <View style={styles.pessoaTextos}>
-                  <Skeleton width="55%" height={16} />
-                  <Skeleton width="80%" height={12} />
-                </View>
-              </View>
-            ) : null}
+            {carregando ? <PersonRowSkeleton /> : null}
 
             {!carregando && ativos.length === 0 && revogados.length === 0 ? (
               <Text style={styles.vazio}>
@@ -194,37 +161,25 @@ export default function PatientProfileScreen() {
               ? links.map((link) => {
                   const revogado = revogados.includes(link.id);
                   return (
-                    <View
+                    <PersonRow
                       key={link.id}
-                      style={[styles.pessoa, revogado && styles.pessoaRevogada]}
-                    >
-                      <Avatar
-                        name={link.counterpart_display_name}
-                        size={46}
-                        tone={profissional.accentText}
-                      />
-                      <View style={styles.pessoaTextos}>
-                        <Text style={[styles.pessoaNome, revogado && styles.riscado]}>
-                          {link.counterpart_display_name ?? "Profissional de bem-estar"}
-                        </Text>
-                        <Text style={styles.pessoaNota}>
-                          profissional de bem-estar · acesso desde{" "}
-                          {dataCurta(link.consented_at ?? link.created_at)}
-                        </Text>
-                      </View>
-                      {revogado ? (
-                        <Text style={styles.recibo}>acesso revogado</Text>
-                      ) : (
-                        <View style={styles.pessoaAcao}>
-                          <Button
-                            label="Revogar acesso"
-                            onPress={() => revogar(link.id)}
-                            loading={revogando === link.id}
-                            variant="secondary"
-                          />
-                        </View>
-                      )}
-                    </View>
+                      name={link.counterpart_display_name}
+                      fallback="Profissional de bem-estar"
+                      note={`profissional de bem-estar · acesso desde ${dataCurta(
+                        link.consented_at ?? link.created_at,
+                      )}`}
+                      tone={profissional.accentText}
+                      ended={revogado}
+                      status={revogado ? "acesso revogado" : undefined}
+                      action={
+                        <Button
+                          label="Revogar acesso"
+                          onPress={() => revogar(link.id)}
+                          loading={revogando === link.id}
+                          variant="secondary"
+                        />
+                      }
+                    />
                   );
                 })
               : null}
@@ -287,27 +242,6 @@ export default function PatientProfileScreen() {
 
 const criarEstilos = (t: Theme) =>
   StyleSheet.create({
-    cabecalho: {
-      alignItems: "center",
-      flexDirection: "row",
-      flexWrap: "wrap",
-      gap: t.spacing.md,
-      marginBottom: t.spacing.sm,
-    },
-    cabecalhoTextos: {
-      flex: 1,
-      gap: 2,
-      minWidth: 180,
-    },
-    nome: {
-      ...t.typography.title,
-      color: t.colors.text,
-    },
-    email: {
-      ...t.typography.caption,
-      color: t.colors.textSubtle,
-      fontSize: 13,
-    },
     erro: {
       ...t.typography.body,
       color: t.colors.dangerText,
@@ -327,45 +261,6 @@ const criarEstilos = (t: Theme) =>
       gap: t.spacing.md,
       minWidth: 0,
     },
-    secao: {
-      alignItems: "center",
-      flexDirection: "row",
-      gap: t.spacing.sm,
-    },
-    secaoTexto: {
-      ...t.typography.caption,
-      color: t.colors.textSubtle,
-      fontSize: 11,
-      fontWeight: "700",
-      letterSpacing: 0.9,
-      textTransform: "uppercase",
-    },
-    secaoRegua: {
-      backgroundColor: t.colors.border,
-      flex: 1,
-      height: 1,
-    },
-    campo: {
-      gap: 6,
-    },
-    campoRotulo: {
-      ...t.typography.label,
-      color: t.colors.textMuted,
-    },
-    campoCaixa: {
-      backgroundColor: t.colors.surfaceAlt,
-      borderColor: t.colors.border,
-      borderRadius: t.radius.md,
-      borderWidth: 1,
-      justifyContent: "center",
-      minHeight: 46,
-      paddingHorizontal: t.spacing.md,
-      paddingVertical: t.spacing.sm,
-    },
-    campoValor: {
-      ...t.typography.body,
-      color: t.colors.text,
-    },
     nota: {
       ...t.typography.caption,
       color: t.colors.textSubtle,
@@ -375,41 +270,5 @@ const criarEstilos = (t: Theme) =>
       ...t.typography.body,
       color: t.colors.textMuted,
       paddingVertical: t.spacing.sm,
-    },
-    pessoa: {
-      alignItems: "center",
-      borderTopColor: t.colors.borderSoft,
-      borderTopWidth: 1,
-      flexDirection: "row",
-      flexWrap: "wrap",
-      gap: t.spacing.sm,
-      paddingVertical: t.spacing.md,
-    },
-    pessoaRevogada: {
-      opacity: 0.65,
-    },
-    pessoaTextos: {
-      flex: 1,
-      gap: 2,
-      minWidth: 140,
-    },
-    pessoaNome: {
-      ...t.typography.bodyStrong,
-      color: t.colors.text,
-    },
-    riscado: {
-      textDecorationLine: "line-through",
-    },
-    pessoaNota: {
-      ...t.typography.caption,
-      color: t.colors.textSubtle,
-    },
-    pessoaAcao: {
-      minWidth: 160,
-    },
-    recibo: {
-      ...t.typography.caption,
-      color: t.colors.textSubtle,
-      fontWeight: "700",
     },
   });

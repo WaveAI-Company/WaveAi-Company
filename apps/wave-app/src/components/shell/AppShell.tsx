@@ -212,10 +212,10 @@ function Header({
   const { user } = useAuth();
   const { accent } = useRoleAccent();
 
-  // O avatar leva ao perfil, e **só o paciente tem essa tela**. Mostrá-lo ao
-  // profissional seria desenhar uma afordância sem destino; o perfil dele é
-  // uma tela que ainda não existe, não um detalhe de casca.
-  const temPerfil = user?.role === "patient";
+  // Os dois papéis têm perfil desde a B'; o avatar leva ao do papel de quem
+  // está logado. Antes ele só aparecia para o paciente, porque o profissional
+  // não tinha destino.
+  const perfil = user?.role === "doctor" ? "/doctor/profile" : "/patient/profile";
 
   return (
     <View style={styles.header}>
@@ -235,12 +235,12 @@ function Header({
         onPress={() => t.setPreference(t.isDark ? "light" : "dark")}
         styles={styles}
       />
-      {temPerfil ? (
+      {user ? (
         <AvatarPerfil
-          nome={user?.display_name}
+          nome={user.display_name}
           accent={accent}
           styles={styles}
-          onPress={() => router.navigate("/patient/profile")}
+          onPress={() => router.navigate(perfil as never)}
         />
       ) : null}
     </View>
