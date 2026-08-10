@@ -28,6 +28,8 @@ from app.models import (
     UserRole,
 )
 
+from .conftest import registrar_conta
+
 SENHA = "senha-de-teste-bem-longa"
 
 
@@ -74,9 +76,8 @@ class Ator:
     def __init__(self, client: TestClient, *, role: str = "patient") -> None:
         self._client = client
         self.email = _email()
-        client.post(
-            "/auth/register",
-            json={"email": self.email, "password": SENHA, "role": role, "display_name": "Sint"},
+        registrar_conta(
+            client, email=self.email, senha=SENHA, role=role, display_name="Sint"
         )
         self.token = client.post(
             "/auth/login", json={"email": self.email, "password": SENHA, "client": "mobile"}

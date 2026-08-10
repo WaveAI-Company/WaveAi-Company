@@ -20,6 +20,8 @@ from app.db.session import get_session
 from app.main import app
 from app.models import CareLink, CareLinkEvent, CareLinkEventType, CareLinkStatus
 
+from .conftest import registrar_conta
+
 SENHA = "senha-de-teste-bem-longa"
 
 
@@ -49,18 +51,15 @@ class Ator:
         self._client = client
         self.email = _email()
         self.role = role
-        resp = client.post(
-            "/auth/register",
-            json={
-                "email": self.email,
-                "password": SENHA,
-                "role": role,
-                "display_name": f"{role} ficticio",
-            },
-        )
         # O cadastro não devolve mais o usuário criado (P9-e: resposta uniforme,
         # sem oráculo de existência), então o id vem do `/auth/me`.
-        assert resp.status_code == 202
+        registrar_conta(
+            client,
+            email=self.email,
+            senha=SENHA,
+            role=role,
+            display_name=f"{role} ficticio",
+        )
         login = client.post(
             "/auth/login",
             json={"email": self.email, "password": SENHA, "client": "mobile"},

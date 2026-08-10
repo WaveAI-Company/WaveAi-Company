@@ -116,6 +116,22 @@ export async function register(input: {
   });
 }
 
+/**
+ * Confirma a posse do endereço pelo código de 6 dígitos. Responde 204 e **não
+ * emite sessão** — quem entra é o login de sempre (ADR-0044).
+ *
+ * O 400 é único de propósito: código errado, expirado, já usado e e-mail sem
+ * conta chegam com a mesma mensagem. A tela não deve inventar a diferença.
+ */
+export async function verifyEmail(email: string, code: string): Promise<void> {
+  await request("/auth/verify-email", { method: "POST", body: { email, code } });
+}
+
+/** Reemite o código. Responde igual exista ou não a conta (ADR-0024). */
+export async function resendVerification(email: string): Promise<void> {
+  await request("/auth/resend-verification", { method: "POST", body: { email } });
+}
+
 export async function login(email: string, password: string): Promise<AuthUser> {
   const tokens = await request<TokenResponse>("/auth/login", {
     method: "POST",

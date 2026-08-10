@@ -59,6 +59,20 @@ def _com_gate(**ajustes) -> Settings:
 
 
 @pytest.fixture
+def gate_desligado() -> Iterator[None]:
+    """Configuração com a verificação **não exigida**.
+
+    Precisou virar fixture na P11-c: o gate passou a nascer ligado, e estes
+    testes são justamente os que provam o que muda quando ele não está.
+    """
+    app.dependency_overrides[get_settings] = lambda: get_settings().model_copy(
+        update={"email_verification_required": False}
+    )
+    yield
+    app.dependency_overrides.pop(get_settings, None)
+
+
+@pytest.fixture
 def gate_ligado() -> Iterator[None]:
     # `lambda` sem parâmetros de propósito: o FastAPI lê a assinatura do
     # override como se fosse a de uma dependência, e um `**kwargs` viraria
@@ -233,9 +247,21 @@ def test_codigo_de_uma_conta_nao_verifica_outra(
 # -- o gate do login -----------------------------------------------------
 
 
-def test_sem_o_gate_a_conta_nao_verificada_entra(client: TestClient):
-    """Default desligado: o backend vai para `main` sem quebrar o cadastro do
-    app, que ainda não tem a tela de verificação."""
+def test_o_gate_nasce_ligado():
+    """Exigir a verificação é o padrão desde a P11-c, quando a tela chegou.
+
+    Prende o valor porque é dele que depende o resto da suíte: com o gate
+    desligado, nenhum outro teste atravessaria o login que o produto tem.
+    """
+    assert get_settings().email_verification_required is True
+
+
+def test_sem_o_gate_a_conta_nao_verificada_entra(client: TestClient, gate_desligado):
+    """Prova que quem barra o login é o gate, e nada mais.
+
+    Foi assim que o backend da P9-e pôde ir para `main` antes das telas. Desde
+    a P11-c o padrão é o contrário, e este teste precisa desligá-lo à mão.
+    """
     email = _email()
     _registrar(client, email)
 
@@ -381,7 +407,9 @@ def test_conta_verificada_nunca_e_reciclada(
     assert _usuario(db_session, email).id == id_original
 
 
-def test_sem_o_gate_nao_recicla_ninguem(client: TestClient, db_session: Session):
+def test_sem_o_gate_nao_recicla_ninguem(
+    client: TestClient, db_session: Session, gate_desligado
+):
     """Com o gate desligado, conta não verificada **usa** o produto — apagá-la
     destruiria dado de quem estava usando a plataforma."""
     email = _email()

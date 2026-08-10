@@ -2,6 +2,7 @@ import { useRouter } from "expo-router";
 import { useMemo, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
+import { ApiError } from "../src/auth/api";
 import { useAuth } from "../src/auth/AuthContext";
 import { AuthStage } from "../src/components/auth/AuthStage";
 import { Button } from "../src/components/Button";
@@ -26,7 +27,7 @@ import { useTheme, type Theme } from "../src/theme";
 const CHIPS = ["composição por banda", "qualidade do sinal", "tendências"];
 
 export default function LoginScreen() {
-  const { signIn } = useAuth();
+  const { signIn, iniciarVerificacao } = useAuth();
   const router = useRouter();
   const t = useTheme();
   const styles = useMemo(() => criarEstilos(t), [t]);
@@ -34,21 +35,38 @@ export default function LoginScreen() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [erro, setErro] = useState<string | null>(null);
+  const [faltaVerificar, setFaltaVerificar] = useState(false);
   const [enviando, setEnviando] = useState(false);
 
   async function entrar() {
     setErro(null);
+    setFaltaVerificar(false);
     setEnviando(true);
     try {
       await signIn(email, password);
       // A guarda de rota redireciona para a área do papel.
-    } catch {
-      // Mensagem genérica: o backend não diz se o e-mail existe (ADR-0023) e
-      // a UI não deve inventar essa distinção.
-      setErro("Não foi possível entrar. Verifique os dados e tente de novo.");
+    } catch (e) {
+      // O 403 é o único caso em que o backend conta algo sobre a conta — e só
+      // conta para quem já acertou a senha, então não vira oráculo (ADR-0024).
+      // É a porta de volta de quem fechou o app no meio do cadastro.
+      if (e instanceof ApiError && e.status === 403) {
+        setFaltaVerificar(true);
+        setErro("Falta confirmar seu e-mail para entrar.");
+      } else {
+        // Mensagem genérica: o backend não diz se o e-mail existe (ADR-0023) e
+        // a UI não deve inventar essa distinção.
+        setErro("Não foi possível entrar. Verifique os dados e tente de novo.");
+      }
     } finally {
       setEnviando(false);
     }
+  }
+
+  function irVerificar() {
+    // A senha vai junto para o passo 3 poder entrar sem pedir tudo de novo;
+    // sai da memória assim que o fluxo termina.
+    iniciarVerificacao(email.trim(), password);
+    router.push("/verify-email");
   }
 
   return (
@@ -84,6 +102,13 @@ export default function LoginScreen() {
 
       <StateView error={erro} />
 
+      {faltaVerificar ? (
+        <View style={styles.retomar}>
+          <Text style={styles.alternativaTexto}>Recebeu um código por e-mail? </Text>
+          <TextLink label="Verificar agora" onPress={irVerificar} />
+        </View>
+      ) : null}
+
       <Button label="Entrar" onPress={entrar} loading={enviando} />
 
       <View style={styles.alternativa}>
@@ -117,6 +142,13 @@ const criarEstilos = (t: Theme) =>
     subtitulo: {
       ...t.typography.body,
       color: t.colors.textMuted,
+    },
+    retomar: {
+      alignItems: "center",
+      flexDirection: "row",
+      flexWrap: "wrap",
+      justifyContent: "center",
+      marginTop: -t.spacing.sm,
     },
     alternativa: {
       alignItems: "center",

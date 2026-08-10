@@ -13,6 +13,8 @@ from app.db.session import get_session
 from app.main import app
 from app.models import UserRole
 
+from .conftest import registrar_conta
+
 SENHA = "senha-de-teste-bem-longa"
 COOKIE = "waveai_refresh"
 
@@ -50,11 +52,21 @@ def _email() -> str:
     return f"user-{uuid.uuid4().hex[:12]}@example.com"
 
 
-def _registrar(client: TestClient, email: str, role: str = "patient"):
+def _cadastrar(client: TestClient, email: str, role: str = "patient"):
+    """Só o `POST /auth/register`, para os testes que olham a resposta dele."""
     return client.post(
         "/auth/register",
         json={"email": email, "password": SENHA, "role": role, "display_name": "Fulano"},
     )
+
+
+def _registrar(client: TestClient, email: str, role: str = "patient") -> None:
+    """Conta pronta para entrar: cadastrada **e** com o e-mail confirmado.
+
+    Com o gate ligado (P11-c) o cadastro sozinho não basta, e é assim que o app
+    de fato chega ao login — pelos três passos.
+    """
+    registrar_conta(client, email=email, senha=SENHA, role=role, display_name="Fulano")
 
 
 # -- registro ------------------------------------------------------------
@@ -66,7 +78,7 @@ def test_registro_responde_202_sem_expor_nada(client: TestClient):
     Devolver o `id`/`role` do recém-criado seria, por si só, contar que a conta
     foi criada — e portanto que o e-mail não existia (P9-e).
     """
-    resp = _registrar(client, _email())
+    resp = _cadastrar(client, _email())
 
     assert resp.status_code == 202
     corpo = resp.json()
@@ -78,9 +90,9 @@ def test_registro_responde_202_sem_expor_nada(client: TestClient):
 def test_registro_duplicado_responde_igual(client: TestClient):
     """Antes era 409 "e-mail ja cadastrado" — um oráculo de existência."""
     email = _email()
-    primeiro = _registrar(client, email)
+    primeiro = _cadastrar(client, email)
 
-    segundo = _registrar(client, email)
+    segundo = _cadastrar(client, email)
 
     assert segundo.status_code == primeiro.status_code == 202
     assert segundo.json() == primeiro.json()

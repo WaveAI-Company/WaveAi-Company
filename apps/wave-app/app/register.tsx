@@ -5,6 +5,7 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import type { UserRole } from "../src/auth/api";
 import { useAuth } from "../src/auth/AuthContext";
 import { AuthStage } from "../src/components/auth/AuthStage";
+import { AuthSteps } from "../src/components/auth/AuthSteps";
 import { Button } from "../src/components/Button";
 import { Field } from "../src/components/Field";
 import { Icon, type IconName } from "../src/components/Icon";
@@ -124,6 +125,10 @@ export default function RegisterScreen() {
     setEnviando(true);
     try {
       await signUp({ email: email.trim(), password, role, displayName: displayName.trim() });
+      // `replace` e não `push`: a conta já foi criada. Voltar a este formulário
+      // e reenviá-lo só levaria à mesma resposta uniforme, agora sem código
+      // novo — quem precisa de outro código usa o "Reenviar" do passo 2.
+      router.replace("/verify-email");
     } catch {
       setErros({
         geral: "Não foi possível criar a conta. Confira os dados e tente de novo.",
@@ -141,8 +146,10 @@ export default function RegisterScreen() {
       resumo="Sua onda, suas regras. Você convida, autoriza e revoga."
       larguraCartao={420}
     >
+      <AuthSteps atual={1} accent={destaque.accent} />
+
       <View style={styles.cabecalho}>
-        <Text style={styles.sobrancelha}>CRIAR CONTA</Text>
+        <Text style={styles.sobrancelha}>CRIAR CONTA · PASSO 1 DE 3</Text>
         <Text style={styles.titulo}>Comece sua jornada</Text>
         <Text style={styles.subtitulo}>Leva um minuto. Você poderá ajustar tudo depois.</Text>
       </View>
