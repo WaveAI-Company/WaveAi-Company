@@ -30,6 +30,8 @@ from app.models import (
 from app.security.crypto import get_metrics_cipher
 from app.services.results import ConsentRequiredError, ResultService
 
+from .conftest import registrar_conta
+
 SENHA = "senha-de-teste-bem-longa"
 
 #: Métricas SINTÉTICAS — nunca dado real (CLAUDE.md).
@@ -257,10 +259,7 @@ class Paciente:
     def __init__(self, client: TestClient, *, consentiu: bool) -> None:
         self._client = client
         self.email = _email()
-        client.post(
-            "/auth/register",
-            json={"email": self.email, "password": SENHA, "role": "patient", "display_name": "Sint"},
-        )
+        registrar_conta(client, email=self.email, senha=SENHA, display_name="Sint")
         self.token = client.post(
             "/auth/login", json={"email": self.email, "password": SENHA, "client": "mobile"}
         ).json()["access_token"]
@@ -410,10 +409,7 @@ def test_medico_le_results_so_com_vinculo_ativo(client: TestClient, db_session: 
     _semear_result(db_session, paciente.email)
 
     medico_email = _email()
-    client.post(
-        "/auth/register",
-        json={"email": medico_email, "password": SENHA, "role": "doctor", "display_name": "Dr"},
-    )
+    registrar_conta(client, email=medico_email, senha=SENHA, role="doctor", display_name="Dr")
     medico_token = client.post(
         "/auth/login", json={"email": medico_email, "password": SENHA, "client": "mobile"}
     ).json()["access_token"]
@@ -546,9 +542,8 @@ def test_medico_ve_relatorio_so_com_vinculo(client_report, db_session: Session):
     _seed_result_features(db_session, paciente.email, 0.3, 0.8, datetime(2026, 1, 1, tzinfo=UTC))
 
     medico_email = _email()
-    client_report.post(
-        "/auth/register",
-        json={"email": medico_email, "password": SENHA, "role": "doctor", "display_name": "Dr"},
+    registrar_conta(
+        client_report, email=medico_email, senha=SENHA, role="doctor", display_name="Dr"
     )
     token = client_report.post(
         "/auth/login", json={"email": medico_email, "password": SENHA, "client": "mobile"}
@@ -743,9 +738,8 @@ def test_medico_com_days_ainda_passa_pelo_vinculo(client_report, db_session: Ses
     _seed_result_features(db_session, paciente.email, 0.30, 0.9, _ha_dias(3))
 
     medico_email = _email()
-    client_report.post(
-        "/auth/register",
-        json={"email": medico_email, "password": SENHA, "role": "doctor", "display_name": "Dr"},
+    registrar_conta(
+        client_report, email=medico_email, senha=SENHA, role="doctor", display_name="Dr"
     )
     token = client_report.post(
         "/auth/login", json={"email": medico_email, "password": SENHA, "client": "mobile"}

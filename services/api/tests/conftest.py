@@ -13,6 +13,7 @@ impede que o CI fique "verde por omissão".
 from __future__ import annotations
 
 import os
+import re
 from collections.abc import Iterator
 
 # Segredo de teste **explícito** (ADR-0023: não existe default em lugar nenhum;
@@ -121,3 +122,67 @@ def emails() -> Iterator[EmailRecorder]:
     app.dependency_overrides[get_email_sender] = lambda: gravador
     yield gravador
     app.dependency_overrides.pop(get_email_sender, None)
+
+
+def gravador_de_emails() -> EmailRecorder:
+    """O `EmailRecorder` deste teste, sem passar pela fixture.
+
+    A fixture `emails` é autouse, então ele sempre existe. Buscá-lo pelo
+    override deixa os helpers abaixo utilizáveis de dentro dos `Ator` da suíte,
+    que recebem só o `client`.
+    """
+    from app.api.deps import get_email_sender
+    from app.main import app
+
+    gravador = app.dependency_overrides[get_email_sender]()
+    assert isinstance(gravador, EmailRecorder)
+    return gravador
+
+
+def codigo_de_verificacao(email: str) -> str:
+    """Lê o código de 6 dígitos do último e-mail de verificação do endereço."""
+    from app.emails import ASSUNTO_VERIFICACAO
+
+    mensagens = [
+        e for e in gravador_de_emails().para(email) if e["subject"] == ASSUNTO_VERIFICACAO
+    ]
+    assert mensagens, f"nenhum e-mail de verificação para {email}"
+    achado = re.search(r"\b(\d{6})\b", mensagens[-1]["body"])
+    assert achado, "o e-mail de verificação não traz um código de 6 dígitos"
+    return achado.group(1)
+
+
+def registrar_conta(
+    client,
+    *,
+    email: str,
+    senha: str,
+    role: str = "patient",
+    display_name: str = "Ficticio",
+) -> None:
+    """Cria a conta **e confirma a posse do e-mail**, como o app faz.
+
+    Desde a P11-c o gate `email_verification_required` nasce ligado, então sem
+    este segundo passo o login desta suíte responderia 403.
+
+    Verifica pelo **código de verdade**, extraído do e-mail, em vez de escrever
+    `email_verified_at` direto no banco: um atalho aqui deixaria a suíte inteira
+    passando por um caminho que o produto não tem — o mesmo erro do duplo mais
+    permissivo que o serviço real.
+    """
+    resposta = client.post(
+        "/auth/register",
+        json={
+            "email": email,
+            "password": senha,
+            "role": role,
+            "display_name": display_name,
+        },
+    )
+    assert resposta.status_code == 202, resposta.text
+
+    confirmacao = client.post(
+        "/auth/verify-email",
+        json={"email": email, "code": codigo_de_verificacao(email)},
+    )
+    assert confirmacao.status_code == 204, confirmacao.text

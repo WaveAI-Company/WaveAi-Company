@@ -7,8 +7,12 @@ import { AuthProvider, homeForRole, useAuth } from "../src/auth/AuthContext";
 import { AppShell } from "../src/components/shell/AppShell";
 import { ThemeProvider, useRoleAccent, useTheme } from "../src/theme";
 
-/** Rotas acessíveis sem sessão. */
-const ROTAS_PUBLICAS = new Set(["login", "register"]);
+/**
+ * Rotas acessíveis sem sessão. `verify-email` precisa estar aqui porque a
+ * verificação acontece **antes** de existir sessão: o `/auth/verify-email`
+ * responde 204 e quem entra é o login (ADR-0044).
+ */
+const ROTAS_PUBLICAS = new Set(["login", "register", "verify-email"]);
 
 /**
  * Guarda de rota: manda quem não tem sessão para o login e leva quem tem para
