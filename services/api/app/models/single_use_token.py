@@ -31,6 +31,9 @@ class SingleUseTokenPurpose(str, enum.Enum):
 
     EMAIL_VERIFICATION = "email_verification"
     PASSWORD_RESET = "password_reset"
+    #: Troca do endereço da conta (3ª emenda à ADR-0044). O endereço novo vai
+    #: em `new_email` na própria linha: o token **é** a troca pendente.
+    EMAIL_CHANGE = "email_change"
 
 
 class SingleUseToken(Base):
@@ -67,6 +70,12 @@ class SingleUseToken(Base):
     #: a defesa contra adivinhação de 6 dígitos, e ela vale com N réplicas
     #: porque mora aqui, e não na memória do processo.
     attempts: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    #: Endereço pretendido, **só** no propósito `email_change` (3ª emenda à
+    #: ADR-0044). Mora aqui, e não num `pending_email` em `users`, porque a
+    #: troca pendente tem exatamente o ciclo de vida do token: prazo, uso
+    #: único, supersede. Uma coluna no usuário apodreceria sozinha quando o
+    #: token expirasse, e obrigaria a manter duas linhas em acordo.
+    new_email: Mapped[str | None] = mapped_column(String(320), nullable=True)
 
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     created_at: Mapped[datetime] = mapped_column(

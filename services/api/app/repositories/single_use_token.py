@@ -23,6 +23,7 @@ class SingleUseTokenRepository:
         token_hash: str,
         expires_at: datetime,
         code_hash: str | None = None,
+        new_email: str | None = None,
     ) -> SingleUseToken:
         token = SingleUseToken(
             user_id=user_id,
@@ -30,6 +31,7 @@ class SingleUseTokenRepository:
             token_hash=token_hash,
             code_hash=code_hash,
             expires_at=expires_at,
+            new_email=new_email,
         )
         self._session.add(token)
         self._session.flush()

@@ -13,6 +13,9 @@ from __future__ import annotations
 ASSUNTO_VERIFICACAO = "Seu código de verificação do WaveAI"
 ASSUNTO_CADASTRO_EXISTENTE = "Alguém tentou criar uma conta com o seu e-mail"
 ASSUNTO_RECUPERACAO = "Recuperar o acesso à sua conta WaveAI"
+ASSUNTO_TROCA_DE_EMAIL = "Confirme seu novo e-mail no WaveAI"
+ASSUNTO_TROCA_AVISO = "O e-mail da sua conta WaveAI está sendo alterado"
+ASSUNTO_ENDERECO_JA_EM_USO = "Alguém tentou usar o seu e-mail em outra conta"
 
 
 def corpo_verificacao(*, codigo: str, minutos: int) -> str:
@@ -51,6 +54,73 @@ def corpo_recuperacao(*, codigo: str, link: str, minutos: int) -> str:
         "a senha, todas as sessões abertas serão encerradas.\n\n"
         "Se não foi você quem pediu, ignore esta mensagem — sua senha continua "
         "a mesma. Vale conferir se mais alguém tem acesso ao seu e-mail.\n\n"
+        "WaveAI"
+    )
+
+
+def corpo_troca_de_email(*, codigo: str, minutos: int) -> str:
+    """Código enviado ao endereço **novo** (3ª emenda à ADR-0044).
+
+    Vai só o código, como o design pede em `perfil.html` ("confirmaremos o novo
+    endereço com um código") — e pela mesma razão da verificação: quem pediu a
+    troca está logado, na tela onde vai digitá-lo. Um link aqui só ampliaria a
+    superfície.
+
+    **Não diz de qual conta se trata.** Quem recebe pode não ser dono da conta
+    que pediu a troca — alguém pode ter digitado o endereço errado, ou de
+    propósito. Nomear a conta contaria a um estranho quem usa o WaveAI.
+    """
+    return (
+        "Olá!\n\n"
+        "Recebemos um pedido para passar a usar este endereço numa conta "
+        "WaveAI.\n\n"
+        f"Seu código de confirmação é: {codigo}\n\n"
+        f"Ele vale por {minutos} minutos e pode ser usado uma única vez. "
+        "Enquanto não for usado, nada muda.\n\n"
+        "Se não foi você quem pediu, ignore esta mensagem.\n\n"
+        "WaveAI"
+    )
+
+
+def corpo_troca_aviso_endereco_antigo(*, minutos: int) -> str:
+    """Aviso ao endereço **atual** de que a troca foi pedida.
+
+    É o único sinal que chega a quem perdeu o controle da conta: sem ele, um
+    invasor com a sessão e a senha trocaria o endereço em silêncio e a pessoa
+    descobriria só quando não conseguisse mais recuperar o acesso.
+
+    **Não repete o endereço novo**: se a troca partiu de um invasor, este aviso
+    é o que chega à vítima — e não faz sentido entregar a ela o endereço de
+    quem está tomando a conta, nem entregar a terceiros o endereço de destino
+    caso a caixa esteja comprometida.
+    """
+    return (
+        "Olá!\n\n"
+        "Alguém pediu para trocar o e-mail da sua conta WaveAI. A troca só "
+        f"acontece se o novo endereço for confirmado, dentro de {minutos} "
+        "minutos.\n\n"
+        "Se foi você, não precisa fazer nada aqui — basta confirmar no novo "
+        "endereço.\n\n"
+        "Se NÃO foi você, troque sua senha agora: alguém pode ter acesso à sua "
+        "conta.\n\n"
+        "WaveAI"
+    )
+
+
+def corpo_endereco_ja_em_uso() -> str:
+    """Aviso a quem **já tem** conta e cujo endereço alguém tentou assumir.
+
+    Existe pelo mesmo motivo de `corpo_cadastro_existente`: a rota de troca
+    responde igual exista ou não conta no endereço pedido (ADR-0024), senão
+    qualquer pessoa logada teria um oráculo de "esse e-mail tem WaveAI?".
+    Quem precisa saber é a dona do endereço, e ela sabe por aqui.
+    """
+    return (
+        "Olá!\n\n"
+        "Alguém tentou passar a usar este e-mail numa outra conta WaveAI. Como "
+        "ele já pertence à sua conta, nada foi alterado — nem aqui, nem lá.\n\n"
+        "Se foi você, entre normalmente na conta que já usa este endereço.\n\n"
+        "Se não foi você, não precisa fazer nada.\n\n"
         "WaveAI"
     )
 
