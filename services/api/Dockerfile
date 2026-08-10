@@ -15,6 +15,12 @@ RUN pip install --no-cache-dir .
 COPY app ./app
 COPY alembic.ini ./
 COPY migrations ./migrations
+# O seed de desenvolvimento roda de DENTRO do container: é lá que o banco do
+# compose é alcançável sem ninguém montar uma DATABASE_URL à mão — e URL de
+# banco montada à mão é como se semeia o banco errado. O script se recusa a
+# rodar com `app_env` diferente de `development` (fail-closed), então estar na
+# imagem não cria conta em lugar nenhum por si só.
+COPY scripts ./scripts
 
 EXPOSE 8000
 
