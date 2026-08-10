@@ -30,7 +30,7 @@ from app.emails import ASSUNTO_RECUPERACAO
 from app.main import app
 from app.models import SingleUseToken, SingleUseTokenPurpose, User
 
-from .conftest import EmailRecorder
+from .conftest import EmailRecorder, codigo_de_verificacao
 
 SENHA = "senha-de-teste-bem-longa"
 SENHA_NOVA = "outra-senha-de-teste-bem-longa"
@@ -66,6 +66,21 @@ def _entrar(client: TestClient, email: str, senha: str):
     return client.post(
         "/auth/login", json={"email": email, "password": senha, "client": "mobile"}
     )
+
+
+def _verificar(client: TestClient, email: str) -> None:
+    """Confirma a posse do e-mail pelo código que o cadastro emitiu.
+
+    Preciso só onde o teste vai **entrar** na conta: com o gate ligado (P11-c),
+    conta não verificada não faz login. Onde o assunto é a recuperação em si, a
+    conta segue não verificada de propósito — redefinir a senha vale como prova
+    de posse do endereço (2ª emenda à ADR-0044).
+    """
+    resp = client.post(
+        "/auth/verify-email",
+        json={"email": email, "code": codigo_de_verificacao(email)},
+    )
+    assert resp.status_code == 204, resp.text
 
 
 def _mensagem_de_recuperacao(emails: EmailRecorder, email: str) -> str:
@@ -206,7 +221,10 @@ def test_codigo_de_verificacao_nao_serve_para_redefinir(
     )
 
     assert resp.status_code == 400
-    assert _entrar(client, email, SENHA).status_code == 200  # senha intacta
+    # A senha continua a original — e o código de verificação sequer foi
+    # tocado: ele segue valendo para o propósito dele.
+    _verificar(client, email)
+    assert _entrar(client, email, SENHA).status_code == 200
 
 
 # -- recusas -------------------------------------------------------------
@@ -252,6 +270,7 @@ def test_codigo_expirado_nao_redefine(
     )
 
     assert resp.status_code == 400
+    _verificar(client, email)  # só para poder entrar e provar a senha intacta
     assert _entrar(client, email, SENHA).status_code == 200
 
 
@@ -293,6 +312,7 @@ def test_exige_uma_forma_e_nao_as_duas(client: TestClient, emails: EmailRecorder
 def test_redefinir_derruba_as_sessoes_antigas(client: TestClient, emails: EmailRecorder):
     """Recuperar senha é o gesto de quem perdeu o controle da conta."""
     email = _conta_pronta(client, emails)
+    _verificar(client, email)  # sem isto não há sessão antiga para derrubar
     antigo = _entrar(client, email, SENHA).json()["access_token"]
     assert client.get("/auth/me", headers={"Authorization": f"Bearer {antigo}"}).status_code == 200
 
