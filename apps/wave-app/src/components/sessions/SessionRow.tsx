@@ -10,6 +10,7 @@ import {
 import { mesCurto } from "../../format/date";
 import { useTheme, type Theme } from "../../theme";
 import { BandStack } from "../charts/BandStack";
+import { Icon } from "../Icon";
 
 /**
  * Uma sessão na linha do tempo (design "Maré").
@@ -19,10 +20,15 @@ import { BandStack } from "../charts/BandStack";
  * é prometer o que não se entrega. Quando a tela de detalhe existir, a linha
  * vira `Pressable` e a seta volta.
  *
+ * O selo de **autorrelato** voltou: a lista de Result passou a dizer quais
+ * sessões têm nota (`has_annotation`, emenda à ADR-0037), então a razão que o
+ * mantinha fora — uma consulta de anotação por sessão — deixou de existir. Ele
+ * diz que **há** nota, nunca o que ela diz, e não tem valência (ADR-0027): uma
+ * sessão com autorrelato não é melhor nem pior que uma sem.
+ *
  * O que o mockup mostrava e **não** foi portado: o rótulo "Sessão guiada" e o
  * resumo das fases, porque o protocolo guiado é client-only e não persiste
- * fase nenhuma (decisão da P4-c); e o selo de autorrelato, que exigiria uma
- * consulta de anotação por sessão.
+ * fase nenhuma (decisão da P4-c).
  */
 
 type Props = {
@@ -50,6 +56,12 @@ export function SessionRow({ result }: Props) {
       <View style={styles.meta}>
         <Text style={styles.metaTitulo}>Sessão · {hora}</Text>
         <Text style={styles.metaNota}>{duracao ?? "duração não registrada"}</Text>
+        {result.has_annotation ? (
+          <View style={styles.tagNota}>
+            <Icon name="fileText" size={11} color={t.colors.textSubtle} />
+            <Text style={styles.tagNotaTexto}>autorrelato</Text>
+          </View>
+        ) : null}
       </View>
 
       <View style={[styles.composicao, estreito && styles.composicaoLarga]}>
@@ -121,6 +133,27 @@ const criarEstilos = (t: Theme) =>
     metaNota: {
       ...t.typography.caption,
       color: t.colors.textSubtle,
+    },
+    // Pílula do mockup (`.note-tag`): 11,5px, contorno fino, cantos redondos.
+    // `alignSelf: "flex-start"` porque o pai é uma coluna esticada — sem isso a
+    // pílula ocuparia a largura toda e deixaria de parecer uma etiqueta.
+    tagNota: {
+      alignItems: "center",
+      alignSelf: "flex-start",
+      borderColor: t.colors.border,
+      borderRadius: 999,
+      borderWidth: 1,
+      flexDirection: "row",
+      gap: 5,
+      marginTop: 3,
+      paddingHorizontal: 9,
+      paddingVertical: 1,
+    },
+    tagNotaTexto: {
+      ...t.typography.caption,
+      color: t.colors.textSubtle,
+      fontSize: 11.5,
+      fontWeight: "600",
     },
     composicao: {
       flex: 1,
