@@ -22,6 +22,7 @@ import { LiveSpectator } from "../../../src/components/LiveSpectator";
 import { LongitudinalReport } from "../../../src/components/LongitudinalReport";
 import { Panel } from "../../../src/components/Panel";
 import { Select } from "../../../src/components/Select";
+import { diaMes } from "../../../src/format/date";
 import { ScreenContainer } from "../../../src/components/ScreenContainer";
 import { SearchField } from "../../../src/components/SearchField";
 import { SessionAnnotation } from "../../../src/components/SessionAnnotation";
@@ -55,19 +56,6 @@ function maisRecente(results: SessionResult[]): SessionResult | null {
     (mr, r) => (mr === null || r.created_at > mr.created_at ? r : mr),
     null,
   );
-}
-
-const MESES = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
-
-/**
- * "26 jul" — rótulo do eixo.
- *
- * À mão porque o `toLocaleDateString` pt-BR com `month: "short"` devolve
- * "26 de jul.", com o "de" e o ponto que não cabem num eixo.
- */
-function rotuloDia(iso: string): string {
-  const d = new Date(iso);
-  return `${d.getDate()} ${MESES[d.getMonth()]}`;
 }
 
 /** Rótulos como o mockup do profissional escreve (`painel-profissional.html`). */
@@ -181,13 +169,13 @@ export default function PatientDetailScreen() {
     .filter((r) => typeof r.metrics?.rel_alpha === "number")
     .map((r) => ({
       value: r.metrics.rel_alpha as number,
-      label: rotuloDia(r.created_at),
+      label: diaMes(r.created_at),
     }));
 
   const colunas: BandColumn[] = recentes
     .filter((r) => r.metrics?.relative_band_powers)
     .map((r) => ({
-      label: rotuloDia(r.created_at),
+      label: diaMes(r.created_at),
       relative: r.metrics.relative_band_powers ?? {},
     }));
 
