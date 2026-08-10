@@ -32,3 +32,15 @@ export function diaMes(iso: string): string {
   const d = new Date(iso);
   return `${d.getDate()} ${MESES[d.getMonth()]}`;
 }
+
+/**
+ * "jul" — só o mês.
+ *
+ * Existe para o selo de data da linha de sessão, que empilha o dia e o mês em
+ * **duas linhas**: ali uma string "12 jul" não serviria. É isto ou exportar o
+ * array de meses — e exportá-lo devolveria a quem chama a tarefa de indexar
+ * por `getMonth()`, que é justamente o que este módulo existe para guardar.
+ */
+export function mesCurto(iso: string): string {
+  return MESES[new Date(iso).getMonth()];
+}
