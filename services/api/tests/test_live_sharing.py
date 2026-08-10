@@ -24,9 +24,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from .conftest import registrar_conta
-
-SENHA = "senha-de-teste-bem-longa"
+from .conftest import SENHA, registrar_conta
 
 
 @pytest.fixture(autouse=True)

@@ -12,9 +12,8 @@ from fastapi import Depends
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
-from .conftest import registrar_conta
+from .conftest import SENHA, registrar_conta
 
-SENHA = "senha-de-teste-bem-longa"
 COOKIE = "waveai_refresh"
 
 
@@ -103,6 +102,79 @@ def test_registro_recusa_senha_curta(client: TestClient):
         json={"email": _email(), "password": "curta", "role": "patient", "display_name": "F"},
     )
     assert resp.status_code == 422
+
+
+@pytest.mark.parametrize(
+    "senha",
+    [
+        "senha-sem-nenhum-digito",  # tem letra, não tem número
+        "12345678901234567890",  # tem número, não tem letra
+    ],
+)
+def test_registro_recusa_senha_sem_letra_ou_sem_digito(client: TestClient, senha: str):
+    """Os três requisitos do medidor da tela agora valem também na API.
+
+    Antes desta regra a API aceitava senha que o app recusava — a tela era a
+    única a cobrar letra + número, e qualquer outro cliente contornava.
+    """
+    resp = client.post(
+        "/auth/register",
+        json={"email": _email(), "password": senha, "role": "patient", "display_name": "F"},
+    )
+
+    assert resp.status_code == 422
+    # A resposta diz o que falta, senão quem não usa o app fica adivinhando.
+    assert "letra" in resp.text and "numero" in resp.text
+
+
+def test_erro_de_validacao_nao_devolve_a_senha(client: TestClient):
+    """O 422 não pode ecoar o valor recusado.
+
+    O default do FastAPI devolve `input` em cada erro — a senha recusada
+    voltaria no corpo e cairia em log/proxy/monitoração. Quem erra a senha
+    quase sempre digita uma variação da senha de verdade.
+    """
+    senha = "senha-recusada-sem-digito"
+
+    resp = client.post(
+        "/auth/register",
+        json={"email": _email(), "password": senha, "role": "patient", "display_name": "F"},
+    )
+
+    assert resp.status_code == 422
+    assert senha not in resp.text
+    # O que o cliente precisa para corrigir continua lá: onde e por quê.
+    erro = resp.json()["detail"][0]
+    assert erro["loc"] == ["body", "password"]
+    assert "letra" in erro["msg"]
+
+
+def test_login_aceita_senha_legada_sem_digito(client: TestClient, db_session: Session):
+    """**Ninguém fica trancado do lado de fora.**
+
+    A regra vale na escrita, não na conferência: quem criou a conta antes dela
+    tem uma senha que o `/auth/register` hoje recusaria, e precisa continuar
+    entrando. A conta é criada pelo repositório de propósito — é o único jeito
+    de reproduzir o que já está gravado em banco sem passar pelo schema novo.
+    """
+    from datetime import UTC, datetime
+
+    from app.repositories.user import UserRepository
+    from app.security.password import Argon2PasswordHasher
+
+    legada = "senha-antiga-sem-digito"
+    email = _email()
+    repo = UserRepository(db_session, Argon2PasswordHasher(memory_cost=8, time_cost=1,
+                                                          parallelism=1))
+    user = repo.create(
+        email=email, password=legada, role=UserRole.PATIENT, display_name="Legada"
+    )
+    user.email_verified_at = datetime.now(UTC)
+    db_session.flush()
+
+    resp = client.post("/auth/login", json={"email": email, "password": legada})
+
+    assert resp.status_code == 200
 
 
 # -- login e armazenamento por plataforma (ADR-0021) ---------------------
@@ -333,7 +405,7 @@ def test_patch_me_recusa_nome_vazio(client: TestClient):
 def test_troca_de_senha_passa_a_valer_para_o_login(client: TestClient):
     email = _email()
     token = _login_token(client, email)
-    nova = "outra-senha-de-teste-longa"
+    nova = "outra-senha-de-teste-longa-1"
 
     resp = client.post(
         "/auth/password",
@@ -346,12 +418,29 @@ def test_troca_de_senha_passa_a_valer_para_o_login(client: TestClient):
     assert client.post("/auth/login", json={"email": email, "password": SENHA}).status_code == 401
 
 
+def test_troca_de_senha_recusa_nova_sem_digito(client: TestClient):
+    """A senha NOVA passa pela mesma régua do cadastro; a atual, não.
+
+    Conferir a atual é comparação com o hash guardado — exigir força dela
+    impediria justamente quem tem senha legada de trocar por uma boa.
+    """
+    token = _login_token(client, _email())
+
+    resp = client.post(
+        "/auth/password",
+        json={"current_password": SENHA, "new_password": "senha-nova-sem-digito"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert resp.status_code == 422
+
+
 def test_troca_de_senha_recusa_senha_atual_errada(client: TestClient):
     token = _login_token(client, _email())
 
     resp = client.post(
         "/auth/password",
-        json={"current_password": "nao-e-a-senha-atual", "new_password": "nova-senha-longa-ok"},
+        json={"current_password": "nao-e-a-senha-atual", "new_password": "nova-senha-longa-ok-2"},
         headers={"Authorization": f"Bearer {token}"},
     )
 
@@ -371,7 +460,7 @@ def test_troca_de_senha_derruba_as_sessoes_antigas(client: TestClient):
 
     trocou = client.post(
         "/auth/password",
-        json={"current_password": SENHA, "new_password": "mais-uma-senha-bem-longa"},
+        json={"current_password": SENHA, "new_password": "mais-uma-senha-bem-longa-3"},
         headers={"Authorization": f"Bearer {token}"},
     )
 
@@ -388,7 +477,7 @@ def test_troca_de_senha_devolve_par_novo_a_quem_trocou(client: TestClient):
 
     resp = client.post(
         "/auth/password",
-        json={"current_password": SENHA, "new_password": "senha-nova-para-continuar"},
+        json={"current_password": SENHA, "new_password": "senha-nova-para-continuar-4"},
         headers={"Authorization": f"Bearer {token}"},
         params={"client": "mobile"},
     )
@@ -406,7 +495,7 @@ def test_troca_de_senha_devolve_par_novo_a_quem_trocou(client: TestClient):
 def test_troca_de_senha_exige_autenticacao(client: TestClient):
     resp = client.post(
         "/auth/password",
-        json={"current_password": SENHA, "new_password": "qualquer-senha-longa"},
+        json={"current_password": SENHA, "new_password": "qualquer-senha-longa-5"},
     )
     assert resp.status_code == 401
 
@@ -425,7 +514,7 @@ def test_troca_de_senha_tambem_derruba_o_access_token_antigo(client: TestClient)
 
     client.post(
         "/auth/password",
-        json={"current_password": SENHA, "new_password": "senha-novissima-bem-longa"},
+        json={"current_password": SENHA, "new_password": "senha-novissima-bem-longa-6"},
         headers=cabecalho,
     )
 

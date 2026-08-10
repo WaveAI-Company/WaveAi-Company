@@ -224,10 +224,12 @@ exercitar as telas sem passar pelo fluxo de convite (que é a #20):
 
 ```bash
 python -m scripts.seed_dev
-# Medico de teste: dra.ficticia@example.com / senha-de-teste-bem-longa
+# Medico de teste: dra.ficticia@example.com / senha-de-teste-bem-longa-7
 ```
 
-É idempotente (rodar duas vezes não duplica) e **recusa-se a rodar** com
+É idempotente (rodar duas vezes não duplica) — e **redefine a senha** das contas
+que já existem, para o banco de dev nunca ficar com uma senha diferente da que
+está documentada aqui. Também se **recusa a rodar** com
 `app_env` diferente de `development` — semear um banco real com contas de senha
 conhecida seria uma porta dos fundos. Todos os dados são inventados, em
 `example.com` (LGPD: nenhum dado de pessoa real).
