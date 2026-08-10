@@ -13,16 +13,11 @@ import uuid
 from collections.abc import Iterator
 
 import pytest
-from fastapi.testclient import TestClient
-from sqlalchemy import select
-from sqlalchemy.orm import Session
-
 from app.api.deps import reset_login_limiter
 from app.db.session import get_session
 from app.main import app
 from app.models import (
     CaptureSession,
-    LiveShareEvent,
     LiveViewAccessEvent,
     SessionStatus,
     User,
@@ -34,6 +29,9 @@ from app.services.live_bus import (
     publicar_janela,
     reset_live_bus,
 )
+from fastapi.testclient import TestClient
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from .conftest import registrar_conta
 
@@ -64,7 +62,7 @@ def test_bus_nao_entrega_a_outro_paciente():
             try:
                 await asyncio.wait_for(fila.get(), timeout=0.05)
                 return "recebeu"
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 return "vazio"
 
     assert asyncio.run(cenario()) == "vazio"
@@ -94,8 +92,10 @@ def test_publicar_janela_traduz_features_esense_e_closed():
     async def cenario():
         async with bus.subscribe(pid) as fila:
             publicar_janela(bus, pid, sid, {"type": "ack", "features": {"rel_alpha": 0.4}})
-            publicar_janela(bus, pid, sid, {"type": "ack", "esense": {"attention": 50, "proprietary": True}})
-            publicar_janela(bus, pid, sid, {"type": "closed", "report": {"x": 1}, "result": {"persisted": True}})
+            publicar_janela(bus, pid, sid,
+                            {"type": "ack", "esense": {"attention": 50, "proprietary": True}})
+            publicar_janela(bus, pid, sid,
+                            {"type": "closed", "report": {"x": 1}, "result": {"persisted": True}})
             for _ in range(3):
                 recebidos.append(await asyncio.wait_for(fila.get(), timeout=1))
 

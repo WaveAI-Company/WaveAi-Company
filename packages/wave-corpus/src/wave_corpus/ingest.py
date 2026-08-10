@@ -6,8 +6,6 @@ store já deduplica os bytes; aqui a idempotência sobe para o nível da sessão
 """
 from __future__ import annotations
 
-from typing import Optional, Tuple
-
 from .frame import Frame
 from .index import CorpusIndex
 
@@ -17,9 +15,9 @@ def ingest_frame(
     frame: Frame,
     *,
     device: str,
-    condition: Optional[str] = None,
-    poor_signal: Optional[float] = None,
-) -> Tuple[str, str]:
+    condition: str | None = None,
+    poor_signal: float | None = None,
+) -> tuple[str, str]:
     """Ingere `frame` no corpus. Retorna `(session_id, dataset_version)`.
 
     `dataset_version` é o hash de conteúdo (id imutável). Se o conteúdo já está

@@ -15,8 +15,9 @@ from __future__ import annotations
 
 import hashlib
 import json
+from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Any, Mapping
+from typing import Any
 
 #: Versão do esquema de identidade de computação (muda se a canonicalização mudar).
 _COMPUTATION_SCHEMA = b"wave_corpus.computation.v1"

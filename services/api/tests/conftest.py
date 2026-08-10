@@ -33,12 +33,11 @@ os.environ.setdefault("WAVEAI_API_REFRESH_COOKIE_SECURE", "true")
 import pytest
 from alembic import command
 from alembic.config import Config
+from app.config import get_settings
+from app.security.password import Argon2PasswordHasher, PasswordHasher
 from sqlalchemy import Engine, create_engine
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session
-
-from app.config import get_settings
-from app.security.password import Argon2PasswordHasher, PasswordHasher
 
 
 def _require_db() -> bool:

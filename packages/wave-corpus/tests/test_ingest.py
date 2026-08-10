@@ -1,7 +1,6 @@
 """Ingestão idempotente + ResearchResult só com a tétrade (ADR-0030)."""
 import numpy as np
 import pytest
-
 from wave_corpus import CorpusIndex, Frame, Provenance, ingest_frame
 
 

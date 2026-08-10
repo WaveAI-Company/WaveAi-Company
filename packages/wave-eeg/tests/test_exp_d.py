@@ -3,7 +3,6 @@ import csv
 
 import numpy as np
 import pytest
-
 from wave_eeg.exp_d import (
     BLINK,
     CLEAN,
@@ -65,7 +64,7 @@ def _write(path, label, fs=512, secs=30.0, seed=0):
 def test_load_blocks_rotulos(tmp_path):
     for label in ("CLEAN", "BLINK", "JAW"):
         _write(tmp_path / f"{label}.csv", label)
-    blocks = load_blocks([str(tmp_path / f"{l}.csv") for l in ("CLEAN", "BLINK", "JAW")])
+    blocks = load_blocks([str(tmp_path / f"{nome}.csv") for nome in ("CLEAN", "BLINK", "JAW")])
     assert {b.condition for b in blocks} == {CLEAN, BLINK, JAW}
     sigs, _ = characterize(blocks, discard_s=0.0)
     assert any(s.label == CLEAN for s in sigs)

@@ -17,7 +17,7 @@ def test_sumario_descreve_tendencia_e_qualidade():
     texto = " ".join(linhas)
     assert "Resumo de 3 sessões." in linhas
     # alfa relativo subiu -> aparece com nome amigável e direção.
-    assert any("alfa relativo" in l and "subindo" in l for l in linhas)
+    assert any("alfa relativo" in linha and "subindo" in linha for linha in linhas)
     assert "Qualidade do sinal" in texto
     # Fecha sempre com o enquadramento não-clínico.
     assert linhas[-1] == DISCLAIMER_LINE
@@ -26,7 +26,7 @@ def test_sumario_descreve_tendencia_e_qualidade():
 def test_sumario_sem_tendencia_marca_estavel():
     sessions = [{"rel_alpha": 0.30}] * 4
     linhas = summarize_report(_report(sessions))
-    assert any("estáveis" in l for l in linhas)
+    assert any("estáveis" in linha for linha in linhas)
 
 
 def test_sumario_poucas_sessoes_nao_inventa_tendencia():
@@ -43,9 +43,9 @@ def test_sumario_limita_ao_top_k():
         for s in range(3)
     ]
     linhas = summarize_report(_report(sessions))
-    destaques = [l for l in linhas if "% ao longo das sessões)" in l]
+    destaques = [linha for linha in linhas if "% ao longo das sessões)" in linha]
     assert len(destaques) == SUMMARY_TOP_K
-    assert any("outra(s) feature(s)" in l for l in linhas)
+    assert any("outra(s) feature(s)" in linha for linha in linhas)
 
 
 def test_nao_ha_termo_clinico_no_sumario():

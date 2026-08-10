@@ -7,8 +7,8 @@ contrato. Nada de DSP novo neste arquivo.
 
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from dataclasses import asdict
-from typing import Mapping, Sequence
 
 import numpy as np
 import wave_eeg
@@ -22,11 +22,11 @@ from wave_eeg.analysis import (
 )
 from wave_eeg.baseline import build_baseline, deviations
 from wave_eeg.devices import SignalFrame
-from wave_eeg.longitudinal import longitudinal_report as _longitudinal_report
-from wave_eeg.summary import summarize_report as _summarize_report
 from wave_eeg.esense import ESENSE_CATALOG
 from wave_eeg.features import FEATURE_CATALOG, compute_features
+from wave_eeg.longitudinal import longitudinal_report as _longitudinal_report
 from wave_eeg.quality import assess_quality
+from wave_eeg.summary import summarize_report as _summarize_report
 
 from .base import (
     AlphaComparison,

@@ -1,0 +1,70 @@
+# Lint dos quatro pacotes Python do monorepo (services/api, services/analysis,
+# packages/wave-eeg, packages/wave-corpus). Config única na raiz de propósito:
+# nenhum `pyproject.toml` dos pacotes tem `[tool.ruff]`, então o ruff sobe até
+# aqui e todos compartilham a mesma régua — quatro cópias divergiriam na
+# primeira correção.
+
+# O repo escreve ~100 colunas. A 88 (padrão do ruff) seriam 236 linhas para
+# requebrar, quase todas comentário em PT-BR; a 120 a régua seria escrita
+# depois do fato, para não pegar ninguém.
+line-length = 100
+
+# A maioria do repo é 3.11 (é o que o CI e os Dockerfiles usam).
+target-version = "py311"
+
+exclude = [".venv", "venv", "node_modules", "apps/wave-app"]
+
+[per-file-target-version]
+# `wave-eeg` declara `requires-python >= 3.9`. Sem isto o ruff sugere sintaxe
+# de 3.10+ (ex.: `zip(..., strict=)`) dentro do pacote de análise, que é
+# justamente o que não pode passar a exigir um Python mais novo em silêncio.
+"packages/wave-eeg/**" = "py39"
+# `wave-corpus` é 3.10. Sem isto o ruff propõe `datetime.UTC` (que só existe a
+# partir do 3.11) no lugar de `timezone.utc` — o lint quebraria o pacote no
+# Python que ele diz suportar.
+"packages/wave-corpus/**" = "py310"
+
+[lint]
+# Conjunto EXPLÍCITO, não o padrão do ruff: a partir da 0.16 o padrão liga
+# ~416 regras, e herdá-lo significa aceitar que uma atualização do linter
+# reprove código que ninguém tocou.
+select = ["E", "F", "I", "UP", "B", "RUF"]
+
+ignore = [
+    # "Caractere unicode ambíguo" em string/docstring/comentário. O idioma do
+    # projeto é PT-BR e a regra dispara em travessão e aspas tipográficas —
+    # eram ~40 achados, todos falsos. A guarda de glifo que importa é a da UI
+    # (`check_forbidden_terms.sh` e a varredura de não-ASCII do app), outra
+    # coisa.
+    "RUF001",
+    "RUF002",
+    "RUF003",
+
+    # `class X(str, Enum)` -> `StrEnum`. NÃO é refatoração cosmética: as nove
+    # classes que a regra pega (papel, status de vínculo, ação auditada,
+    # propósito de token...) atravessam coluna de banco, claim de JWT e corpo
+    # de resposta, e `str(X.A)` muda de "Classe.A" para "a" ao trocar a base.
+    # Um linter não decide mudar valor persistido; se um dia trocarmos, é com
+    # migration e teste, não com `--fix`. (Além disso, `StrEnum` só existe a
+    # partir do 3.11, e o `wave-eeg` ainda é 3.9.)
+    "UP042",
+
+    # Ordenar `__all__` em ordem alfabética. Os nossos `__all__` estão
+    # agrupados por TEMA, na mesma ordem dos imports acima (parser, leitor,
+    # análise, qualidade, baseline...) — alfabetizar embaralha classe com
+    # função e faz a superfície pública deixar de contar a história do pacote.
+    # Zero ganho funcional em troca de ~50 linhas de diff.
+    "RUF022",
+]
+
+[lint.per-file-ignores]
+# `Depends()`/`Query()` no valor padrão do parâmetro é o idioma do FastAPI, e
+# não a armadilha do argumento mutável que a B008 persegue. Ignorado só onde o
+# framework mora — nos outros pacotes a regra continua de pé.
+"services/api/**" = ["B008"]
+
+# As revisões são saída do `alembic revision --autogenerate`, que escreve uma
+# `sa.Column(...)` por linha sem se importar com largura. Exigir 100 colunas
+# aqui significa reprovar no CI toda migration nova até alguém requebrar à mão
+# um arquivo que ninguém lê para revisar estilo.
+"services/api/migrations/versions/**" = ["E501"]

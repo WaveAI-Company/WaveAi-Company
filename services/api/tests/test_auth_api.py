@@ -4,14 +4,13 @@ import uuid
 from collections.abc import Iterator
 
 import pytest
-from fastapi import Depends
-from fastapi.testclient import TestClient
-from sqlalchemy.orm import Session
-
 from app.api.deps import require_role, reset_login_limiter
 from app.db.session import get_session
 from app.main import app
 from app.models import UserRole
+from fastapi import Depends
+from fastapi.testclient import TestClient
+from sqlalchemy.orm import Session
 
 from .conftest import registrar_conta
 
@@ -22,7 +21,7 @@ COOKIE = "waveai_refresh"
 # Rota mínima só para exercer a autorização por papel: as rotas de produto por
 # papel chegam nas issues #9/#10.
 @app.get("/_test/doctor-only")
-def _doctor_only(user=Depends(require_role(UserRole.DOCTOR))):  # noqa: ANN001
+def _doctor_only(user=Depends(require_role(UserRole.DOCTOR))):
     return {"ok": True}
 
 

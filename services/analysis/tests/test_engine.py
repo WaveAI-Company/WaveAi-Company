@@ -2,10 +2,9 @@
 
 import numpy as np
 import pytest
-from wave_eeg import FEATURE_CATALOG
-
 from app.demo_data import synthetic_session
 from app.engine import AnalysisEngine, WaveEegEngine, get_engine
+from wave_eeg import FEATURE_CATALOG
 
 #: Nomes esperados no resultado — a fonte de verdade é o Catálogo N2.
 CATALOG_NAMES = {spec.name for spec in FEATURE_CATALOG}

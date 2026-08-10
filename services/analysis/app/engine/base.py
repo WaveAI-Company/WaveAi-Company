@@ -11,8 +11,8 @@ Nenhum resultado aqui tem interpretação clínica — as métricas são explora
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from collections.abc import Mapping, Sequence
 from dataclasses import asdict, dataclass, field
-from typing import Mapping, Sequence
 
 
 @dataclass(frozen=True)

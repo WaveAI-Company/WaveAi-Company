@@ -25,7 +25,6 @@ import time
 import numpy as np
 
 from .analysis import (
-    band_powers,
     compare_eyes_closed_open,
     mains_power,
     preprocess,
@@ -101,7 +100,8 @@ def cmd_capture(args) -> int:
             ])
     span = (rows[-1][0] - rows[0][0]) if len(rows) > 1 else args.secs
     fs_eff = len(rows) / span if span else 0
-    print(f"{len(rows)} amostras em {span:.1f}s (fs efetivo ~{fs_eff:.0f} Hz) -> {args.out}", file=sys.stderr)
+    print(f"{len(rows)} amostras em {span:.1f}s (fs efetivo ~{fs_eff:.0f} Hz) -> {args.out}",
+          file=sys.stderr)
     return 0
 
 
@@ -135,7 +135,8 @@ def cmd_analyze(args) -> int:
     if not oc or not oa:
         print("ERRO: o CSV precisa de coluna 'condition' com rótulos OC e OA.", file=sys.stderr)
         return 1
-    oc = np.array(oc); oa = np.array(oa)
+    oc = np.array(oc)
+    oa = np.array(oa)
     fs_oc = args.fs if args.fs else _eff_fs(oc_t, 512)
     fs_oa = args.fs if args.fs else _eff_fs(oa_t, 512)
     print(f"fs efetivo: OC={fs_oc:.1f} Hz | OA={fs_oa:.1f} Hz\n")
@@ -182,9 +183,12 @@ def cmd_exp_b(args) -> int:
     for path, block in zip(args.csvs, blocks):
         cap = read_capture_csv(path)
         cond = "OF" if block.condition == EYES_CLOSED else "OA"
-        mains_ratio = mains_power(block.samples, block.fs) / (total_power(block.samples, block.fs) or 1.0)
+        mains_ratio = (
+            mains_power(block.samples, block.fs) / (total_power(block.samples, block.fs) or 1.0)
+        )
         print(f"  {cond}  n={block.samples.size:6d}  fs~{block.fs:5.0f}Hz  "
-              f"poor_signal(médio)={cap.poor_signal_mean:5.1f}  60Hz/total={mains_ratio*100:4.1f}%  ({path})")
+              f"poor_signal(médio)={cap.poor_signal_mean:5.1f}  "
+              f"60Hz/total={mains_ratio*100:4.1f}%  ({path})")
     res = analyze_interleaved(blocks, discard_s=args.discard)
     print(f"\n  alfa_rel(OF)={res.eyes_closed_rel_alpha*100:5.1f}%  "
           f"alfa_rel(OA)={res.eyes_open_rel_alpha*100:5.1f}%  razão={res.ratio:5.2f}")
@@ -196,14 +200,16 @@ def cmd_exp_b(args) -> int:
 
 def cmd_exp_c(args) -> int:
     """Exp. C intercalado (§13) sobre CSVs de captura REPOUSO/CARGA — pipeline TRAVADO."""
-    from .exp_c import REST, analyze_interleaved, load_blocks, read_capture_csv
+    from .exp_c import REST, analyze_interleaved, load_blocks
 
     args.csvs = expand_csv_paths(args.csvs)
     blocks = load_blocks(args.csvs)
     print("== Exp. C intercalado (alfa relativa REPOUSO vs CARGA, pipeline travado) ==")
     for path, block in zip(args.csvs, blocks):
         cond = "REPOUSO" if block.condition == REST else "CARGA  "
-        mains_ratio = mains_power(block.samples, block.fs) / (total_power(block.samples, block.fs) or 1.0)
+        mains_ratio = (
+            mains_power(block.samples, block.fs) / (total_power(block.samples, block.fs) or 1.0)
+        )
         print(f"  {cond}  n={block.samples.size:6d}  fs~{block.fs:5.0f}Hz  "
               f"60Hz/total={mains_ratio*100:4.1f}%  ({path})")
     res = analyze_interleaved(blocks, discard_s=args.discard)
@@ -237,7 +243,9 @@ def cmd_exp_d(args) -> int:
 
 
 def main(argv=None) -> int:
-    p = argparse.ArgumentParser(prog="wave-eeg", description="WaveAI — spike de captação/análise EEG (NeuroSky).")
+    p = argparse.ArgumentParser(
+        prog="wave-eeg", description="WaveAI — spike de captação/análise EEG (NeuroSky)."
+    )
     sub = p.add_subparsers(dest="cmd", required=True)
 
     d = sub.add_parser("demo", help="Exp. B em dados sintéticos (sem hardware).")
@@ -257,19 +265,28 @@ def main(argv=None) -> int:
     a.add_argument("--fs", type=int, default=0, help="Força fs (0 = estimar pelos timestamps).")
     a.set_defaults(func=cmd_analyze)
 
-    e = sub.add_parser("exp-b", help="Exp. B intercalado (§12) sobre CSVs de captura ou uma pasta de sessão.")
-    e.add_argument("csvs", nargs="+", help="CSVs dos blocos em ordem, OU uma pasta (ex.: captures/exp-b/d1).")
-    e.add_argument("--discard", type=float, default=5.0, help="Segundos de transição descartados por bloco.")
+    e = sub.add_parser(
+        "exp-b", help="Exp. B intercalado (§12) sobre CSVs de captura ou uma pasta de sessão."
+    )
+    e.add_argument("csvs", nargs="+",
+                   help="CSVs dos blocos em ordem, OU uma pasta (ex.: captures/exp-b/d1).")
+    e.add_argument("--discard", type=float, default=5.0,
+                   help="Segundos de transição descartados por bloco.")
     e.set_defaults(func=cmd_exp_b)
 
-    ec = sub.add_parser("exp-c", help="Exp. C intercalado (§13) repouso vs carga; CSVs ou pasta de sessão.")
+    ec = sub.add_parser("exp-c",
+                        help="Exp. C intercalado (§13) repouso vs carga; CSVs ou pasta de sessão.")
     ec.add_argument("csvs", nargs="+", help="CSVs dos blocos (REST/LOAD) em ordem, OU uma pasta.")
-    ec.add_argument("--discard", type=float, default=5.0, help="Segundos de transição descartados por bloco.")
+    ec.add_argument("--discard", type=float, default=5.0,
+                    help="Segundos de transição descartados por bloco.")
     ec.set_defaults(func=cmd_exp_c)
 
-    ed = sub.add_parser("exp-d", help="Exp. D (§14): assinatura de artefatos vs CLEAN; CSVs ou pasta.")
+    ed = sub.add_parser(
+        "exp-d", help="Exp. D (§14): assinatura de artefatos vs CLEAN; CSVs ou pasta."
+    )
     ed.add_argument("csvs", nargs="+", help="CSVs rotulados (CLEAN/BLINK/EOG/JAW/…), OU uma pasta.")
-    ed.add_argument("--discard", type=float, default=5.0, help="Segundos de transição descartados por bloco.")
+    ed.add_argument("--discard", type=float, default=5.0,
+                    help="Segundos de transição descartados por bloco.")
     ed.set_defaults(func=cmd_exp_d)
 
     args = p.parse_args(argv)

@@ -11,16 +11,15 @@ import uuid
 from collections.abc import Iterator
 
 import pytest
-from fastapi.testclient import TestClient
-from sqlalchemy.orm import Session
-from starlette.websockets import WebSocketDisconnect
-
 from app.api.deps import get_analysis_client, reset_login_limiter
 from app.db.session import get_session
 from app.main import app
 from app.models import CaptureSession, SessionStatus
 from app.services.analysis_client import AnalysisUnavailableError
 from app.services.streaming import CloseCode
+from fastapi.testclient import TestClient
+from sqlalchemy.orm import Session
+from starlette.websockets import WebSocketDisconnect
 
 from .conftest import registrar_conta
 
@@ -419,9 +418,8 @@ def test_stop_gera_result_persistido_com_consentimento(
     # Proveniência (ADR-0033): o device declarado no start chegou à Analysis...
     assert analysis.session_devices == ["mindwave-mobile-2"]
     # ...e foi persistido EM CLARO no Result (device + montagem serializada).
-    from sqlalchemy import select
-
     from app.models import Result
+    from sqlalchemy import select
     results = db_session.scalars(select(Result)).all()
     assert len(results) == 1
     assert results[0].device == "mindwave-mobile-2"

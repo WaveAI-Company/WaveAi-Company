@@ -1,7 +1,6 @@
 """Baseline pessoal + desvio N σ (ADR-0032) — cold-start, confiança, fonte."""
 import numpy as np
 import pytest
-
 from wave_eeg.baseline import (
     DEVIATION_SIGMA,
     MIN_OBSERVATIONS,

@@ -107,7 +107,7 @@ class ResetPasswordRequest(BaseModel):
         return podado
 
     @model_validator(mode="after")
-    def _uma_forma_so(self) -> "ResetPasswordRequest":
+    def _uma_forma_so(self) -> ResetPasswordRequest:
         """Exige exatamente uma das duas formas.
 
         Aceitar as duas juntas obrigaria a decidir qual vence — e "qual dos dois

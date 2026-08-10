@@ -2,7 +2,6 @@
 import csv
 
 import numpy as np
-
 from wave_eeg.cli import capture_rows, expand_csv_paths
 from wave_eeg.exp_b import (
     EYES_CLOSED,

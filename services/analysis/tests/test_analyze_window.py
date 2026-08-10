@@ -2,11 +2,10 @@
 
 import numpy as np
 import pytest
-from fastapi.testclient import TestClient
-from wave_eeg import FEATURE_CATALOG
-
 from app.demo_data import synthetic_session
 from app.main import app
+from fastapi.testclient import TestClient
+from wave_eeg import FEATURE_CATALOG
 
 client = TestClient(app)
 FS = 512.0

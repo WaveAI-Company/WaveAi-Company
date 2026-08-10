@@ -142,6 +142,22 @@ jobs:
       - name: Run tests
         run: pytest -q
 
+  lint-python:
+    # Lint dos quatro pacotes Python de uma vez (a config mora no `ruff.toml`
+    # da raiz, compartilhada). A versão vai PINADA: a partir da 0.16 o ruff
+    # liga ~416 regras por padrão e ganha regras novas a cada release — sem pin,
+    # o CI passaria a reprovar código que ninguém tocou.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install
+        run: pip install ruff==0.16.2
+      - name: Lint (ruff)
+        run: ruff check .
+
   lint-vocabulary:
     # Guarda o vocabulário não-clínico (ADR-0032): "anomalia" foi abandonado em
     # código/UI e na estratégia de sinal (DataScience/30). Registros de decisão
