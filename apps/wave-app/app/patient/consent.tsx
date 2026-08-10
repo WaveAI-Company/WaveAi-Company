@@ -18,6 +18,7 @@ import { Panel } from "../../src/components/Panel";
 import { ScreenContainer } from "../../src/components/ScreenContainer";
 import { Skeleton } from "../../src/components/Skeleton";
 import { WaveField } from "../../src/components/brand/WaveField";
+import { dataCurta } from "../../src/format/date";
 import { COPIA_DISPONIVEL, baixarCopia } from "../../src/privacy/dataExport";
 import { useRoleAccent, useTheme, withAlpha, type Theme } from "../../src/theme";
 
@@ -106,12 +107,10 @@ const SECOES: Secao[] = [
 ];
 
 /** "5 ago 2026, 14:32" */
-const MESES = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
-
 function carimbo(iso: string): string {
   const d = new Date(iso);
   const hora = d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
-  return `${d.getDate()} ${MESES[d.getMonth()]} ${d.getFullYear()}, ${hora}`;
+  return `${dataCurta(iso)}, ${hora}`;
 }
 
 /**

@@ -12,17 +12,11 @@ import { Icon } from "../../src/components/Icon";
 import { Panel } from "../../src/components/Panel";
 import { ScreenContainer } from "../../src/components/ScreenContainer";
 import { SearchField } from "../../src/components/SearchField";
+import { diaMes } from "../../src/format/date";
 import { Skeleton } from "../../src/components/Skeleton";
 import { ThemeSelector } from "../../src/components/ThemeSelector";
 import { WaveField } from "../../src/components/brand/WaveField";
 import { useRoleAccent, useTheme, withAlpha, type Theme } from "../../src/theme";
-
-const MESES = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
-
-function dataCurta(iso: string): string {
-  const d = new Date(iso);
-  return `${d.getDate()} ${MESES[d.getMonth()]}`;
-}
 
 /** "há 5 dias" — idade do convite, com os casos curtos por extenso. */
 function enviadoHa(iso: string, agora: Date): string {
@@ -245,7 +239,7 @@ export default function DoctorScreen() {
                     {link.counterpart_display_name ?? "Paciente"}
                   </Text>
                   <Text style={styles.nota}>
-                    autorizou em {dataCurta(link.consented_at ?? link.created_at)}
+                    autorizou em {diaMes(link.consented_at ?? link.created_at)}
                   </Text>
                 </View>
               </View>
