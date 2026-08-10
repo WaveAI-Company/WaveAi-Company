@@ -3,7 +3,6 @@ import csv
 
 import numpy as np
 import pytest
-
 from wave_corpus import CorpusIndex, ingest_frame
 from wave_corpus.capture_csv import read_capture_frame
 

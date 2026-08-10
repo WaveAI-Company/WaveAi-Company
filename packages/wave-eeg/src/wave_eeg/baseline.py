@@ -22,8 +22,8 @@ histórico** (persistência) é outra camada.
 """
 from __future__ import annotations
 
+from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
-from typing import Iterable, Mapping, Sequence
 
 import numpy as np
 

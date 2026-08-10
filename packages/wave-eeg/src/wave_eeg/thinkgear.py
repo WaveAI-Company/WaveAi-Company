@@ -11,8 +11,8 @@ Este módulo é puro (sem dependências de hardware) e, portanto, 100% testável
 """
 from __future__ import annotations
 
+from collections.abc import Iterator
 from dataclasses import dataclass, field
-from typing import Iterator, List, Optional
 
 SYNC = 0xAA
 
@@ -35,12 +35,12 @@ _MAX_PLENGTH = 169  # PLENGTH válido é 0..169 (170 = 0xAA reservado ao SYNC)
 @dataclass
 class TGPacket:
     """Conteúdo decodificado de um pacote ThinkGear."""
-    raw_samples: List[int] = field(default_factory=list)
-    poor_signal: Optional[int] = None
-    attention: Optional[int] = None
-    meditation: Optional[int] = None
-    blink: Optional[int] = None
-    eeg_power: Optional[dict] = None
+    raw_samples: list[int] = field(default_factory=list)
+    poor_signal: int | None = None
+    attention: int | None = None
+    meditation: int | None = None
+    blink: int | None = None
+    eeg_power: dict | None = None
 
 
 def checksum(payload: bytes) -> int:

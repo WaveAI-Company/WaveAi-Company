@@ -10,10 +10,6 @@ import uuid
 from collections.abc import Iterator
 
 import pytest
-from fastapi.testclient import TestClient
-from sqlalchemy import select
-from sqlalchemy.orm import Session
-
 from app.api.deps import get_analysis_client, reset_login_limiter
 from app.config import get_settings
 from app.db.session import get_session
@@ -29,6 +25,9 @@ from app.models import (
 )
 from app.security.crypto import get_metrics_cipher
 from app.services.results import ConsentRequiredError, ResultService
+from fastapi.testclient import TestClient
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from .conftest import registrar_conta
 
@@ -38,7 +37,9 @@ SENHA = "senha-de-teste-bem-longa"
 METRICS_FALSAS = {
     "engine_version": "WaveEegEngine/0.1.0+wave_eeg/0.1.0",
     "rel_alpha": 0.31,
-    "relative_band_powers": {"delta": 0.4, "theta": 0.2, "alpha": 0.31, "beta": 0.05, "gamma": 0.04},
+    "relative_band_powers": {
+        "delta": 0.4, "theta": 0.2, "alpha": 0.31, "beta": 0.05, "gamma": 0.04,
+    },
     "quality": {"signal_std": 42.0, "mains_power": 1.0, "mains_power_ratio": 0.01},
 }
 
@@ -223,7 +224,6 @@ def test_sem_consentimento_nao_persiste(db_session: Session):
 
 
 def test_persistencia_desligada_nao_grava(db_session: Session, monkeypatch):
-    from app.config import Settings
 
     settings = get_settings()
     monkeypatch.setattr(settings, "result_persistence_enabled", False)
@@ -474,14 +474,18 @@ def client_report(db_session: Session, analysis_fake: _AnalysisReportFake) -> It
     app.dependency_overrides.clear()
 
 
-def _seed_result_features(db_session: Session, email: str, alpha: float, score: float, quando) -> None:
+def _seed_result_features(
+    db_session: Session, email: str, alpha: float, score: float, quando
+) -> None:
     from app.repositories.user import UserRepository
     from app.security.password import Argon2PasswordHasher
 
     hasher = Argon2PasswordHasher(memory_cost=8, time_cost=1, parallelism=1)
     user = UserRepository(db_session, hasher).get_by_email(email)
     metrics = {**METRICS_FALSAS, "features": {"rel_alpha": alpha}, "quality": {"score": score}}
-    r = _service(db_session).persistir(patient=user, session_id=_sessao(db_session, user).id, metrics=metrics)
+    r = _service(db_session).persistir(
+        patient=user, session_id=_sessao(db_session, user).id, metrics=metrics
+    )
     r.created_at = quando
     db_session.commit()
 

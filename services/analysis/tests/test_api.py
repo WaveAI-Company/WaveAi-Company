@@ -1,8 +1,7 @@
 """Testes de integração da API de análise."""
 
-from fastapi.testclient import TestClient
-
 from app.main import app
+from fastapi.testclient import TestClient
 
 client = TestClient(app)
 

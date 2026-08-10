@@ -33,7 +33,6 @@ from .devices import (
 from .esense import ESENSE_CATALOG, ESENSE_NAMES, ESENSE_RELIABILITY
 from .features import FEATURE_CATALOG, FeatureSpec, compute_features
 from .longitudinal import FeatureTrend, feature_trend, longitudinal_report
-from .summary import FRIENDLY_NAMES, summarize_report
 from .quality import (
     QUALITY_PARAMS_VERSION,
     QualityAssessment,
@@ -41,6 +40,7 @@ from .quality import (
     assess_quality,
 )
 from .reader import DeviceReader, SerialReader, SimulatedReader
+from .summary import FRIENDLY_NAMES, summarize_report
 from .thinkgear import TGPacket, ThinkGearParser, checksum, parse_payload
 
 __version__ = "0.7.0"

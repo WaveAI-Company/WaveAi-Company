@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import argparse
 import json
-from typing import Optional, Sequence
+from collections.abc import Sequence
 
 import numpy as np
 
@@ -80,7 +80,7 @@ def _cmd_ingest(args: argparse.Namespace) -> int:
     return 0
 
 
-def main(argv: Optional[Sequence[str]] = None) -> int:
+def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         prog="research", description="Corpus de pesquisa do WaveAI (ADR-0030)"
     )
@@ -89,9 +89,11 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     ing = sub.add_parser("ingest", help="ingere um dataset sintético/autocaptação no corpus")
     ing.add_argument("--input", required=True, help=".npy/.csv (1D=canal único ou canais×amostras)")
     ing.add_argument("--device", required=True)
-    ing.add_argument("--montage", required=True, help="rótulos por canal, separados por vírgula (ex.: FP1)")
+    ing.add_argument("--montage", required=True,
+                     help="rótulos por canal, separados por vírgula (ex.: FP1)")
     ing.add_argument("--from-capture", action="store_true", dest="from_capture",
-                     help="lê um CSV de `wave-eeg capture` (condição, poor_signal e fs vêm do arquivo)")
+                     help="lê um CSV de `wave-eeg capture` "
+                          "(condição, poor_signal e fs vêm do arquivo)")
     ing.add_argument("--fs", type=float, default=None, help="obrigatório fora do --from-capture")
     ing.add_argument("--condition", default=None)
     ing.add_argument("--poor-signal", type=float, default=None, dest="poor_signal")

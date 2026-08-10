@@ -23,7 +23,6 @@ real, mas exige controle de estado para comparações limpas.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict
 
 import numpy as np
 
@@ -154,7 +153,7 @@ FEATURE_CATALOG = (
 )
 
 
-def compute_features(x, fs, bands=BANDS, preprocess_signal: bool = True) -> Dict[str, float]:
+def compute_features(x, fs, bands=BANDS, preprocess_signal: bool = True) -> dict[str, float]:
     """Extrai **todas** as features do catálogo de uma janela/segmento.
 
     Por padrão pré-processa (detrend + passa-banda + notch) — as features assumem
@@ -165,7 +164,7 @@ def compute_features(x, fs, bands=BANDS, preprocess_signal: bool = True) -> Dict
         x = preprocess(x, fs)
 
     rel = relative_band_powers(x, fs, bands)
-    feats: Dict[str, float] = {f"rel_{name}": rel[name] for name in bands}
+    feats: dict[str, float] = {f"rel_{name}": rel[name] for name in bands}
     feats["ratio_theta_beta"] = band_ratio(x, fs, "theta", "beta", bands)
     feats["ratio_alpha_beta"] = band_ratio(x, fs, "alpha", "beta", bands)
     feats["spectral_edge_95"] = spectral_edge_frequency(x, fs, 0.95)

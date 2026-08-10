@@ -1,9 +1,8 @@
 """O segredo do JWT é fail-closed (ADR-0023): sem ele, a app não sobe."""
 
 import pytest
-from pydantic import ValidationError
-
 from app.config import JWT_SECRET_MIN_BYTES, Settings
+from pydantic import ValidationError
 
 VALIDO = "x" * JWT_SECRET_MIN_BYTES
 

@@ -1,7 +1,5 @@
 """Tendências longitudinais por feature (N5) — descritivo, sem clínica."""
-import numpy as np
 import pytest
-
 from wave_eeg.longitudinal import (
     DIRECTION_DOWN,
     DIRECTION_FLAT,

@@ -15,15 +15,14 @@ import uuid
 from collections.abc import Iterator
 
 import pytest
-from fastapi.testclient import TestClient
-from sqlalchemy import select
-from sqlalchemy.orm import Session
-
 from app.api.deps import reset_login_limiter
 from app.db.session import get_session
 from app.main import app
 from app.models import CaptureSession, LiveShareEvent, SessionStatus, User
 from app.services.live_bus import LiveBus, publicar_janela, reset_live_bus
+from fastapi.testclient import TestClient
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from .conftest import registrar_conta
 
@@ -102,7 +101,7 @@ async def _vazio_ou_recebeu(fila) -> str:
     try:
         await asyncio.wait_for(fila.get(), timeout=0.05)
         return "recebeu"
-    except asyncio.TimeoutError:
+    except TimeoutError:
         return "vazio"
 
 

@@ -6,8 +6,8 @@ metadados de sessão. `add_frame` grava nos dois de forma coerente.
 """
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path
-from typing import List, Optional, Sequence
 
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import sessionmaker
@@ -38,8 +38,8 @@ class CorpusIndex:
         device: str,
         montage: Sequence[str],
         fs: float,
-        experimental_condition: Optional[str] = None,
-        poor_signal: Optional[float] = None,
+        experimental_condition: str | None = None,
+        poor_signal: float | None = None,
     ) -> str:
         """Registra uma sessão e devolve seu id."""
         with self._Session.begin() as s:
@@ -71,17 +71,17 @@ class CorpusIndex:
             )
         return content_hash
 
-    def get_session(self, session_id: str) -> Optional[ResearchSession]:
+    def get_session(self, session_id: str) -> ResearchSession | None:
         with self._Session() as s:
             return s.get(ResearchSession, session_id)
 
-    def artifacts_for(self, session_id: str) -> List[Artifact]:
+    def artifacts_for(self, session_id: str) -> list[Artifact]:
         with self._Session() as s:
             return list(
                 s.scalars(select(Artifact).where(Artifact.session_id == session_id))
             )
 
-    def artifact_by_hash(self, content_hash: str) -> Optional[Artifact]:
+    def artifact_by_hash(self, content_hash: str) -> Artifact | None:
         """Primeiro artefato com este `content_hash` (base da ingestão idempotente)."""
         with self._Session() as s:
             return s.scalars(
@@ -110,7 +110,7 @@ class CorpusIndex:
             s.flush()
             return row.id
 
-    def results_for(self, session_id: str) -> List[ResearchResult]:
+    def results_for(self, session_id: str) -> list[ResearchResult]:
         with self._Session() as s:
             return list(
                 s.scalars(

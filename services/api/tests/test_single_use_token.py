@@ -14,9 +14,6 @@ import uuid
 from datetime import UTC, datetime, timedelta
 
 import pytest
-from sqlalchemy import select
-from sqlalchemy.orm import Session
-
 from app.config import get_settings
 from app.models import SingleUseToken, SingleUseTokenPurpose, User, UserRole
 from app.repositories.user import UserRepository
@@ -29,6 +26,8 @@ from app.services.email import (
     build_email_sender,
 )
 from app.services.single_use_token import SingleUseTokenService
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 SENHA = "senha-de-teste-bem-longa"
 
@@ -240,7 +239,8 @@ def test_console_sender_so_em_desenvolvimento():
     """Fail-closed (ADR-0044, item 3): fora de dev sem provedor, não sobe."""
     settings = get_settings()
 
-    assert isinstance(build_email_sender(settings.model_copy(update={"app_env": "development"})), ConsoleEmailSender)
+    em_dev = settings.model_copy(update={"app_env": "development"})
+    assert isinstance(build_email_sender(em_dev), ConsoleEmailSender)
 
     for ambiente in ("production", "staging"):
         with pytest.raises(RuntimeError):

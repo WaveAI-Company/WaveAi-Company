@@ -20,9 +20,6 @@ import math
 import sys
 from datetime import UTC, datetime, timedelta
 
-from sqlalchemy import func, select
-from sqlalchemy.orm import Session
-
 from app.config import get_settings
 from app.consent import CONSENT_TERM_VERSION
 from app.db.session import get_engine
@@ -36,6 +33,8 @@ from app.security.crypto import get_metrics_cipher
 from app.security.password import get_password_hasher
 from app.services.care import CareService
 from app.services.results import ResultService
+from sqlalchemy import func, select
+from sqlalchemy.orm import Session
 
 #: Senha única dos usuários de teste. Só existe em ambiente de desenvolvimento.
 SENHA_DEV = "senha-de-teste-bem-longa"
@@ -212,7 +211,7 @@ def main() -> int:
             perfil = link.patient.patient_profile
             print(f"  - {perfil.display_name if perfil else link.patient_user_id}")
         print(f"Iniciados pelo paciente: "
-              f"{sum(1 for l in ativos if l.initiated_by is CareLinkParty.PATIENT)}")
+              f"{sum(1 for v in ativos if v.initiated_by is CareLinkParty.PATIENT)}")
         print(f"Sessões fictícias criadas: {sessoes_criadas} "
               f"(engine {ENGINE_FICTICIO})")
     return 0

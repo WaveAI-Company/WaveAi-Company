@@ -1,10 +1,7 @@
 """Exp. B intercalado (DataScience/31 §12) — pipeline travado, 100% sintético."""
 import numpy as np
 import pytest
-
 from wave_eeg.exp_b import (
-    EYES_CLOSED,
-    EYES_OPEN,
     Block,
     analyze_interleaved,
     fs_from_duration,
