@@ -3,7 +3,6 @@ import csv
 
 import numpy as np
 import pytest
-
 from wave_eeg.exp_c import (
     LOAD,
     REST,

@@ -78,7 +78,7 @@ class CaptureSession(Base):
     )
     ended_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
-    patient: Mapped["User"] = relationship()  # noqa: F821
+    patient: Mapped[User] = relationship()  # noqa: F821
 
     def __repr__(self) -> str:  # pragma: no cover - conveniência de debug
         return f"<CaptureSession id={self.id} status={self.status.value}>"

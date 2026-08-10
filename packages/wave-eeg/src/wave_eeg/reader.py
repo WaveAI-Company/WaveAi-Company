@@ -11,10 +11,10 @@ código de produção real.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Iterable, Iterator
+from collections.abc import Iterable, Iterator
 
-from .thinkgear import TGPacket, ThinkGearParser
 from .simulator import simulate_stream
+from .thinkgear import TGPacket, ThinkGearParser
 
 
 def _chunked(byte_iter: Iterable[bytes], size: int) -> Iterator[bytes]:

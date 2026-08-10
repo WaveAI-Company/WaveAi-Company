@@ -79,7 +79,7 @@ class SingleUseToken(Base):
         DateTime(timezone=True), nullable=True
     )
 
-    user: Mapped["User"] = relationship()  # noqa: F821
+    user: Mapped[User] = relationship()  # noqa: F821
 
     def __repr__(self) -> str:  # pragma: no cover - conveniência de debug
         # Nunca inclui o hash, muito menos o valor em claro.

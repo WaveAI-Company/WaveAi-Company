@@ -20,12 +20,11 @@ from sqlalchemy.orm import Session
 
 from ..consent import CONSENT_TERM_VERSION
 from ..db.session import get_session
-from ..models.result import ResultAccessAction
 from ..models.user import User, UserRole
 from ..services.analysis_client import AnalysisClient, AnalysisUnavailableError
 from ..services.annotation import AnnotationService
-from ..services.results import ResultService
 from ..services.narrator import Narrator
+from ..services.results import ResultService
 from .deps import (
     Janela,
     get_analysis_client,

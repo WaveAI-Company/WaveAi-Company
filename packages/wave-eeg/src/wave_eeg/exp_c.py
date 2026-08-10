@@ -15,7 +15,6 @@ from __future__ import annotations
 
 import csv
 from dataclasses import dataclass, field
-from typing import Dict
 
 import numpy as np
 from scipy import stats
@@ -59,7 +58,7 @@ class ExpCResult:
     n_blocks_rest: int
     n_blocks_load: int
     passed: bool
-    secondary: Dict[str, Dict[str, float]] = field(default_factory=dict)
+    secondary: dict[str, dict[str, float]] = field(default_factory=dict)
 
     @property
     def verdict(self) -> str:
@@ -79,7 +78,7 @@ def _cohens_d(a: np.ndarray, b: np.ndarray) -> float:
     return float((np.mean(a) - np.mean(b)) / pooled) if pooled else float("nan")
 
 
-def _mean_secondary(dicts) -> Dict[str, float]:
+def _mean_secondary(dicts) -> dict[str, float]:
     return {k: float(np.mean([d[k] for d in dicts])) for k in _SECONDARY} if dicts else {}
 
 

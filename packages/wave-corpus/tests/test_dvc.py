@@ -1,7 +1,6 @@
 """Remote DVC sempre local/descartável (ADR-0028/0030)."""
 import numpy as np
 import pytest
-
 from wave_corpus import LocalRemote
 from wave_corpus.dvc import DvcLocalRepo, dvc_available
 

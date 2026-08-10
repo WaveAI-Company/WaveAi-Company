@@ -6,7 +6,7 @@ e reproduzir cenários controlados (ex.: sinal com alfa conhecido).
 """
 from __future__ import annotations
 
-from typing import Iterable, Iterator
+from collections.abc import Iterable, Iterator
 
 from .thinkgear import (
     CODE_ATTENTION,

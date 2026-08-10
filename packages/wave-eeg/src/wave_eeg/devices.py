@@ -14,8 +14,8 @@ existe com >1 canal).
 """
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Sequence
 
 import numpy as np
 
@@ -105,7 +105,7 @@ class SignalFrame:
         fs: float,
         device: str,
         montage: Sequence[str] | None = None,
-    ) -> "SignalFrame":
+    ) -> SignalFrame:
         """Constrói um quadro **N=1** a partir de amostras 1D (caso NeuroSky).
 
         A montagem, se não informada, é resolvida pelo registro do device; se o

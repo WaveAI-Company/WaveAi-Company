@@ -86,10 +86,10 @@ class User(Base):
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
     )
 
-    patient_profile: Mapped["PatientProfile | None"] = relationship(
+    patient_profile: Mapped[PatientProfile | None] = relationship(
         back_populates="user", cascade="all, delete-orphan", uselist=False
     )
-    doctor_profile: Mapped["DoctorProfile | None"] = relationship(
+    doctor_profile: Mapped[DoctorProfile | None] = relationship(
         back_populates="user", cascade="all, delete-orphan", uselist=False
     )
 

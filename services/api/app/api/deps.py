@@ -16,15 +16,15 @@ from ..config import Settings, get_settings
 from ..db.session import get_session
 from ..models.user import User, UserRole
 from ..repositories.user import UserRepository
-from ..security.password import PasswordHasher, get_password_hasher
 from ..security.crypto import MetricsCipher
 from ..security.crypto import get_metrics_cipher as get_metrics_cipher_factory
+from ..security.password import PasswordHasher, get_password_hasher
 from ..security.rate_limit import SlidingWindowRateLimiter
 from ..security.tokens import InvalidTokenError, decode_access_token
 from ..services.analysis_client import AnalysisClient, HttpAnalysisClient
+from ..services.annotation import AnnotationService
 from ..services.auth import AuthService
 from ..services.care import CareService
-from ..services.annotation import AnnotationService
 from ..services.email import EmailSender, build_email_sender
 from ..services.narrator import Narrator, build_narrator
 from ..services.results import ResultService

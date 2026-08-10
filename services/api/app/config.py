@@ -152,7 +152,7 @@ class Settings(BaseSettings):
         return [origem.strip() for origem in self.cors_origins.split(",") if origem.strip()]
 
     @model_validator(mode="after")
-    def _default_cookie_secure_por_ambiente(self) -> "Settings":
+    def _default_cookie_secure_por_ambiente(self) -> Settings:
         """Sem override explícito, o cookie `Secure` segue o ambiente.
 
         Em `development` o app roda sobre **http** local, e navegadores recusam

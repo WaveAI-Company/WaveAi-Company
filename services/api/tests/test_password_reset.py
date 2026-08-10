@@ -19,16 +19,15 @@ from collections.abc import Iterator
 from datetime import UTC, datetime, timedelta
 
 import pytest
-from fastapi.testclient import TestClient
-from sqlalchemy import select
-from sqlalchemy.orm import Session
-
 from app.api.deps import reset_login_limiter
 from app.config import get_settings
 from app.db.session import get_session
 from app.emails import ASSUNTO_RECUPERACAO
 from app.main import app
 from app.models import SingleUseToken, SingleUseTokenPurpose, User
+from fastapi.testclient import TestClient
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from .conftest import EmailRecorder, codigo_de_verificacao
 

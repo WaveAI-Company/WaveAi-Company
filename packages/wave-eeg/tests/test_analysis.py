@@ -1,6 +1,5 @@
 """Testes da análise de sinal — validam o Exp. B com sinais sintéticos de alfa conhecido."""
 import numpy as np
-
 from wave_eeg.analysis import (
     band_powers,
     compare_eyes_closed_open,

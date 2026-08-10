@@ -5,7 +5,6 @@ from datetime import UTC, datetime, timedelta
 
 import jwt
 import pytest
-
 from app.config import Settings
 from app.security.tokens import (
     InvalidTokenError,

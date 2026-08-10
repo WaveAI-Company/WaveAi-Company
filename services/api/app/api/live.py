@@ -82,7 +82,7 @@ async def _transmitir(
                 return
             try:
                 evento = await asyncio.wait_for(fila.get(), timeout=KEEPALIVE_SEGUNDOS)
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 yield ": keepalive\n\n"
                 continue
             yield _sse(str(evento.get("type", "message")), evento)

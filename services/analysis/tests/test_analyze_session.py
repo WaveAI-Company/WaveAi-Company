@@ -1,10 +1,9 @@
 """Relatório de sessão em batch (#15)."""
 
-from fastapi.testclient import TestClient
-from wave_eeg import FEATURE_CATALOG
-
 from app.demo_data import synthetic_session
 from app.main import app
+from fastapi.testclient import TestClient
+from wave_eeg import FEATURE_CATALOG
 
 client = TestClient(app)
 CATALOG_NAMES = {spec.name for spec in FEATURE_CATALOG}
