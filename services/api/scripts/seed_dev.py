@@ -37,7 +37,9 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 #: Senha única dos usuários de teste. Só existe em ambiente de desenvolvimento.
-SENHA_DEV = "senha-de-teste-bem-longa"
+#: Tem dígito porque a API passou a exigir letra + número: uma senha de seed
+#: que o `/auth/register` recusaria não representaria conta nenhuma de verdade.
+SENHA_DEV = "senha-de-teste-bem-longa-7"
 
 MEDICO = ("dra.ficticia@example.com", "Dra. Fictícia (teste)")
 PACIENTES = [
@@ -61,6 +63,12 @@ def _garantir_usuario(repo: UserRepository, email: str, nome: str, papel: UserRo
         existente = repo.create(
             email=email, password=SENHA_DEV, role=papel, display_name=nome
         )
+    else:
+        # Redefine SEMPRE. Antes a senha só era escrita na criação, então
+        # trocar o `SENHA_DEV` deixava o banco de dev com a senha antiga e o
+        # README documentando outra — um seed que não converge para o estado
+        # que ele próprio descreve é armadilha. É script de desenvolvimento.
+        repo.set_password(existente, SENHA_DEV)
     # Conta de seed nasce VERIFICADA (ADR-0044 + emenda): com o gate ligado,
     # uma conta sem esta marca não faz login — e um seed cujas contas não
     # entram não serve para nada. Aqui não há e-mail para confirmar.

@@ -39,6 +39,15 @@ from sqlalchemy import Engine, create_engine
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session
 
+#: Senha sintética única da suíte (CLAUDE.md: nunca senha de pessoa real).
+#: Mora AQUI, e não copiada em cada módulo, porque ela precisa satisfazer os
+#: requisitos que a API cobra — quando a regra muda, muda num lugar só. Tem
+#: dígito de propósito: sem ele, esta senha é recusada pelo `/auth/register`.
+SENHA = "senha-de-teste-bem-longa-7"
+
+#: Segunda senha sintética, para os fluxos que exigem "diferente da atual".
+SENHA_NOVA = "outra-senha-de-teste-bem-longa-8"
+
 
 def _require_db() -> bool:
     return os.getenv("WAVEAI_TEST_REQUIRE_DB", "").strip() in {"1", "true", "yes"}
