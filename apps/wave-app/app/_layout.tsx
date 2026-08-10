@@ -12,7 +12,14 @@ import { ThemeProvider, useRoleAccent, useTheme } from "../src/theme";
  * verificação acontece **antes** de existir sessão: o `/auth/verify-email`
  * responde 204 e quem entra é o login (ADR-0044).
  */
-const ROTAS_PUBLICAS = new Set(["login", "register", "verify-email"]);
+const ROTAS_PUBLICAS = new Set([
+  "login",
+  "register",
+  "verify-email",
+  // O link do e-mail de recuperação aponta para cá (`email_link_base_url`), e
+  // quem o abre está justamente sem conseguir entrar.
+  "reset-password",
+]);
 
 /**
  * Guarda de rota: manda quem não tem sessão para o login e leva quem tem para

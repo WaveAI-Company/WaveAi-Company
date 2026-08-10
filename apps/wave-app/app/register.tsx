@@ -9,6 +9,13 @@ import { AuthSteps } from "../src/components/auth/AuthSteps";
 import { Button } from "../src/components/Button";
 import { Field } from "../src/components/Field";
 import { Icon, type IconName } from "../src/components/Icon";
+import {
+  PasswordMatch,
+  PasswordStrength,
+  SENHA_MAX,
+  avaliarSenha,
+  senhaValida,
+} from "../src/components/PasswordStrength";
 import { StateView } from "../src/components/StateView";
 import { TextLink } from "../src/components/TextLink";
 import {
@@ -25,8 +32,6 @@ import {
 } from "../src/theme";
 
 /** Alinhado aos limites validados pela API (schemas.py). */
-const SENHA_MIN = 8;
-const SENHA_MAX = 128;
 const NOME_MAX = 120;
 const EMAIL_MAX = 254;
 
@@ -34,20 +39,6 @@ const EMAIL_MAX = 254;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const CHIPS = ["você convida", "você pode revogar", "dados seus"];
-
-type ForcaSenha = { min: boolean; letra: boolean; numero: boolean };
-
-function avaliarSenha(senha: string): ForcaSenha {
-  return {
-    min: senha.length >= SENHA_MIN,
-    letra: /[a-zA-Z]/.test(senha),
-    numero: /[0-9]/.test(senha),
-  };
-}
-
-function senhaValida(f: ForcaSenha): boolean {
-  return f.min && f.letra && f.numero;
-}
 
 const PAPEIS: { valor: UserRole; nome: string; descricao: string; icone: IconName }[] = [
   {
@@ -108,7 +99,6 @@ export default function RegisterScreen() {
   const destaque = role === "doctor" ? profissional : paciente;
 
   const forca = avaliarSenha(password);
-  const atendidos = [forca.min, forca.letra, forca.numero].filter(Boolean).length;
 
   async function criar() {
     const novos: typeof erros = {};
@@ -188,60 +178,11 @@ export default function RegisterScreen() {
           error={erros.senha}
         />
 
-        {/* Medidor: resumo VISUAL dos mesmos requisitos da lista abaixo, que é
-            quem carrega a informação para o leitor de tela. Fala em requisitos
-            atendidos, não em "força" — "senha1234" cumpre os três e nem por
-            isso é uma senha forte; prometer isso seria um medidor mentiroso. */}
-        <View style={styles.medidor} aria-hidden>
-          {[0, 1, 2].map((i) => (
-            <View
-              key={i}
-              style={[
-                styles.segmento,
-                {
-                  backgroundColor:
-                    i < atendidos ? destaque.accent : t.colors.surfaceStrong,
-                },
-              ]}
-            />
-          ))}
-          <Text style={styles.medidorTexto}>{atendidos} de 3</Text>
-        </View>
-
-        <View style={styles.requisitos} accessibilityRole="list">
-          {[
-            { ok: forca.min, texto: "ao menos 8 caracteres" },
-            { ok: forca.letra, texto: "uma letra" },
-            { ok: forca.numero, texto: "um número" },
-          ].map((item) => (
-            <View
-              key={item.texto}
-              style={styles.requisito}
-              accessibilityLabel={`${item.texto}: ${item.ok ? "atendido" : "pendente"}`}
-            >
-              <View
-                style={[
-                  styles.requisitoSelo,
-                  item.ok
-                    ? { backgroundColor: destaque.accent, borderColor: destaque.accent }
-                    : { borderColor: t.colors.borderStrong },
-                ]}
-              >
-                {item.ok ? (
-                  <Icon name="check" size={10} color={destaque.onAccent} strokeWidth={3.4} />
-                ) : null}
-              </View>
-              <Text
-                style={[
-                  styles.requisitoTexto,
-                  item.ok && { color: t.colors.text },
-                ]}
-              >
-                {item.texto}
-              </Text>
-            </View>
-          ))}
-        </View>
+        <PasswordStrength
+          senha={password}
+          accent={destaque.accent}
+          onAccent={destaque.onAccent}
+        />
       </View>
 
       <View>
@@ -256,21 +197,12 @@ export default function RegisterScreen() {
           placeholder="Repita a senha"
           error={erros.confirma}
         />
-        {/* Coincidir tem valência legítima: é sobre acertar o que se digitou,
-            não sobre o estado de ninguém (ADR-0027). */}
-        {confirma.length > 0 && !erros.confirma ? (
-          <Text
-            accessibilityRole="alert"
-            style={[
-              styles.dica,
-              { color: confirma === password ? destaque.accentText : t.colors.warningText },
-            ]}
-          >
-            {confirma === password
-              ? "As senhas coincidem."
-              : "As senhas ainda não coincidem."}
-          </Text>
-        ) : null}
+        <PasswordMatch
+          senha={password}
+          confirmacao={confirma}
+          erro={erros.confirma}
+          accentText={destaque.accentText}
+        />
       </View>
 
       <View style={styles.papeis}>
@@ -386,48 +318,6 @@ const criarEstilos = (t: Theme) =>
     subtitulo: {
       ...t.typography.body,
       color: t.colors.textMuted,
-    },
-    medidor: {
-      alignItems: "center",
-      flexDirection: "row",
-      gap: 6,
-      marginTop: t.spacing.sm,
-    },
-    segmento: {
-      borderRadius: 2,
-      flex: 1,
-      height: 4,
-    },
-    medidorTexto: {
-      ...t.typography.caption,
-      color: t.colors.textSubtle,
-      minWidth: 48,
-      textAlign: "right",
-    },
-    requisitos: {
-      gap: 5,
-      marginTop: t.spacing.sm,
-    },
-    requisito: {
-      alignItems: "center",
-      flexDirection: "row",
-      gap: t.spacing.sm,
-    },
-    requisitoSelo: {
-      alignItems: "center",
-      borderRadius: 8,
-      borderWidth: 1,
-      height: 16,
-      justifyContent: "center",
-      width: 16,
-    },
-    requisitoTexto: {
-      ...t.typography.caption,
-      color: t.colors.textSubtle,
-    },
-    dica: {
-      ...t.typography.caption,
-      marginTop: 6,
     },
     papeis: {
       gap: t.spacing.sm,
