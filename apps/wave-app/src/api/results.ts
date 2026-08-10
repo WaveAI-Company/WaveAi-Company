@@ -47,6 +47,15 @@ export type SessionResult = {
   engine_version: string;
   created_at: string;
   metrics: ResultMetrics;
+  /**
+   * Há autorrelato nesta sessão? **Só a existência** — o texto continua vindo
+   * pela rota da anotação, que é auditada (emenda à ADR-0037).
+   *
+   * Opcional porque o campo nasceu depois do resto do contrato: uma resposta
+   * antiga em cache não deve derrubar a tela, e ausência lê-se como "não sei",
+   * que a UI trata igual a "não há" — o selo simplesmente não aparece.
+   */
+  has_annotation?: boolean;
 };
 
 type ResultsPayload = { results: SessionResult[]; window_days: number | null };

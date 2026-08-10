@@ -147,6 +147,9 @@ export default function PatientHistoryScreen() {
       // A qualidade média vem do relatório longitudinal, que é quem calcula
       // isso no servidor — o app não deriva um índice próprio.
       qualidade: report?.report.quality?.mean ?? null,
+      // Contagem do cliente, e não uma rota nova: o `has_annotation` que o selo
+      // já usa responde isso de graça (emenda à ADR-0037).
+      comAutorrelato: filtradas.filter((r) => r.has_annotation).length,
     };
   }, [filtradas, report]);
 
@@ -277,6 +280,10 @@ export default function PatientHistoryScreen() {
                   rotulo="Alfa relativa média"
                   valor={resumo.alfaMedio !== null ? formatPercent(resumo.alfaMedio) : "—"}
                   cor={t.colors.bandAlpha}
+                />
+                <ResumoLinha
+                  rotulo="Sessões com autorrelato"
+                  valor={String(resumo.comAutorrelato)}
                 />
                 <Text style={styles.resumoNota}>
                   Médias descritivas do período — sem veredito. As bandas não têm valência.

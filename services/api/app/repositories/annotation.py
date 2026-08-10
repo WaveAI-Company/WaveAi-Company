@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import uuid
+from collections.abc import Sequence
 
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
@@ -44,6 +45,25 @@ class AnnotationRepository:
         self._session.add(nota)
         self._session.flush()
         return nota, True
+
+    def sessoes_com_nota(
+        self, *, patient_user_id: uuid.UUID, session_ids: Sequence[uuid.UUID]
+    ) -> set[uuid.UUID]:
+        """Quais dessas sessões têm nota. **Só os ids** — nunca o conteúdo.
+
+        Uma consulta para a lista inteira, em vez de uma por sessão: era esse
+        custo que mantinha o selo de autorrelato fora da linha do tempo.
+
+        Filtra também por titular, e não só pelos ids: um id de sessão de outra
+        pessoa que entrasse na lista por engano não poderia responder "sim".
+        """
+        if not session_ids:
+            return set()
+        stmt = select(SessionAnnotation.session_id).where(
+            SessionAnnotation.patient_user_id == patient_user_id,
+            SessionAnnotation.session_id.in_(session_ids),
+        )
+        return set(self._session.scalars(stmt))
 
     def apagar_por_sessao(self, session_id: uuid.UUID) -> bool:
         resultado = self._session.execute(

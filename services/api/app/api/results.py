@@ -111,14 +111,20 @@ def meus_results(
     session: Session = Depends(get_session),
     user: User = Depends(get_current_user),
     service: ResultService = Depends(get_result_service),
+    annotations: AnnotationService = Depends(get_annotation_service),
     janela: Janela | None = Depends(janela_periodo),
 ) -> dict:
     """Direito de **acesso**: o titular vê seus próprios Result.
 
     `?days=N` recorta a janela (ausente = tudo). `window_days` devolve o que foi
     aplicado, para a tela não depender só do próprio estado ao rotular o período.
+
+    Cada item leva `has_annotation` — **se** há autorrelato naquela sessão, nunca
+    o texto (emenda à ADR-0037). É o que permite o selo na linha do tempo sem
+    uma consulta de nota por sessão.
     """
     results = service.listar(titular=user, ator=user, desde=janela.desde if janela else None)
+    annotations.marcar_quais_tem_nota(titular=user, results=results)
     session.commit()
     return {"results": results, "window_days": janela.days if janela else None}
 
@@ -170,16 +176,22 @@ def results_do_paciente(
     ator: User = Depends(require_role(UserRole.DOCTOR)),
     session: Session = Depends(get_session),
     service: ResultService = Depends(get_result_service),
+    annotations: AnnotationService = Depends(get_annotation_service),
     janela: Janela | None = Depends(janela_periodo),
 ) -> dict:
     """Médico lê os Result de um paciente. Exige CareLink `active` (403 sem) e
     o acesso fica auditado em nome do titular.
 
     `?days=N` recorta a janela — o gate do vínculo roda antes e não muda.
+
+    `has_annotation` diz **quais** sessões têm autorrelato, nunca o texto: a
+    existência é metadado visível a quem tem vínculo ativo, e ler a nota
+    continua sendo um ato à parte, auditado (emenda à ADR-0037).
     """
     results = service.listar(
         titular=paciente, ator=ator, desde=janela.desde if janela else None
     )
+    annotations.marcar_quais_tem_nota(titular=paciente, results=results)
     session.commit()
     return {
         "patient_id": str(paciente.id),

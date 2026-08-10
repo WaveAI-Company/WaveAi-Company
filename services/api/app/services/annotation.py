@@ -75,6 +75,29 @@ class AnnotationService:
         )
         return self._para_dict(nota)
 
+    def marcar_quais_tem_nota(
+        self, *, titular: User, results: list[dict[str, Any]]
+    ) -> list[dict[str, Any]]:
+        """Acrescenta `has_annotation` a cada Result da lista (emenda à ADR-0037).
+
+        **Existência, não conteúdo**, e por isso **não audita**: a trilha de
+        anotações registra quem *leu a nota* de alguém, e dizer que uma sessão
+        tem nota não é ler nota nenhuma. Registrar isto como leitura encheria a
+        trilha de acessos que não aconteceram — e uma trilha inflada é uma
+        trilha que ninguém consegue auditar.
+
+        A alternativa (esconder a existência) sairia pior para o titular: o
+        profissional abriria sessão por sessão à procura, gerando **mais**
+        leitura auditada, não menos.
+        """
+        com_nota = self._repo.sessoes_com_nota(
+            patient_user_id=titular.id,
+            session_ids=[uuid.UUID(r["session_id"]) for r in results],
+        )
+        for r in results:
+            r["has_annotation"] = uuid.UUID(r["session_id"]) in com_nota
+        return results
+
     # -- exclusão da nota (só o titular) --------------------------------
 
     def apagar(self, *, titular: User, session_id: uuid.UUID) -> bool:
