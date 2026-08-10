@@ -275,17 +275,58 @@ class AuthService:
         self.marcar_verificado(user)
         self.logout_all(user)
 
+    def conferir_senha(self, *, user: User, password: str) -> bool:
+        """A senha apresentada é a vigente? (mesma checagem do login)."""
+        return self._users.verify_password(user, password)
+
     def senha_igual_a_atual(self, *, user: User, new_password: str) -> bool:
         """A senha nova repete a vigente?
+
+        É a mesma conferência de `conferir_senha`, lida do outro lado: lá a
+        resposta verdadeira autoriza, aqui ela recusa.
 
         Só isto — impedir **qualquer** senha já usada exigiria guardar histórico
         de hashes, que é dado pessoal novo com custo permanente (2ª emenda).
         """
-        return self._users.verify_password(user, new_password)
+        return self.conferir_senha(user=user, password=new_password)
 
     def update_display_name(self, *, user: User, display_name: str) -> User:
         self._users.set_display_name(user, display_name)
         return user
+
+    # -- troca de e-mail (3ª emenda à ADR-0044) --------------------------
+
+    def endereco_disponivel(self, email: str) -> bool:
+        """O endereço está livre para virar o login de outra conta?
+
+        Endereço malformado conta como indisponível: quem chama já responde
+        igual nos dois casos, e assim nenhuma resposta distingue "inválido" de
+        "ocupado" (ADR-0024).
+        """
+        try:
+            return self._users.get_by_email(email) is None
+        except ValueError:
+            return False
+
+    def aplicar_troca_de_email(self, *, user: User, new_email: str) -> None:
+        """Efetiva a troca depois que o endereço novo provou posse.
+
+        Dois efeitos, e nenhum é acessório:
+
+        - **o endereço vira o login** — é o que a pessoa pediu;
+        - **a conta segue verificada**, com a data da prova mais recente: quem
+          digitou o código que chegou ao endereço novo provou controlá-lo, e
+          exigir uma segunda verificação depois disso seria pedir a mesma prova
+          duas vezes.
+
+        **Não** derruba as sessões (diferente de trocar/redefinir a senha): a
+        credencial não mudou, e quem chegou até aqui já precisou dela. Derrubar
+        não atrapalharia um invasor que sabe a senha, só expulsaria o titular
+        do próprio aparelho.
+        """
+        self._users.set_email(user, new_email)
+        user.email_verified_at = datetime.now(UTC)
+        self._session.flush()
 
     # -- logout ----------------------------------------------------------
 
