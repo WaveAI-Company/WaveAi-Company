@@ -9,10 +9,16 @@ from ..config import Settings, get_settings
 from ..db.session import get_session
 from ..emails import (
     ASSUNTO_CADASTRO_EXISTENTE,
+    ASSUNTO_ENDERECO_JA_EM_USO,
     ASSUNTO_RECUPERACAO,
+    ASSUNTO_TROCA_AVISO,
+    ASSUNTO_TROCA_DE_EMAIL,
     ASSUNTO_VERIFICACAO,
     corpo_cadastro_existente,
+    corpo_endereco_ja_em_uso,
     corpo_recuperacao,
+    corpo_troca_aviso_endereco_antigo,
+    corpo_troca_de_email,
     corpo_verificacao,
 )
 from ..models.single_use_token import SingleUseTokenPurpose
@@ -37,8 +43,10 @@ from .deps import (
     get_single_use_token_service,
 )
 from .schemas import (
+    ChangeEmailRequest,
     ChangePasswordRequest,
     ClientPlatform,
+    ConfirmEmailChangeRequest,
     ForgotPasswordRequest,
     LoginRequest,
     RefreshRequest,
@@ -72,6 +80,12 @@ CODIGO_INVALIDO = "codigo invalido ou expirado"
 
 #: Resposta única do "esqueci minha senha".
 RECUPERACAO_REGISTRADA = {"detail": "se houver conta, o codigo foi enviado"}
+
+#: Resposta única do pedido de troca de e-mail: igual esteja o endereço livre
+#: ou já pertencendo a outra conta (ADR-0024). Sem isto, qualquer pessoa logada
+#: teria um oráculo de "este e-mail tem WaveAI?" — a mesma brecha que o `409`
+#: do cadastro tinha antes da P9-e. Quem precisa saber é a dona do endereço.
+TROCA_DE_EMAIL_REGISTRADA = {"detail": "se o endereco estiver livre, o codigo foi enviado"}
 
 
 def _enviar_recuperacao_de_senha(
@@ -506,3 +520,130 @@ def change_password(
 
     session.commit()
     return _aplicar_refresh(response, tokens, client, settings)
+
+
+# -- troca de e-mail (3ª emenda à ADR-0044) ------------------------------
+
+
+@router.post("/email", status_code=status.HTTP_202_ACCEPTED)
+def request_email_change(
+    payload: ChangeEmailRequest,
+    request: Request,
+    session: Session = Depends(get_session),
+    service: AuthService = Depends(get_auth_service),
+    settings: Settings = Depends(get_settings),
+    user: User = Depends(get_current_user),
+    limiter: SlidingWindowRateLimiter = Depends(get_login_limiter),
+    tokens: SingleUseTokenService = Depends(get_single_use_token_service),
+    sender: EmailSender = Depends(get_email_sender),
+) -> dict[str, str]:
+    """Pede a troca do endereço da conta. Resposta **uniforme**.
+
+    Simétrica ao `POST /auth/password`, e pelas mesmas razões: pede a senha
+    atual (um token roubado não pode bastar) e é throttled (o campo "senha
+    atual" é um oráculo de senha).
+
+    A troca não acontece aqui: ela fica pendente no token até o **novo**
+    endereço confirmar o código — é o endereço novo que precisa provar posse,
+    não o antigo.
+    """
+    ip = client_ip(request)
+    if not limiter.is_allowed(f"email:{ip}|{user.id}"):
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="tentativas demais; tente novamente em instantes",
+        )
+
+    if not service.conferir_senha(user=user, password=payload.current_password):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail=CREDENCIAIS_INVALIDAS
+        )
+
+    # Pedir o endereço que já é o seu não é ambíguo nem revela nada de
+    # terceiros — a pessoa conhece o próprio e-mail —, então aqui vale dizer o
+    # que houve em vez de mandá-la esperar um código que não vem.
+    if payload.new_email.strip().lower() == user.email:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="este ja e o e-mail da conta",
+        )
+
+    if not tokens.em_cooldown(user=user, purpose=SingleUseTokenPurpose.EMAIL_CHANGE):
+        # O aviso ao endereço ATUAL sai independentemente de o destino estar
+        # livre. Se dependesse disso, a presença do aviso contaria se o
+        # endereço tem conta — e o titular é justamente quem não pode ficar sem
+        # esse sinal quando alguém tenta mover a conta dele.
+        sender.send(
+            to=user.email,
+            subject=ASSUNTO_TROCA_AVISO,
+            body=corpo_troca_aviso_endereco_antigo(
+                minutos=settings.single_use_token_ttl_minutes
+            ),
+        )
+        if service.endereco_disponivel(payload.new_email):
+            emitido = tokens.emitir(
+                user=user,
+                purpose=SingleUseTokenPurpose.EMAIL_CHANGE,
+                new_email=payload.new_email,
+            )
+            sender.send(
+                to=payload.new_email,
+                subject=ASSUNTO_TROCA_DE_EMAIL,
+                body=corpo_troca_de_email(
+                    codigo=emitido.codigo,
+                    minutos=settings.single_use_token_ttl_minutes,
+                ),
+            )
+        else:
+            # Endereço ocupado: nenhum token, nenhum código — e quem fica
+            # sabendo é a dona do endereço, não quem pediu (ADR-0024).
+            sender.send(
+                to=payload.new_email,
+                subject=ASSUNTO_ENDERECO_JA_EM_USO,
+                body=corpo_endereco_ja_em_uso(),
+            )
+
+    session.commit()
+    return TROCA_DE_EMAIL_REGISTRADA
+
+
+@router.post("/email/confirm", status_code=status.HTTP_204_NO_CONTENT)
+def confirm_email_change(
+    payload: ConfirmEmailChangeRequest,
+    session: Session = Depends(get_session),
+    service: AuthService = Depends(get_auth_service),
+    user: User = Depends(get_current_user),
+    tokens: SingleUseTokenService = Depends(get_single_use_token_service),
+) -> Response:
+    """Confirma a troca com o código que chegou ao endereço novo.
+
+    Não emite sessão nem devolve o usuário: a sessão em curso continua valendo
+    (a credencial não mudou) e o app relê o `GET /auth/me`.
+    """
+    token = tokens.consumir_codigo(
+        user=user,
+        purpose=SingleUseTokenPurpose.EMAIL_CHANGE,
+        codigo=payload.code,
+    )
+    if token is None or token.new_email is None:
+        # Preserva a tentativa contabilizada na linha do token — é o contador
+        # que segura a adivinhação de 6 dígitos (1ª emenda à ADR-0044).
+        session.commit()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail=CODIGO_INVALIDO
+        )
+
+    # Confere de novo: entre o pedido e a confirmação (até 10 min) alguém pode
+    # ter cadastrado o endereço. Aqui um erro específico não vaza nada — quem
+    # digitou o código controla a caixa, e o token só foi emitido porque o
+    # endereço estava livre.
+    if not service.endereco_disponivel(token.new_email):
+        session.commit()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="este e-mail ficou indisponivel; peca a troca novamente",
+        )
+
+    service.aplicar_troca_de_email(user=user, new_email=token.new_email)
+    session.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

@@ -218,6 +218,35 @@ class ChangePasswordRequest(BaseModel):
     new_password: SenhaNova
 
 
+class ChangeEmailRequest(BaseModel):
+    """Pedido de troca do endereço da conta (3ª emenda à ADR-0044).
+
+    Pede a senha atual pela mesma razão da troca de senha — e com mais motivo:
+    o e-mail é o canal de recuperação, então quem o troca leva a conta junto.
+    """
+
+    current_password: str = Field(min_length=1, max_length=PASSWORD_MAX_LENGTH)
+    #: Mesmo teto da coluna `users.email` — o `EmailStr` valida formato, não
+    #: comprimento, e um endereço maior que a coluna estouraria no banco.
+    new_email: EmailStr = Field(max_length=320)
+
+
+class ConfirmEmailChangeRequest(BaseModel):
+    """Confirmação da troca pelo código que chegou ao endereço **novo**."""
+
+    code: str = Field(
+        min_length=VERIFICATION_CODE_DIGITS, max_length=VERIFICATION_CODE_DIGITS
+    )
+
+    @field_validator("code")
+    @classmethod
+    def _so_digitos(cls, v: str) -> str:
+        podado = v.strip()
+        if not podado.isdigit():
+            raise ValueError("o codigo tem apenas digitos")
+        return podado
+
+
 class ConsentRequest(BaseModel):
     """Aceite do termo. `version` é a versão que o app exibiu ao titular.
 

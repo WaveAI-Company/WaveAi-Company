@@ -65,6 +65,16 @@ class UserRepository:
         perfil.display_name = display_name
         self._session.flush()
 
+    def set_email(self, user: User, email: str) -> None:
+        """Troca o endereço da conta, normalizado como na criação.
+
+        A normalização tem que passar por aqui: o índice único vale sobre o
+        valor canônico, e gravar sem normalizar deixaria dois endereços que
+        são o mesmo endereço conviverem no banco.
+        """
+        user.email = normalize_email(email)
+        self._session.flush()
+
     def set_password(self, user: User, password: str) -> None:
         user.password_hash = self._hasher.hash(password)
         self._session.flush()
