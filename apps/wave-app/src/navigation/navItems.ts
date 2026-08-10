@@ -44,6 +44,7 @@ const PATIENT: NavItem[] = [
 const DOCTOR: NavItem[] = [
   { label: "Início", href: "/doctor", icon: "home" },
   { label: "Convidar paciente", href: "/doctor/invite", icon: "userPlus" },
+  { label: "Perfil", href: "/doctor/profile", icon: "user" },
 ];
 
 export function navItemsFor(role: UserRole): NavItem[] {
