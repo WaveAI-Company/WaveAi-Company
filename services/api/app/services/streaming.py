@@ -101,7 +101,7 @@ class StreamProtocol:
         settings: Settings,
         hasher: PasswordHasher,
         analysis: AnalysisClient | None = None,
-        results: "ResultService | None" = None,
+        results: ResultService | None = None,
     ) -> None:
         self._db = db
         self._settings = settings

@@ -11,10 +11,6 @@ import uuid
 from collections.abc import Iterator
 
 import pytest
-from fastapi.testclient import TestClient
-from sqlalchemy import select
-from sqlalchemy.orm import Session
-
 from app.api.deps import reset_login_limiter
 from app.db.session import get_session
 from app.main import app
@@ -25,8 +21,10 @@ from app.models import (
     SessionAnnotation,
     SessionStatus,
     User,
-    UserRole,
 )
+from fastapi.testclient import TestClient
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from .conftest import registrar_conta
 

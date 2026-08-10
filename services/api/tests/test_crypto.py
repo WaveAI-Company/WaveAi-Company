@@ -1,11 +1,10 @@
 """Cifragem em repouso do Result (ADR-0026)."""
 
 import pytest
-from cryptography.fernet import Fernet
-from pydantic import ValidationError
-
 from app.config import Settings
 from app.security.crypto import MetricsCipher
+from cryptography.fernet import Fernet
+from pydantic import ValidationError
 
 CHAVE = Fernet.generate_key().decode()
 VALIDO = "x" * 32  # placeholder para completar o Settings de teste

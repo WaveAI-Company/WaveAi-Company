@@ -4,9 +4,6 @@ import uuid
 from datetime import UTC, datetime, timedelta
 
 import pytest
-from sqlalchemy import select
-from sqlalchemy.orm import Session
-
 from app.config import Settings
 from app.models import RefreshToken, UserRole
 from app.repositories.refresh_token import RefreshTokenRepository
@@ -17,6 +14,8 @@ from app.services.auth import (
     EmailAlreadyRegisteredError,
     RefreshReuseError,
 )
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 SENHA = "senha-de-teste-bem-longa"
 

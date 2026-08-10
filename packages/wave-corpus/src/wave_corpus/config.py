@@ -33,7 +33,7 @@ class CorpusSettings(BaseSettings):
     database_url: str = "sqlite:///_corpus/index.db"
 
     @model_validator(mode="after")
-    def _separado_da_producao(self) -> "CorpusSettings":
+    def _separado_da_producao(self) -> CorpusSettings:
         prod = os.environ.get(PRODUCTION_DB_ENV)
         if prod and prod == self.database_url:
             raise ValueError(

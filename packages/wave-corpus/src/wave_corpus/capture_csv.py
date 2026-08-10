@@ -8,8 +8,8 @@ genérico**, **sem importar o `wave_eeg`** — os pacotes ficam desacoplados
 from __future__ import annotations
 
 import csv
+from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Optional, Sequence
 
 import numpy as np
 
@@ -59,8 +59,8 @@ class CaptureFrame:
     """Um `Frame` de captura + os metadados extraídos do CSV."""
 
     frame: Frame
-    condition: Optional[str]
-    poor_signal: Optional[float]
+    condition: str | None
+    poor_signal: float | None
 
 
 def read_capture_frame(path: str, *, montage: Sequence[str], kind: str = "raw") -> CaptureFrame:

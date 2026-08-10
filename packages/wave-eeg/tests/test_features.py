@@ -1,7 +1,6 @@
 """Catálogo de features (N2) — valores conhecidos em sinais sintéticos."""
 import numpy as np
 import pytest
-
 from wave_eeg.features import (
     FEATURE_CATALOG,
     compute_features,

@@ -1,6 +1,5 @@
 """Separação física do banco de produção (ADR-0030), fail-closed."""
 import pytest
-
 from wave_corpus.config import PRODUCTION_DB_ENV, CorpusSettings
 
 

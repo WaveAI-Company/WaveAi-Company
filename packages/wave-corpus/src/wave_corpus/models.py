@@ -10,10 +10,8 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime, timezone
-from typing import List, Optional
 
-from sqlalchemy import Float, ForeignKey, Integer, String
-from sqlalchemy import JSON, DateTime
+from sqlalchemy import JSON, DateTime, Float, ForeignKey, Integer, String
 from sqlalchemy.orm import (
     DeclarativeBase,
     Mapped,
@@ -46,12 +44,12 @@ class ResearchSession(Base):
     montage: Mapped[list] = mapped_column(JSON)
     fs: Mapped[float] = mapped_column(Float)
     #: Condição experimental (ex.: "olhos_fechados"); opcional.
-    experimental_condition: Mapped[Optional[str]] = mapped_column(String(120), nullable=True)
+    experimental_condition: Mapped[str | None] = mapped_column(String(120), nullable=True)
     #: Indicador de qualidade nativo agregado da sessão; opcional.
-    poor_signal: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    poor_signal: Mapped[float | None] = mapped_column(Float, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
 
-    artifacts: Mapped[List["Artifact"]] = relationship(
+    artifacts: Mapped[list[Artifact]] = relationship(
         back_populates="session", cascade="all, delete-orphan"
     )
 
@@ -71,7 +69,7 @@ class Artifact(Base):
     n_channels: Mapped[int] = mapped_column(Integer)
     n_samples: Mapped[int] = mapped_column(Integer)
 
-    session: Mapped["ResearchSession"] = relationship(back_populates="artifacts")
+    session: Mapped[ResearchSession] = relationship(back_populates="artifacts")
 
 
 class ResearchResult(Base):

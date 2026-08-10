@@ -1,6 +1,5 @@
 """Score de qualidade 0..1 + rejeição grossa (ADR-0031)."""
 import numpy as np
-
 from wave_eeg.quality import (
     REJECT_ARTIFACT_FRACTION,
     amplitude_artifact_ratio,

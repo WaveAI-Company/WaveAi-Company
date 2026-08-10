@@ -11,14 +11,13 @@ import uuid
 from collections.abc import Iterator
 
 import pytest
-from fastapi.testclient import TestClient
-from sqlalchemy import select
-from sqlalchemy.orm import Session
-
 from app.api.deps import reset_login_limiter
 from app.db.session import get_session
 from app.main import app
 from app.models import CareLink, CareLinkEvent, CareLinkEventType, CareLinkStatus
+from fastapi.testclient import TestClient
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from .conftest import registrar_conta
 
@@ -77,13 +76,13 @@ class Ator:
     def post(self, url: str, json: dict | None = None):
         return self._client.post(url, json=json or {}, headers=self.headers)
 
-    def convidar(self, outro: "Ator", mensagem: str | None = None):
+    def convidar(self, outro: Ator, mensagem: str | None = None):
         corpo: dict = {"email": outro.email}
         if mensagem is not None:
             corpo["message"] = mensagem
         return self.post("/care-links", corpo)
 
-    def ver_paciente(self, paciente: "Ator"):
+    def ver_paciente(self, paciente: Ator):
         return self.get(f"/patients/{paciente.id}")
 
     def vinculos(self) -> list[dict]:

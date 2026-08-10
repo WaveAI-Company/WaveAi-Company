@@ -132,7 +132,9 @@ def revogar_vinculo(
     try:
         link = care.revogar(care_link_id=care_link_id, ator=user)
     except NotAllowedError:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="vinculo nao encontrado") from None
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="vinculo nao encontrado"
+        ) from None
     session.commit()
     return _para_resposta(link, user, care)
 

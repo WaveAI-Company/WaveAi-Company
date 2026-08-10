@@ -1,7 +1,6 @@
 """Índice: metadados + ponteiros que resolvem, e modelo multicanal (ADR-0033)."""
 import numpy as np
 import pytest
-
 from wave_corpus import CorpusIndex, Frame
 
 

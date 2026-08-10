@@ -17,7 +17,6 @@ from __future__ import annotations
 
 import csv
 from dataclasses import dataclass, field
-from typing import Dict
 
 import numpy as np
 from scipy import signal as sp_signal
@@ -59,7 +58,7 @@ class ArtifactSignature:
     n_epochs: int
     rms_ratio: float          # amplitude relativa ao CLEAN
     detect_rate: float        # fração de épocas acima do limiar do CLEAN
-    band_delta: Dict[str, float] = field(default_factory=dict)  # rel band power − CLEAN
+    band_delta: dict[str, float] = field(default_factory=dict)  # rel band power − CLEAN
     mains_ratio: float = float("nan")
 
 
@@ -92,7 +91,7 @@ def _block_metrics(block, discard_s, epoch_s):
 
 def characterize(blocks, *, discard_s: float = 5.0, epoch_s: float = 4.0):
     """Caracteriza cada artefato vs o CLEAN. Retorna (signatures, info)."""
-    per_label: Dict[str, dict] = {}
+    per_label: dict[str, dict] = {}
     for block in blocks:
         label = block.condition
         if label not in _LABEL_MAP.values():
@@ -120,7 +119,9 @@ def characterize(blocks, *, discard_s: float = 5.0, epoch_s: float = 4.0):
             ArtifactSignature(
                 label=label,
                 n_epochs=int(rms_all.size),
-                rms_ratio=float(rms_all.mean() / clean_rms_mean) if clean_rms_mean else float("inf"),
+                rms_ratio=(
+                    float(rms_all.mean() / clean_rms_mean) if clean_rms_mean else float("inf")
+                ),
                 detect_rate=float(np.mean(rms_all > threshold)),
                 band_delta={k: band[k] - clean_band[k] for k in BANDS},
                 mains_ratio=float(mains_all.mean()),

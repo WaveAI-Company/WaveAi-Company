@@ -3,12 +3,11 @@
 import uuid
 
 import pytest
-from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session
-
 from app.models import DoctorProfile, PatientProfile, User, UserRole
 from app.repositories import UserRepository
 from app.security.password import Argon2PasswordHasher, PasswordHasher
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import Session
 
 SENHA = "senha-de-teste-bem-longa"
 

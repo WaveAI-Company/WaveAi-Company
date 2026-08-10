@@ -1,7 +1,6 @@
 """Modelo de sinal multicanal e registro de montagem (ADR-0033)."""
 import numpy as np
 import pytest
-
 from wave_eeg.devices import (
     UNKNOWN_CHANNEL,
     SignalFrame,

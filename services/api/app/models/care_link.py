@@ -103,10 +103,10 @@ class CareLink(Base):
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     # Duas FKs para `users` exigem desambiguar qual coluna cada relação usa.
-    doctor: Mapped["User"] = relationship(foreign_keys=[doctor_user_id])  # noqa: F821
-    patient: Mapped["User"] = relationship(foreign_keys=[patient_user_id])  # noqa: F821
+    doctor: Mapped[User] = relationship(foreign_keys=[doctor_user_id])  # noqa: F821
+    patient: Mapped[User] = relationship(foreign_keys=[patient_user_id])  # noqa: F821
 
-    events: Mapped[list["CareLinkEvent"]] = relationship(
+    events: Mapped[list[CareLinkEvent]] = relationship(
         back_populates="care_link", cascade="all, delete-orphan"
     )
 

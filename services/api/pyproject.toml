@@ -25,7 +25,10 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=7.0", "httpx>=0.27"]
+# Faixa fechada de propósito: a partir da 0.16 o ruff liga ~416 regras por
+# padrão, então trocar de minor muda o que o lint reprova. O CI pina a versão
+# exata; aqui basta a faixa para o venv de desenvolvimento.
+dev = ["pytest>=7.0", "httpx>=0.27", "ruff>=0.16,<0.17"]
 
 [tool.setuptools.packages.find]
 include = ["app*"]

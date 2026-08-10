@@ -1,6 +1,5 @@
 """Tétrade de proveniência e identidade determinística (ADR-0030)."""
 import pytest
-
 from wave_corpus import Provenance
 
 

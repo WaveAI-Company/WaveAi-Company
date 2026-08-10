@@ -111,7 +111,7 @@ async def stream(
         await websocket.close(code=erro.code.value, reason=erro.reason)
         protocolo.abortar()
         _publicar_encerrada_se_ativa(bus, protocolo)
-    except asyncio.TimeoutError:
+    except TimeoutError:
         await websocket.close(
             code=CloseCode.NAO_AUTENTICADO.value, reason="autenticacao expirou"
         )
