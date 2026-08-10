@@ -7,6 +7,7 @@ import {
   sessionDurationSeconds,
   type SessionResult,
 } from "../../api/results";
+import { mesCurto } from "../../format/date";
 import { useTheme, type Theme } from "../../theme";
 import { BandStack } from "../charts/BandStack";
 
@@ -23,8 +24,6 @@ import { BandStack } from "../charts/BandStack";
  * fase nenhuma (decisão da P4-c); e o selo de autorrelato, que exigiria uma
  * consulta de anotação por sessão.
  */
-
-const MESES = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
 
 type Props = {
   result: SessionResult;
@@ -45,7 +44,7 @@ export function SessionRow({ result }: Props) {
     <View style={[styles.linha, estreito && styles.linhaEmpilhada]}>
       <View style={styles.selo}>
         <Text style={styles.seloDia}>{data.getDate()}</Text>
-        <Text style={styles.seloMes}>{MESES[data.getMonth()]}</Text>
+        <Text style={styles.seloMes}>{mesCurto(result.created_at)}</Text>
       </View>
 
       <View style={styles.meta}>

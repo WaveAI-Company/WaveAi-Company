@@ -18,6 +18,7 @@ import { ScreenContainer } from "../../src/components/ScreenContainer";
 import { ScreenHeading } from "../../src/components/ScreenHeading";
 import { Skeleton } from "../../src/components/Skeleton";
 import { WaveField } from "../../src/components/brand/WaveField";
+import { dataCurta } from "../../src/format/date";
 import { useAccentFor, useRoleAccent, useTheme, type Theme } from "../../src/theme";
 
 /**
@@ -35,8 +36,6 @@ const ESCOPO = [
   "a sessão ao vivo, enquanto você capta",
 ];
 
-const MESES = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
-
 /** "enviado ontem", "enviado há 3 dias" — e a data seca quando já é antigo. */
 function enviadoEm(iso: string, agora: Date): string {
   const d = new Date(iso);
@@ -44,7 +43,7 @@ function enviadoEm(iso: string, agora: Date): string {
   if (dias <= 0) return "enviado hoje";
   if (dias === 1) return "enviado ontem";
   if (dias <= 30) return `enviado há ${dias} dias`;
-  return `enviado em ${d.getDate()} ${MESES[d.getMonth()]} ${d.getFullYear()}`;
+  return `enviado em ${dataCurta(iso)}`;
 }
 
 /**

@@ -28,6 +28,7 @@ import { NavAction } from "../../src/components/NavAction";
 import { Panel } from "../../src/components/Panel";
 import { ScreenContainer } from "../../src/components/ScreenContainer";
 import { Skeleton } from "../../src/components/Skeleton";
+import { diaMes } from "../../src/format/date";
 import {
   useFaixa,
   useRoleAccent,
@@ -58,8 +59,6 @@ function dataPorExtenso(agora: Date): string {
   return texto.charAt(0).toUpperCase() + texto.slice(1);
 }
 
-const MESES = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
-
 /**
  * "sáb · 2 ago · 09:14" — o cabeçalho da última sessão.
  *
@@ -71,7 +70,7 @@ function carimbo(iso: string): string {
   const d = new Date(iso);
   const semana = d.toLocaleDateString("pt-BR", { weekday: "short" }).replace(/\.$/, "");
   const hora = d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
-  return `${semana} · ${d.getDate()} ${MESES[d.getMonth()]} · ${hora}`;
+  return `${semana} · ${diaMes(iso)} · ${hora}`;
 }
 
 /**

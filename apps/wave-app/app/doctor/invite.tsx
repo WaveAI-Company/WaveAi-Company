@@ -18,6 +18,7 @@ import { Icon } from "../../src/components/Icon";
 import { Panel } from "../../src/components/Panel";
 import { ScreenContainer } from "../../src/components/ScreenContainer";
 import { Skeleton } from "../../src/components/Skeleton";
+import { diaMes } from "../../src/format/date";
 import {
   bp,
   useRoleAccent,
@@ -34,8 +35,6 @@ const DIAS_RECENTES = 30;
 // Formato só para feedback rápido no cliente; a API (EmailStr) é a autoridade.
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-const MESES = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
-
 function diasDesde(iso: string, agora: Date): number {
   return Math.floor((agora.getTime() - new Date(iso).getTime()) / 86_400_000);
 }
@@ -46,8 +45,7 @@ function quando(iso: string, agora: Date): string {
   if (dias <= 0) return "hoje";
   if (dias === 1) return "ontem";
   if (dias <= 14) return `há ${dias} dias`;
-  const d = new Date(iso);
-  return `${d.getDate()} ${MESES[d.getMonth()]}`;
+  return diaMes(iso);
 }
 
 /**
