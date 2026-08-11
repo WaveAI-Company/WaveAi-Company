@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import uuid
+from collections.abc import Sequence
 
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
@@ -103,6 +104,27 @@ class CareLinkRepository:
         self._session.add(registro)
         self._session.flush()
         return registro
+
+    def ultimo_evento(
+        self, *, care_link_id: uuid.UUID, eventos: Sequence[CareLinkEventType]
+    ) -> CareLinkEvent | None:
+        """O evento mais recente do vínculo entre os tipos pedidos.
+
+        Ordena por `created_at` **e por id** como desempate: o `now()` do
+        Postgres é por transação, então dois eventos criados na mesma transação
+        têm o mesmo timestamp e a ordenação sozinha não decidiria qual é o
+        último (já nos custou um teste na P9).
+        """
+        stmt = (
+            select(CareLinkEvent)
+            .where(
+                CareLinkEvent.care_link_id == care_link_id,
+                CareLinkEvent.event.in_(eventos),
+            )
+            .order_by(CareLinkEvent.created_at.desc(), CareLinkEvent.id.desc())
+            .limit(1)
+        )
+        return self._session.scalars(stmt).first()
 
     def listar_eventos(self, care_link_id: uuid.UUID) -> list[CareLinkEvent]:
         stmt = (
