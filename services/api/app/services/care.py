@@ -9,10 +9,12 @@ iniciado por ele) leva a `ACTIVE`.
 from __future__ import annotations
 
 import uuid
-from datetime import UTC, datetime
+from dataclasses import dataclass
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy.orm import Session
 
+from ..config import Settings
 from ..models.care_link import (
     CareLink,
     CareLinkEventType,
@@ -34,11 +36,34 @@ class NotAllowedError(CareLinkError):
     """Quem pediu não participa do vínculo, ou não pode praticar este ato."""
 
 
+class CooldownError(CareLinkError):
+    """Lembrete pedido cedo demais depois do anterior."""
+
+
+@dataclass(frozen=True)
+class ResultadoConvite:
+    """O que a rota precisa saber para decidir se manda e-mail.
+
+    `criado=False` com `link` preenchido é o **reconvite**: já havia vínculo
+    vivo, nada foi gravado de novo — e, principalmente, **nenhum e-mail sai**,
+    senão "convidar de novo" seria um jeito de furar o cooldown do reenvio.
+    """
+
+    link: CareLink | None
+    criado: bool
+
+
 class CareService:
     def __init__(
-        self, *, session: Session, hasher: PasswordHasher, cipher: MetricsCipher
+        self,
+        *,
+        session: Session,
+        hasher: PasswordHasher,
+        cipher: MetricsCipher,
+        settings: Settings,
     ) -> None:
         self._session = session
+        self._settings = settings
         self._links = CareLinkRepository(session)
         self._users = UserRepository(session, hasher)
         self._cipher = cipher
@@ -47,7 +72,7 @@ class CareService:
 
     def solicitar(
         self, *, solicitante: User, email_contraparte: str, mensagem: str | None = None
-    ) -> CareLink | None:
+    ) -> ResultadoConvite:
         """Cria (ou reaproveita) um vínculo entre o solicitante e a contraparte.
 
         Devolve `None` quando não há nada a fazer — conta inexistente, papel
@@ -59,13 +84,13 @@ class CareService:
         try:
             contraparte = self._users.get_by_email(email_contraparte)
         except ValueError:
-            return None
+            return ResultadoConvite(link=None, criado=False)
 
         if contraparte is None or not contraparte.is_active:
-            return None
+            return ResultadoConvite(link=None, criado=False)
         if contraparte.id == solicitante.id or contraparte.role is solicitante.role:
             # Vínculo é sempre entre papéis diferentes.
-            return None
+            return ResultadoConvite(link=None, criado=False)
 
         if solicitante.role is UserRole.DOCTOR:
             doctor, patient = solicitante, contraparte
@@ -84,7 +109,7 @@ class CareService:
             # O recado do reconvite é DESCARTADO de propósito (ADR-0043): quem
             # está lendo um pedido para decidir sobre ele não pode ter o texto
             # trocado por baixo. Reescrever exige cancelar e convidar de novo.
-            return existente
+            return ResultadoConvite(link=existente, criado=False)
 
         link = self._links.criar(
             doctor_id=doctor.id,
@@ -112,7 +137,7 @@ class CareService:
                 actor_role=CareLinkParty.PATIENT,
             )
             self._session.flush()
-        return link
+        return ResultadoConvite(link=link, criado=True)
 
     # -- consentimento ---------------------------------------------------
 
@@ -182,6 +207,50 @@ class CareService:
         )
         self._session.flush()
         return link
+
+    # -- reenvio do convite ----------------------------------------------
+
+    def reenviar(self, *, care_link_id: uuid.UUID, ator: User) -> CareLink:
+        """Lembra a contraparte de um convite ainda `pending`.
+
+        Só **quem convidou** pode reenviar, e só enquanto o convite está de pé:
+        um vínculo aceito, recusado ou revogado não tem o que lembrar. O recado
+        original (ADR-0043) segue **imutável** — reenviar é cutucar, não
+        reescrever.
+
+        Levanta `CooldownError` se o último lembrete saiu há pouco: o e-mail
+        cai na caixa de outra pessoa, que não pediu nada, e o botão não pode
+        virar alavanca de inundação.
+        """
+        link = self._links.get(care_link_id)
+        if link is None or not self._foi_quem_convidou(link, ator):
+            raise NotAllowedError
+        if link.status is not CareLinkStatus.PENDING:
+            raise CareLinkError("vinculo nao esta pendente")
+
+        espera = timedelta(seconds=self._settings.invite_resend_cooldown_seconds)
+        ultimo = self._links.ultimo_evento(
+            care_link_id=link.id,
+            eventos=(CareLinkEventType.REQUESTED, CareLinkEventType.RESENT),
+        )
+        if ultimo is not None and datetime.now(UTC) - ultimo.created_at < espera:
+            raise CooldownError
+
+        self._links.registrar_evento(
+            care_link=link,
+            event=CareLinkEventType.RESENT,
+            actor_user_id=ator.id,
+            actor_role=link.initiated_by,
+        )
+        self._session.flush()
+        return link
+
+    @staticmethod
+    def _foi_quem_convidou(link: CareLink, ator: User) -> bool:
+        """Quem iniciou o vínculo é quem pode lembrar a contraparte."""
+        if link.initiated_by is CareLinkParty.DOCTOR:
+            return ator.id == link.doctor_user_id
+        return ator.id == link.patient_user_id
 
     # -- consultas -------------------------------------------------------
 

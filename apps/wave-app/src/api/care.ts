@@ -15,6 +15,15 @@ export type CareLink = {
   initiated_by: "doctor" | "patient";
   counterpart_user_id: string;
   counterpart_display_name: string | null;
+  /**
+   * E-mail da contraparte, **só enquanto o convite está `pending`** — depois o
+   * servidor manda `null`.
+   *
+   * Enquanto pende ele tem função: quem recebeu decide olhando para quem é (o
+   * nome de exibição qualquer um escolhe) e quem convidou confere o endereço
+   * antes de lembrar a pessoa. Aceito o vínculo, nada mais depende dele.
+   */
+  counterpart_email: string | null;
   counterpart_role: UserRole;
   /**
    * Recado que a contraparte escreveu junto do convite (ADR-0043), decifrado
@@ -73,6 +82,18 @@ export async function acceptCareLink(id: string): Promise<CareLink> {
 /** Recusa um convite (→ `declined`). Terminal: some da lista. */
 export async function declineCareLink(id: string): Promise<CareLink> {
   return request<CareLink>(`/care-links/${id}/decline`, { method: "POST", auth: true });
+}
+
+/**
+ * Lembra a contraparte de um convite ainda pendente.
+ *
+ * Só quem convidou pode, e o servidor recusa com **429** se o lembrete
+ * anterior saiu há pouco — o e-mail cai na caixa de outra pessoa, que não
+ * pediu nada. O recado do convite é imutável (ADR-0043): reenviar é cutucar,
+ * não reescrever.
+ */
+export async function resendCareLink(id: string): Promise<CareLink> {
+  return request<CareLink>(`/care-links/${id}/resend`, { method: "POST", auth: true });
 }
 
 /** Revoga um vínculo ativo (efeito imediato). Qualquer das partes pode. */

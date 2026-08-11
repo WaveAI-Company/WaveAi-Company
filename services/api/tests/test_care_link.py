@@ -13,6 +13,11 @@ from collections.abc import Iterator
 import pytest
 from app.api.deps import reset_login_limiter
 from app.db.session import get_session
+from app.emails import (
+    ASSUNTO_ACESSO_AUTORIZADO,
+    ASSUNTO_CONVITE,
+    ASSUNTO_CONVITE_LEMBRETE,
+)
 from app.main import app
 from app.models import CareLink, CareLinkEvent, CareLinkEventType, CareLinkStatus
 from fastapi.testclient import TestClient
@@ -510,3 +515,138 @@ def test_recado_para_email_sem_conta_nao_e_gravado(client: TestClient, db_sessio
     assert resp.status_code == 202
     # ...e nenhuma linha (logo, nenhum recado) ficou para trás.
     assert db_session.execute(select(CareLink)).scalars().all() == []
+
+
+# -- o convite avisa a contraparte por e-mail ----------------------------
+
+
+def _envelhecer_eventos(db_session: Session, care_link_id: str, segundos: int) -> None:
+    """Recua os eventos do vínculo, para o cooldown do lembrete já ter passado.
+
+    Mexer no relógio do banco é mais honesto que baixar o cooldown na config:
+    o teste passa a exercer **o valor que shipa**, não um valor de teste.
+    """
+    from datetime import UTC, datetime, timedelta
+
+    quando = datetime.now(UTC) - timedelta(seconds=segundos)
+    for evento in db_session.scalars(
+        select(CareLinkEvent).where(CareLinkEvent.care_link_id == uuid.UUID(care_link_id))
+    ):
+        evento.created_at = quando
+    db_session.flush()
+
+
+def _com_assunto(emails, endereco: str, assunto: str) -> list[dict]:
+    """As mensagens daquele assunto. Filtrar importa: toda conta desta suíte
+    nasce com o e-mail de verificação do cadastro na caixa."""
+    return [e for e in emails.para(endereco) if e["subject"] == assunto]
+
+
+def test_convite_do_medico_avisa_o_paciente(medico: Ator, paciente: Ator, emails):
+    """Antes desta fatia ninguém era avisado: o convite só existia dentro do app."""
+    medico.convidar(paciente, mensagem="Oi! Vamos acompanhar juntas?")
+
+    recebidos = _com_assunto(emails, paciente.email, ASSUNTO_CONVITE)
+    assert len(recebidos) == 1
+    corpo = recebidos[0]["body"]
+    # O recado (ADR-0043) NÃO viaja: numa caixa de entrada ele vira phishing, e
+    # o cliente de e-mail transformaria uma URL nele em link.
+    assert "Vamos acompanhar juntas" not in corpo
+    # Nem o nome de quem convidou, que também é texto escolhido por alguém.
+    assert "ficticio" not in corpo
+
+
+def test_vinculo_iniciado_pelo_paciente_avisa_o_medico(medico: Ator, paciente: Ator, emails):
+    """Aqui não há convite a aceitar — o vínculo já nasce ativo (ADR-0024)."""
+    paciente.convidar(medico)
+
+    assert len(_com_assunto(emails, medico.email, ASSUNTO_ACESSO_AUTORIZADO)) == 1
+
+
+def test_endereco_sem_conta_nao_recebe_nada(medico: Ator, emails):
+    """Não existe convite frio: o WaveAI não dispara e-mail para estranhos."""
+    ninguem = _email()
+
+    resposta = medico.post("/care-links", {"email": ninguem})
+
+    assert resposta.status_code == 202  # resposta uniforme, como sempre
+    assert emails.para(ninguem) == []
+
+
+def test_reconvite_nao_manda_email_de_novo(medico: Ator, paciente: Ator, emails):
+    """Senão "convidar de novo" seria um jeito de furar o cooldown do lembrete."""
+    medico.convidar(paciente)
+    medico.convidar(paciente)
+
+    assert len(_com_assunto(emails, paciente.email, ASSUNTO_CONVITE)) == 1
+
+
+# -- reenviar o convite --------------------------------------------------
+
+
+def test_reenvio_manda_lembrete_e_fica_na_trilha(
+    medico: Ator, paciente: Ator, emails, db_session: Session
+):
+    vinculo = medico.convidar(paciente) and medico.vinculos()[0]["id"]
+    _envelhecer_eventos(db_session, vinculo, 7200)
+
+    resposta = medico.post(f"/care-links/{vinculo}/resend")
+
+    assert resposta.status_code == 200
+    assert len(_com_assunto(emails, paciente.email, ASSUNTO_CONVITE_LEMBRETE)) == 1
+    eventos = [
+        e.event
+        for e in db_session.scalars(
+            select(CareLinkEvent).where(CareLinkEvent.care_link_id == uuid.UUID(vinculo))
+        )
+    ]
+    # Cutucar de novo não é convidar: a trilha distingue os dois.
+    assert CareLinkEventType.RESENT in eventos
+
+
+def test_reenvio_seguido_e_recusado(medico: Ator, paciente: Ator, emails, db_session: Session):
+    """O e-mail cai na caixa de OUTRA pessoa, que não pediu nada."""
+    vinculo = medico.convidar(paciente) and medico.vinculos()[0]["id"]
+
+    resposta = medico.post(f"/care-links/{vinculo}/resend")
+
+    assert resposta.status_code == 429
+    # Nenhum lembrete saiu — só o e-mail do convite, que já estava lá.
+    assert _com_assunto(emails, paciente.email, ASSUNTO_CONVITE_LEMBRETE) == []
+    assert len(_com_assunto(emails, paciente.email, ASSUNTO_CONVITE)) == 1
+
+
+def test_so_quem_convidou_reenvia(medico: Ator, paciente: Ator, db_session: Session):
+    vinculo = medico.convidar(paciente) and medico.vinculos()[0]["id"]
+    _envelhecer_eventos(db_session, vinculo, 7200)
+
+    # Quem RECEBEU o convite não lembra a si mesmo — e nem descobre que existe
+    # a rota: 404, o mesmo do "não é seu".
+    assert paciente.post(f"/care-links/{vinculo}/resend").status_code == 404
+
+
+def test_nao_reenvia_convite_ja_aceito(medico: Ator, paciente: Ator, db_session: Session):
+    vinculo = medico.convidar(paciente) and paciente.vinculos()[0]["id"]
+    paciente.post(f"/care-links/{vinculo}/accept")
+    _envelhecer_eventos(db_session, vinculo, 7200)
+
+    assert medico.post(f"/care-links/{vinculo}/resend").status_code == 409
+
+
+# -- e-mail da contraparte só enquanto pende -----------------------------
+
+
+def test_email_da_contraparte_aparece_enquanto_pende_e_some_depois(
+    medico: Ator, paciente: Ator
+):
+    """Decidir e lembrar precisam do endereço; acompanhar, não."""
+    medico.convidar(paciente)
+
+    pendente = paciente.vinculos()[0]
+    assert pendente["counterpart_email"] == medico.email
+    assert medico.vinculos()[0]["counterpart_email"] == paciente.email
+
+    paciente.post(f"/care-links/{pendente['id']}/accept")
+
+    assert paciente.vinculos()[0]["counterpart_email"] is None
+    assert medico.vinculos()[0]["counterpart_email"] is None

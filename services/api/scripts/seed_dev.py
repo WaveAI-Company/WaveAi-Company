@@ -190,7 +190,7 @@ def main() -> int:
         users = UserRepository(session, hasher)
         links = CareLinkRepository(session)
         cipher = get_metrics_cipher(settings)
-        care = CareService(session=session, hasher=hasher, cipher=cipher)
+        care = CareService(session=session, hasher=hasher, cipher=cipher, settings=settings)
         results = ResultService(session=session, settings=settings, cipher=cipher)
 
         medico = _garantir_usuario(users, MEDICO[0], MEDICO[1], UserRole.DOCTOR)
