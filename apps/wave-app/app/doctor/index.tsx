@@ -2,7 +2,13 @@ import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useMemo, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
-import { listCareLinks, revokeCareLink, type CareLink } from "../../src/api/care";
+import {
+  listCareLinks,
+  resendCareLink,
+  revokeCareLink,
+  type CareLink,
+} from "../../src/api/care";
+import { ApiError } from "../../src/auth/api";
 import { useAuth } from "../../src/auth/AuthContext";
 import { Avatar } from "../../src/components/Avatar";
 import { Button } from "../../src/components/Button";
@@ -79,6 +85,8 @@ export default function DoctorScreen() {
   const [erro, setErro] = useState<string | null>(null);
   const [busca, setBusca] = useState("");
   const [cancelando, setCancelando] = useState<string | null>(null);
+  const [reenviando, setReenviando] = useState<string | null>(null);
+  const [reenviado, setReenviado] = useState<string | null>(null);
 
   const carregar = useCallback(async () => {
     setCarregando(true);
@@ -112,6 +120,29 @@ export default function DoctorScreen() {
       setErro("Não foi possível cancelar o convite. Tente de novo.");
     } finally {
       setCancelando(null);
+    }
+  }, []);
+
+  /**
+   * Lembra a pessoa do convite. O 429 não é erro de sistema: é o servidor
+   * dizendo que o lembrete anterior saiu há pouco, e a tela precisa contar
+   * isso com todas as letras — senão parece que o botão não funcionou.
+   */
+  const reenviarConvite = useCallback(async (id: string) => {
+    setReenviando(id);
+    setErro(null);
+    setReenviado(null);
+    try {
+      await resendCareLink(id);
+      setReenviado(id);
+    } catch (e) {
+      setErro(
+        e instanceof ApiError && e.status === 429
+          ? "Você já lembrou esta pessoa há pouco. Tente de novo mais tarde."
+          : "Não foi possível reenviar o convite. Tente de novo.",
+      );
+    } finally {
+      setReenviando(null);
     }
   }, []);
 
@@ -273,7 +304,13 @@ export default function DoctorScreen() {
                   <Text style={styles.nome}>
                     {link.counterpart_display_name ?? "Convite enviado"}
                   </Text>
-                  <Text style={styles.nota}>{enviadoHa(link.created_at, agora)}</Text>
+                  {/* O endereço só existe enquanto pende: é como quem
+                      convidou confere se digitou certo antes de insistir. */}
+                  <Text style={styles.nota}>
+                    {[link.counterpart_email, enviadoHa(link.created_at, agora)]
+                      .filter(Boolean)
+                      .join(" · ")}
+                  </Text>
                 </View>
                 <Chip label="pendente" />
               </View>
@@ -283,7 +320,19 @@ export default function DoctorScreen() {
                 e ela pode revogar depois, a qualquer momento.
               </Text>
 
-              <View style={styles.acao}>
+              {reenviado === link.id ? (
+                <Text style={styles.explicacao}>
+                  Lembrete enviado. Ele não muda o convite nem o recado — só avisa de novo.
+                </Text>
+              ) : null}
+
+              <View style={styles.acoes}>
+                <Button
+                  label="Reenviar convite"
+                  onPress={() => reenviarConvite(link.id)}
+                  loading={reenviando === link.id}
+                  variant="secondary"
+                />
                 <Button
                   label="Cancelar convite"
                   onPress={() => cancelarConvite(link.id)}
@@ -424,6 +473,18 @@ const criarEstilos = (t: Theme) =>
       alignSelf: "flex-start",
       marginTop: t.spacing.xs,
       minWidth: 180,
+    },
+    // Dois botões lado a lado, como o mockup do cartão pendente. `flexWrap`
+    // não é enfeite: no RN o `flexShrink` padrão é 0, então sem ele a linha
+    // transbordaria o cartão em vez de quebrar por dentro.
+    acoes: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      // 8 e não 4: no cartão do painel (≈312 px) os dois botões não cabem lado
+      // a lado e a linha quebra — com 4 px eles ficam colados na vertical. O
+      // mockup usa 6 px numa linha larga; aqui a folga vale mais.
+      gap: t.spacing.sm,
+      marginTop: t.spacing.xs,
     },
     semResultado: {
       ...t.typography.caption,

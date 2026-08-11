@@ -116,6 +116,13 @@ class Settings(BaseSettings):
     #: Espera entre reenvios, por (usuário, propósito). O protótipo mostra 42 s
     #: (valor de demonstração); 60 s é o número redondo.
     verification_resend_cooldown_seconds: int = 60
+    #: Espera entre lembretes de um mesmo convite. **Uma hora**, e não os 60 s
+    #: do código de verificação: lá quem espera é a própria pessoa, olhando a
+    #: caixa; aqui o e-mail cai na caixa de **outra** pessoa, que não pediu
+    #: nada. Lembrar de hora em hora já é bastante; mais que isso é assédio com
+    #: outro nome — e o botão "Reenviar convite" não pode ser uma alavanca de
+    #: inundar a caixa de alguém.
+    invite_resend_cooldown_seconds: int = 3600
 
     # -- Verificação de e-mail (fatia P9-e, ligada na P11-c) -----------------
     #: GATE: quando `True`, conta não verificada **não faz login**. Nasceu

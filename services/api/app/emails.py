@@ -16,6 +16,9 @@ ASSUNTO_RECUPERACAO = "Recuperar o acesso à sua conta WaveAI"
 ASSUNTO_TROCA_DE_EMAIL = "Confirme seu novo e-mail no WaveAI"
 ASSUNTO_TROCA_AVISO = "O e-mail da sua conta WaveAI está sendo alterado"
 ASSUNTO_ENDERECO_JA_EM_USO = "Alguém tentou usar o seu e-mail em outra conta"
+ASSUNTO_CONVITE = "Você recebeu um convite de acompanhamento no WaveAI"
+ASSUNTO_CONVITE_LEMBRETE = "Lembrete: um convite espera por você no WaveAI"
+ASSUNTO_ACESSO_AUTORIZADO = "Você foi autorizado a acompanhar alguém no WaveAI"
 
 
 def corpo_verificacao(*, codigo: str, minutos: int) -> str:
@@ -121,6 +124,65 @@ def corpo_endereco_ja_em_uso() -> str:
         "ele já pertence à sua conta, nada foi alterado — nem aqui, nem lá.\n\n"
         "Se foi você, entre normalmente na conta que já usa este endereço.\n\n"
         "Se não foi você, não precisa fazer nada.\n\n"
+        "WaveAI"
+    )
+
+
+def corpo_acesso_autorizado() -> str:
+    """Avisa o profissional de que **já** foi autorizado a acompanhar alguém.
+
+    Quando é o paciente quem inicia, o vínculo nasce `active` (ADR-0024: o ato
+    dele é o consentimento) — não há convite a aceitar, e por isso o texto é
+    outro. Sem este aviso, o profissional só descobre o acesso se abrir o app
+    por acaso.
+
+    Não nomeia a pessoa, pelo mesmo motivo do convite: `display_name` é texto
+    escolhido por ela e não passa por uma caixa de entrada com a nossa
+    assinatura.
+    """
+    return (
+        "Olá!\n\n"
+        "Uma pessoa autorizou você a acompanhar as sessões dela no WaveAI.\n\n"
+        "Entre na sua conta para ver quem é e o que ela compartilhou. O acesso "
+        "é somente leitura, fica registrado em trilha, e ela pode encerrar "
+        "quando quiser.\n\n"
+        "WaveAI"
+    )
+
+
+def corpo_convite(*, de_profissional: bool, lembrete: bool = False) -> str:
+    """Avisa que há um convite de vínculo esperando **dentro do app**.
+
+    Três coisas que este e-mail deliberadamente **não** carrega, e o porquê:
+
+    - **o recado do convite** (ADR-0043). É texto escrito por uma pessoa sobre
+      outra; numa caixa de entrada ele vira vetor de phishing, e o cliente de
+      e-mail transforma URL em link — exatamente o que a ADR-0043 proíbe na
+      nossa renderização. O recado continua no app, como citação atribuída;
+    - **o nome de quem convidou.** Pelo mesmo motivo: `display_name` é texto
+      escolhido pela pessoa e caberia um "Fulano — confirme em http://…". O que
+      vai é o **papel**, que é do sistema. Quem convidou aparece na tela;
+    - **qualquer link para agir.** Aceitar exige entrar na conta; um botão de
+      aceite por e-mail seria um caminho de consentimento sem autenticação, e
+      consentimento é o eixo da ADR-0024.
+
+    Só é enviado para endereço que **já tem conta** — não existe convite frio,
+    senão qualquer pessoa logada faria o WaveAI disparar e-mail para estranhos.
+    """
+    quem = "um profissional de bem-estar" if de_profissional else "uma pessoa"
+    abertura = (
+        "Continua esperando por você um convite no WaveAI."
+        if lembrete
+        else f"{quem.capitalize()} convidou você a compartilhar o acompanhamento "
+        "das suas sessões no WaveAI."
+    )
+    return (
+        "Olá!\n\n"
+        f"{abertura}\n\n"
+        "Entre na sua conta para ver quem convidou, o que a pessoa passaria a "
+        "ver e decidir se aceita. Nada é compartilhado enquanto você não "
+        "aceitar.\n\n"
+        "Se não quiser aceitar, é só ignorar — ou recusar dentro do app.\n\n"
         "WaveAI"
     )
 

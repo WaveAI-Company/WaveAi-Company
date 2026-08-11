@@ -191,8 +191,9 @@ def get_care_service(
     session: Session = Depends(get_session),
     hasher: PasswordHasher = Depends(get_hasher),
     cipher: MetricsCipher = Depends(get_metrics_cipher),
+    settings: Settings = Depends(get_settings),
 ) -> CareService:
-    return CareService(session=session, hasher=hasher, cipher=cipher)
+    return CareService(session=session, hasher=hasher, cipher=cipher, settings=settings)
 
 
 def require_active_care_link(

@@ -152,7 +152,15 @@ export default function PatientInvitesScreen() {
                 <Text style={styles.nome}>
                   {convite.counterpart_display_name ?? "Profissional de bem-estar"}
                 </Text>
-                <Text style={styles.papel}>profissional de bem-estar</Text>
+                {/* `convites.html:252` mostra papel **e** endereço na mesma
+                    linha. O e-mail só existe enquanto o convite pende, e é o
+                    que permite reconhecer quem convidou: o nome de exibição
+                    qualquer um escolhe, o endereço não. */}
+                <Text style={styles.papel}>
+                  {["profissional de bem-estar", convite.counterpart_email]
+                    .filter(Boolean)
+                    .join(" · ")}
+                </Text>
               </View>
               <Chip label={enviadoEm(convite.created_at, agora)} />
             </View>
