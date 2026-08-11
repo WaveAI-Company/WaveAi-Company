@@ -8,6 +8,21 @@
 
 export const COPIA_DISPONIVEL = true;
 
+/** Ver `dataExport.ts`: a cópia descreve o gesto da plataforma. */
+export const ROTULO_COPIA = "Baixar cópia";
+export const TEXTO_COPIA =
+  "Baixa um arquivo aberto (JSON) com suas sessões e suas notas.";
+export const AVISO_COPIA = "Cópia baixada — o arquivo tem seus resultados e suas notas.";
+
+/**
+ * No navegador o download é da própria plataforma — não há capability a
+ * consultar. Existe para as duas versões do módulo terem a mesma forma: a tela
+ * chama isto sem saber onde está rodando.
+ */
+export async function podeCompartilhar(): Promise<boolean> {
+  return true;
+}
+
 export async function baixarCopia(dados: unknown): Promise<void> {
   const conteudo = JSON.stringify(dados, null, 2);
   const blob = new Blob([conteudo], { type: "application/json" });
