@@ -39,6 +39,10 @@ class CareLinkParty(str, enum.Enum):
 
 class CareLinkEventType(str, enum.Enum):
     REQUESTED = "requested"
+    #: Lembrete enviado para a contraparte de um convite ainda pendente.
+    #: Separado de `REQUESTED` de propósito: cutucar de novo não é convidar, e
+    #: a trilha precisa distinguir uma coisa da outra numa eventual disputa.
+    RESENT = "resent"
     ACCEPTED = "accepted"
     DECLINED = "declined"
     REVOKED = "revoked"

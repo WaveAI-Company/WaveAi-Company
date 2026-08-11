@@ -307,6 +307,13 @@ class CareLinkResponse(BaseModel):
     #: Só a contraparte é exposta — nunca dados de terceiros.
     counterpart_user_id: uuid.UUID
     counterpart_display_name: str | None
+    #: E-mail da contraparte, **só enquanto o convite está `pending`**.
+    #:
+    #: Enquanto pende, quem recebeu precisa saber quem é para decidir (o nome de
+    #: exibição qualquer um escolhe), e quem convidou precisa conferir o
+    #: endereço antes de lembrar a pessoa. Aceito o vínculo, o nome basta — e
+    #: o endereço deixa de aparecer, porque nada mais depende dele.
+    counterpart_email: str | None = None
     counterpart_role: UserRole
     #: Recado de quem convidou (ADR-0043), decifrado. `None` quando não houve.
     #: A tela exibe como **citação atribuída** — aspas e nome de quem escreveu —
