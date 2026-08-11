@@ -19,7 +19,14 @@ import { ScreenContainer } from "../../src/components/ScreenContainer";
 import { Skeleton } from "../../src/components/Skeleton";
 import { WaveField } from "../../src/components/brand/WaveField";
 import { dataCurta } from "../../src/format/date";
-import { COPIA_DISPONIVEL, baixarCopia } from "../../src/privacy/dataExport";
+import {
+  AVISO_COPIA,
+  COPIA_DISPONIVEL,
+  ROTULO_COPIA,
+  TEXTO_COPIA,
+  baixarCopia,
+  podeCompartilhar,
+} from "../../src/privacy/dataExport";
 import { useRoleAccent, useTheme, withAlpha, type Theme } from "../../src/theme";
 
 /**
@@ -142,6 +149,22 @@ export default function ConsentScreen() {
   const [emAcao, setEmAcao] = useState<"copia" | "excluir" | null>(null);
   /** Exclusão é irreversível: o primeiro toque só pede confirmação. */
   const [confirmandoExclusao, setConfirmandoExclusao] = useState(false);
+  /**
+   * No nativo, quem decide se há como entregar o arquivo é o **sistema**
+   * (ADR-0046): sem share sheet, a tela não oferece o botão em vez de oferecer
+   * um botão que falha. `null` enquanto a resposta não chega.
+   */
+  const [entregaPossivel, setEntregaPossivel] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    let vivo = true;
+    podeCompartilhar().then((ok) => {
+      if (vivo) setEntregaPossivel(ok);
+    });
+    return () => {
+      vivo = false;
+    };
+  }, []);
 
   const carregar = useCallback(async () => {
     setCarregando(true);
@@ -201,7 +224,7 @@ export default function ConsentScreen() {
     setAviso(null);
     try {
       await baixarCopia(await exportMyData());
-      setAviso("Cópia baixada — o arquivo tem seus resultados e suas notas.");
+      setAviso(AVISO_COPIA);
     } catch {
       setErro("Não foi possível preparar a cópia dos seus dados.");
     } finally {
@@ -396,13 +419,19 @@ export default function ConsentScreen() {
               )}
 
               {/* Portabilidade existe no servidor para as duas plataformas; o
-                  que muda é a entrega do arquivo (ver `dataExport.ts`). */}
-              {COPIA_DISPONIVEL
+                  que muda é a entrega do arquivo (ver `dataExport.ts`).
+
+                  O mockup promete "enviamos para o seu e-mail" — o produto NÃO
+                  faz isso, de propósito (ADR-0046): mandar o conjunto inteiro,
+                  com as notas que ciframos, para uma caixa de entrada seria
+                  desfazer por e-mail o cuidado que temos no banco. A cópia
+                  abaixo diz o que de fato acontece. */}
+              {COPIA_DISPONIVEL && entregaPossivel !== false
                 ? linhaGerenciar(
                     "Pedir uma cópia dos resultados",
-                    "Baixa um arquivo aberto (JSON) com suas sessões e suas notas.",
+                    TEXTO_COPIA,
                     <Button
-                      label="Baixar cópia"
+                      label={ROTULO_COPIA}
                       onPress={pedirCopia}
                       loading={emAcao === "copia"}
                       variant="secondary"
