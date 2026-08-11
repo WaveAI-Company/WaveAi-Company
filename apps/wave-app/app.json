@@ -41,7 +41,8 @@
           "neverForLocation": true,
           "bluetoothAlwaysPermission": "O WaveAI conecta ao sensor de EEG (MindWave) por Bluetooth para captar o sinal."
         }
-      ]
+      ],
+      "expo-sharing"
     ],
     "extra": {
       "router": {},
