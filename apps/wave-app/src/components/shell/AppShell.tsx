@@ -196,7 +196,11 @@ function PainelLateral({
             {user.display_name}
           </Text>
           <Text style={styles.rodapePapel}>{papel}</Text>
-          <Button label="Sair" onPress={signOut} variant="secondary" />
+          {/* `bloco` porque numa coluna de 240px o botão ocupando a largura é o
+              que se espera de um rodapé de navegação — e porque este canto vai
+              ser redesenhado na fatia da casca (o mockup põe aqui o `role-chip`
+              e o `.side-foot`). Encolher agora seria mexer duas vezes. */}
+          <Button label="Sair" onPress={signOut} variant="secondary" largura="bloco" />
         </View>
       )}
     </View>

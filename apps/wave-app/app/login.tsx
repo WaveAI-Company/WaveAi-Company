@@ -124,7 +124,7 @@ export default function LoginScreen() {
         </View>
       ) : null}
 
-      <Button label="Entrar" onPress={entrar} loading={enviando} />
+      <Button label="Entrar" onPress={entrar} loading={enviando} largura="bloco" />
 
       <View style={styles.alternativa}>
         <Text style={styles.alternativaTexto}>Primeiro acesso? </Text>

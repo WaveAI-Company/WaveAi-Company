@@ -469,10 +469,9 @@ const criarEstilos = (t: Theme) =>
       color: t.colors.textSubtle,
       lineHeight: 18,
     },
+    // Só o respiro: largura é assunto do `Button` desde o pente fino de UI.
     acao: {
-      alignSelf: "flex-start",
       marginTop: t.spacing.xs,
-      minWidth: 180,
     },
     // Dois botões lado a lado, como o mockup do cartão pendente. `flexWrap`
     // não é enfeite: no RN o `flexShrink` padrão é 0, então sem ele a linha

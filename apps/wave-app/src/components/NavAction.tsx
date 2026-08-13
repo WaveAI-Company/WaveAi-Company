@@ -105,9 +105,13 @@ const criarEstilos = (t: Theme) =>
     conteudo: {
       gap: t.spacing.xs,
     },
+    // O rótulo era centralizado enquanto a descrição ficava à esquerda — no
+    // mesmo bloco. Não era escolha de design, era descuido, e o pente fino
+    // pegou nas duas telas onde a linha tem descrição: a faixa "Autorize
+    // guardar seus resultados" na home e o "Convidar uma pessoa" do perfil do
+    // profissional. As linhas do mockup são alinhadas à esquerda.
     label: {
       ...t.typography.bodyStrong,
-      textAlign: "center",
     },
     descricao: {
       ...t.typography.body,

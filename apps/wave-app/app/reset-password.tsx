@@ -282,11 +282,13 @@ export default function ResetPasswordScreen() {
             onPress={pedir}
             loading={enviando}
             accent={destaque.accent}
+            largura="bloco"
           />
           <Button
             label="Voltar para o login"
             onPress={() => router.replace("/login")}
             variant="secondary"
+            largura="bloco"
           />
         </>
       ) : null}
@@ -314,8 +316,9 @@ export default function ResetPasswordScreen() {
             label="Inserir código"
             onPress={() => setPasso("codigo")}
             accent={destaque.accent}
+            largura="bloco"
           />
-          <Button label="Usar outro e-mail" onPress={recomecar} variant="secondary" />
+          <Button label="Usar outro e-mail" onPress={recomecar} variant="secondary" largura="bloco" />
           <Text style={styles.rodapeDica}>
             Não chegou? Veja a caixa de spam ou reenvie a partir da próxima tela.
           </Text>
@@ -369,8 +372,8 @@ export default function ResetPasswordScreen() {
             </Text>
           ) : null}
 
-          <Button label="Continuar" onPress={continuar} accent={destaque.accent} />
-          <Button label="Usar outro e-mail" onPress={recomecar} variant="secondary" />
+          <Button label="Continuar" onPress={continuar} accent={destaque.accent} largura="bloco" />
+          <Button label="Usar outro e-mail" onPress={recomecar} variant="secondary" largura="bloco" />
         </>
       ) : null}
 
@@ -444,6 +447,7 @@ export default function ResetPasswordScreen() {
             loading={enviando}
             disabled={!podeSalvar || segredoGasto}
             accent={destaque.accent}
+            largura="bloco"
           />
         </>
       ) : null}
@@ -464,6 +468,7 @@ export default function ResetPasswordScreen() {
             label="Voltar para o login"
             onPress={() => router.replace("/login")}
             accent={destaque.accent}
+            largura="bloco"
           />
         </>
       ) : null}
