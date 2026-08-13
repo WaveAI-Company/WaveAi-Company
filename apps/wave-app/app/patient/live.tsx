@@ -443,9 +443,14 @@ export default function PatientLiveScreen() {
               {ativo || SIMULADOR_HABILITADO ? (
                 <View style={styles.controlePrincipal}>
                   <Button
+                    /* "Encerrar e salvar" prometia a guarda antes de ela ser
+                       possível: com o consentimento revogado (ADR-0026) a
+                       sessão encerra e o resultado NÃO é gravado. Quem conta o
+                       desfecho é o painel "Sessão guardada"/"Sessão não
+                       guardada", que vem do `storage` do próprio servidor. */
                     label={
                       ativo
-                        ? "Encerrar e salvar sessão"
+                        ? "Encerrar sessão"
                         : deviceConnection.supported
                           ? "Ou usar sinal simulado"
                           : "Iniciar captação simulada"
@@ -455,9 +460,23 @@ export default function PatientLiveScreen() {
                   />
                 </View>
               ) : null}
+              {/* Este par segue o compartilhamento (ADR-0045) porque ele fica
+                  longe do interruptor, lá embaixo no painel: enquanto era fixo,
+                  ligar o compartilhamento deixava um cadeado no topo dizendo
+                  que ninguém mais via a sessão — a tela afirmando o contrário
+                  do que acabara de acontecer. */}
               <View style={styles.controleNotaLinha}>
-                <Icon name="lock" size={13} color={t.colors.textMuted} strokeWidth={2} />
-                <Text style={styles.controleNota}>só você vê esta sessão</Text>
+                <Icon
+                  name={compartilhando ? "users" : "lock"}
+                  size={13}
+                  color={t.colors.textMuted}
+                  strokeWidth={2}
+                />
+                <Text style={styles.controleNota}>
+                  {compartilhando
+                    ? "quem te acompanha pode ver esta sessão"
+                    : "só você vê esta sessão"}
+                </Text>
               </View>
             </View>
           </Panel>
