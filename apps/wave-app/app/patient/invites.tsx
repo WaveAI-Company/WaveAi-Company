@@ -19,7 +19,13 @@ import { ScreenHeading } from "../../src/components/ScreenHeading";
 import { Skeleton } from "../../src/components/Skeleton";
 import { WaveField } from "../../src/components/brand/WaveField";
 import { dataCurta } from "../../src/format/date";
-import { useAccentFor, useRoleAccent, useTheme, type Theme } from "../../src/theme";
+import {
+  useAccentFor,
+  useFaixa,
+  useRoleAccent,
+  useTheme,
+  type Theme,
+} from "../../src/theme";
 
 /**
  * O que o aceite concede, em palavras da pessoa que aceita.
@@ -65,6 +71,7 @@ export default function PatientInvitesScreen() {
   const papel = useRoleAccent();
   const profissional = useAccentFor("doctor");
   const styles = useMemo(() => criarEstilos(t), [t]);
+  const movel = useFaixa() === "movel";
 
   const [convites, setConvites] = useState<CareLink[]>([]);
   const [carregando, setCarregando] = useState(true);
@@ -211,19 +218,21 @@ export default function PatientInvitesScreen() {
                 </View>
 
                 <View style={styles.acoes}>
-                  <View style={styles.acao}>
+                  <View style={movel ? styles.acaoMovel : undefined}>
                     <Button
                       label="Aceitar"
                       onPress={() => responder(convite.id, "aceitar")}
                       loading={emAcao === convite.id}
+                      largura={movel ? "bloco" : "conteudo"}
                     />
                   </View>
-                  <View style={styles.acao}>
+                  <View style={movel ? styles.acaoMovel : undefined}>
                     <Button
                       label="Recusar"
                       onPress={() => responder(convite.id, "recusar")}
                       disabled={emAcao === convite.id}
                       variant="secondary"
+                      largura={movel ? "bloco" : "conteudo"}
                     />
                   </View>
                 </View>
@@ -328,9 +337,15 @@ const criarEstilos = (t: Theme) =>
       gap: t.spacing.sm,
       marginTop: t.spacing.sm,
     },
-    acao: {
+    // No celular cada botão toma metade da linha — é o `.inv-actions .btn{flex:1}`
+    // que o mockup aplica só em `max-width:767px`. Acima disso eles ficam do
+    // tamanho do rótulo, lado a lado e encostados à esquerda; antes este `flex`
+    // valia em toda largura e era o que os espalhava pelo cartão inteiro.
+    // Sem `minWidth`: com 160 os dois não cabiam na linha de 293 px de um
+    // celular de 375, o `flexWrap` quebrava e cada um voltava a ocupar a
+    // largura inteira — o oposto do que a regra do mockup faz.
+    acaoMovel: {
       flex: 1,
-      minWidth: 160,
     },
     nota: {
       ...t.typography.caption,

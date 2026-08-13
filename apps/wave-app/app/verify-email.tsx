@@ -251,11 +251,13 @@ export default function VerifyEmailScreen() {
             onPress={verificar}
             loading={enviando}
             accent={destaque.accent}
+            largura="bloco"
           />
           <Button
             label={doCadastro ? "Usar outro e-mail" : "Voltar ao login"}
             onPress={doCadastro ? trocarEmail : voltarAoLogin}
             variant="secondary"
+            largura="bloco"
           />
 
           {doCadastro ? (
@@ -293,6 +295,7 @@ export default function VerifyEmailScreen() {
             onPress={entrar}
             loading={enviando}
             accent={destaque.accent}
+            largura="bloco"
           />
         </>
       )}

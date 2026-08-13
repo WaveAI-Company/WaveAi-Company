@@ -223,7 +223,7 @@ export default function RegisterScreen() {
 
       <StateView error={erros.geral} />
 
-      <Button label="Criar conta" onPress={criar} loading={enviando} accent={destaque.accent} />
+      <Button label="Criar conta" onPress={criar} loading={enviando} accent={destaque.accent} largura="bloco" />
 
       {/* No lugar dos links de Termos/Privacidade do mockup, que não existem:
           o compromisso que o produto de fato cumpre, e onde ele é decidido. */}
