@@ -300,13 +300,11 @@ export default function PatientHomeScreen() {
                 fechados, com guia por voz. O alfa costuma contar uma boa história.
               </Text>
               {capturaDisponivel() ? (
-                <View style={styles.heroiAcao}>
-                  <Button
-                    label="Iniciar sessão"
-                    onPress={() => router.push("/patient/live")}
-                    accent={papel.accent}
-                  />
-                </View>
+                <Button
+                  label="Iniciar sessão"
+                  onPress={() => router.push("/patient/live")}
+                  accent={papel.accent}
+                />
               ) : (
                 <Text style={styles.heroiNota}>
                   A captação acontece no app do celular. Por aqui você acompanha histórico e
@@ -491,10 +489,6 @@ const criarEstilos = (t: Theme) =>
     heroiTexto: {
       ...t.typography.body,
       color: t.colors.textMuted,
-    },
-    heroiAcao: {
-      alignSelf: "flex-start",
-      minWidth: 220,
     },
     heroiNota: {
       ...t.typography.caption,

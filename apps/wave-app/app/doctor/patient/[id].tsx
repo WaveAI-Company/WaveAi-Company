@@ -569,10 +569,9 @@ const criarEstilos = (t: Theme) =>
       color: t.colors.textMuted,
       fontWeight: "600",
     },
+    // Só o respiro: largura é assunto do `Button` desde o pente fino de UI.
     acaoVivo: {
-      alignSelf: "flex-start",
       marginTop: t.spacing.xs,
-      minWidth: 220,
     },
     tiles: {
       flexDirection: "row",
