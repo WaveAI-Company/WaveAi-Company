@@ -9,6 +9,7 @@ import {
   sombraDestaque,
   semContornoNativo,
   transicao,
+  useFaixa,
   useInteracao,
   useRoleAccent,
   useTheme,
@@ -16,6 +17,8 @@ import {
 } from "../theme";
 
 export type ButtonVariant = "primary" | "secondary" | "danger";
+
+export type ButtonLargura = "conteudo" | "bloco";
 
 type Props = {
   label: string;
@@ -29,6 +32,16 @@ type Props = {
   variant?: ButtonVariant;
   /** Sobrescreve o destaque — use só quando o papel do botão não for o do usuário. */
   accent?: string;
+  /**
+   * Quanto o botão ocupa.
+   *
+   * `conteudo` (padrão) é o `.btn` do mockup: `display:inline-flex`, ou seja,
+   * a largura do rótulo mais o respiro — **no celular ele volta a ocupar a
+   * linha**, que é o que os mockups fazem em `@media (max-width:767px)` (sete
+   * dos nove têm a regra). `bloco` é o `.btn-block`, usado em todos os botões
+   * das telas de autenticação.
+   */
+  largura?: ButtonLargura;
 };
 
 /**
@@ -45,6 +58,13 @@ type Props = {
  * ao ser apertado. O delineado segue o `.btn-ghost`, que só pinta o fundo.
  * O `pressed` mantém uma perda leve de opacidade porque no celular não há
  * hover para de onde voltar: sem isso o toque não teria resposta nenhuma.
+ *
+ * **Largura (pente fino de UI).** O padrão é a largura do conteúdo, como o
+ * `.btn` do mockup. Antes o componente não dizia nada sobre largura, e num pai
+ * em coluna — que é o caso quase sempre — o RN estica o filho: todo botão do
+ * app saía com 100%, o que o pente fino apontou em sete telas. Quatro delas
+ * já remendavam isso à mão, embrulhando o botão num `View` com
+ * `alignSelf: "flex-start"`.
  */
 export function Button({
   label,
@@ -53,11 +73,19 @@ export function Button({
   disabled,
   variant = "primary",
   accent,
+  largura = "conteudo",
 }: Props) {
   const t = useTheme();
   const papel = useRoleAccent();
   const styles = useMemo(() => criarEstilos(t), [t]);
   const { estado, handlers, reduzirMovimento } = useInteracao();
+  const faixa = useFaixa();
+
+  // No celular o botão volta a ocupar a linha (o `width:100%` dos mockups em
+  // `max-width:767px`). "Volta" no sentido literal: basta não declarar
+  // `alignSelf` e o pai em coluna estica de novo — e num pai em linha a
+  // largura segue sendo a do conteúdo, que é o que se quer nos dois casos.
+  const porConteudo = largura === "conteudo" && faixa !== "movel";
 
   const inativo = Boolean(loading || disabled);
   const destaque = accent ?? papel.accent;
@@ -86,6 +114,7 @@ export function Button({
       {...handlers}
       style={[
         styles.base,
+        porConteudo && styles.porConteudo,
         preenchido ? { backgroundColor: fundo } : styles.delineado,
         // O delineado ganha o fundo do `.btn-ghost` no ponteiro.
         !preenchido && noAr && { backgroundColor: t.colors.surfaceAlt },
@@ -118,6 +147,11 @@ const criarEstilos = (t: Theme) =>
         [motion.rapida, motion.media, motion.media, motion.media],
       ),
       ...semContornoNativo(),
+    },
+    // Num pai em coluna isto é o que impede o RN de esticar o botão; num pai
+    // em linha, o alinhamento no eixo transversal (o botão já tem `minHeight`).
+    porConteudo: {
+      alignSelf: "flex-start",
     },
     delineado: {
       backgroundColor: "transparent",

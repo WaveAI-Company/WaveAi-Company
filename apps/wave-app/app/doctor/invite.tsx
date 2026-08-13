@@ -329,10 +329,9 @@ const criarEstilos = (t: Theme) =>
       gap: t.spacing.md,
       minWidth: 0,
     },
+    // Só o respiro: largura é assunto do `Button` desde o pente fino de UI.
     acao: {
-      alignSelf: "flex-start",
       marginTop: t.spacing.xs,
-      minWidth: 200,
     },
     enviado: {
       alignItems: "center",
