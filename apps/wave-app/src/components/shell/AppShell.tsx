@@ -94,24 +94,34 @@ export function AppShell({ children }: { children: ReactNode }) {
     <PainelLateral onNavigate={() => setAberto(false)} pathname={pathname} rail={rail} />
   );
 
-  if (lateral) {
-    return (
-      <View style={styles.rootRow}>
-        <View style={[styles.sidebar, rail && styles.sidebarRail]}>{painel}</View>
-        <View style={styles.principal}>
-          <Header titulo={titulo} onBack={onVoltar} />
-          <View style={styles.conteudo}>{children}</View>
-        </View>
-      </View>
-    );
-  }
-
+  // **Uma árvore só para as duas faixas.** Antes havia dois `return` com
+  // estruturas diferentes, e `children` mudava de posição ao cruzar 767px:
+  // na sidebar ele era `raiz > principal > conteúdo`, no celular
+  // `raiz > conteúdo`. O React reconcilia por posição, então a travessia
+  // **desmontava e remontava a tela inteira** — e junto o estado dela. Quem
+  // pagava era a captação: arrastar a janela para estreito no meio de uma
+  // sessão matava o `useRef` do socket e a limpeza fechava o stream. Formulário
+  // meio preenchido morria pelo mesmo motivo.
+  //
+  // Aqui cada posição é um lugar fixo: a sidebar aparece ou vira `null`, mas o
+  // caminho até `children` (`raiz > principal > conteúdo`) é o mesmo dos dois
+  // lados da quebra. Trocar de faixa passa a ser mudança de estilo e de props.
   return (
-    <View style={styles.rootCol}>
-      <Header titulo={titulo} onMenu={() => setAberto(true)} onBack={onVoltar} />
-      <View style={styles.conteudo}>{children}</View>
+    <View style={styles.rootRow}>
+      {lateral ? (
+        <View style={[styles.sidebar, rail && styles.sidebarRail]}>{painel}</View>
+      ) : null}
 
-      {aberto ? (
+      <View style={styles.principal}>
+        <Header
+          titulo={titulo}
+          onMenu={lateral ? undefined : () => setAberto(true)}
+          onBack={onVoltar}
+        />
+        <View style={styles.conteudo}>{children}</View>
+      </View>
+
+      {!lateral && aberto ? (
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Fechar menu"
@@ -119,20 +129,23 @@ export function AppShell({ children }: { children: ReactNode }) {
           onPress={() => setAberto(false)}
         />
       ) : null}
-      <Animated.View
-        style={[
-          styles.drawer,
-          {
-            width: PAINEL_W,
-            transform: [{ translateX: tx }],
-            // Fora da tela, não deve capturar toque nem foco. Vai no estilo, e
-            // não como prop: a prop está depreciada e avisa no console.
-            pointerEvents: aberto ? "auto" : "none",
-          },
-        ]}
-      >
-        {painel}
-      </Animated.View>
+
+      {!lateral ? (
+        <Animated.View
+          style={[
+            styles.drawer,
+            {
+              width: PAINEL_W,
+              transform: [{ translateX: tx }],
+              // Fora da tela, não deve capturar toque nem foco. Vai no estilo, e
+              // não como prop: a prop está depreciada e avisa no console.
+              pointerEvents: aberto ? "auto" : "none",
+            },
+          ]}
+        >
+          {painel}
+        </Animated.View>
+      ) : null}
     </View>
   );
 }
@@ -318,14 +331,13 @@ function BotaoIcone({
 
 const criarEstilos = (t: Theme) =>
   StyleSheet.create({
+    // Raiz única das duas faixas. No celular a linha tem um filho só (a coluna
+    // principal), porque a sidebar vira `null` e o drawer é absoluto — o que
+    // dá o mesmo resultado visual da coluna que existia aqui antes.
     rootRow: {
       backgroundColor: t.colors.background,
       flex: 1,
       flexDirection: "row",
-    },
-    rootCol: {
-      backgroundColor: t.colors.background,
-      flex: 1,
     },
     sidebar: {
       backgroundColor: t.colors.surface,
