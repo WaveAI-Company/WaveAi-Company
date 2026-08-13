@@ -127,12 +127,11 @@ export default function DoctorProfileScreen() {
           </Panel>
 
           <Panel title="Dados da conta" eyebrow="identificação">
+            {/* Mesma remoção do perfil do paciente: as rotas de editar nome,
+                trocar e-mail e alterar senha existem desde a P12, então a nota
+                que dizia o contrário deixou de ser verdade. */}
             <ReadOnlyField label="Nome" value={user?.display_name ?? "—"} />
             <ReadOnlyField label="E-mail" value={user?.email ?? "—"} />
-            <Text style={styles.nota}>
-              Editar o nome, trocar o e-mail e alterar a senha ainda não existem no
-              servidor — por isso não há um botão aqui que não faria nada.
-            </Text>
           </Panel>
         </View>
 
