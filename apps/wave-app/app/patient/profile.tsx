@@ -126,12 +126,14 @@ export default function PatientProfileScreen() {
           </Panel>
 
           <Panel title="Dados da conta" eyebrow="identificação">
+            {/* A nota que ficava aqui dizia que editar nome, e-mail e senha
+                "ainda não existem no servidor". As três rotas existem desde a
+                P12 (`PATCH /auth/me`, `POST /auth/email` + `/auth/email/confirm`,
+                `POST /auth/password`), então a frase virou mentira. Sai sem
+                substituto: prometer "em breve" seria trocar uma afirmação falsa
+                por uma promessa. Os campos acoplam na fatia de edição. */}
             <ReadOnlyField label="Nome" value={user?.display_name ?? "—"} />
             <ReadOnlyField label="E-mail" value={user?.email ?? "—"} />
-            <Text style={styles.nota}>
-              Editar o nome, trocar o e-mail e alterar a senha ainda não existem no
-              servidor — por isso não há um botão aqui que não faria nada.
-            </Text>
           </Panel>
         </View>
 
