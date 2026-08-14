@@ -13,7 +13,12 @@ import { useRoleAccent } from "../../src/theme";
 export default function PatientWatchScreen() {
   const papel = useRoleAccent();
   return (
-    <ScreenContainer>
+    // `app`, não o teto padrão de documento: esta é uma tela de app, e o teto
+    // de 720 centralizado a deixava como uma coluna estreita boiando no meio de
+    // um monitor largo — o "card jogado no meio da tela" do pente fino. O
+    // desenho da tela em si ainda vai ser refeito; isto só a põe no mesmo
+    // alinhamento das outras.
+    <ScreenContainer largura="app">
       <ScreenHeading
         title="Assistir ao vivo"
         lead="Acompanhe, pelo navegador, a captação que está acontecendo no seu celular. As features são calculadas no servidor."

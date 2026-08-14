@@ -166,7 +166,13 @@ export default function PatientHomeScreen() {
         <Skeleton width={190} height={14} />
         <Text style={styles.carregandoNota}>Sincronizando suas sessões com o servidor…</Text>
         <View style={[styles.grade, emColunas && styles.gradeLinha]}>
-          <View style={[styles.coluna, faixa === "largo" && styles.colunaPrincipalLarga]}>
+          <View
+            style={[
+              styles.coluna,
+              emColunas && styles.colunaLinha,
+              faixa === "largo" && styles.colunaPrincipalLarga,
+            ]}
+          >
             <Panel>
               <Skeleton width="60%" height={22} />
               <Skeleton width="85%" height={14} />
@@ -174,7 +180,13 @@ export default function PatientHomeScreen() {
               <Skeleton width={160} height={44} radius={t.radius.md} />
             </Panel>
           </View>
-          <View style={[styles.coluna, faixa === "largo" && styles.colunaLateralLarga]}>
+          <View
+            style={[
+              styles.coluna,
+              emColunas && styles.colunaLinha,
+              faixa === "largo" && styles.colunaLateralLarga,
+            ]}
+          >
             <Panel>
               <Skeleton width="45%" height={18} />
               <Skeleton width="100%" height={22} radius={6} />
@@ -292,7 +304,13 @@ export default function PatientHomeScreen() {
       {/* ===== herói + última sessão ===== */}
       {sessoes.length > 0 ? (
         <View style={[styles.grade, emColunas && styles.gradeLinha]}>
-          <View style={[styles.coluna, faixa === "largo" && styles.colunaPrincipalLarga]}>
+          <View
+            style={[
+              styles.coluna,
+              emColunas && styles.colunaLinha,
+              faixa === "largo" && styles.colunaPrincipalLarga,
+            ]}
+          >
             <Panel grow>
               <Text style={styles.heroiTitulo}>Um bom momento para uma nova onda?</Text>
               <Text style={styles.heroiTexto}>
@@ -316,7 +334,13 @@ export default function PatientHomeScreen() {
           </View>
 
           {ultima ? (
-            <View style={[styles.coluna, faixa === "largo" && styles.colunaLateralLarga]}>
+            <View
+            style={[
+              styles.coluna,
+              emColunas && styles.colunaLinha,
+              faixa === "largo" && styles.colunaLateralLarga,
+            ]}
+          >
               <Panel title="Última sessão" eyebrow={carimbo(ultima.created_at)} grow>
                 {ultima.metrics?.relative_band_powers ? (
                   <>
@@ -470,9 +494,18 @@ const criarEstilos = (t: Theme) =>
       flexDirection: "row",
     },
     coluna: {
-      flex: 1,
       gap: t.spacing.md,
       minWidth: 0,
+    },
+    // `flex` só quando a grade é uma LINHA. Empilhada no celular, o eixo
+    // principal vira o vertical e o `flex: 1` (que o RN-web resolve como
+    // `flex-basis: 0%`) reparte a ALTURA em partes iguais: sobra vazio no fim
+    // da primeira coluna e a segunda transborda por cima do que vem depois.
+    // Medido no perfil a 375px: 542px para cada coluna, 122px de vazio numa e
+    // 121px de transbordo na outra — o "espaçamento muito grande" e a
+    // "sobreposição" do pente fino eram a mesma causa.
+    colunaLinha: {
+      flex: 1,
     },
     // Proporção, não largura fixa: o mockup pede `1.4fr 1fr`, e uma coluna
     // fixa de 360px não acompanharia o teto de 1600px desta tela.
