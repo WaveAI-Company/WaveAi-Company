@@ -26,6 +26,8 @@ import {
   type Theme,
 } from "../../theme";
 import { Avatar } from "../Avatar";
+import { Chip } from "../Chip";
+import { Disclaimer } from "../Disclaimer";
 import { Logo } from "../brand/Logo";
 import { Icon, type IconName } from "../Icon";
 import { Button } from "../Button";
@@ -166,7 +168,9 @@ function PainelLateral({
   const { user, signOut } = useAuth();
   if (!user) return null;
 
-  const papel = user.role === "doctor" ? "profissional de bem-estar" : "paciente";
+  // Duas formas do mesmo papel: a pílula do mockup traz o rótulo curto
+  // ("Paciente"), e o rodapé, onde há largura, traz o nome do papel por extenso.
+  const papelCurto = user.role === "doctor" ? "Profissional" : "Paciente";
 
   return (
     <View style={[styles.painel, rail && styles.painelRail]}>
@@ -174,6 +178,16 @@ function PainelLateral({
         {/* No rail cabe o ladrilho, não o letreiro. */}
         <Logo size={rail ? 32 : 36} tint={accent} withWordmark={!rail} tagline={rail ? undefined : "análise de bem-estar"} />
       </View>
+
+      {/* `role-chip` do mockup: pílula neutra com o ponto no tom do papel, logo
+          abaixo da marca. Sai no rail, como no mockup (`.role-chip{display:none}`
+          em 768–1199) — lá não cabe texto. Diz de quem é a sessão sem gastar a
+          linha do rodapé com isso. */}
+      {rail ? null : (
+        <View style={styles.papelChip}>
+          <Chip label={papelCurto} dot corPonto={accent} />
+        </View>
+      )}
 
       <NavList role={user.role} pathname={pathname} onNavigate={onNavigate} rail={rail} />
 
@@ -195,12 +209,15 @@ function PainelLateral({
           <Text style={styles.rodapeNome} numberOfLines={1}>
             {user.display_name}
           </Text>
-          <Text style={styles.rodapePapel}>{papel}</Text>
-          {/* `bloco` porque numa coluna de 240px o botão ocupando a largura é o
-              que se espera de um rodapé de navegação — e porque este canto vai
-              ser redesenhado na fatia da casca (o mockup põe aqui o `role-chip`
-              e o `.side-foot`). Encolher agora seria mexer duas vezes. */}
+          {/* O papel por extenso saiu daqui: agora ele é a pílula do topo, e
+              repetir "paciente" duas vezes na mesma coluna era ruído. */}
           <Button label="Sair" onPress={signOut} variant="secondary" largura="bloco" />
+          {/* `.side-foot` do mockup: o posicionamento fecha a coluna de
+              navegação. A redação vem do `Disclaimer` porque ela é regra de
+              produto (Medical/71), não texto de tela. */}
+          <View style={styles.rodapeAviso}>
+            <Disclaimer />
+          </View>
         </View>
       )}
     </View>
@@ -294,7 +311,11 @@ function AvatarPerfil({
         estado.focoVisivel ? { boxShadow: anelFoco(accent, t.colors.surface) } : null,
       ]}
     >
-      <Avatar name={nome} size={36} tone={accent} />
+      {/* 44 e não 36: o mockup tem `.avatar{36px}` no geral e
+          `.app-head .avatar{width:44px;height:44px}` na barra superior — o
+          nosso usava o tamanho geral no header, e ficava menor que o botão de
+          tema ao lado. */}
+      <Avatar name={nome} size={44} tone={accent} />
     </Pressable>
   );
 }
@@ -323,12 +344,18 @@ function BotaoIcone({
       onPress={onPress}
       {...handlers}
       style={[
-        styles.hamburger,
+        styles.iconbtn,
         estado.hovered && { backgroundColor: t.colors.surfaceAlt },
         estado.focoVisivel ? { boxShadow: anelFoco(accent, t.colors.surface) } : null,
       ]}
     >
-      <Icon name={icone} size={20} color={t.colors.text} />
+      {/* `.iconbtn{color:var(--ink-2)}` e `:hover{color:var(--ink)}`: em repouso
+          o ícone é o traço secundário e só acende ao ponteiro. */}
+      <Icon
+        name={icone}
+        size={20}
+        color={estado.hovered ? t.colors.text : t.colors.textMuted}
+      />
     </Pressable>
   );
 }
@@ -368,13 +395,27 @@ const criarEstilos = (t: Theme) =>
       height: HEADER_H,
       paddingHorizontal: t.spacing.md,
     },
-    hamburger: {
+    // O `.iconbtn` do mockup: círculo de 44 com contorno e fundo de superfície.
+    // O nosso era um ícone nu — sem borda nem fundo, ele lia como menor do que
+    // os 44px que de fato tinha, e foi assim que o pente fino o descreveu
+    // ("não tem o contorno e parece bem pequeno").
+    //
+    // **Divergência medida:** o mockup usa `--line` na borda; nós usamos
+    // `borderStrong`, porque limite de controle precisa de 3:1 — o mesmo que o
+    // `Button` delineado já faz. Medido pelo `check:contrast`: `borderStrong`
+    // sobre `surface` dá **3,41:1 no escuro** e **4,45:1 no claro**. A `border`
+    // comum é a de alfa, sem requisito de 3:1: serve para separar, não para
+    // desenhar o limite de um controle.
+    iconbtn: {
       alignItems: "center",
-      borderRadius: t.radius.sm,
+      backgroundColor: t.colors.surface,
+      borderColor: t.colors.borderStrong,
+      borderRadius: t.radius.pill,
+      borderWidth: 1,
+      height: t.minTouch,
       justifyContent: "center",
-      minHeight: t.minTouch,
-      minWidth: t.minTouch,
-      ...transicao("background-color, box-shadow", motion.media),
+      width: t.minTouch,
+      ...transicao("background-color, box-shadow, border-color", motion.media),
       ...semContornoNativo(),
     },
 
@@ -388,7 +429,9 @@ const criarEstilos = (t: Theme) =>
       flex: 1,
     },
     avatarAlvo: {
-      borderRadius: 18,
+      // Acompanha o avatar (44/2): com 18 o halo de foco saía retangular nos
+      // cantos de um círculo de 44.
+      borderRadius: 22,
       ...transicao("box-shadow", motion.media),
       ...semContornoNativo(),
     },
@@ -425,11 +468,15 @@ const criarEstilos = (t: Theme) =>
     rodapeNome: {
       ...t.typography.bodyStrong,
       color: t.colors.text,
-    },
-    rodapePapel: {
-      ...t.typography.caption,
-      color: t.colors.textSubtle,
       marginBottom: t.spacing.xs,
+    },
+    // O `Disclaimer` já traz `marginTop`; aqui só o respiro da linha, para o
+    // texto fechar a coluna como o `.side-foot` (11,5px/1.45 no mockup).
+    rodapeAviso: {
+      paddingTop: t.spacing.xs,
+    },
+    papelChip: {
+      paddingHorizontal: t.spacing.xs,
     },
     backdrop: {
       backgroundColor: "rgba(0,0,0,0.45)",
