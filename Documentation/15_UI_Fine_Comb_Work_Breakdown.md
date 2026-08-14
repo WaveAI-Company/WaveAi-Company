@@ -28,13 +28,13 @@ não do PDF.
 | 3 | Estado vazio sem padrão: 4 implementações inline + `StateView` só texto | 4 | **feito** (#149) |
 | 4 | Casca fora da especificação (iconbtn, avatar, role-chip, badge) | 11 | **feito** (#146) |
 | 5 | `Disclaimer` solto (sem `textAlign`, sem ancoragem) + padding da tela | 11 | **feito** (#150) |
-| 6 | `AuthStage` 640–1099: painel da marca é irmão do `ScrollView` e tem `overflow:hidden` | 4 | aberto |
+| 6 | `AuthStage` 640–1099: painel da marca é irmão do `ScrollView` e tem `overflow:hidden` | 4 | **feito** (#152) |
 | 7 | Cena da marca não reage ao ponteiro; ponto pula para o frame final | 3 | aberto |
 | 8 | `BandStack` 10px vs **14** (lista) e **22** (destaque) do mockup | 4 | **feito** (#151) |
 | 9 | Navegação vestigial pré-casca (4 `NavAction` na home; tema+Sair na home do profissional) | 2 | aberto |
 | 10 | Áreas sem mockup ficaram sem sistema (panorama, faixas de aviso, assistir ao vivo) | 4 | parcial (#147 alinhou) |
-| 11 | Lockup da marca empilhado no auth | 2–4 | aberto |
-| 12 | Olho de revelar senha não segue o accent do papel | 2 | aberto |
+| 11 | Lockup da marca empilhado no auth | 2–4 | **feito** (#152) |
+| 12 | Olho de revelar senha não segue o accent do papel | 2 | **feito** (#152) |
 
 **Causas já fechadas fora dessa lista:** coluna de conteúdo centralizada (era à
 esquerda no mockup) e `flex: 1` virando altura no celular — **uma só causa** explicava
@@ -77,8 +77,12 @@ Cada item é uma PR, sai de `main` e para no verde local.
    curva.
    **Achado:** o `TrendChart` **não desenhava nada** desde que passou a depender
    de `onLayout` — comprovado no baseline com `git stash`. Ver o gotcha 6 abaixo.
-4. **`AuthStage`** — marca dentro do `ScrollView` entre 640 e 1099 + lockup em linha
-   + olho da senha no accent do papel (4 telas de auth).
+4. ~~**`AuthStage`**~~ — **feito (#152)**. Uma rolagem só para as duas colunas
+   (marca e formulário na mesma página entre 640 e 1099); lockup em linha via
+   prop no `Logo` — a sidebar segue empilhada, não cabe nos 240px; e `Field`
+   ganhou `accent`, que o cadastro passa a partir do papel **selecionado**.
+   O olho no accent **diverge do mockup de propósito** (lá é `--ink-3`): pedido
+   do fundador, que anotou "isso não tem a ver com o mockup, mas é um detalhe".
 
 **Onda 2 — telas**
 
@@ -134,6 +138,11 @@ Cada item é uma PR, sai de `main` e para no verde local.
    truque do segmento de comprimento zero com `strokeLinecap="round"` nos pontos
    (um `Circle` viraria elipse no eixo esticado). Texto **não** entra no SVG
    esticado — a fonte esticaria junto.
+8. **`padding` no filho flexível rouba a fração dele.** No `AuthStage` o rodapé
+   tinha `flexBasis: 0` e `paddingHorizontal: 24`: os 48px entravam como base e
+   a coluna saía 26px mais larga do que devia — o aviso ficava 15px fora do
+   centro do cartão. Com o respiro num `View` **filho**, a diferença caiu para
+   **2px**. Vale para qualquer caixa que divida espaço por `flex`.
 7. **Um `git stash` separa o seu bug do bug que já estava lá.** Antes de consertar
    o que parece regressão sua, meça o baseline: os dois minutos evitam tanto
    assumir culpa quanto declarar conserto do que não estava quebrado.

@@ -36,12 +36,23 @@ type Props = TextInputProps & {
    * estado inicial oculto.
    */
   revealable?: boolean;
+  /**
+   * Sobrescreve o destaque do papel — use quando o papel da tela **não** é o
+   * de quem está logado.
+   *
+   * O caso concreto é o cadastro: escolher "profissional de bem-estar" pinta
+   * o medidor de força da senha de azul, mas o foco do campo e o olho de
+   * revelar continuavam no turquesa de paciente, porque `useRoleAccent` lê o
+   * papel do usuário **autenticado** — e ali ainda não há nenhum.
+   */
+  accent?: string;
 };
 
 /** Campo de formulário rotulado, com foco visível e revelar-senha opcional. */
-export function Field({ label, error, hint, revealable, ...input }: Props) {
+export function Field({ label, error, hint, revealable, accent: accentProp, ...input }: Props) {
   const t = useTheme();
-  const { accent } = useRoleAccent();
+  const papel = useRoleAccent();
+  const accent = accentProp ?? papel.accent;
   const styles = useMemo(() => criarEstilos(t), [t]);
   const [focado, setFocado] = useState(false);
   const [revelado, setRevelado] = useState(false);

@@ -153,6 +153,7 @@ export default function RegisterScreen() {
         maxLength={NOME_MAX}
         placeholder="Como devemos te chamar?"
         error={erros.nome}
+        accent={destaque.accent}
       />
       <Field
         label="E-mail"
@@ -163,6 +164,7 @@ export default function RegisterScreen() {
         maxLength={EMAIL_MAX}
         placeholder="voce@exemplo.com.br"
         error={erros.email}
+        accent={destaque.accent}
       />
 
       <View>
@@ -176,6 +178,7 @@ export default function RegisterScreen() {
           maxLength={SENHA_MAX}
           placeholder="Crie uma senha"
           error={erros.senha}
+          accent={destaque.accent}
         />
 
         <PasswordStrength
@@ -196,6 +199,7 @@ export default function RegisterScreen() {
           maxLength={SENHA_MAX}
           placeholder="Repita a senha"
           error={erros.confirma}
+          accent={destaque.accent}
         />
         <PasswordMatch
           senha={password}
