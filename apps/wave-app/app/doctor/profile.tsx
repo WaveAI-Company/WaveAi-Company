@@ -41,7 +41,7 @@ import { bp, useAccentFor, useRoleAccent, useTheme, type Theme } from "../../src
  * - Nada de captação (o diagnóstico BLE é da tela do titular).
  */
 export default function DoctorProfileScreen() {
-  const { user, signOut } = useAuth();
+  const { user } = useAuth();
   const router = useRouter();
   const t = useTheme();
   const { accent } = useRoleAccent();
@@ -234,9 +234,9 @@ export default function DoctorProfileScreen() {
         </View>
       </View>
 
+      {/* "Sair" saiu do perfil: ele vive na sidebar (decisão do fundador em
+          2026-08-13). */}
       <Disclaimer />
-
-      <Button label="Sair" onPress={signOut} variant="secondary" />
     </ScreenContainer>
   );
 }
