@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
 import { BANDS, formatPercent, type BandKey } from "../../api/results";
-import { BAND_COLORS, useTheme, type Theme } from "../../theme";
+import { BAND_COLORS, useFaixa, useTheme, type Theme } from "../../theme";
 
 type Props = {
   /** Potências **relativas** por banda (frações que somam ~1). */
@@ -27,6 +27,9 @@ type Props = {
 export function BandBars({ relative }: Props) {
   const t = useTheme();
   const styles = useMemo(() => criarEstilos(t), [t]);
+  // `@media (max-width:767px){.band{grid-template-columns:96px 1fr 46px}}` — a
+  // barra é o que precisa de espaço; os rótulos cedem.
+  const estreito = useFaixa() === "movel";
 
   // A maior banda define a escala — com frações pequenas, normalizar pelo topo
   // torna a comparação legível sem distorcer a proporção entre elas.
@@ -47,7 +50,7 @@ export function BandBars({ relative }: Props) {
             accessible
             accessibilityLabel={`${label}, ${range}: ${texto}`}
           >
-            <View style={styles.rotulo}>
+            <View style={[styles.rotulo, estreito && styles.rotuloEstreito]}>
               <Text style={styles.nome}>{label}</Text>
               <Text style={styles.faixa}>{range}</Text>
             </View>
@@ -62,7 +65,7 @@ export function BandBars({ relative }: Props) {
                 ]}
               />
             </View>
-            <Text style={styles.valor}>{texto}</Text>
+            <Text style={[styles.valor, estreito && styles.valorEstreito]}>{texto}</Text>
           </View>
         );
       })}
@@ -72,45 +75,67 @@ export function BandBars({ relative }: Props) {
 
 const criarEstilos = (t: Theme) =>
   StyleSheet.create({
+    // `.bands{gap:14px}` — as linhas respiram mais porque cada barra ficou
+    // duas vezes mais alta.
     wrapper: {
-      gap: t.spacing.sm,
+      gap: 14,
       marginTop: t.spacing.xs,
     },
+    // `.band{grid-template-columns:120px 1fr 52px; gap:12px}`.
     linha: {
       alignItems: "center",
       flexDirection: "row",
-      gap: t.spacing.sm,
+      gap: 12,
     },
     rotulo: {
+      width: 120,
+    },
+    rotuloEstreito: {
       width: 96,
     },
     nome: {
       ...t.typography.body,
       color: t.colors.text,
-      fontSize: 14,
+      fontSize: 13.5,
       fontWeight: "600",
     },
     faixa: {
       ...t.typography.caption,
       color: t.colors.textSubtle,
-      fontSize: 11,
+      fontSize: 11.5,
     },
+    /**
+     * `.band .track{height:22px; border-radius:4px}`.
+     *
+     * Eram 10px em pílula — mais da metade mais fino que o design, e foi a
+     * queixa literal do pente fino na tela ao vivo ("a grossura das faixas do
+     * card de composição por banda está mais fina"). Com 22px o canto volta a
+     * ser um raio de 4: em pílula, a barra curta de uma banda pequena viraria
+     * um comprimido e mentiria sobre o próprio comprimento.
+     */
     trilho: {
       backgroundColor: t.colors.surfaceAlt,
-      borderRadius: t.radius.pill,
+      borderRadius: 4,
       flex: 1,
-      height: 10,
+      height: 22,
       overflow: "hidden",
     },
+    // `.fill{border-radius:0 4px 4px 0}`: só a ponta que cresce é arredondada.
     barra: {
-      borderRadius: t.radius.pill,
+      borderBottomRightRadius: 4,
+      borderTopRightRadius: 4,
       height: "100%",
     },
     valor: {
       ...t.typography.body,
       color: t.colors.textMuted,
-      fontSize: 13,
+      fontSize: 13.5,
+      fontVariant: ["tabular-nums"],
+      fontWeight: "600",
       textAlign: "right",
       width: 52,
+    },
+    valorEstreito: {
+      width: 46,
     },
   });
