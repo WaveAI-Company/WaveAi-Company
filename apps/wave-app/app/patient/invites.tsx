@@ -11,13 +11,14 @@ import {
 import { Avatar } from "../../src/components/Avatar";
 import { Button } from "../../src/components/Button";
 import { Chip } from "../../src/components/Chip";
+import { EmptyState } from "../../src/components/EmptyState";
 import { Icon } from "../../src/components/Icon";
 import { NavAction } from "../../src/components/NavAction";
 import { Panel } from "../../src/components/Panel";
 import { ScreenContainer } from "../../src/components/ScreenContainer";
 import { ScreenHeading } from "../../src/components/ScreenHeading";
 import { Skeleton } from "../../src/components/Skeleton";
-import { WaveField } from "../../src/components/brand/WaveField";
+import { TextLink } from "../../src/components/TextLink";
 import { dataCurta } from "../../src/format/date";
 import {
   useAccentFor,
@@ -249,25 +250,24 @@ export default function PatientInvitesScreen() {
 
       {/* ===== nunca houve convite: a tela inteira é o estado vazio ===== */}
       {!carregando && !erro && convites.length === 0 ? (
-        <Panel>
-          <View style={styles.vazio}>
-            <View style={styles.vazioIcone}>
-              <Icon name="mail" size={36} color={papel.accentText} strokeWidth={1.6} />
+        <EmptyState
+          adorno={{ tipo: "icone", nome: "mail" }}
+          titulo="Nenhum convite por enquanto"
+          texto="Quando um profissional de bem-estar pedir para acompanhar suas tendências, o pedido chega aqui — e nada acontece sem o seu aceite. Você também pode continuar só, no seu ritmo."
+          nota={
+            // O mockup manda para o perfil por um **link dentro da frase**, não
+            // por um botão: aqui não há nada a fazer, só um caminho a oferecer.
+            <View style={styles.notaLinha}>
+              <Text style={styles.notaTexto}>Já acompanha alguém? Veja</Text>
+              <TextLink
+                label="Quem me acompanha"
+                compacto
+                onPress={() => router.push("/patient/profile")}
+              />
+              <Text style={styles.notaTexto}>no seu perfil.</Text>
             </View>
-            <Text style={styles.vazioTitulo}>Nenhum convite por enquanto</Text>
-            <Text style={styles.vazioTexto}>
-              Quando um profissional de bem-estar pedir para acompanhar suas tendências, o
-              pedido chega aqui — e nada acontece sem o seu aceite. Você também pode
-              continuar só, no seu ritmo.
-            </Text>
-            <NavAction
-              label="Ver quem me acompanha"
-              tone="neutral"
-              onPress={() => router.push("/patient/profile")}
-            />
-            <WaveField height={90} opacity={0.35} amplitude={12} />
-          </View>
-        </Panel>
+          }
+        />
       ) : null}
 
       {/* Respondeu a todos nesta visita: uma linha basta — o hero de "nada por
@@ -362,30 +362,18 @@ const criarEstilos = (t: Theme) =>
       marginTop: t.spacing.sm,
       textAlign: "center",
     },
-    vazio: {
+    notaLinha: {
       alignItems: "center",
-      gap: t.spacing.sm,
-      paddingTop: t.spacing.lg,
-    },
-    vazioIcone: {
-      alignItems: "center",
-      backgroundColor: t.colors.surfaceAlt,
-      borderColor: t.colors.border,
-      borderRadius: 44,
-      borderWidth: 1,
-      height: 88,
+      flexDirection: "row",
+      // Sem `wrap` a frase transborda no celular: `flexShrink` é 0 por padrão
+      // no RN e a linha não quebra sozinha.
+      flexWrap: "wrap",
+      gap: t.spacing.xs,
       justifyContent: "center",
-      width: 88,
     },
-    vazioTitulo: {
-      ...t.typography.title,
-      color: t.colors.text,
-      textAlign: "center",
-    },
-    vazioTexto: {
-      ...t.typography.body,
-      color: t.colors.textMuted,
-      maxWidth: 460,
-      textAlign: "center",
+    notaTexto: {
+      ...t.typography.caption,
+      color: t.colors.textSubtle,
+      fontSize: 13,
     },
   });
