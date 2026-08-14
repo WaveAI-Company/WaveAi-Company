@@ -211,10 +211,12 @@ export default function DoctorInviteScreen() {
 
       <View style={[styles.grade, emColunas && styles.gradeLinha]}>
         {/* ============ coluna principal ============ */}
-        <View style={styles.coluna}>{enviadoPara ? confirmacao : formulario}</View>
+        <View style={[styles.coluna, emColunas && styles.colunaLinha]}>
+          {enviadoPara ? confirmacao : formulario}
+        </View>
 
         {/* ============ coluna lateral ============ */}
-        <View style={styles.coluna}>
+        <View style={[styles.coluna, emColunas && styles.colunaLinha]}>
           <Panel
             title="O que a pessoa autoriza"
             headerAccessory={<Chip label="leitura · nunca edição" />}
@@ -325,9 +327,18 @@ const criarEstilos = (t: Theme) =>
       flexDirection: "row",
     },
     coluna: {
-      flex: 1,
       gap: t.spacing.md,
       minWidth: 0,
+    },
+    // `flex` só quando a grade é uma LINHA. Empilhada no celular, o eixo
+    // principal vira o vertical e o `flex: 1` (que o RN-web resolve como
+    // `flex-basis: 0%`) reparte a ALTURA em partes iguais: sobra vazio no fim
+    // da primeira coluna e a segunda transborda por cima do que vem depois.
+    // Medido no perfil a 375px: 542px para cada coluna, 122px de vazio numa e
+    // 121px de transbordo na outra — o "espaçamento muito grande" e a
+    // "sobreposição" do pente fino eram a mesma causa.
+    colunaLinha: {
+      flex: 1,
     },
     // Só o respiro: largura é assunto do `Button` desde o pente fino de UI.
     acao: {

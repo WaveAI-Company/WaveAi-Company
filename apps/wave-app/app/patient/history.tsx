@@ -237,7 +237,7 @@ export default function PatientHistoryScreen() {
           </View>
 
           <View style={[styles.grade, emColunas && styles.gradeLinha]}>
-            <View style={styles.coluna}>
+            <View style={[styles.coluna, emColunas && styles.colunaLinha]}>
               {filtradas.length === 0 ? (
                 <Panel>
                   <Text style={styles.vazioTexto}>
@@ -390,9 +390,18 @@ const criarEstilos = (t: Theme) =>
       flexDirection: "row",
     },
     coluna: {
-      flex: 1,
       gap: t.spacing.md,
       minWidth: 0,
+    },
+    // `flex` só quando a grade é uma LINHA. Empilhada no celular, o eixo
+    // principal vira o vertical e o `flex: 1` (que o RN-web resolve como
+    // `flex-basis: 0%`) reparte a ALTURA em partes iguais: sobra vazio no fim
+    // da primeira coluna e a segunda transborda por cima do que vem depois.
+    // Medido no perfil a 375px: 542px para cada coluna, 122px de vazio numa e
+    // 121px de transbordo na outra — o "espaçamento muito grande" e a
+    // "sobreposição" do pente fino eram a mesma causa.
+    colunaLinha: {
+      flex: 1,
     },
     trilho: {
       gap: t.spacing.md,
