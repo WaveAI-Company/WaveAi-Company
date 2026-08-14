@@ -87,29 +87,36 @@ export function AuthStage({
         />
       ) : null}
 
-      <ScrollView
-        style={styles.painelAuth}
-        contentContainerStyle={styles.painelAuthConteudo}
-        keyboardShouldPersistTaps="handled"
-      >
-        <View style={styles.barraTopo}>
-          <AlternarTema />
-        </View>
-
-        {!marcaCheia ? (
-          <View style={styles.marcaCompacta}>
-            <Logo size={34} withWordmark tagline="bem-estar exploratório" />
-            <Text style={styles.marcaCompactaTexto}>{resumo}</Text>
-            <WaveField height={48} opacity={0.4} amplitude={10} style={styles.ondaCompacta} />
+      {/* O aviso sai do `ScrollView` e fecha a coluna: é o `.page-foot`, que
+          no mockup é `position:absolute; bottom:14px` justamente para **não**
+          participar da centralização do formulário. Dentro da rolagem ele ou
+          empurrava o cartão para cima (com `marginTop:auto`) ou terminava
+          solto logo abaixo dele. */}
+      <View style={styles.painelAuth}>
+        <ScrollView
+          style={styles.painelAuthRolagem}
+          contentContainerStyle={styles.painelAuthConteudo}
+          keyboardShouldPersistTaps="handled"
+        >
+          <View style={styles.barraTopo}>
+            <AlternarTema />
           </View>
-        ) : null}
 
-        <View style={[styles.cartao, { maxWidth: larguraCartao }]}>{children}</View>
+          {!marcaCheia ? (
+            <View style={styles.marcaCompacta}>
+              <Logo size={34} withWordmark tagline="bem-estar exploratório" />
+              <Text style={styles.marcaCompactaTexto}>{resumo}</Text>
+              <WaveField height={48} opacity={0.4} amplitude={10} style={styles.ondaCompacta} />
+            </View>
+          ) : null}
+
+          <View style={[styles.cartao, { maxWidth: larguraCartao }]}>{children}</View>
+        </ScrollView>
 
         <View style={styles.rodape}>
-          <Disclaimer />
+          <Disclaimer placement="auth" />
         </View>
-      </ScrollView>
+      </View>
     </View>
   );
 }
@@ -322,6 +329,9 @@ const criarEstilos = (t: Theme) =>
       backgroundColor: t.colors.background,
       flex: 1,
     },
+    painelAuthRolagem: {
+      flex: 1,
+    },
     painelAuthConteudo: {
       alignItems: "center",
       flexGrow: 1,
@@ -363,9 +373,10 @@ const criarEstilos = (t: Theme) =>
       gap: t.spacing.md,
       width: "100%",
     },
+    // `.page-foot{bottom:14px; left:0; right:0; padding:0 24px}` — a coluna
+    // inteira, e não uma caixa de 480px encostada à esquerda.
     rodape: {
-      alignItems: "center",
-      alignSelf: "stretch",
-      maxWidth: 480,
+      paddingBottom: 14,
+      paddingHorizontal: t.spacing.lg,
     },
   });

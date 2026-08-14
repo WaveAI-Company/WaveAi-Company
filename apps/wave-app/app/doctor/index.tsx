@@ -73,7 +73,7 @@ function chave(texto: string): string {
  * do registro. O acesso deliberado é abrir o painel da pessoa.
  */
 export default function DoctorScreen() {
-  const { user, signOut } = useAuth();
+  const { user } = useAuth();
   const router = useRouter();
   const t = useTheme();
   const { accent } = useRoleAccent();
@@ -352,9 +352,10 @@ export default function DoctorScreen() {
         <ThemeSelector />
       </View>
 
+      {/* "Sair" saiu daqui: ele vive na sidebar (decisão do fundador em
+          2026-08-13). Sem isso ele ficaria pendurado **depois** do aviso, que
+          agora fecha a tela. */}
       <Disclaimer variant="profissional" />
-
-      <Button label="Sair" onPress={signOut} variant="secondary" />
     </ScreenContainer>
   );
 }

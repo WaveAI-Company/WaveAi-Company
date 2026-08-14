@@ -1,7 +1,7 @@
 import { useMemo, type ReactNode } from "react";
 import { ScrollView, StyleSheet, View } from "react-native";
 
-import { teto, useTheme, type Theme } from "../theme";
+import { teto, useFaixa, useTheme, type Theme } from "../theme";
 
 /**
  * Quanto a tela pode ocupar.
@@ -23,10 +23,25 @@ type Props = {
   largura?: LarguraTela;
 };
 
+/**
+ * Respiro da coluna de conteúdo, por faixa — o `.main` do mockup.
+ *
+ * **Nós usávamos 24 em volta de tudo** (pente fino de UI, causa 5). O que mais
+ * destoava era embaixo: o mockup reserva 64px no desktop e **96 no celular**,
+ * onde a última linha da tela encostava no limite da rolagem. Os lados também
+ * apertavam num monitor largo — 24 onde o design pede 32.
+ */
+const RESPIRO = {
+  largo: { top: 24, lados: 32, base: 64 },
+  medio: { top: 24, lados: 24, base: 64 },
+  movel: { top: 16, lados: 16, base: 96 },
+} as const;
+
 /** Container padrão das telas: fundo, respiro e rolagem (útil no web estreito). */
 export function ScreenContainer({ children, largura = "documento" }: Props) {
   const t = useTheme();
   const styles = useMemo(() => criarEstilos(t), [t]);
+  const respiro = RESPIRO[useFaixa()];
 
   // **Alinhamento (pente fino de UI).** No mockup a coluna de conteúdo é
   // `.main{max-width:…; width:100%}` dentro da área do grid: ela encosta à
@@ -39,7 +54,14 @@ export function ScreenContainer({ children, largura = "documento" }: Props) {
   return (
     <ScrollView
       style={styles.scroll}
-      contentContainerStyle={styles.content}
+      contentContainerStyle={[
+        styles.content,
+        {
+          paddingBottom: respiro.base,
+          paddingHorizontal: respiro.lados,
+          paddingTop: respiro.top,
+        },
+      ]}
       keyboardShouldPersistTaps="handled"
     >
       <View
@@ -63,7 +85,6 @@ const criarEstilos = (t: Theme) =>
     },
     content: {
       flexGrow: 1,
-      padding: t.spacing.lg,
     },
     inner: {
       alignSelf: "flex-start",
