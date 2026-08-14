@@ -29,9 +29,24 @@ type Props = {
   withWordmark?: boolean;
   /** Subtítulo sob o wordmark (ex.: "bem-estar exploratório"). */
   tagline?: string;
+  /**
+   * Põe a tagline **na mesma linha** do wordmark, como o `.wordmark` do
+   * mockup: `WaveAI <small>bem-estar exploratório</small>`.
+   *
+   * É prop e não o padrão porque a sidebar não tem largura para isso — nos
+   * 240px da coluna de navegação "WaveAI análise de bem-estar" em linha
+   * quebraria feio. Empilhado lá, em linha nas telas de autenticação.
+   */
+  taglineEmLinha?: boolean;
 };
 
-export function Logo({ size = 36, tint, withWordmark = false, tagline }: Props) {
+export function Logo({
+  size = 36,
+  tint,
+  withWordmark = false,
+  tagline,
+  taglineEmLinha = false,
+}: Props) {
   const t = useTheme();
   const styles = useMemo(() => criarEstilos(t), [t]);
 
@@ -63,9 +78,13 @@ export function Logo({ size = 36, tint, withWordmark = false, tagline }: Props) 
       </Svg>
 
       {withWordmark ? (
-        <View style={styles.textos}>
+        <View style={[styles.textos, taglineEmLinha && styles.textosEmLinha]}>
           <Text style={styles.nome}>WaveAI</Text>
-          {tagline ? <Text style={styles.tagline}>{tagline}</Text> : null}
+          {tagline ? (
+            <Text style={[styles.tagline, taglineEmLinha && styles.taglineEmLinha]}>
+              {tagline}
+            </Text>
+          ) : null}
         </View>
       ) : null}
     </View>
@@ -82,6 +101,14 @@ const criarEstilos = (t: Theme) =>
     textos: {
       flexShrink: 1,
     },
+    textosEmLinha: {
+      alignItems: "baseline",
+      flexDirection: "row",
+      // Sem quebra a frase transborda: `flexShrink` é 0 por padrão no RN.
+      flexWrap: "wrap",
+      // O `margin-left:6px` do `small` do mockup.
+      gap: 6,
+    },
     nome: {
       ...t.typography.heading,
       color: t.colors.text,
@@ -91,5 +118,11 @@ const criarEstilos = (t: Theme) =>
     tagline: {
       ...t.typography.caption,
       color: t.colors.textSubtle,
+    },
+    // `.wordmark small{font-size:12px; letter-spacing:.08em; text-transform:uppercase}`.
+    taglineEmLinha: {
+      fontSize: 12,
+      letterSpacing: 0.96,
+      textTransform: "uppercase",
     },
   });
