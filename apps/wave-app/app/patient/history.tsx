@@ -16,7 +16,7 @@ import {
 import { capturaDisponivel } from "../../src/capture/availability";
 import { Button } from "../../src/components/Button";
 import { Disclaimer } from "../../src/components/Disclaimer";
-import { HeadFigure } from "../../src/components/brand/HeadFigure";
+import { EmptyState } from "../../src/components/EmptyState";
 import { LongitudinalReport } from "../../src/components/LongitudinalReport";
 import { Panel } from "../../src/components/Panel";
 import { ScreenContainer } from "../../src/components/ScreenContainer";
@@ -187,30 +187,25 @@ export default function PatientHistoryScreen() {
 
       {/* Vazio: convite, não erro — a tela ainda não tem o que mostrar. */}
       {nuncaCaptou ? (
-        <Panel>
-          <View style={styles.vazio}>
-            <HeadFigure width={190} />
-            <Text style={styles.vazioTitulo}>Seu histórico começa na primeira onda</Text>
-            <Text style={styles.vazioTexto}>
-              Cada sessão que você fizer aparece aqui, com composição por banda, qualidade
-              do sinal e as suas notas de contexto — uma linha do tempo do seu bem-estar.
-            </Text>
-            {capturaDisponivel() ? (
-              <View style={styles.vazioAcao}>
-                <Button
-                  label="Iniciar primeira sessão"
-                  onPress={() => router.push("/patient/live")}
-                  accent={papel.accent}
-                />
-              </View>
-            ) : (
-              <Text style={styles.vazioNota}>
-                A captação acontece no app do celular. Por aqui você acompanha o histórico
-                assim que a primeira sessão existir.
-              </Text>
-            )}
-          </View>
-        </Panel>
+        <EmptyState
+          adorno={{ tipo: "figura" }}
+          titulo="Seu histórico começa na primeira onda"
+          texto="Cada sessão que você fizer aparece aqui, com composição por banda, qualidade do sinal e as suas notas de contexto — uma linha do tempo do seu bem-estar."
+          acao={
+            capturaDisponivel() ? (
+              <Button
+                label="Iniciar primeira sessão"
+                onPress={() => router.push("/patient/live")}
+                accent={papel.accent}
+              />
+            ) : undefined
+          }
+          nota={
+            capturaDisponivel()
+              ? undefined
+              : "A captação acontece no app do celular. Por aqui você acompanha o histórico assim que a primeira sessão existir."
+          }
+        />
       ) : null}
 
       {temSessoes ? (
@@ -240,7 +235,7 @@ export default function PatientHistoryScreen() {
             <View style={[styles.coluna, emColunas && styles.colunaLinha]}>
               {filtradas.length === 0 ? (
                 <Panel>
-                  <Text style={styles.vazioTexto}>
+                  <Text style={styles.semResultado}>
                     Nenhuma sessão nos últimos {periodo} dias. Você pode ter captado
                     antes — escolha “Tudo” para ver o histórico inteiro.
                   </Text>
@@ -456,30 +451,12 @@ const criarEstilos = (t: Theme) =>
       color: t.colors.textSubtle,
       lineHeight: 18,
     },
-    vazio: {
-      alignItems: "center",
-      gap: t.spacing.sm,
-      paddingVertical: t.spacing.lg,
-    },
-    vazioTitulo: {
-      ...t.typography.title,
-      color: t.colors.text,
-      textAlign: "center",
-    },
-    vazioTexto: {
+    // Filtro sem resultado não é o herói de "nunca captou": quem já tem
+    // sessões precisa de uma linha, não de um convite à primeira onda.
+    semResultado: {
       ...t.typography.body,
       color: t.colors.textMuted,
       maxWidth: 460,
       textAlign: "center",
-    },
-    vazioNota: {
-      ...t.typography.caption,
-      color: t.colors.textSubtle,
-      maxWidth: 420,
-      textAlign: "center",
-    },
-    vazioAcao: {
-      marginTop: t.spacing.sm,
-      minWidth: 240,
     },
   });
