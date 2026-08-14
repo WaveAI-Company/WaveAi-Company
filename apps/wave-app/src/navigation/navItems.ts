@@ -22,6 +22,14 @@ export type NavItem = {
    * conjunto de traço, lê como outra família.
    */
   icon: IconName;
+  /**
+   * Item que exibe contagem de pendências no `.nav .badge` do mockup.
+   *
+   * Só "Convites": é a única linha da navegação onde há algo esperando resposta
+   * da pessoa. Marcado aqui, e não na casca, para o que aparece na navegação
+   * continuar decidido num lugar só.
+   */
+  badge?: "convites";
 };
 
 // Os pares rota→ícone são os do mockup: `Design/round1/inicio-paciente.html` e
@@ -37,7 +45,7 @@ const PATIENT: NavItem[] = [
   LIVE_ITEM,
   WATCH_ITEM,
   { label: "Histórico", href: "/patient/history", icon: "calendar" },
-  { label: "Convites", href: "/patient/invites", icon: "mail" },
+  { label: "Convites", href: "/patient/invites", icon: "mail", badge: "convites" },
   { label: "Perfil", href: "/patient/profile", icon: "user" },
 ];
 
