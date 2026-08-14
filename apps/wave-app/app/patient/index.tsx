@@ -17,7 +17,7 @@ import { Avatar } from "../../src/components/Avatar";
 import { Button } from "../../src/components/Button";
 import { Chip } from "../../src/components/Chip";
 import { Disclaimer } from "../../src/components/Disclaimer";
-import { HeadFigure } from "../../src/components/brand/HeadFigure";
+import { EmptyState } from "../../src/components/EmptyState";
 import { WaveField } from "../../src/components/brand/WaveField";
 import { BandColumns, type BandColumn } from "../../src/components/charts/BandColumns";
 import { BandLegend } from "../../src/components/charts/BandLegend";
@@ -241,64 +241,65 @@ export default function PatientHomeScreen() {
 
       {/* ===== primeira vez ===== */}
       {sessoes.length === 0 ? (
-        <Panel>
-          <View style={styles.vazio}>
-            <HeadFigure width={180} />
-            <Text style={styles.vazioTitulo}>Sua primeira onda começa aqui</Text>
-            <Text style={styles.vazioTexto}>
-              Uma sessão leva poucos minutos e já mostra sua composição por banda, o ritmo
-              alfa e a qualidade do sinal — tudo exploratório, sem veredito.
-            </Text>
-            <View style={[styles.passos, emColunas && styles.passosLinha]}>
-              {[
-                {
-                  n: "1",
-                  titulo: "Vista a faixa",
-                  texto:
-                    "Apoie o sensor frontal na testa, sem cabelos no meio do caminho.",
-                },
-                {
-                  n: "2",
-                  titulo: "Confira o contato",
-                  texto:
-                    "O indicador de qualidade do sinal mostra quando está bom para começar.",
-                },
-                {
-                  n: "3",
-                  titulo: "Siga a voz",
-                  texto:
-                    "60 s de olhos abertos, 60 s de olhos fechados — a guia conduz você.",
-                },
-              ].map((p) => (
-                <View key={p.n} style={styles.passo}>
-                  <View style={styles.passoNumero}>
-                    <Text style={styles.passoNumeroTexto}>{p.n}</Text>
-                  </View>
-                  <Text style={styles.passoTitulo}>{p.titulo}</Text>
-                  <Text style={styles.passoTexto}>{p.texto}</Text>
-                </View>
-              ))}
-            </View>
-            {capturaDisponivel() ? (
-              <View style={styles.vazioAcao}>
-                <Button
-                  label="Iniciar primeira sessão"
-                  onPress={() => router.push("/patient/live")}
-                  accent={papel.accent}
-                />
-              </View>
+        <EmptyState
+          adorno={{ tipo: "figura" }}
+          titulo="Sua primeira onda começa aqui"
+          texto="Uma sessão leva poucos minutos e já mostra sua composição por banda, o ritmo alfa e a qualidade do sinal — tudo exploratório, sem veredito."
+          acao={
+            capturaDisponivel() ? (
+              <Button
+                label="Iniciar primeira sessão"
+                onPress={() => router.push("/patient/live")}
+                accent={papel.accent}
+              />
+            ) : undefined
+          }
+          nota={
+            capturaDisponivel() ? (
+              "Só você vê seus dados. Compartilhar com um profissional de bem-estar é opcional — e sempre revogável."
             ) : (
-              <Text style={styles.vazioNota}>
-                A captação acontece no app do celular. Por aqui você acompanha o histórico
-                assim que a primeira sessão existir.
-              </Text>
-            )}
-            <Text style={styles.vazioNota}>
-              Só você vê seus dados. Compartilhar com um profissional de bem-estar é
-              opcional — e sempre revogável.
-            </Text>
+              <View style={styles.notasVazio}>
+                <Text style={styles.notaVazio}>
+                  A captação acontece no app do celular. Por aqui você acompanha o histórico
+                  assim que a primeira sessão existir.
+                </Text>
+                <Text style={styles.notaVazio}>
+                  Só você vê seus dados. Compartilhar com um profissional de bem-estar é
+                  opcional — e sempre revogável.
+                </Text>
+              </View>
+            )
+          }
+        >
+          <View style={[styles.passos, emColunas && styles.passosLinha]}>
+            {[
+              {
+                n: "1",
+                titulo: "Vista a faixa",
+                texto: "Apoie o sensor frontal na testa, sem cabelos no meio do caminho.",
+              },
+              {
+                n: "2",
+                titulo: "Confira o contato",
+                texto:
+                  "O indicador de qualidade do sinal mostra quando está bom para começar.",
+              },
+              {
+                n: "3",
+                titulo: "Siga a voz",
+                texto: "60 s de olhos abertos, 60 s de olhos fechados — a guia conduz você.",
+              },
+            ].map((p) => (
+              <View key={p.n} style={styles.passo}>
+                <View style={styles.passoNumero}>
+                  <Text style={styles.passoNumeroTexto}>{p.n}</Text>
+                </View>
+                <Text style={styles.passoTitulo}>{p.titulo}</Text>
+                <Text style={styles.passoTexto}>{p.texto}</Text>
+              </View>
+            ))}
           </View>
-        </Panel>
+        </EmptyState>
       ) : null}
 
       {/* ===== herói + última sessão ===== */}
@@ -577,22 +578,6 @@ const criarEstilos = (t: Theme) =>
       ...t.typography.caption,
       color: t.colors.textSubtle,
     },
-    vazio: {
-      alignItems: "center",
-      gap: t.spacing.sm,
-      paddingVertical: t.spacing.md,
-    },
-    vazioTitulo: {
-      ...t.typography.title,
-      color: t.colors.text,
-      textAlign: "center",
-    },
-    vazioTexto: {
-      ...t.typography.body,
-      color: t.colors.textMuted,
-      maxWidth: 460,
-      textAlign: "center",
-    },
     passos: {
       alignSelf: "stretch",
       gap: t.spacing.md,
@@ -633,14 +618,14 @@ const criarEstilos = (t: Theme) =>
       color: t.colors.textSubtle,
       lineHeight: 17,
     },
-    vazioNota: {
+    notasVazio: {
+      alignItems: "center",
+      gap: t.spacing.sm,
+    },
+    notaVazio: {
       ...t.typography.caption,
       color: t.colors.textSubtle,
-      maxWidth: 440,
+      fontSize: 13,
       textAlign: "center",
-    },
-    vazioAcao: {
-      marginTop: t.spacing.sm,
-      minWidth: 240,
     },
   });

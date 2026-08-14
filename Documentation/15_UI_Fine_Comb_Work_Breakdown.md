@@ -25,7 +25,7 @@ não do PDF.
 |---|---|---|---|
 | 1 | `Button` sem largura própria (o `.btn` do mockup é `inline-flex`; `.btn-block` é a exceção) | 7 + casca | **feito** (#145) |
 | 2 | Não existe grade de cartões — tudo empilha a 100% (`grid-template-areas` no mockup) | 5 | aberto |
-| 3 | Estado vazio sem padrão: 4 implementações inline + `StateView` só texto | 4 | aberto |
+| 3 | Estado vazio sem padrão: 4 implementações inline + `StateView` só texto | 4 | **feito** (#149) |
 | 4 | Casca fora da especificação (iconbtn, avatar, role-chip, badge) | 11 | **feito** (#146) |
 | 5 | `Disclaimer` solto (sem `textAlign`, sem ancoragem) + padding da tela | 11 | aberto |
 | 6 | `AuthStage` 640–1099: painel da marca é irmão do `ScrollView` e tem `overflow:hidden` | 4 | aberto |
@@ -54,9 +54,11 @@ Cada item é uma PR, sai de `main` e para no verde local.
 
 **Onda 1 — componentes (o que resta)**
 
-1. **`EstadoVazio`** — ícone de 88 com anel pulsante (`prefers-reduced-motion`),
-   `WaveField` no rodapé do cartão, link em vez de botão; adotar em
-   `patient/index`, `patient/history`, `patient/invites`, `doctor/index`.
+1. ~~**`EmptyState`**~~ — **feito (#149)**. Saiu como `EmptyState` e não
+   `EstadoVazio`: a convenção do repositório é código em inglês. O link em vez
+   de botão vale **só para convites** — nos outros quatro mockups o CTA é
+   `.btn.btn-primary`. Padding único `56/32/72` (a home do mockup usa `48/32/64`;
+   8 px não se veem e um segundo valor viraria a próxima divergência).
 2. **Rodapé e respiro** — `Disclaimer` alinhado e ancorado; padding da tela
    `24 / 32 / 64` como o mockup (hoje é uniforme).
 3. **`BandStack` + gráficos** — 10 → 14 na lista e 22 no destaque; estilo do
@@ -101,6 +103,11 @@ Cada item é uma PR, sai de `main` e para no verde local.
    testar remontagem **sem recarregar**.
 4. **Regex `<Button\b[^>]*?/>` perde tags com `=>` dentro** (arrow function tem `>`).
    Conferir por contagem depois de qualquer edição em lote.
+5. **`alignItems: "center"` num pai anula o `Button` de largura cheia no celular.**
+   O `Button` não declara `alignSelf` na faixa móvel de propósito — conta com o pai
+   em coluna para esticar. Qualquer invólucro centralizador precisa trocar o
+   `alignItems` por `alignSelf: "stretch"` abaixo de 768 px, ou o botão volta à
+   largura do rótulo (medido: 203 px em vez de 261 px numa tela de 375 px).
 
 ## Banco de dev para a varredura
 

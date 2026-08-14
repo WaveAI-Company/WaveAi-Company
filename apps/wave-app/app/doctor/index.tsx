@@ -14,15 +14,14 @@ import { Avatar } from "../../src/components/Avatar";
 import { Button } from "../../src/components/Button";
 import { Chip } from "../../src/components/Chip";
 import { Disclaimer } from "../../src/components/Disclaimer";
-import { Icon } from "../../src/components/Icon";
+import { EmptyState } from "../../src/components/EmptyState";
 import { Panel } from "../../src/components/Panel";
 import { ScreenContainer } from "../../src/components/ScreenContainer";
 import { SearchField } from "../../src/components/SearchField";
 import { diaMes } from "../../src/format/date";
 import { Skeleton } from "../../src/components/Skeleton";
 import { ThemeSelector } from "../../src/components/ThemeSelector";
-import { WaveField } from "../../src/components/brand/WaveField";
-import { useRoleAccent, useTheme, withAlpha, type Theme } from "../../src/theme";
+import { useRoleAccent, useTheme, type Theme } from "../../src/theme";
 
 /** "há 5 dias" — idade do convite, com os casos curtos por extenso. */
 function enviadoHa(iso: string, agora: Date): string {
@@ -236,26 +235,14 @@ export default function DoctorScreen() {
 
       {/* ===== ninguém ainda ===== */}
       {links.length === 0 && !erro ? (
-        <Panel>
-          <View style={styles.vazio}>
-            <View style={[styles.vazioIcone, { backgroundColor: withAlpha(accent, 0.14) }]}>
-              <Icon name="userPlus" size={36} color={accent} strokeWidth={1.6} />
-            </View>
-            <Text style={styles.vazioTitulo}>Ninguém por aqui — ainda</Text>
-            <Text style={styles.vazioTexto}>
-              Convide uma pessoa por e-mail. O acompanhamento só começa se ela aceitar — e
-              ela pode revogar o acesso a qualquer momento. Quando alguém autorizar, as
-              tendências dela aparecem aqui.
-            </Text>
-            <View style={styles.vazioAcao}>
-              <Button
-                label="Convidar uma pessoa"
-                onPress={() => router.push("/doctor/invite")}
-              />
-            </View>
-            <WaveField height={90} opacity={0.35} amplitude={12} />
-          </View>
-        </Panel>
+        <EmptyState
+          adorno={{ tipo: "icone", nome: "userPlus" }}
+          titulo="Ninguém por aqui — ainda"
+          texto="Convide uma pessoa por e-mail. O acompanhamento só começa se ela aceitar — e ela pode revogar o acesso a qualquer momento. Quando alguém autorizar, as tendências dela aparecem aqui."
+          acao={
+            <Button label="Convidar uma pessoa" onPress={() => router.push("/doctor/invite")} />
+          }
+        />
       ) : null}
 
       {/* ===== grade de pessoas ===== */}
@@ -489,33 +476,6 @@ const criarEstilos = (t: Theme) =>
       ...t.typography.caption,
       color: t.colors.textSubtle,
       textAlign: "center",
-    },
-    vazio: {
-      alignItems: "center",
-      gap: t.spacing.sm,
-      paddingTop: t.spacing.lg,
-    },
-    vazioIcone: {
-      alignItems: "center",
-      borderRadius: 44,
-      height: 88,
-      justifyContent: "center",
-      width: 88,
-    },
-    vazioTitulo: {
-      ...t.typography.title,
-      color: t.colors.text,
-      textAlign: "center",
-    },
-    vazioTexto: {
-      ...t.typography.body,
-      color: t.colors.textMuted,
-      maxWidth: 520,
-      textAlign: "center",
-    },
-    vazioAcao: {
-      marginTop: t.spacing.sm,
-      minWidth: 240,
     },
     aparencia: {
       gap: t.spacing.sm,
