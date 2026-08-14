@@ -3,6 +3,7 @@ import { useMemo } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { activeHref, navItemsFor } from "../../navigation/navItems";
+import { useConvitesPendentes } from "../../navigation/useConvitesPendentes";
 import type { UserRole } from "../../auth/api";
 import { Icon, type IconName } from "../Icon";
 import {
@@ -13,6 +14,7 @@ import {
   useInteracao,
   useRoleAccent,
   useTheme,
+  withAlpha,
   type Theme,
 } from "../../theme";
 
@@ -37,6 +39,7 @@ export function NavList({ role, pathname, onNavigate, rail }: Props) {
   const { accent } = useRoleAccent();
   const styles = useMemo(() => criarEstilos(t), [t]);
   const router = useRouter();
+  const convitesPendentes = useConvitesPendentes();
 
   const itens = navItemsFor(role);
   const ativo = activeHref(pathname, role);
@@ -51,6 +54,9 @@ export function NavList({ role, pathname, onNavigate, rail }: Props) {
           selecionado={item.href === ativo}
           accent={accent}
           rail={rail}
+          // O mockup esconde o badge no rail (`.nav .badge{display:none}` em
+          // 768–1199) e o traz de volta na gaveta do celular.
+          badge={item.badge === "convites" && !rail ? convitesPendentes : 0}
           styles={styles}
           onPress={() => {
             // `navigate` (não `push`) não empilha: a casca substitui o fluxo
@@ -75,6 +81,7 @@ function ItemNav({
   selecionado,
   accent,
   rail,
+  badge,
   onPress,
   styles,
 }: {
@@ -83,6 +90,8 @@ function ItemNav({
   selecionado: boolean;
   accent: string;
   rail?: boolean;
+  /** Pendências a anunciar; `0` não desenha nada. */
+  badge?: number;
   onPress: () => void;
   styles: ReturnType<typeof criarEstilos>;
 }) {
@@ -96,7 +105,11 @@ function ItemNav({
       accessibilityState={{ selected: selecionado }}
       // `accessibilityState` não vira ARIA no RN-web; `aria-current` vira.
       aria-current={selecionado ? "page" : undefined}
-      accessibilityLabel={label}
+      // O número precisa ser dito, não só visto: sem isto o leitor de tela
+      // anunciaria "Convites" e a pessoa não saberia que há dois esperando.
+      accessibilityLabel={
+        badge ? `${label}, ${badge} aguardando resposta` : label
+      }
       onPress={onPress}
       {...handlers}
       style={[
@@ -133,6 +146,17 @@ function ItemNav({
           {label}
         </Text>
       )}
+      {/* `.nav .badge`: pílula de 20px encostada à direita, no tom do papel.
+          `aria-hidden` porque o número já foi dito no rótulo acessível — sem
+          isso o leitor de tela repetiria "2" solto depois do nome do item. */}
+      {badge ? (
+        <View
+          aria-hidden
+          style={[styles.badge, { backgroundColor: withAlpha(accent, t.isDark ? 0.18 : 0.12) }]}
+        >
+          <Text style={[styles.badgeTexto, { color: accent }]}>{badge}</Text>
+        </View>
+      ) : null}
     </Pressable>
   );
 }
@@ -178,5 +202,20 @@ const criarEstilos = (t: Theme) =>
     },
     rotuloAtivo: {
       fontWeight: "600",
+    },
+    // `.nav .badge{margin-left:auto; min-width:20px; height:20px; radius:999}`.
+    badge: {
+      alignItems: "center",
+      borderRadius: t.radius.pill,
+      height: 20,
+      justifyContent: "center",
+      marginLeft: "auto",
+      minWidth: 20,
+      paddingHorizontal: 6,
+    },
+    badgeTexto: {
+      ...t.typography.caption,
+      fontSize: 11.5,
+      fontWeight: "700",
     },
   });
