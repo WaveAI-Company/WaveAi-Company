@@ -115,7 +115,7 @@ export default function PatientProfileScreen() {
 
       <View style={[styles.grade, emColunas && styles.gradeLinha]}>
         {/* ============ configurações ============ */}
-        <View style={styles.coluna}>
+        <View style={[styles.coluna, emColunas && styles.colunaLinha]}>
           <ProfileSection label="Configurações" />
 
           <Panel title="Aparência" eyebrow="tema">
@@ -138,7 +138,7 @@ export default function PatientProfileScreen() {
         </View>
 
         {/* ============ quem me acompanha ============ */}
-        <View style={styles.coluna}>
+        <View style={[styles.coluna, emColunas && styles.colunaLinha]}>
           <ProfileSection label="Quem me acompanha" />
 
           <Panel
@@ -259,9 +259,18 @@ const criarEstilos = (t: Theme) =>
     // que se quer aqui — o cuidado da home (estilo próprio, sem `flex`) vale
     // para coluna de largura FIXA, que é outro caso.
     coluna: {
-      flex: 1,
       gap: t.spacing.md,
       minWidth: 0,
+    },
+    // `flex` só quando a grade é uma LINHA. Empilhada no celular, o eixo
+    // principal vira o vertical e o `flex: 1` (que o RN-web resolve como
+    // `flex-basis: 0%`) reparte a ALTURA em partes iguais: sobra vazio no fim
+    // da primeira coluna e a segunda transborda por cima do que vem depois.
+    // Medido no perfil a 375px: 542px para cada coluna, 122px de vazio numa e
+    // 121px de transbordo na outra — o "espaçamento muito grande" e a
+    // "sobreposição" do pente fino eram a mesma causa.
+    colunaLinha: {
+      flex: 1,
     },
     nota: {
       ...t.typography.caption,

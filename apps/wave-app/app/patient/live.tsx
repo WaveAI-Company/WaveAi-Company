@@ -397,7 +397,7 @@ export default function PatientLiveScreen() {
 
       {/* ===== herói + trilho lateral ===== */}
       <View style={[styles.grade, emColunas && styles.gradeLinha]}>
-        <View style={styles.colunaHeroi}>
+        <View style={[styles.colunaHeroi, emColunas && styles.colunaHeroiLinha]}>
           <Panel grow>
             <LiveWave
               accent={papel.accent}
@@ -626,7 +626,7 @@ export default function PatientLiveScreen() {
       {/* ===== faixa inferior: bandas, sessão guiada e nota ===== */}
       <View style={[styles.grade, emColunas && styles.gradeLinha]}>
         {features?.relative_band_powers ? (
-          <View style={styles.colunaHeroi}>
+          <View style={[styles.colunaHeroi, emColunas && styles.colunaHeroiLinha]}>
             <Panel
               title="Composição por banda"
               eyebrow="% do espectro · potência relativa"
@@ -645,7 +645,7 @@ export default function PatientLiveScreen() {
         {/* Gráfico ao vivo (P1-c): uma banda por vez, oscilando ao longo da
             sessão. Alimentado pelas features do servidor — sem DSP no cliente. */}
         {bandHistory.length > 0 ? (
-          <View style={styles.colunaHeroi}>
+          <View style={[styles.colunaHeroi, emColunas && styles.colunaHeroiLinha]}>
             <Panel
               title="Ondas ao vivo"
               headerAccessory={<InfoButton term="live_band_trend" />}
@@ -834,10 +834,19 @@ const criarEstilos = (t: Theme) =>
       flexDirection: "row",
     },
     colunaHeroi: {
-      flex: 1,
       gap: t.spacing.md,
       // Sem isto, um filho largo (a onda) estica a coluna e estoura a linha.
       minWidth: 0,
+    },
+    // `flex` só quando a grade é uma LINHA. Empilhada no celular, o eixo
+    // principal vira o vertical e o `flex: 1` (que o RN-web resolve como
+    // `flex-basis: 0%`) reparte a ALTURA em partes iguais: sobra vazio no fim
+    // da primeira coluna e a segunda transborda por cima do que vem depois.
+    // Medido no perfil a 375px: 542px para cada coluna, 122px de vazio numa e
+    // 121px de transbordo na outra — o "espaçamento muito grande" e a
+    // "sobreposição" do pente fino eram a mesma causa.
+    colunaHeroiLinha: {
+      flex: 1,
     },
     trilho: {
       gap: t.spacing.md,

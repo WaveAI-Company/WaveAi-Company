@@ -28,13 +28,29 @@ export function ScreenContainer({ children, largura = "documento" }: Props) {
   const t = useTheme();
   const styles = useMemo(() => criarEstilos(t), [t]);
 
+  // **Alinhamento (pente fino de UI).** No mockup a coluna de conteúdo é
+  // `.main{max-width:…; width:100%}` dentro da área do grid: ela encosta à
+  // **esquerda**, não centraliza — em nenhuma das nove telas. A exceção é o
+  // documento, e lá a centralização é explícita (`.doc-wrap{margin:0 auto}`).
+  // Nós centralizávamos tudo, e num monitor largo isso empurrava a coluna para
+  // longe da navegação, deixando um rio de vazio entre a sidebar e o conteúdo.
+  const centralizado = largura === "documento";
+
   return (
     <ScrollView
       style={styles.scroll}
       contentContainerStyle={styles.content}
       keyboardShouldPersistTaps="handled"
     >
-      <View style={[styles.inner, { maxWidth: teto[largura] }]}>{children}</View>
+      <View
+        style={[
+          styles.inner,
+          centralizado && styles.innerCentralizado,
+          { maxWidth: teto[largura] },
+        ]}
+      >
+        {children}
+      </View>
     </ScrollView>
   );
 }
@@ -50,9 +66,12 @@ const criarEstilos = (t: Theme) =>
       padding: t.spacing.lg,
     },
     inner: {
-      alignSelf: "center",
+      alignSelf: "flex-start",
       flex: 1,
       gap: t.spacing.md,
       width: "100%",
+    },
+    innerCentralizado: {
+      alignSelf: "center",
     },
   });
