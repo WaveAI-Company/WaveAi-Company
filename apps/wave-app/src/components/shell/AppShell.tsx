@@ -216,7 +216,7 @@ function PainelLateral({
               navegação. A redação vem do `Disclaimer` porque ela é regra de
               produto (Medical/71), não texto de tela. */}
           <View style={styles.rodapeAviso}>
-            <Disclaimer />
+            <Disclaimer placement="sidebar" />
           </View>
         </View>
       )}
