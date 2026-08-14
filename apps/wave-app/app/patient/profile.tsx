@@ -41,7 +41,7 @@ import {
  * mockup seria oferecer uma ação que não acontece.
  */
 export default function PatientProfileScreen() {
-  const { user, signOut } = useAuth();
+  const { user } = useAuth();
   const router = useRouter();
   const t = useTheme();
   const { accent } = useRoleAccent();
@@ -235,9 +235,9 @@ export default function PatientProfileScreen() {
         />
       ) : null}
 
+      {/* "Sair" saiu do perfil: ele vive na sidebar (decisão do fundador em
+          2026-08-13). */}
       <Disclaimer />
-
-      <Button label="Sair" onPress={signOut} variant="secondary" />
     </ScreenContainer>
   );
 }

@@ -27,7 +27,7 @@ não do PDF.
 | 2 | Não existe grade de cartões — tudo empilha a 100% (`grid-template-areas` no mockup) | 5 | aberto |
 | 3 | Estado vazio sem padrão: 4 implementações inline + `StateView` só texto | 4 | **feito** (#149) |
 | 4 | Casca fora da especificação (iconbtn, avatar, role-chip, badge) | 11 | **feito** (#146) |
-| 5 | `Disclaimer` solto (sem `textAlign`, sem ancoragem) + padding da tela | 11 | aberto |
+| 5 | `Disclaimer` solto (sem `textAlign`, sem ancoragem) + padding da tela | 11 | **feito** (#150) |
 | 6 | `AuthStage` 640–1099: painel da marca é irmão do `ScrollView` e tem `overflow:hidden` | 4 | aberto |
 | 7 | Cena da marca não reage ao ponteiro; ponto pula para o frame final | 3 | aberto |
 | 8 | `BandStack` 10px vs **14** (lista) e **22** (destaque) do mockup | 4 | aberto |
@@ -59,8 +59,17 @@ Cada item é uma PR, sai de `main` e para no verde local.
    de botão vale **só para convites** — nos outros quatro mockups o CTA é
    `.btn.btn-primary`. Padding único `56/32/72` (a home do mockup usa `48/32/64`;
    8 px não se veem e um segundo valor viraria a próxima divergência).
-2. **Rodapé e respiro** — `Disclaimer` alinhado e ancorado; padding da tela
-   `24 / 32 / 64` como o mockup (hoje é uniforme).
+2. ~~**Rodapé e respiro**~~ — **feito (#150)**. `Disclaimer` ganhou `placement`
+   (`sidebar` 11,5px · `footer` centralizado e ancorado com `marginTop:"auto"` ·
+   `auth` no fim da coluna, a 14px do fundo); padding do `ScreenContainer` por
+   faixa: `24/32/64` · `24/24/64` · `16/16/96`.
+   **O aviso continua nos dois lugares** (sidebar **e** rodapé de tela), contra o
+   mockup, que só tem o da sidebar: abaixo de 768px a sidebar é gaveta fechada e
+   o posicionamento de Medical/71 deixaria de estar à vista no aparelho mais
+   usado. Decisão do fundador em 2026-08-14.
+   Levou junto os **três botões "Sair" de tela** (`doctor/index`,
+   `doctor/profile`, `patient/profile`) — parte da causa 9, antecipada porque com
+   o aviso ancorado no fim eles ficariam pendurados **depois** dele.
 3. **`BandStack` + gráficos** — 10 → 14 na lista e 22 no destaque; estilo do
    "Tendências rápidas".
 4. **`AuthStage`** — marca dentro do `ScrollView` entre 640 e 1099 + lockup em linha
@@ -75,7 +84,9 @@ Cada item é uma PR, sai de `main` e para no verde local.
 8. **Painel do profissional** — mesmos vícios da home.
 9. **`doctor/index`** — alinhamento do search, avatar da última fila (flexWrap),
    cartão estourando no celular, cartão clicável com hover.
-10. **Limpeza da navegação vestigial** (2 telas).
+10. **Limpeza da navegação vestigial** — os 4 `NavAction` da home do paciente e o
+    seletor de tema da home do profissional. Os três "Sair" de tela já saíram
+    na #150.
 
 **Onda 3 — desenho novo e acoplar backend**
 
