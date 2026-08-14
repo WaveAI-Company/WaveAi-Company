@@ -77,44 +77,62 @@ export function AuthStage({
   const marcaCheia = width >= LARGURA_MARCA_CHEIA;
 
   return (
-    <View style={[styles.palco, duasColunas && styles.palcoLado]}>
-      {marcaCheia ? (
-        <PainelMarca
-          empilhado={!duasColunas}
-          chamada={chamada}
-          texto={texto}
-          chips={chips}
-        />
-      ) : null}
+    <View style={styles.palco}>
+      {/**
+       * **Uma rolagem só, para as duas colunas.** A marca era irmã do
+       * `ScrollView`: entre 640 e 1099 ela virava uma faixa fixa no topo com
+       * `overflow:hidden`, e o que não coubesse na janela ficava cortado sem
+       * jeito de alcançar. O mockup faz `grid-template-rows: auto 1fr` nessa
+       * faixa — marca e formulário rolam **na mesma página**.
+       *
+       * Trocar a marca de lugar conforme a faixa remontaria o formulário a
+       * cada cruzamento de quebra (e o que a pessoa digitou some junto). Por
+       * isso a árvore é uma só e o que muda é a **direção** do contêiner.
+       */}
+      <ScrollView
+        style={styles.rolagem}
+        contentContainerStyle={[styles.conteudo, duasColunas && styles.conteudoLado]}
+        keyboardShouldPersistTaps="handled"
+      >
+        {marcaCheia ? (
+          <PainelMarca
+            empilhado={!duasColunas}
+            chamada={chamada}
+            texto={texto}
+            chips={chips}
+          />
+        ) : null}
 
-      {/* O aviso sai do `ScrollView` e fecha a coluna: é o `.page-foot`, que
-          no mockup é `position:absolute; bottom:14px` justamente para **não**
-          participar da centralização do formulário. Dentro da rolagem ele ou
-          empurrava o cartão para cima (com `marginTop:auto`) ou terminava
-          solto logo abaixo dele. */}
-      <View style={styles.painelAuth}>
-        <ScrollView
-          style={styles.painelAuthRolagem}
-          contentContainerStyle={styles.painelAuthConteudo}
-          keyboardShouldPersistTaps="handled"
-        >
+        <View style={[styles.colunaAuth, duasColunas && styles.colunaAuthLado]}>
           <View style={styles.barraTopo}>
             <AlternarTema />
           </View>
 
           {!marcaCheia ? (
             <View style={styles.marcaCompacta}>
-              <Logo size={34} withWordmark tagline="bem-estar exploratório" />
+              <Logo size={34} withWordmark tagline="bem-estar exploratório" taglineEmLinha />
               <Text style={styles.marcaCompactaTexto}>{resumo}</Text>
               <WaveField height={48} opacity={0.4} amplitude={10} style={styles.ondaCompacta} />
             </View>
           ) : null}
 
           <View style={[styles.cartao, { maxWidth: larguraCartao }]}>{children}</View>
-        </ScrollView>
+        </View>
+      </ScrollView>
 
+      {/* O aviso fica fora da rolagem: é o `.page-foot`, que no mockup é
+          `position:absolute; bottom:14px` justamente para **não** participar
+          da centralização do formulário. O espaçador replica a proporção das
+          colunas para ele ficar centrado sob o formulário, e não sob a tela
+          inteira — sem precisar medir nada. */}
+      <View style={styles.rodapeLinha}>
+        <View style={duasColunas ? styles.espacadorMarca : styles.espacadorVazio} />
         <View style={styles.rodape}>
-          <Disclaimer placement="auth" />
+          {/* O respiro fica num filho: no pai ele entraria como base do flex e
+              roubaria 48px da fração da coluna, desalinhando o aviso do cartão. */}
+          <View style={styles.rodapeInterno}>
+            <Disclaimer placement="auth" />
+          </View>
         </View>
       </View>
     </View>
@@ -186,9 +204,11 @@ function PainelMarca({
         <Rect x="0" y="0" width="100%" height="100%" fill="url(#halo-b)" />
       </Svg>
 
+      {/* `.wordmark`: símbolo, nome e tagline **na mesma linha**. Estava
+          empilhado, o que engrossava o lockup e roubava altura da figura. */}
       <View style={styles.marcaTopo}>
         <Logo size={34} />
-        <View>
+        <View style={styles.marcaTextos}>
           <Text style={styles.marcaNome}>WaveAI</Text>
           <Text style={styles.marcaTagline}>BEM-ESTAR EXPLORATÓRIO</Text>
         </View>
@@ -228,7 +248,15 @@ const criarEstilos = (t: Theme) =>
       backgroundColor: t.colors.background,
       flex: 1,
     },
-    palcoLado: {
+    rolagem: {
+      flex: 1,
+    },
+    // `min-height:100vh` do `.stage`: o `flexGrow` faz o conteúdo ocupar a
+    // janela quando é curto, e crescer além dela quando não é.
+    conteudo: {
+      flexGrow: 1,
+    },
+    conteudoLado: {
       flexDirection: "row",
     },
 
@@ -250,16 +278,29 @@ const criarEstilos = (t: Theme) =>
       flexDirection: "row",
       gap: t.spacing.sm,
     },
+    marcaTextos: {
+      alignItems: "baseline",
+      flexDirection: "row",
+      flexShrink: 1,
+      flexWrap: "wrap",
+      // `.wordmark small{margin-left:6px}`.
+      gap: 6,
+    },
+    // `.wordmark{font-size:20px; font-weight:700; letter-spacing:-.01em}`.
     marcaNome: {
       ...t.typography.heading,
       color: P.text,
+      fontSize: 20,
       fontWeight: "700",
+      letterSpacing: -0.2,
     },
+    // `.wordmark small{font-size:12px; letter-spacing:.08em; font-weight:500}`.
     marcaTagline: {
       ...t.typography.caption,
       color: withAlpha(P.text, 0.55),
-      fontSize: 11,
-      letterSpacing: 1,
+      fontSize: 12,
+      fontWeight: "500",
+      letterSpacing: 0.96,
     },
     marcaCentro: {
       alignItems: "center",
@@ -325,18 +366,22 @@ const criarEstilos = (t: Theme) =>
     },
 
     // ---------- painel de autenticação ----------
-    painelAuth: {
-      backgroundColor: t.colors.background,
-      flex: 1,
-    },
-    painelAuthRolagem: {
-      flex: 1,
-    },
-    painelAuthConteudo: {
+    /**
+     * A coluna do formulário.
+     *
+     * `flex: 1` só vale na direção do contêiner: em linha ela divide a largura
+     * com a marca (1 contra 1,15, como o `minmax(0,1.15fr) minmax(0,1fr)` do
+     * mockup); empilhada, ela toma a altura que sobra e centra o cartão nela.
+     */
+    colunaAuth: {
       alignItems: "center",
+      backgroundColor: t.colors.background,
       flexGrow: 1,
       justifyContent: "center",
       padding: t.spacing.lg,
+    },
+    colunaAuthLado: {
+      flexBasis: 0,
     },
     barraTopo: {
       alignItems: "flex-end",
@@ -375,7 +420,23 @@ const criarEstilos = (t: Theme) =>
     },
     // `.page-foot{bottom:14px; left:0; right:0; padding:0 24px}` — a coluna
     // inteira, e não uma caixa de 480px encostada à esquerda.
+    rodapeLinha: {
+      backgroundColor: t.colors.background,
+      flexDirection: "row",
+    },
+    // As mesmas proporções das colunas: 1,15 para a marca, 1 para o formulário.
+    espacadorMarca: {
+      flex: 1.15,
+    },
+    espacadorVazio: {
+      flex: 0,
+    },
     rodape: {
+      flexBasis: 0,
+      flexGrow: 1,
+      minWidth: 0,
+    },
+    rodapeInterno: {
       paddingBottom: 14,
       paddingHorizontal: t.spacing.lg,
     },
