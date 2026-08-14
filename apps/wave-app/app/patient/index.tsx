@@ -345,7 +345,10 @@ export default function PatientHomeScreen() {
               <Panel title="Última sessão" eyebrow={carimbo(ultima.created_at)} grow>
                 {ultima.metrics?.relative_band_powers ? (
                   <>
-                    <BandStack relative={ultima.metrics.relative_band_powers} />
+                    <BandStack
+                      relative={ultima.metrics.relative_band_powers}
+                      tamanho="destaque"
+                    />
                     <BandLegend relative={ultima.metrics.relative_band_powers} />
                   </>
                 ) : null}

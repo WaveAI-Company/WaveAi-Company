@@ -1,5 +1,6 @@
-import { useMemo, useState } from "react";
-import { StyleSheet, Text, View, type LayoutChangeEvent } from "react-native";
+import { useMemo } from "react";
+import { StyleSheet, Text, View } from "react-native";
+import Svg, { Defs, LinearGradient, Line, Path, Stop } from "react-native-svg";
 
 import { useRoleAccent, useTheme, type Theme } from "../../theme";
 
@@ -31,35 +32,45 @@ const PAD_LEFT = 46;
 const PAD_RIGHT = 12;
 const PAD_TOP = 12;
 const PAD_BOTTOM = 24;
-const ESPESSURA = 2;
-const PONTO = 7;
-/** Sub-pontos por segmento ao suavizar: mais = curva mais lisa, mais Views. */
+/** `stroke-width:2.2` do mockup. */
+const ESPESSURA = 2.2;
+/** `r=3.4`, e `r=4.4` no ponto mais recente — o mockup destaca a última medida. */
+const PONTO = 3.4;
+const PONTO_ULTIMO = 4.4;
+/** Sub-pontos por segmento ao suavizar: mais = curva mais lisa. */
 const SUBDIV = 12;
+/**
+ * Lado do sistema de coordenadas interno do SVG.
+ *
+ * O desenho vive num quadrado virtual `V × V` que o `preserveAspectRatio="none"`
+ * estica até o retângulo do plot — **por isso o componente não mede nada**. O
+ * valor em si é arbitrário; 1000 dá resolução de sobra para o `toFixed(2)` dos
+ * caminhos.
+ */
+const V = 1000;
 
 type Pixel = { px: number; py: number };
 
 /**
  * Densifica a linha com uma spline **Catmull-Rom** (passa pelos pontos, sem
- * inventar picos). Trabalha em pixels e devolve muitos sub-pontos; os segmentos
- * retos entre eles ficam curtos o bastante para a linha parecer uma onda — sem
- * SVG, mantendo a abordagem de `View`s girados.
+ * inventar picos).
  */
 function suavizar(pts: Pixel[], subdiv: number): Pixel[] {
   if (pts.length < 3) return pts;
   const out: Pixel[] = [];
   const n = pts.length;
   for (let i = 0; i < n - 1; i += 1) {
-    const p0 = pts[i - 1] ?? pts[i];
+    const p0 = pts[Math.max(i - 1, 0)];
     const p1 = pts[i];
     const p2 = pts[i + 1];
-    const p3 = pts[i + 2] ?? pts[i + 1];
+    const p3 = pts[Math.min(i + 2, n - 1)];
     for (let s = 0; s < subdiv; s += 1) {
-      const tt = s / subdiv;
-      const t2 = tt * tt;
-      const t3 = t2 * tt;
+      const u = s / subdiv;
+      const u2 = u * u;
+      const u3 = u2 * u;
       const eixo = (a: number, b: number, c: number, d: number) =>
         0.5 *
-        (2 * b + (-a + c) * tt + (2 * a - 5 * b + 4 * c - d) * t2 + (-a + 3 * b - 3 * c + d) * t3);
+        (2 * b + (-a + c) * u + (2 * a - 5 * b + 4 * c - d) * u2 + (-a + 3 * b - 3 * c + d) * u3);
       out.push({
         px: eixo(p0.px, p1.px, p2.px, p3.px),
         py: eixo(p0.py, p1.py, p2.py, p3.py),
@@ -70,17 +81,37 @@ function suavizar(pts: Pixel[], subdiv: number): Pixel[] {
   return out;
 }
 
+/** `M x y L x y …` a partir dos pontos já em pixel. */
+function paraCaminho(pts: Pixel[]): string {
+  return pts
+    .map((p, i) => `${i === 0 ? "M" : "L"}${p.px.toFixed(2)} ${p.py.toFixed(2)}`)
+    .join(" ");
+}
+
 /**
- * Linha de tendência ao longo das sessões.
+ * Tendência de uma medida ao longo das sessões.
  *
- * Desenhada com `View`s, **sem dependência nativa** (ADR-0027, revisada): cada
- * segmento é um retângulo fino rotacionado entre dois pontos. Um gráfico de
- * linha simples não justifica arrastar um módulo nativo — que precisa ser
- * recompilado no app a cada mudança e virou impedimento concreto de build.
+ * **Em SVG (pente fino de UI, causa 8).** Foi desenhada com `View`s giradas
+ * entre a #17 e agora, quando o `react-native-svg` estava fora do projeto; a
+ * **ADR-0042 readotou** a dependência, e a **ADR-0027** já previa SVG
+ * exatamente aqui — "onde há geometria real (a linha de tendência)". Com
+ * `View`s não havia como pintar a **área sob a curva**, que é o que o mockup
+ * faz (`linearGradient` da cor da banda, de `.22` a `0`) e o que fazia o nosso
+ * parecer mais pobre lado a lado. De quebra, a linha inteira virou **um**
+ * `Path` no lugar de uma `View` por segmento — no ao vivo eram centenas.
+ *
+ * **E não mede mais a largura, o que o consertou.** Ele dependia de `onLayout`
+ * e ficava preso em `width === 0`: o cartão "Tendências rápidas" reservava
+ * 180px e não desenhava **nada**. O `WaveField` já registrava a mesma
+ * armadilha ("medir com `onLayout` daria 0 na montagem"). Agora a geometria
+ * vive num quadrado virtual que o `preserveAspectRatio="none"` estica até o
+ * retângulo do plot — a linha e os pontos ficam imunes à distorção por
+ * `vectorEffect="non-scaling-stroke"`, e os rótulos seguem como `Text` do RN,
+ * fora do SVG, para a fonte não esticar junto.
  *
  * Escala no eixo y é **automática com o mínimo e o máximo rotulados**: sem os
  * rótulos, uma variação minúscula pareceria dramática. A leitura do que a
- * curva significa não é feita aqui — é medida, não veredito.
+ * curva significa não é feita aqui — é medida, não veredito (ADR-0027).
  */
 export function TrendChart({
   data,
@@ -94,17 +125,11 @@ export function TrendChart({
   const t = useTheme();
   const papel = useRoleAccent();
   const styles = useMemo(() => criarEstilos(t), [t]);
-  const [width, setWidth] = useState(0);
 
   const cor = accent ?? papel.accent;
-  const aoMedir = (e: LayoutChangeEvent) => setWidth(e.nativeEvent.layout.width);
   const formatar = formatValue ?? ((v: number) => v.toFixed(2));
 
-  // Só desenha depois de medir a largura (o app roda em telas muito diferentes).
-  const pronto = width > 0 && data.length > 0;
-  if (!pronto) {
-    return <View style={[styles.wrapper, { height }]} onLayout={aoMedir} />;
-  }
+  if (data.length === 0) return <View style={[styles.wrapper, { height }]} />;
 
   const valores = data.map((d) => d.value);
   const bruteMin = Math.min(...valores);
@@ -114,35 +139,27 @@ export function TrendChart({
   const min = mesmoValor ? bruteMin - 0.01 : bruteMin;
   const max = mesmoValor ? bruteMax + 0.01 : bruteMax;
 
-  const plotW = Math.max(width - PAD_LEFT - PAD_RIGHT, 1);
+  /** Altura do retângulo do plot, em pixels — só os rótulos precisam dela. */
   const plotH = Math.max(height - PAD_TOP - PAD_BOTTOM, 1);
 
-  const x = (i: number) =>
-    PAD_LEFT + (data.length === 1 ? plotW / 2 : (i / (data.length - 1)) * plotW);
-  const y = (v: number) => PAD_TOP + plotH - ((v - min) / (max - min)) * plotH;
+  // Tudo em coordenadas do quadrado virtual: x pelo índice, y pelo valor.
+  const x = (i: number) => (data.length === 1 ? V / 2 : (i / (data.length - 1)) * V);
+  const y = (v: number) => V - ((v - min) / (max - min)) * V;
 
-  // Pontos em pixel; quando `smooth`, a spline densifica antes de virar
-  // segmentos, então cada retângulo fica curto e a linha parece uma onda.
   const pontosPixel: Pixel[] = data.map((d, i) => ({ px: x(i), py: y(d.value) }));
   const linha = smooth ? suavizar(pontosPixel, SUBDIV) : pontosPixel;
 
-  // Um retângulo por segmento: posicionado no ponto médio e girado para ligar
-  // os extremos. Rotação em RN é em torno do centro, então centralizar o
-  // retângulo no meio do segmento faz as pontas caírem exatamente nos pontos.
-  const segmentos = linha.slice(1).map((p2, i) => {
-    const { px: x1, py: y1 } = linha[i];
-    const { px: x2, py: y2 } = p2;
-    const comprimento = Math.hypot(x2 - x1, y2 - y1);
-    const angulo = (Math.atan2(y2 - y1, x2 - x1) * 180) / Math.PI;
-    return {
-      chave: `seg-${i}`,
-      // +0,5 no comprimento fecha micro-frestas entre sub-segmentos girados.
-      left: (x1 + x2) / 2 - (comprimento + 0.5) / 2,
-      top: (y1 + y2) / 2 - ESPESSURA / 2,
-      width: comprimento + 0.5,
-      angulo,
-    };
-  });
+  const caminho = paraCaminho(linha);
+  // A área fecha a linha contra a base do gráfico. Com um ponto só não há
+  // polígono a fechar, e o `Path` sairia degenerado.
+  const area =
+    linha.length > 1
+      ? `${caminho} L${linha[linha.length - 1].px.toFixed(2)} ${V} L${linha[0].px.toFixed(2)} ${V} Z`
+      : null;
+
+  // Um id por instância: dois gráficos na mesma tela (composição e alfa)
+  // compartilhariam o gradiente e o segundo herdaria a cor do primeiro.
+  const idGradiente = `trend-${cor.replace(/[^a-zA-Z0-9]/g, "")}-${Math.round(height)}`;
 
   const descricao =
     accessibilityLabel ??
@@ -153,65 +170,83 @@ export function TrendChart({
   return (
     <View
       style={[styles.wrapper, { height }]}
-      onLayout={aoMedir}
       accessible
       accessibilityRole="image"
       accessibilityLabel={descricao}
     >
-      {/* Linhas de base: máximo e mínimo, ambos rotulados. */}
-      {[max, min].map((valor) => (
-        <View
-          key={`grade-${valor}`}
-          style={[styles.grade, { left: PAD_LEFT, top: y(valor), width: plotW }]}
-        />
-      ))}
+      {/* O SVG ocupa exatamente o retângulo do plot; as margens ficam para os
+          rótulos, que são texto do RN e não escalam com ele. */}
+      <View style={styles.plot} aria-hidden>
+        <Svg width="100%" height="100%" viewBox={`0 0 ${V} ${V}`} preserveAspectRatio="none">
+          <Defs>
+            <LinearGradient id={idGradiente} x1="0" y1="0" x2="0" y2="1">
+              <Stop offset="0" stopColor={cor} stopOpacity={0.22} />
+              <Stop offset="1" stopColor={cor} stopOpacity={0} />
+            </LinearGradient>
+          </Defs>
+
+          {/* Linhas de base: máximo e mínimo, ambos rotulados. */}
+          {[max, min].map((valor) => (
+            <Line
+              key={`grade-${valor}`}
+              x1={0}
+              y1={y(valor)}
+              x2={V}
+              y2={y(valor)}
+              stroke={t.colors.border}
+              strokeWidth={1}
+              vectorEffect="non-scaling-stroke"
+            />
+          ))}
+
+          {area ? <Path d={area} fill={`url(#${idGradiente})`} /> : null}
+
+          <Path
+            d={caminho}
+            fill="none"
+            stroke={cor}
+            strokeWidth={ESPESSURA}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            vectorEffect="non-scaling-stroke"
+          />
+
+          {/* Cada ponto é um segmento de comprimento zero com ponta redonda:
+              um `Circle` viraria elipse no eixo esticado, este não. */}
+          {showDots
+            ? data.map((d, i) => (
+                <Line
+                  key={`ponto-${d.label}-${i}`}
+                  x1={x(i)}
+                  y1={y(d.value)}
+                  x2={x(i)}
+                  y2={y(d.value)}
+                  stroke={cor}
+                  strokeWidth={(i === data.length - 1 ? PONTO_ULTIMO : PONTO) * 2}
+                  strokeLinecap="round"
+                  vectorEffect="non-scaling-stroke"
+                />
+              ))
+            : null}
+        </Svg>
+      </View>
+
       {[max, min].map((valor) => (
         <Text
           key={`rotulo-${valor}`}
-          style={[styles.rotuloY, { top: y(valor) - 8, width: PAD_LEFT - 6 }]}
+          style={[styles.rotuloY, { top: PAD_TOP + (y(valor) / V) * plotH - 7 }]}
           numberOfLines={1}
         >
           {formatar(valor)}
         </Text>
       ))}
 
-      {segmentos.map((s) => (
-        <View
-          key={s.chave}
-          style={[
-            styles.segmento,
-            {
-              left: s.left,
-              top: s.top,
-              width: s.width,
-              backgroundColor: cor,
-              transform: [{ rotate: `${s.angulo}deg` }],
-            },
-          ]}
-        />
-      ))}
-
-      {showDots
-        ? data.map((d, i) => (
-            <View
-              key={`ponto-${d.label}-${i}`}
-              style={[
-                styles.ponto,
-                { left: x(i) - PONTO / 2, top: y(d.value) - PONTO / 2, backgroundColor: cor },
-              ]}
-            />
-          ))
-        : null}
-
       {/* Só as pontas do eixo x: mais que isso vira poluição em tela estreita. */}
-      <Text style={[styles.rotuloX, { left: PAD_LEFT }]} numberOfLines={1}>
+      <Text style={[styles.rotuloX, styles.rotuloXInicio]} numberOfLines={1}>
         {data[0].label}
       </Text>
       {data.length > 1 ? (
-        <Text
-          style={[styles.rotuloX, styles.rotuloXFim, { width: plotW, left: PAD_LEFT }]}
-          numberOfLines={1}
-        >
+        <Text style={[styles.rotuloX, styles.rotuloXFim]} numberOfLines={1}>
           {data[data.length - 1].label}
         </Text>
       ) : null}
@@ -226,38 +261,33 @@ const criarEstilos = (t: Theme) =>
       position: "relative",
       width: "100%",
     },
-    grade: {
-      backgroundColor: t.colors.border,
-      height: 1,
+    plot: {
+      bottom: PAD_BOTTOM,
+      left: PAD_LEFT,
       position: "absolute",
+      right: PAD_RIGHT,
+      top: PAD_TOP,
     },
     rotuloY: {
       ...t.typography.caption,
       color: t.colors.textSubtle,
-      fontSize: 11,
+      fontSize: 10.5,
       left: 0,
       position: "absolute",
       textAlign: "right",
-    },
-    segmento: {
-      borderRadius: ESPESSURA / 2,
-      height: ESPESSURA,
-      position: "absolute",
-    },
-    ponto: {
-      borderRadius: PONTO / 2,
-      height: PONTO,
-      position: "absolute",
-      width: PONTO,
+      width: PAD_LEFT - 6,
     },
     rotuloX: {
       ...t.typography.caption,
       bottom: 4,
       color: t.colors.textSubtle,
-      fontSize: 11,
+      fontSize: 10.5,
       position: "absolute",
     },
+    rotuloXInicio: {
+      left: PAD_LEFT,
+    },
     rotuloXFim: {
-      textAlign: "right",
+      right: PAD_RIGHT,
     },
   });

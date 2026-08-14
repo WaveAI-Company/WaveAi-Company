@@ -30,7 +30,7 @@ não do PDF.
 | 5 | `Disclaimer` solto (sem `textAlign`, sem ancoragem) + padding da tela | 11 | **feito** (#150) |
 | 6 | `AuthStage` 640–1099: painel da marca é irmão do `ScrollView` e tem `overflow:hidden` | 4 | aberto |
 | 7 | Cena da marca não reage ao ponteiro; ponto pula para o frame final | 3 | aberto |
-| 8 | `BandStack` 10px vs **14** (lista) e **22** (destaque) do mockup | 4 | aberto |
+| 8 | `BandStack` 10px vs **14** (lista) e **22** (destaque) do mockup | 4 | **feito** (#151) |
 | 9 | Navegação vestigial pré-casca (4 `NavAction` na home; tema+Sair na home do profissional) | 2 | aberto |
 | 10 | Áreas sem mockup ficaram sem sistema (panorama, faixas de aviso, assistir ao vivo) | 4 | parcial (#147 alinhou) |
 | 11 | Lockup da marca empilhado no auth | 2–4 | aberto |
@@ -70,8 +70,13 @@ Cada item é uma PR, sai de `main` e para no verde local.
    Levou junto os **três botões "Sair" de tela** (`doctor/index`,
    `doctor/profile`, `patient/profile`) — parte da causa 9, antecipada porque com
    o aviso ancorado no fim eles ficariam pendurados **depois** dele.
-3. **`BandStack` + gráficos** — 10 → 14 na lista e 22 no destaque; estilo do
-   "Tendências rápidas".
+3. ~~**`BandStack` + gráficos**~~ — **feito (#151)**. `BandStack` ganhou
+   `tamanho` (14/raio 4 na lista, 22/raio 6 no destaque); `BandBars` foi de 10
+   para **22** com raio 4, gap 14 e a tipografia do mockup (era a queixa da tela
+   ao vivo, não estava na fila); e o `TrendChart` foi para SVG com a área sob a
+   curva.
+   **Achado:** o `TrendChart` **não desenhava nada** desde que passou a depender
+   de `onLayout` — comprovado no baseline com `git stash`. Ver o gotcha 6 abaixo.
 4. **`AuthStage`** — marca dentro do `ScrollView` entre 640 e 1099 + lockup em linha
    + olho da senha no accent do papel (4 telas de auth).
 
@@ -119,6 +124,19 @@ Cada item é uma PR, sai de `main` e para no verde local.
    em coluna para esticar. Qualquer invólucro centralizador precisa trocar o
    `alignItems` por `alignSelf: "stretch"` abaixo de 768 px, ou o botão volta à
    largura do rótulo (medido: 203 px em vez de 261 px numa tela de 375 px).
+6. **`onLayout` devolve 0 e nunca mais dispara.** O `TrendChart` media a largura
+   assim e ficava preso em `width === 0`: o cartão "Tendências rápidas" reservava
+   180px e desenhava **nada**, em produção, sem erro no console. O `WaveField` já
+   trazia a mesma nota ("medir com `onLayout` daria 0 na montagem") e contornava
+   com `useWindowDimensions`. **Regra:** não medir para desenhar. Para geometria
+   que precisa acompanhar o container, use `viewBox` + `preserveAspectRatio="none"`
+   num `View` posicionado, com `vectorEffect="non-scaling-stroke"` na linha e o
+   truque do segmento de comprimento zero com `strokeLinecap="round"` nos pontos
+   (um `Circle` viraria elipse no eixo esticado). Texto **não** entra no SVG
+   esticado — a fonte esticaria junto.
+7. **Um `git stash` separa o seu bug do bug que já estava lá.** Antes de consertar
+   o que parece regressão sua, meça o baseline: os dois minutos evitam tanto
+   assumir culpa quanto declarar conserto do que não estava quebrado.
 
 ## Banco de dev para a varredura
 
