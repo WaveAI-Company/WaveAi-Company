@@ -92,7 +92,10 @@ export default function PatientLiveScreen() {
   const papel = useRoleAccent();
   const aparelhoAccent = useAccentFor("doctor");
   const styles = useMemo(() => criarEstilos(t), [t]);
-  const emColunas = useFaixa() === "largo";
+  const faixa = useFaixa();
+  const emColunas = faixa === "largo";
+  /** Tablet: o trilho vira linha e o trio vira duas colunas (`≤1199` do mockup). */
+  const emMeio = faixa === "medio";
 
   const [ativo, setAtivo] = useState(false);
   const [features, setFeatures] = useState<LiveFeatures | null>(null);
@@ -403,7 +406,9 @@ export default function PatientLiveScreen() {
               accent={papel.accent}
               paused={!ativo}
               scale={ativo ? 1 : 0.35}
-              height={emColunas ? 260 : 180}
+              // `.hero-inner{min-height:320px}`, e 260 abaixo de 1200 — a onda
+              // era o que cedia altura para o vazio que sobrava sob o botão.
+              height={emColunas ? 320 : 260}
             />
             <View style={styles.heroiChips}>
               <Chip
@@ -460,6 +465,7 @@ export default function PatientLiveScreen() {
                   />
                 </View>
               ) : null}
+              <View style={styles.controleEspaco} />
               {/* Este par segue o compartilhamento (ADR-0045) porque ele fica
                   longe do interruptor, lá embaixo no painel: enquanto era fixo,
                   ligar o compartilhamento deixava um cadeado no topo dizendo
@@ -502,10 +508,18 @@ export default function PatientLiveScreen() {
         </View>
 
         {/* ===== trilho: contato do sensor + eSense ===== */}
-        <View style={[styles.trilho, emColunas && styles.trilhoLateral]}>
+        <View
+          style={[
+            styles.trilho,
+            emColunas && styles.trilhoLateral,
+            emMeio && styles.trilhoDuplo,
+          ]}
+        >
+          <View style={emMeio ? styles.trilhoMetade : undefined}>
           <Panel
             title="Qualidade do sinal"
             headerAccessory={<InfoButton term="poor_signal" />}
+            grow
           >
             {contato && poorSignal !== null ? (
               <>
@@ -541,12 +555,15 @@ export default function PatientLiveScreen() {
               <LiveReadingConfidence poorSignal={poorSignal} accent={papel.accent} />
             ) : null}
           </Panel>
+          </View>
 
           {/* eSense (ADR-0034): complemento proprietário e não-validado, nunca
               fundamento. Cor neutra — nada de "bom/ruim". */}
+          <View style={emMeio ? styles.trilhoMetade : undefined}>
           <Panel
             title="eSense"
             headerAccessory={<Chip label="proprietário · não validado" variant="cautela" />}
+            grow
           >
             {esense && (esense.attention !== undefined || esense.meditation !== undefined) ? (
               <>
@@ -591,6 +608,7 @@ export default function PatientLiveScreen() {
               <InfoButton term="esense" />
             </View>
           </Panel>
+          </View>
         </View>
       </View>
 
@@ -623,10 +641,27 @@ export default function PatientLiveScreen() {
         </Panel>
       ) : null}
 
-      {/* ===== faixa inferior: bandas, sessão guiada e nota ===== */}
-      <View style={[styles.grade, emColunas && styles.gradeLinha]}>
+      {/* Gráfico ao vivo (P1-c): uma banda por vez, oscilando ao longo da
+          sessão. Alimentado pelas features do servidor — sem DSP no cliente.
+          **Linha inteira**: é a figura que mais ganha com largura, e era ela
+          que dividia espaço enquanto o alfa esticava sozinho. */}
+      {bandHistory.length > 0 ? (
+        <Panel title="Ondas ao vivo" headerAccessory={<InfoButton term="live_band_trend" />}>
+          <LiveBandTrend history={bandHistory} accent={papel.accent} />
+        </Panel>
+      ) : null}
+
+      {/**
+       * O trio do `.g-bands` — `1.35fr .9fr .9fr` no desktop, `1fr 1fr` no
+       * tablet com o primeiro ocupando as duas colunas, empilhado no celular.
+       *
+       * Os três são condicionais (sem captação não há "Sessão guiada" nem
+       * "Compartilhar"), e é por isso que a fila usa fração de largura em vez
+       * de três colunas fixas: uma grade rígida deixaria buracos.
+       */}
+      <View style={[styles.trio, emColunas && styles.trioLinha, emMeio && styles.trioMeio]}>
         {features?.relative_band_powers ? (
-          <View style={[styles.colunaHeroi, emColunas && styles.colunaHeroiLinha]}>
+          <View style={emColunas ? styles.trioLargo : emMeio ? styles.trioCheio : undefined}>
             <Panel
               title="Composição por banda"
               eyebrow="% do espectro · potência relativa"
@@ -642,56 +677,46 @@ export default function PatientLiveScreen() {
           </View>
         ) : null}
 
-        {/* Gráfico ao vivo (P1-c): uma banda por vez, oscilando ao longo da
-            sessão. Alimentado pelas features do servidor — sem DSP no cliente. */}
-        {bandHistory.length > 0 ? (
-          <View style={[styles.colunaHeroi, emColunas && styles.colunaHeroiLinha]}>
-            <Panel
-              title="Ondas ao vivo"
-              headerAccessory={<InfoButton term="live_band_trend" />}
-              grow
-            >
-              <LiveBandTrend history={bandHistory} accent={papel.accent} />
+        {/* Protocolo guiado olhos abertos/fechados (P4-c): contraste de estado
+            na mesma captação. Client-only — não persiste fase; contexto vai na
+            anotação (P2). Some ao encerrar (desmonta e limpa o timer). */}
+        {ativo ? (
+          <View style={emColunas ? styles.trioEstreito : emMeio ? styles.trioMetade : undefined}>
+            <Panel title="Sessão guiada" eyebrow="opcional" grow>
+              <GuidedProtocol
+                accent={papel.accent}
+                onPhaseChange={aoMudarFaseProtocolo}
+                embedded
+              />
+            </Panel>
+          </View>
+        ) : null}
+
+        {/* Compartilhamento ao vivo (ADR-0045): o aceite separado que o design
+            promete em quatro telas e não desenha em nenhuma. Só aparece com
+            sessão em andamento — compartilhar captação encerrada não significa
+            nada. A cópia diz o que a pessoa autoriza, sem prometer entrega. */}
+        {ativo && sessionId ? (
+          <View style={emColunas ? styles.trioEstreito : emMeio ? styles.trioMetade : undefined}>
+            <Panel title="Compartilhar ao vivo" eyebrow="opcional · só esta sessão" grow>
+              <Switch
+                value={compartilhando}
+                onChange={alternarCompartilhamento}
+                label="Deixar quem me acompanha ver esta captação"
+                description="Somente as medidas calculadas no servidor — nunca o sinal bruto."
+              />
+              <Text style={styles.notaPainel}>
+                {compartilhando
+                  ? "Quem você autorizou pode acompanhar esta sessão agora. Desligar interrompe na hora."
+                  : "Ninguém acompanha esta captação. A escolha vale só para esta sessão — a próxima começa desligada."}
+              </Text>
+              {erroCompartilhar ? (
+                <Text style={styles.notaPainel}>{erroCompartilhar}</Text>
+              ) : null}
             </Panel>
           </View>
         ) : null}
       </View>
-
-      {/* Compartilhamento ao vivo (ADR-0045): o aceite separado que o design
-          promete em quatro telas e não desenha em nenhuma. Só aparece com
-          sessão em andamento — compartilhar captação encerrada não significa
-          nada. A cópia diz o que a pessoa autoriza, sem prometer entrega. */}
-      {ativo && sessionId ? (
-        <Panel title="Compartilhar ao vivo" eyebrow="opcional · só esta sessão">
-          <Switch
-            value={compartilhando}
-            onChange={alternarCompartilhamento}
-            label="Deixar quem me acompanha ver esta captação"
-            description="Somente as medidas calculadas no servidor — nunca o sinal bruto."
-          />
-          <Text style={styles.notaPainel}>
-            {compartilhando
-              ? "Quem você autorizou pode acompanhar esta sessão agora. Desligar interrompe na hora."
-              : "Ninguém acompanha esta captação. A escolha vale só para esta sessão — a próxima começa desligada."}
-          </Text>
-          {erroCompartilhar ? (
-            <Text style={styles.notaPainel}>{erroCompartilhar}</Text>
-          ) : null}
-        </Panel>
-      ) : null}
-
-      {/* Protocolo guiado olhos abertos/fechados (P4-c): contraste de estado na
-          mesma captação. Client-only — não persiste fase; contexto vai na
-          anotação (P2). Some ao encerrar (desmonta e limpa o timer). */}
-      {ativo ? (
-        <Panel title="Sessão guiada" eyebrow="opcional">
-          <GuidedProtocol
-            accent={papel.accent}
-            onPhaseChange={aoMudarFaseProtocolo}
-            embedded
-          />
-        </Panel>
-      ) : null}
 
       {/* Preparação do sensor (P4-a): antes de captar, como conseguir bom
           contato — reduz "lixo entra, lixo sai". Some durante a captação e ao
@@ -856,6 +881,47 @@ const criarEstilos = (t: Theme) =>
       flexShrink: 0,
       width: larguras.trilhoLive,
     },
+    // `@media (max-width:1199px){.g-rail{flex-direction:row} .g-rail>.card{flex:1}}`
+    // — no tablet qualidade do sinal e eSense ficam lado a lado, em vez de
+    // quebrarem direto para um por linha.
+    trilhoDuplo: {
+      flexDirection: "row",
+    },
+    trilhoMetade: {
+      flex: 1,
+      minWidth: 0,
+    },
+
+    // ---------- o trio da faixa inferior (`.g-bands`) ----------
+    trio: {
+      gap: 20,
+    },
+    trioLinha: {
+      alignItems: "stretch",
+      flexDirection: "row",
+    },
+    trioMeio: {
+      alignItems: "stretch",
+      flexDirection: "row",
+      flexWrap: "wrap",
+    },
+    trioLargo: {
+      flex: 1.35,
+      minWidth: 0,
+    },
+    trioEstreito: {
+      flex: 0.9,
+      minWidth: 0,
+    },
+    // No tablet o primeiro card ocupa as duas colunas (`grid-column:1/-1`).
+    trioCheio: {
+      minWidth: "100%",
+    },
+    trioMetade: {
+      flexBasis: 0,
+      flexGrow: 1,
+      minWidth: 0,
+    },
     heroiChips: {
       flexDirection: "row",
       flexWrap: "wrap",
@@ -880,15 +946,33 @@ const criarEstilos = (t: Theme) =>
       color: t.colors.textMuted,
       fontSize: 14,
     },
+    /**
+     * `.hero-controls{padding:16px 20px; border-top:1px solid}` — o rodapé do
+     * cartão, e não uma linha solta no meio dele.
+     *
+     * `marginTop: "auto"` empurra o bloco para o fim do `Panel`: era daí que
+     * vinha o "espaço vazio sem sentido abaixo do botão" do pente fino — o
+     * respiro sobrava **depois** dos controles em vez de antes.
+     */
     controles: {
       alignItems: "center",
+      borderTopColor: t.colors.border,
+      borderTopWidth: 1,
       flexDirection: "row",
       flexWrap: "wrap",
       gap: t.spacing.sm,
+      marginTop: "auto",
+      paddingTop: t.spacing.md,
     },
+    // Largura de conteúdo, como o `.btn` do mockup: com `flexGrow` o botão
+    // atravessava o cartão inteiro.
     controlePrincipal: {
-      flexGrow: 1,
-      minWidth: 220,
+      alignSelf: "flex-start",
+    },
+    // O `.sp{flex:1}` do mockup: joga a nota do cadeado para a direita.
+    controleEspaco: {
+      flex: 1,
+      minWidth: 0,
     },
     controleNotaLinha: {
       alignItems: "center",
