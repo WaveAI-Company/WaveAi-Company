@@ -120,8 +120,17 @@ Cada item é uma PR, sai de `main` e para no verde local.
    **Achado no caminho:** os tiles tinham `flexBasis: 30%` e cabiam **três** por
    linha, então o quarto — o seletor de período — caía sozinho. O `.dash` é
    `repeat(4, …)`; passou a `22%`.
-9. **`doctor/index`** — alinhamento do search, avatar da última fila (flexWrap),
-   cartão estourando no celular, cartão clicável com hover.
+9. ~~**`doctor/index`**~~ — **feito (#157)**. Cartão inteiro clicável com o
+   hover do `.pcard` (sobe 2px, borda no accent); busca e botão encostados à
+   direita (`.page-top .sp{flex:1}`) e busca a 100% no celular; e o seletor de
+   tema saiu (pedido explícito do fundador — conferido antes que
+   `doctor/profile` já traz o mesmo seletor).
+   **Dois dos quatro pontos não se reproduziam mais** ao medir: o avatar da
+   última fila já estava alinhado (os espaçadores resolveram) e o cartão não
+   estoura no celular (`scrollWidth == clientWidth`). Corrigidos por fatias
+   anteriores.
+   **Fora de escopo:** "faltam informações nos cards" é a fatia 14 (contagens +
+   emenda à ADR-0037).
 10. **Limpeza da navegação vestigial** — os 4 `NavAction` da home do paciente e o
     seletor de tema da home do profissional. Os três "Sair" de tela já saíram
     na #150.
