@@ -10,9 +10,9 @@ import { Disclaimer } from "../../src/components/Disclaimer";
 import { NavAction } from "../../src/components/NavAction";
 import { Panel } from "../../src/components/Panel";
 import { PersonRow, PersonRowSkeleton } from "../../src/components/profile/PersonRow";
+import { AccountEditor } from "../../src/components/profile/AccountEditor";
 import { ProfileHeader } from "../../src/components/profile/ProfileHeader";
 import { ProfileSection } from "../../src/components/profile/ProfileSection";
-import { ReadOnlyField } from "../../src/components/profile/ReadOnlyField";
 import { ScreenContainer } from "../../src/components/ScreenContainer";
 import { ThemeSelector } from "../../src/components/ThemeSelector";
 import { dataCurta } from "../../src/format/date";
@@ -126,13 +126,7 @@ export default function DoctorProfileScreen() {
             </Text>
           </Panel>
 
-          <Panel title="Dados da conta" eyebrow="identificação">
-            {/* Mesma remoção do perfil do paciente: as rotas de editar nome,
-                trocar e-mail e alterar senha existem desde a P12, então a nota
-                que dizia o contrário deixou de ser verdade. */}
-            <ReadOnlyField label="Nome" value={user?.display_name ?? "—"} />
-            <ReadOnlyField label="E-mail" value={user?.email ?? "—"} />
-          </Panel>
+          <AccountEditor />
         </View>
 
         {/* ============ quem autoriza você ============ */}

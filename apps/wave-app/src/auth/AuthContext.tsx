@@ -71,6 +71,14 @@ type AuthState = {
     displayName: string;
   }): Promise<void>;
   signOut(): Promise<void>;
+  /**
+   * Relê `GET /auth/me` e atualiza quem está em memória.
+   *
+   * Depois de editar o cadastro, o contexto ficaria com o nome antigo — e ele
+   * alimenta a saudação, o cabeçalho do perfil e o avatar. Sem isto, a pessoa
+   * salva e a tela continua chamando-a pelo nome anterior.
+   */
+  recarregarUsuario(): Promise<void>;
 
   // -- verificação de e-mail (ADR-0044) --------------------------------
   /** Cadastro à espera do código, ou `null`. A tela `/verify-email` depende disto. */
@@ -180,6 +188,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const cancelarVerificacao = useCallback(() => setPendente(null), []);
 
+  const recarregarUsuario = useCallback(async () => {
+    setUser(await api.me());
+  }, []);
+
   const value = useMemo<AuthState>(
     () => ({
       user,
@@ -187,6 +199,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       signIn,
       signUp,
       signOut,
+      recarregarUsuario,
       // Só o e-mail atravessa: a senha guardada não tem por que estar ao
       // alcance de nenhuma tela.
       verificacaoPendente: pendente
