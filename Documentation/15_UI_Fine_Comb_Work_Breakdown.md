@@ -140,12 +140,16 @@ Cada item é uma PR, sai de `main` e para no verde local.
 
 11. **Reconcepção** das áreas sem mockup: assistir ao vivo, panorama do histórico,
     faixas de aviso da home.
-12. **Edição de conta no perfil** (B) — **parcial (#161: nome e senha)**. O
-    `AccountEditor` serve aos dois perfis; `POST /auth/password` devolve par de
-    tokens novo e o cliente **aceita** (sem isso a sessão cairia sozinha depois).
-    **Falta a troca de e-mail** (`POST /auth/email` + `/auth/email/confirm`):
-    dois passos, tela sem mockup, e a cópia não pode afirmar entrega nem
-    revelar se o endereço existe (ADR-0024 + ADR-0027).
+12. ~~**Edição de conta no perfil**~~ (B) — **feito (#161 nome e senha, #162
+    e-mail)**. O `AccountEditor` serve aos dois perfis.
+    A troca de e-mail ficou **dentro do painel**, sem rota nova: são dois campos
+    e um código, e sair do perfil para voltar seria mais navegação do que o
+    fluxo merece.
+    **A cópia é o cuidado principal** e obedece duas regras que apontam ao mesmo
+    lugar: anti-enumeração (ADR-0024) impede dizer "e-mail já em uso" — o
+    servidor responde igual nos dois casos — e honestidade visual (ADR-0027)
+    impede afirmar entrega. Daí *"se o endereço estiver livre, o código chega
+    nele em instantes"*, verdadeiro nos dois ramos.
 13. ~~**Selo de autorrelato no painel do profissional**~~ — **feito (#159)**.
     O `has_annotation` já vinha do servidor e a lista o ignorava: ela usava um
     `Panel` de título e sobrancelha, anterior ao porte, enquanto o histórico do

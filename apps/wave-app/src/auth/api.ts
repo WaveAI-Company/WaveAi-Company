@@ -246,3 +246,41 @@ export async function changePassword(
   });
   await aceitarTokens(tokens);
 }
+
+/**
+ * Pede a troca do endereço da conta. **Resposta uniforme** (ADR-0024): o
+ * servidor responde igual com o endereço livre ou ocupado, e é por isso que a
+ * tela não pode dizer "e-mail já em uso".
+ *
+ * O que acontece do outro lado: um aviso vai ao endereço **atual** de qualquer
+ * jeito (se dependesse do destino estar livre, a presença do aviso contaria se
+ * ele tem conta), e o código de 6 dígitos só sai se o destino estiver livre.
+ *
+ * A única exceção é pedir o **próprio** e-mail: aí o servidor responde 400
+ * explícito, porque isso não revela nada de terceiros.
+ */
+export async function requestEmailChange(
+  currentPassword: string,
+  newEmail: string,
+): Promise<void> {
+  await request("/auth/email", {
+    method: "POST",
+    auth: true,
+    body: { current_password: currentPassword, new_email: newEmail },
+  });
+}
+
+/**
+ * Confirma a troca com o código que chegou ao endereço **novo** — é ele que
+ * precisa provar posse, não o antigo.
+ *
+ * Não emite sessão: a credencial não mudou, então a sessão em curso continua
+ * valendo e o app só relê o `/auth/me`.
+ */
+export async function confirmEmailChange(code: string): Promise<void> {
+  await request("/auth/email/confirm", {
+    method: "POST",
+    auth: true,
+    body: { code },
+  });
+}
