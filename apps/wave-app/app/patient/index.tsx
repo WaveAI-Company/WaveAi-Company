@@ -12,7 +12,7 @@ import {
   type SessionResult,
 } from "../../src/api/results";
 import { useAuth } from "../../src/auth/AuthContext";
-import { capturaDisponivel, espectadorDisponivel } from "../../src/capture/availability";
+import { capturaDisponivel } from "../../src/capture/availability";
 import { Avatar } from "../../src/components/Avatar";
 import { Button } from "../../src/components/Button";
 import { Chip } from "../../src/components/Chip";
@@ -433,19 +433,16 @@ export default function PatientHomeScreen() {
 
       {/* Superfície por plataforma (P6-b): sem captação aqui (web de produção),
           "Estado ao vivo" não é função do produto — só histórico/tendências. */}
-      {capturaDisponivel() ? (
-        <NavAction label="Estado ao vivo" onPress={() => router.push("/patient/live")} />
-      ) : null}
-      {/* Espectador ao vivo (ADR-0039): acompanhar no navegador a captação do
-          celular. Web-only. */}
-      {espectadorDisponivel() ? (
-        <NavAction label="Assistir ao vivo" onPress={() => router.push("/patient/watch")} />
-      ) : null}
-      <NavAction
-        label="Ver histórico completo"
-        onPress={() => router.push("/patient/history")}
-      />
-      <NavAction label="Meu perfil" onPress={() => router.push("/patient/profile")} />
+      {/* A fila de "Estado ao vivo · Assistir ao vivo · Ver histórico completo ·
+          Meu perfil" saiu daqui (pente fino: "não fazem sentido existirem ali").
+          Ela é anterior à casca: os quatro destinos são itens da **sidebar**
+          desde a P6, e repeti-los no rodapé da home era a navegação de antes
+          sobrevivendo embaixo da navegação de agora.
+
+          O conteúdo continua levando a cada um: o herói tem "Iniciar sessão", o
+          cartão da última sessão tem "Ver no histórico" e o de acompanhamento
+          tem "Gerenciar no perfil". Só "Assistir ao vivo" passa a existir
+          exclusivamente na sidebar — que é onde o mockup o coloca. */}
 
       <Disclaimer />
     </ScreenContainer>
