@@ -21,7 +21,7 @@ from app.emails import (
 from app.main import app
 from app.models import CareLink, CareLinkEvent, CareLinkEventType, CareLinkStatus
 from fastapi.testclient import TestClient
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from .conftest import SENHA, registrar_conta
@@ -650,3 +650,103 @@ def test_email_da_contraparte_aparece_enquanto_pende_e_some_depois(
 
     assert paciente.vinculos()[0]["counterpart_email"] is None
     assert medico.vinculos()[0]["counterpart_email"] is None
+
+
+# -- contagens no cartão do profissional (emenda à ADR-0037, 2026-08-14) ---
+
+
+def _semear_sessao_com_nota(
+    db_session: Session, email: str, *, com_nota: bool
+) -> None:
+    """Uma sessão com `Result` para o paciente de `email`; opcionalmente com nota."""
+    from app.config import get_settings
+    from app.models import CaptureSession, SessionAnnotation, SessionStatus
+    from app.repositories.user import UserRepository
+    from app.security.crypto import get_metrics_cipher
+    from app.security.password import Argon2PasswordHasher
+    from app.services.results import ResultService
+
+    settings = get_settings()
+    cipher = get_metrics_cipher(settings)
+    hasher = Argon2PasswordHasher(memory_cost=8, time_cost=1, parallelism=1)
+    user = UserRepository(db_session, hasher).get_by_email(email)
+
+    sessao = CaptureSession(
+        patient_user_id=user.id,
+        device="simulador",
+        sample_rate=512,
+        status=SessionStatus.COMPLETED,
+    )
+    db_session.add(sessao)
+    db_session.flush()
+
+    ResultService(session=db_session, settings=settings, cipher=cipher).persistir(
+        patient=user,
+        session_id=sessao.id,
+        metrics={"engine_version": "teste", "rel_alpha": 0.3},
+    )
+    if com_nota:
+        db_session.add(
+            SessionAnnotation(
+                session_id=sessao.id,
+                patient_user_id=user.id,
+                note_encrypted=cipher.encrypt({"text": "nota sintética"}),
+            )
+        )
+    db_session.commit()
+
+
+def test_contagens_so_no_vinculo_ativo_e_so_para_o_medico(
+    medico: Ator, paciente: Ator, db_session: Session
+):
+    """Contagem é metadado do vínculo ativo — não do convite, não para o titular."""
+    medico.convidar(paciente)
+
+    pendente = medico.vinculos()[0]
+    assert pendente["session_count"] is None
+    assert pendente["annotation_count"] is None
+
+    paciente.post(f"/care-links/{pendente['id']}/accept")
+
+    # Guardar resultado exige consentimento (ADR-0026) — o gate roda antes.
+    paciente.post("/me/consent")
+    _semear_sessao_com_nota(db_session, paciente.email, com_nota=True)
+    _semear_sessao_com_nota(db_session, paciente.email, com_nota=False)
+
+    ativo = medico.vinculos()[0]
+    assert ativo["session_count"] == 2
+    assert ativo["annotation_count"] == 1
+
+    # O paciente vê o vínculo com o médico, e não números sobre si mesmo.
+    do_paciente = paciente.vinculos()[0]
+    assert do_paciente["session_count"] is None
+    assert do_paciente["annotation_count"] is None
+
+
+def test_contagem_nao_deixa_trilha_de_acesso(
+    medico: Ator, paciente: Ator, db_session: Session
+):
+    """O ponto central da emenda: `COUNT(*)` não é leitura, e não audita."""
+    from app.models.result import ResultAccessEvent
+
+    medico.convidar(paciente)
+    vinculo = medico.vinculos()[0]
+    paciente.post(f"/care-links/{vinculo['id']}/accept")
+    paciente.post("/me/consent")
+    _semear_sessao_com_nota(db_session, paciente.email, com_nota=True)
+
+    antes = db_session.scalar(
+        select(func.count(ResultAccessEvent.id)).where(
+            ResultAccessEvent.actor_user_id == uuid.UUID(medico.id)
+        )
+    )
+
+    for _ in range(3):
+        assert medico.vinculos()[0]["session_count"] == 1
+
+    depois = db_session.scalar(
+        select(func.count(ResultAccessEvent.id)).where(
+            ResultAccessEvent.actor_user_id == uuid.UUID(medico.id)
+        )
+    )
+    assert depois == antes

@@ -12,15 +12,18 @@ import uuid
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from ..config import Settings
+from ..models.annotation import SessionAnnotation
 from ..models.care_link import (
     CareLink,
     CareLinkEventType,
     CareLinkParty,
     CareLinkStatus,
 )
+from ..models.result import Result
 from ..models.user import User, UserRole
 from ..repositories.care_link import CareLinkRepository
 from ..repositories.user import UserRepository
@@ -269,6 +272,40 @@ class CareService:
         conteudo = self._cipher.decrypt(link.invite_message_encrypted)
         mensagem = conteudo.get("message")
         return str(mensagem) if mensagem else None
+
+    def contar_por_titular(self, ids: list[uuid.UUID]) -> dict[uuid.UUID, tuple[int, int]]:
+        """Quantas sessões e quantos autorrelatos cada titular tem.
+
+        **Metadado, não conteúdo** (emenda à ADR-0037 de 2026-08-14): é
+        `COUNT(*)` — nada é decifrado, nenhuma métrica ou texto sai do banco — e
+        **não gera evento de acesso**. Por isso mora aqui, e não no
+        `ResultService.listar`, que decifra e audita.
+
+        O limite é a contagem: qualquer valor **derivado do sinal** (alfa médio,
+        composição, qualidade) continua fora da lista e só existe no painel,
+        pela rota auditada.
+
+        Uma consulta para a lista inteira, e não uma por vínculo: com dezenas de
+        pessoas, o `N+1` apareceria na primeira tela cheia.
+        """
+        if not ids:
+            return {}
+
+        sessoes = dict(
+            self._session.execute(
+                select(Result.patient_user_id, func.count(Result.id))
+                .where(Result.patient_user_id.in_(ids))
+                .group_by(Result.patient_user_id)
+            ).all()
+        )
+        notas = dict(
+            self._session.execute(
+                select(SessionAnnotation.patient_user_id, func.count(SessionAnnotation.id))
+                .where(SessionAnnotation.patient_user_id.in_(ids))
+                .group_by(SessionAnnotation.patient_user_id)
+            ).all()
+        )
+        return {i: (int(sessoes.get(i, 0)), int(notas.get(i, 0))) for i in ids}
 
     def acesso_ativo(self, *, doctor: User, patient_id: uuid.UUID) -> CareLink | None:
         """Base do RBAC: devolve o vínculo **ativo**, ou `None`."""
