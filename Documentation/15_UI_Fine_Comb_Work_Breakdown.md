@@ -104,7 +104,13 @@ Cada item é uma PR, sai de `main` e para no verde local.
    **Ficou de fora, de propósito:** a *nova concepção* do cartão de alfa relativa
    — é desenho novo e vai para a onda 3. Enquanto isso ele fica em linha inteira,
    fora da disputa por espaço.
-7. **Histórico** — panorama e cartões que hoje ocupam 100%.
+7. ~~**Histórico**~~ — **feito (#155)**. Dos três pontos anotados, dois já
+   tinham saído: a faixa mais grossa dos cards de sessão na #151 e o estado
+   vazio na #149. Sobrava o **panorama**, que não tem mockup: virou grade
+   `1.4fr 1fr` (tendência e relatório na coluna larga, "Última sessão" e "Nota
+   de contexto" na estreita), `1fr 1fr` só na primeira linha no tablet.
+   Critério do arranjo: **quem ganha com largura** — gráfico e texto corrido
+   respiram; cartão compacto só esticava.
 8. **Painel do profissional** — mesmos vícios da home.
 9. **`doctor/index`** — alinhamento do search, avatar da última fila (flexWrap),
    cartão estourando no celular, cartão clicável com hover.
