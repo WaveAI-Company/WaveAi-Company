@@ -13,6 +13,7 @@ import { BandBars } from "./charts/BandBars";
 import { SignalQuality } from "./charts/SignalQuality";
 import { TrendChart, type TrendPoint } from "./charts/TrendChart";
 import { Panel } from "./Panel";
+import { SessionRow } from "./sessions/SessionRow";
 import { InfoButton } from "./InfoButton";
 
 type Props = {
@@ -134,22 +135,24 @@ export function SessionsDashboard({
       {showAllSessions && results.length > 1 ? (
         <>
           <Text style={styles.tituloLista}>Todas as sessões</Text>
-          {[...results].reverse().map((r) => {
-            const duracao = formatDuration(sessionDurationSeconds(r.metrics));
-            const alfa = r.metrics?.rel_alpha;
-            return (
-              <Panel
-                key={r.id}
-                title={`Sessão de ${formatDate(r.created_at)}`}
-                eyebrow={[
-                  duracao,
-                  typeof alfa === "number" ? `alfa ${formatPercent(alfa)}` : null,
-                ]
-                  .filter(Boolean)
-                  .join(" · ")}
-              />
-            );
-          })}
+          {/**
+           * `SessionRow`, e não o `Panel` de título e sobrancelha que estava
+           * aqui.
+           *
+           * Havia **duas** representações da mesma linha de sessão: esta, que é
+           * anterior ao porte, e a do design "Maré" (`sessoes.html`), que o
+           * histórico do paciente já usava. A daqui ignorava o
+           * `has_annotation` que o servidor manda desde a emenda à ADR-0037 —
+           * o painel do profissional recebia a informação de quais sessões têm
+           * autorrelato e não a mostrava.
+           *
+           * O selo diz que a nota **existe**; ler o texto continua sendo um ato
+           * à parte e auditado. Nenhuma leitura nova acontece por causa desta
+           * troca: o dado vem da mesma chamada que a tela já fazia.
+           */}
+          {[...results].reverse().map((r) => (
+            <SessionRow key={r.id} result={r} />
+          ))}
         </>
       ) : null}
     </View>
