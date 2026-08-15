@@ -31,7 +31,7 @@ não do PDF.
 | 6 | `AuthStage` 640–1099: painel da marca é irmão do `ScrollView` e tem `overflow:hidden` | 4 | **feito** (#152) |
 | 7 | Cena da marca não reage ao ponteiro; ponto pula para o frame final | 3 | aberto |
 | 8 | `BandStack` 10px vs **14** (lista) e **22** (destaque) do mockup | 4 | **feito** (#151) |
-| 9 | Navegação vestigial pré-casca (4 `NavAction` na home; tema+Sair na home do profissional) | 2 | aberto |
+| 9 | Navegação vestigial pré-casca (4 `NavAction` na home; tema+Sair na home do profissional) | 2 | **feito** (#150, #157, #158) |
 | 10 | Áreas sem mockup ficaram sem sistema (panorama, faixas de aviso, assistir ao vivo) | 4 | parcial (#147 alinhou) |
 | 11 | Lockup da marca empilhado no auth | 2–4 | **feito** (#152) |
 | 12 | Olho de revelar senha não segue o accent do papel | 2 | **feito** (#152) |
@@ -131,9 +131,10 @@ Cada item é uma PR, sai de `main` e para no verde local.
    anteriores.
    **Fora de escopo:** "faltam informações nos cards" é a fatia 14 (contagens +
    emenda à ADR-0037).
-10. **Limpeza da navegação vestigial** — os 4 `NavAction` da home do paciente e o
-    seletor de tema da home do profissional. Os três "Sair" de tela já saíram
-    na #150.
+10. ~~**Limpeza da navegação vestigial**~~ — **feito (#158)**. Os quatro
+    `NavAction` do rodapé da home do paciente saíram; o seletor de tema da home
+    do profissional saiu na #157 e os três "Sair" de tela na #150.
+    **Causa 9 fechada. Onda 2 fechada.**
 
 **Onda 3 — desenho novo e acoplar backend**
 
