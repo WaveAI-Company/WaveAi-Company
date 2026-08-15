@@ -143,8 +143,13 @@ Cada item é uma PR, sai de `main` e para no verde local.
 12. **Edição de conta no perfil** (B) — `PATCH /auth/me`, `POST /auth/email` +
     `/auth/email/confirm`, `POST /auth/password`; inclui a tela de troca de e-mail,
     que não tem mockup.
-13. **Selo de autorrelato no painel do profissional** (B) — `has_annotation` já vem
-    em `/patients/{id}/results`.
+13. ~~**Selo de autorrelato no painel do profissional**~~ — **feito (#159)**.
+    O `has_annotation` já vinha do servidor e a lista o ignorava: ela usava um
+    `Panel` de título e sobrancelha, anterior ao porte, enquanto o histórico do
+    paciente já usava o `SessionRow` do design. Trocado pelo `SessionRow`, o
+    que apaga a segunda representação da mesma linha de sessão.
+    Verificado contra a API: 14 sessões em 30 dias, **2** com `has_annotation`,
+    **2** selos na tela.
 14. **Contagens no cartão do profissional** + emenda à ADR-0037.
 
 ## Gotchas de verificação descobertos nesta frente
