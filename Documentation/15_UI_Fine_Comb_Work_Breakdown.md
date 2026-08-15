@@ -111,7 +111,15 @@ Cada item é uma PR, sai de `main` e para no verde local.
    de contexto" na estreita), `1fr 1fr` só na primeira linha no tablet.
    Critério do arranjo: **quem ganha com largura** — gráfico e texto corrido
    respiram; cartão compacto só esticava.
-8. **Painel do profissional** — mesmos vícios da home.
+8. ~~**Painel do profissional**~~ — **feito (#156)**. Os quatro cartões grandes
+   (alfa, composição, relatório, nota) ocupavam 100% e viraram **dois por
+   linha** no desktop — no mockup são `.g-alpha`/`.g-comp`/`.g-sum`/`.g-notes`
+   com `grid-column: span 2` dentro do `.dash` de quatro colunas. Abaixo de
+   1200 voltam à linha inteira, que também é o mockup (`span 2` de duas colunas
+   é a linha toda).
+   **Achado no caminho:** os tiles tinham `flexBasis: 30%` e cabiam **três** por
+   linha, então o quarto — o seletor de período — caía sozinho. O `.dash` é
+   `repeat(4, …)`; passou a `22%`.
 9. **`doctor/index`** — alinhamento do search, avatar da última fila (flexWrap),
    cartão estourando no celular, cartão clicável com hover.
 10. **Limpeza da navegação vestigial** — os 4 `NavAction` da home do paciente e o
