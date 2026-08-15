@@ -34,6 +34,14 @@ type Props = {
    * leitor procurar a diferença entre dois gráficos idênticos.
    */
   showTrend?: boolean;
+  /**
+   * Mostra o cartão "Última sessão".
+   *
+   * Existe para o **panorama do histórico** poder pôr a tendência e a última
+   * sessão em colunas diferentes: o gráfico ganha com largura, o cartão
+   * compacto não. Sem isso os dois viriam sempre colados, um sob o outro.
+   */
+  showLast?: boolean;
 };
 
 /**
@@ -50,6 +58,7 @@ export function SessionsDashboard({
   accent,
   showAllSessions = true,
   showTrend = true,
+  showLast = true,
 }: Props) {
   const t = useTheme();
   const papel = useRoleAccent();
@@ -75,6 +84,7 @@ export function SessionsDashboard({
         <Panel
           title="Tendência de alfa relativo"
           headerAccessory={<InfoButton term="rel_alpha" />}
+          grow
         >
           <Text style={styles.explicacao}>
             Fração da potência total do sinal na banda alfa (8–13 Hz), sessão a
@@ -85,9 +95,10 @@ export function SessionsDashboard({
         </Panel>
       ) : null}
 
-      {ultima ? (
+      {showLast && ultima ? (
         <Panel
           title="Última sessão"
+          grow
           eyebrow={[
             formatDate(ultima.created_at),
             formatDuration(sessionDurationSeconds(ultima.metrics)),

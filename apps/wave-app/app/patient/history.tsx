@@ -87,7 +87,10 @@ export default function PatientHistoryScreen() {
   const papel = useRoleAccent();
   const router = useRouter();
   const styles = useMemo(() => criarEstilos(t), [t]);
-  const emColunas = useFaixa() === "largo";
+  const faixa = useFaixa();
+  const emColunas = faixa === "largo";
+  /** No tablet só a primeira linha do panorama divide ao meio. */
+  const emMeio = faixa === "medio";
 
   const [results, setResults] = useState<SessionResult[]>([]);
   const [report, setReport] = useState<Report | null>(null);
@@ -295,20 +298,57 @@ export default function PatientHistoryScreen() {
             </View>
           </View>
 
-          {report && report.n_sessions > 0 ? <LongitudinalReport report={report} /> : null}
-          {/* A lista fica desligada: a linha do tempo acima já lista as
-              sessões, e duas listas iguais na mesma página são ruído. */}
-          <SessionsDashboard results={results} showAllSessions={false} />
+          {/**
+           * O panorama, depois da lista.
+           *
+           * Eram três blocos empilhados a 100% — "cards jogados", no pente
+           * fino. Esta área **não tem mockup**, então segue o padrão do
+           * sistema: as mesmas proporções `1.4fr 1fr` da home do paciente.
+           *
+           * O critério do arranjo é **quem ganha com largura**: a tendência é
+           * um gráfico e o relatório é texto corrido, e os dois respiram na
+           * coluna larga; "Última sessão" e "Nota de contexto" são cartões
+           * compactos que só esticavam sem motivo.
+           *
+           * No tablet o relatório volta à linha inteira: texto longo em meia
+           * coluna vira coluna de jornal.
+           */}
+          <View
+            style={[styles.panorama, (emColunas || emMeio) && styles.panoramaLinha]}
+          >
+            <View
+              style={emColunas ? styles.panoramaLargo : emMeio ? styles.panoramaMeio : undefined}
+            >
+              <SessionsDashboard results={results} showAllSessions={false} showLast={false} />
+            </View>
+            <View
+              style={
+                emColunas ? styles.panoramaEstreito : emMeio ? styles.panoramaMeio : undefined
+              }
+            >
+              <SessionsDashboard results={results} showAllSessions={false} showTrend={false} />
+            </View>
+          </View>
 
-          {/* Anotação de contexto (P2, ADR-0037) da sessão mais recente. */}
-          {(() => {
-            const alvo = maisRecente(results);
-            return alvo ? (
-              <Panel title="Nota de contexto" eyebrow="sessão mais recente">
-                <SessionAnnotation sessionId={alvo.session_id} mode="edit" embedded />
-              </Panel>
-            ) : null;
-          })()}
+          <View style={[styles.panorama, emColunas && styles.panoramaLinha]}>
+            {report && report.n_sessions > 0 ? (
+              <View style={emColunas ? styles.panoramaLargo : undefined}>
+                <LongitudinalReport report={report} />
+              </View>
+            ) : null}
+
+            {/* Anotação de contexto (P2, ADR-0037) da sessão mais recente. */}
+            {(() => {
+              const alvo = maisRecente(results);
+              return alvo ? (
+                <View style={emColunas ? styles.panoramaEstreito : undefined}>
+                  <Panel title="Nota de contexto" eyebrow="sessão mais recente" grow>
+                    <SessionAnnotation sessionId={alvo.session_id} mode="edit" embedded />
+                  </Panel>
+                </View>
+              ) : null;
+            })()}
+          </View>
         </>
       ) : null}
 
@@ -397,6 +437,29 @@ const criarEstilos = (t: Theme) =>
     // "sobreposição" do pente fino eram a mesma causa.
     colunaLinha: {
       flex: 1,
+    },
+    // ---------- panorama (área sem mockup) ----------
+    // Mesmas proporções da home do paciente: `1.4fr 1fr`, gap de 20.
+    panorama: {
+      gap: 20,
+    },
+    panoramaLinha: {
+      alignItems: "stretch",
+      flexDirection: "row",
+    },
+    panoramaLargo: {
+      flex: 1.4,
+      minWidth: 0,
+    },
+    panoramaEstreito: {
+      flex: 1,
+      minWidth: 0,
+    },
+    // No tablet a primeira linha divide ao meio; a segunda empilha, porque
+    // texto corrido em meia coluna vira coluna de jornal.
+    panoramaMeio: {
+      flex: 1,
+      minWidth: 0,
     },
     trilho: {
       gap: t.spacing.md,
