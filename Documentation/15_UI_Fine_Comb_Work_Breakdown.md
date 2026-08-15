@@ -24,7 +24,7 @@ não do PDF.
 | # | Causa | Telas | Estado |
 |---|---|---|---|
 | 1 | `Button` sem largura própria (o `.btn` do mockup é `inline-flex`; `.btn-block` é a exceção) | 7 + casca | **feito** (#145) |
-| 2 | Não existe grade de cartões — tudo empilha a 100% (`grid-template-areas` no mockup) | 5 | aberto |
+| 2 | Não existe grade de cartões — tudo empilha a 100% (`grid-template-areas` no mockup) | 5 | parcial (#153: home do paciente) |
 | 3 | Estado vazio sem padrão: 4 implementações inline + `StateView` só texto | 4 | **feito** (#149) |
 | 4 | Casca fora da especificação (iconbtn, avatar, role-chip, badge) | 11 | **feito** (#146) |
 | 5 | `Disclaimer` solto (sem `textAlign`, sem ancoragem) + padding da tela | 11 | **feito** (#150) |
@@ -86,7 +86,17 @@ Cada item é uma PR, sai de `main` e para no verde local.
 
 **Onda 2 — telas**
 
-5. **Grade da home do paciente** (`.home-grid`: `1.4fr 1fr` com áreas).
+5. ~~**Grade da home do paciente**~~ — **feito (#153)**. As três formas do
+   `.home-grid`, com **três árvores** e não uma: a ordem muda de faixa para
+   faixa e nenhum arranjo de `flexWrap` produz as duas com a mesma ordem de
+   filhos. Cruzar 1199 ou 767 **remonta os cartões** (gráficos piscam, a onda
+   reinicia); decisão do fundador em 2026-08-14, com o custo exposto — a pessoa
+   usa um aparelho por vez e nada digitado se perde nesta tela.
+   **Ausência registrada:** o cartão "Qualidade do sinal" da coluna direita
+   **não** foi portado — **(A) por regra + (E) lacuna de dado**. O `Result` não
+   tem "% de contato" (tem `signal_std`, `mains_power`, `mains_power_ratio`), e
+   o verde/amarelo do mockup exigiria o limiar de "sinal bom o suficiente" que é
+   a **Q-TEC-06, em aberto**. Reabrir isso é decisão de produto, não de UI.
 6. **Estado ao vivo** — trio de cartões lado a lado, cartão de sessão guiada,
    faixas mais grossas, tablet em 2 colunas.
 7. **Histórico** — panorama e cartões que hoje ocupam 100%.
