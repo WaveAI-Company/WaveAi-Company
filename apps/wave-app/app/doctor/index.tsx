@@ -75,12 +75,13 @@ function chave(texto: string): string {
  * lado a lado mas nunca confundidos: um convite pendente não concede acesso
  * nenhum (ADR-0024), e é por isso que o cartão pendente não tem "Abrir painel".
  *
- * **Os cartões não trazem números da pessoa** — nem contagem de sessões, nem
- * qualidade média, nem a linha de alfa que o mockup desenha. Ler os resultados
- * de um titular é um ato **auditado** (`ResultService.listar` grava um
- * `result_access_event` a cada leitura): carregar isso para todo mundo ao abrir
- * a lista encheria a trilha de acessos que ninguém pediu e esvaziaria o sentido
- * do registro. O acesso deliberado é abrir o painel da pessoa.
+ * **O cartão conta, o cartão não mede** (emenda à ADR-0037 de 2026-08-14). As
+ * contagens de sessões e de autorrelatos vêm do próprio `/care-links`, como
+ * `COUNT(*)`: nada é decifrado e nenhum evento de acesso é gravado. Já a
+ * qualidade média e a linha de alfa que o mockup desenha no cartão **continuam
+ * fora** — são valor derivado do sinal, e lê-los é ato auditado
+ * (`ResultService.listar` grava um `result_access_event`). O acesso deliberado
+ * é abrir o painel da pessoa.
  */
 export default function DoctorScreen() {
   const { user } = useAuth();
@@ -406,6 +407,19 @@ function CartaoPessoa({
           </View>
         </View>
 
+        {/* As `.stat` do `.pcard`. Contagem, nunca medida: número de sessões
+            não é nota de desempenho, e nada aqui vem do sinal. */}
+        <View style={styles.estatisticas}>
+          <View style={styles.estatistica}>
+            <Text style={styles.estatisticaRotulo}>Sessões</Text>
+            <Text style={styles.estatisticaValor}>{link.session_count ?? "—"}</Text>
+          </View>
+          <View style={styles.estatistica}>
+            <Text style={styles.estatisticaRotulo}>Autorrelatos</Text>
+            <Text style={styles.estatisticaValor}>{link.annotation_count ?? "—"}</Text>
+          </View>
+        </View>
+
         <Text style={styles.explicacao}>
           As medidas desta pessoa abrem no painel — e cada leitura fica registrada em
           trilha de acesso.
@@ -511,6 +525,28 @@ const criarEstilos = (t: Theme) =>
       flexDirection: "row",
       flexWrap: "wrap",
       gap: t.spacing.sm + 4,
+    },
+    // `.pcard .stats{grid-template-columns:1fr 1fr; gap:10px 16px}`.
+    estatisticas: {
+      flexDirection: "row",
+      gap: 16,
+    },
+    estatistica: {
+      flex: 1,
+      gap: 2,
+      minWidth: 0,
+    },
+    // `.stat .k{font-size:11.5px; color:var(--ink-3)}`.
+    estatisticaRotulo: {
+      ...t.typography.caption,
+      color: t.colors.textSubtle,
+      fontSize: 11.5,
+    },
+    // `.stat .v{font-size:15px; font-weight:650; font-variant-numeric:tabular-nums}`.
+    estatisticaValor: {
+      ...t.typography.bodyStrong,
+      color: t.colors.text,
+      fontVariant: ["tabular-nums"],
     },
     cabecaTextos: {
       flex: 1,
