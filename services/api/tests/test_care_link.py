@@ -660,9 +660,9 @@ def _semear_sessao_com_nota(
 ) -> None:
     """Uma sessão com `Result` para o paciente de `email`; opcionalmente com nota."""
     from app.config import get_settings
-    from app.security.crypto import get_metrics_cipher
     from app.models import CaptureSession, SessionAnnotation, SessionStatus
     from app.repositories.user import UserRepository
+    from app.security.crypto import get_metrics_cipher
     from app.security.password import Argon2PasswordHasher
     from app.services.results import ResultService
 
