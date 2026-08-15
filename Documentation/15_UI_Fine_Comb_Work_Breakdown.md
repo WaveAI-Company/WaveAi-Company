@@ -97,8 +97,13 @@ Cada item é uma PR, sai de `main` e para no verde local.
    tem "% de contato" (tem `signal_std`, `mains_power`, `mains_power_ratio`), e
    o verde/amarelo do mockup exigiria o limiar de "sinal bom o suficiente" que é
    a **Q-TEC-06, em aberto**. Reabrir isso é decisão de produto, não de UI.
-6. **Estado ao vivo** — trio de cartões lado a lado, cartão de sessão guiada,
-   faixas mais grossas, tablet em 2 colunas.
+6. ~~**Estado ao vivo**~~ — **feito (#154)**: rodapé do herói ancorado com borda
+   e botão de largura de conteúdo, onda de 320px, trilho em 2 colunas no tablet,
+   trio `1.35fr .9fr .9fr` (composição · sessão guiada · compartilhar) e "Ondas
+   ao vivo" em linha inteira. As faixas mais grossas já tinham saído na #151.
+   **Ficou de fora, de propósito:** a *nova concepção* do cartão de alfa relativa
+   — é desenho novo e vai para a onda 3. Enquanto isso ele fica em linha inteira,
+   fora da disputa por espaço.
 7. **Histórico** — panorama e cartões que hoje ocupam 100%.
 8. **Painel do profissional** — mesmos vícios da home.
 9. **`doctor/index`** — alinhamento do search, avatar da última fila (flexWrap),
@@ -156,6 +161,20 @@ Cada item é uma PR, sai de `main` e para no verde local.
 7. **Um `git stash` separa o seu bug do bug que já estava lá.** Antes de consertar
    o que parece regressão sua, meça o baseline: os dois minutos evitam tanto
    assumir culpa quanto declarar conserto do que não estava quebrado.
+
+## Bugs funcionais anotados no pente fino (não são de layout)
+
+Vieram da varredura da tela **Estado ao vivo** e **não** foram tocados pelas
+fatias de UI. Cada um precisa de investigação própria:
+
+1. **Compartilhar ao vivo resetava o botão** e aparentava não funcionar.
+2. **Encerrar e iniciar de novo dava erro**, exigindo recarregar a página.
+3. **Reduzir a janela para o tamanho de celular — ou trocar de aba — parava a
+   captação.** Descartada a hipótese mais óbvia: a tela ao vivo usa **uma árvore
+   só** com estilos condicionais, então não é remontagem por faixa. Resta
+   investigar o ciclo de vida do stream (visibilidade da aba, `StreamSession`).
+
+O fundador suspeita que 1 e 2 possam ser do simulador; 3 vale para os dois casos.
 
 ## Banco de dev para a varredura
 
