@@ -40,10 +40,16 @@ router = APIRouter(tags=["care-links"])
 SOLICITACAO_REGISTRADA = {"detail": "solicitacao registrada"}
 
 
-def _para_resposta(link: CareLink, eu: User, care: CareService) -> CareLinkResponse:
+def _para_resposta(
+    link: CareLink,
+    eu: User,
+    care: CareService,
+    contagens: dict[uuid.UUID, tuple[int, int]] | None = None,
+) -> CareLinkResponse:
     """Mostra a contraparte — cada lado vê o outro, nunca dados de terceiros."""
     contraparte = link.patient if eu.role is UserRole.DOCTOR else link.doctor
     perfil = contraparte.patient_profile or contraparte.doctor_profile
+    contagem = (contagens or {}).get(link.patient_user_id)
     return CareLinkResponse(
         id=link.id,
         status=link.status,
@@ -62,6 +68,10 @@ def _para_resposta(link: CareLink, eu: User, care: CareService) -> CareLinkRespo
         message=care.mensagem_do_convite(link),
         created_at=link.created_at,
         consented_at=link.consented_at,
+        #: Só chega preenchido para o médico, e só em vínculo ativo — quem monta
+        #: o dicionário é a rota da lista.
+        session_count=contagem[0] if contagem else None,
+        annotation_count=contagem[1] if contagem else None,
     )
 
 
@@ -121,8 +131,25 @@ def listar_vinculos(
     user: User = Depends(get_current_user),
     care: CareService = Depends(get_care_service),
 ) -> list[CareLinkResponse]:
-    """Vínculos vivos do usuário (médico vê pacientes; paciente vê médicos)."""
-    return [_para_resposta(link, user, care) for link in care.listar(user)]
+    """Vínculos vivos do usuário (médico vê pacientes; paciente vê médicos).
+
+    Para o **médico**, cada vínculo ativo leva as contagens do titular
+    (emenda à ADR-0037 de 2026-08-14): `COUNT(*)` de sessões e de autorrelatos,
+    sem decifrar nada e **sem gerar evento de acesso**. Vínculo pendente não
+    recebe contagem — convite não concede acesso (ADR-0024).
+
+    O paciente não recebe contagem nenhuma: ele veria números **sobre si
+    mesmo** vindos da lista de quem o acompanha, o que não é informação sobre o
+    vínculo e ele já tem no próprio histórico.
+    """
+    links = care.listar(user)
+    contagens: dict[uuid.UUID, tuple[int, int]] = {}
+    if user.role is UserRole.DOCTOR:
+        ativos = [
+            link.patient_user_id for link in links if link.status is CareLinkStatus.ACTIVE
+        ]
+        contagens = care.contar_por_titular(ativos)
+    return [_para_resposta(link, user, care, contagens) for link in links]
 
 
 @router.post("/care-links/{care_link_id}/accept", response_model=CareLinkResponse)

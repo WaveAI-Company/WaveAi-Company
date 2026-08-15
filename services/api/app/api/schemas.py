@@ -322,6 +322,16 @@ class CareLinkResponse(BaseModel):
     message: str | None = None
     created_at: datetime
     consented_at: datetime | None
+    #: Quantas sessões e quantos autorrelatos o titular tem — **só em vínculo
+    #: `active`** (emenda à ADR-0037 de 2026-08-14).
+    #:
+    #: É `COUNT(*)`: nada é decifrado e **nenhum evento de acesso é gravado**.
+    #: O limite é a contagem — qualquer valor derivado do sinal (alfa médio,
+    #: composição, qualidade) continua só no painel, pela rota auditada.
+    #:
+    #: `None` no vínculo pendente: convite não concede acesso a nada (ADR-0024).
+    session_count: int | None = None
+    annotation_count: int | None = None
 
 
 class LiveSharingRequest(BaseModel):
