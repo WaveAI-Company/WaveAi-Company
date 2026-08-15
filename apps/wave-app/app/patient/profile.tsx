@@ -13,9 +13,9 @@ import { Disclaimer } from "../../src/components/Disclaimer";
 import { NavAction } from "../../src/components/NavAction";
 import { Panel } from "../../src/components/Panel";
 import { PersonRow, PersonRowSkeleton } from "../../src/components/profile/PersonRow";
+import { AccountEditor } from "../../src/components/profile/AccountEditor";
 import { ProfileHeader } from "../../src/components/profile/ProfileHeader";
 import { ProfileSection } from "../../src/components/profile/ProfileSection";
-import { ReadOnlyField } from "../../src/components/profile/ReadOnlyField";
 import { ScreenContainer } from "../../src/components/ScreenContainer";
 import { ThemeSelector } from "../../src/components/ThemeSelector";
 import {
@@ -36,9 +36,10 @@ import {
  * consentimento, vê quem autorizou e pode **revogar** o acesso a qualquer
  * momento (efeito imediato). Convites pendentes e o termo têm telas próprias.
  *
- * "Dados da conta" é **leitura**: a API só expõe `GET /auth/me` — não há troca
- * de nome, e-mail ou senha. Desenhar o campo editável e o botão "Salvar" do
- * mockup seria oferecer uma ação que não acontece.
+ * "Dados da conta" **edita** desde a P13: nome e senha vão pelo `AccountEditor`,
+ * compartilhado com o perfil do profissional. O **e-mail** segue em leitura —
+ * trocá-lo é um fluxo de dois passos, com código no endereço novo, e ganha tela
+ * própria.
  */
 export default function PatientProfileScreen() {
   const { user } = useAuth();
@@ -125,16 +126,7 @@ export default function PatientProfileScreen() {
             </Text>
           </Panel>
 
-          <Panel title="Dados da conta" eyebrow="identificação">
-            {/* A nota que ficava aqui dizia que editar nome, e-mail e senha
-                "ainda não existem no servidor". As três rotas existem desde a
-                P12 (`PATCH /auth/me`, `POST /auth/email` + `/auth/email/confirm`,
-                `POST /auth/password`), então a frase virou mentira. Sai sem
-                substituto: prometer "em breve" seria trocar uma afirmação falsa
-                por uma promessa. Os campos acoplam na fatia de edição. */}
-            <ReadOnlyField label="Nome" value={user?.display_name ?? "—"} />
-            <ReadOnlyField label="E-mail" value={user?.email ?? "—"} />
-          </Panel>
+          <AccountEditor />
         </View>
 
         {/* ============ quem me acompanha ============ */}

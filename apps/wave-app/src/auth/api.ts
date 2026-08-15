@@ -212,3 +212,37 @@ export async function logout(): Promise<void> {
 export async function me(): Promise<AuthUser> {
   return request<AuthUser>("/auth/me", { auth: true });
 }
+
+/** Edita o próprio cadastro. Só o nome de exibição — papel e e-mail não. */
+export async function updateDisplayName(displayName: string): Promise<AuthUser> {
+  return request<AuthUser>("/auth/me", {
+    method: "PATCH",
+    auth: true,
+    body: { display_name: displayName },
+  });
+}
+
+/**
+ * Troca a senha do titular.
+ *
+ * **Aceita os tokens que a resposta traz.** A rota devolve um par novo porque
+ * trocar a senha derruba as outras sessões; sem `aceitarTokens`, o app seguiria
+ * com o token antigo e cairia sozinho mais tarde — falha silenciosa e difícil
+ * de ligar à causa.
+ *
+ * A senha **atual** vai como está: é conferência contra o hash, não senha
+ * nascendo, e submetê-la à regra de força travaria quem tem senha legada.
+ */
+export async function changePassword(
+  currentPassword: string,
+  newPassword: string,
+): Promise<void> {
+  // `client` é **query param** nesta rota (no login ele vai no corpo): é ele
+  // que decide se o refresh volta em cookie ou no corpo.
+  const tokens = await request<TokenResponse>(`/auth/password?client=${CLIENT}`, {
+    method: "POST",
+    auth: true,
+    body: { current_password: currentPassword, new_password: newPassword },
+  });
+  await aceitarTokens(tokens);
+}
