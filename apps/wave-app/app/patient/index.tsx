@@ -1,5 +1,5 @@
 import { useFocusEffect, useRouter } from "expo-router";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useState, type ReactNode } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
 import { listCareLinks, listPendingInvites, type CareLink } from "../../src/api/care";
@@ -33,6 +33,7 @@ import {
   useFaixa,
   useRoleAccent,
   useTheme,
+  type FaixaLargura,
   type Theme,
 } from "../../src/theme";
 
@@ -165,14 +166,10 @@ export default function PatientHomeScreen() {
         <Skeleton width={280} height={32} />
         <Skeleton width={190} height={14} />
         <Text style={styles.carregandoNota}>Sincronizando suas sessões com o servidor…</Text>
-        <View style={[styles.grade, emColunas && styles.gradeLinha]}>
-          <View
-            style={[
-              styles.coluna,
-              emColunas && styles.colunaLinha,
-              faixa === "largo" && styles.colunaPrincipalLarga,
-            ]}
-          >
+        {/* O esqueleto imita a primeira linha da grade: mesmas proporções, para
+            a tela não saltar quando o conteúdo real chega. */}
+        <View style={emColunas ? styles.gradeLinha : styles.grade}>
+          <View style={emColunas ? styles.celulaLarga : undefined}>
             <Panel>
               <Skeleton width="60%" height={22} />
               <Skeleton width="85%" height={14} />
@@ -180,13 +177,7 @@ export default function PatientHomeScreen() {
               <Skeleton width={160} height={44} radius={t.radius.md} />
             </Panel>
           </View>
-          <View
-            style={[
-              styles.coluna,
-              emColunas && styles.colunaLinha,
-              faixa === "largo" && styles.colunaLateralLarga,
-            ]}
-          >
+          <View style={emColunas ? styles.celulaEstreita : undefined}>
             <Panel>
               <Skeleton width="45%" height={18} />
               <Skeleton width="100%" height={22} radius={6} />
@@ -198,6 +189,141 @@ export default function PatientHomeScreen() {
       </ScreenContainer>
     );
   }
+
+  /**
+   * As quatro células da grade, montadas antes do `return`.
+   *
+   * Ficam em variáveis porque a **ordem** delas muda entre as faixas — no
+   * mockup a linha 2 é "trend right" no desktop e "last right" no tablet, com
+   * o "trend" descendo para uma terceira linha. Descrever isso como três
+   * árvores é o que mantém cada arranjo fiel; montá-las aqui evita repetir o
+   * conteúdo três vezes.
+   */
+  const celulas: CelulasHome = {
+    heroi: (
+      <Panel grow>
+        <Text style={styles.heroiTitulo}>Um bom momento para uma nova onda?</Text>
+        <Text style={styles.heroiTexto}>
+          A sessão guiada leva 2 minutos — 60 s de olhos abertos, 60 s de olhos fechados,
+          com guia por voz. O alfa costuma contar uma boa história.
+        </Text>
+        {capturaDisponivel() ? (
+          <Button
+            label="Iniciar sessão"
+            onPress={() => router.push("/patient/live")}
+            accent={papel.accent}
+          />
+        ) : (
+          <Text style={styles.heroiNota}>
+            A captação acontece no app do celular. Por aqui você acompanha histórico e
+            tendências.
+          </Text>
+        )}
+        <WaveField height={90} opacity={0.4} amplitude={12} />
+      </Panel>
+    ),
+
+    ultima: ultima ? (
+      <Panel title="Última sessão" eyebrow={carimbo(ultima.created_at)} grow>
+        {ultima.metrics?.relative_band_powers ? (
+          <>
+            <BandStack relative={ultima.metrics.relative_band_powers} tamanho="destaque" />
+            <BandLegend relative={ultima.metrics.relative_band_powers} />
+          </>
+        ) : null}
+
+        {typeof ultima.metrics?.rel_alpha === "number" ? (
+          <View style={styles.alfaLinha}>
+            <Text style={styles.alfaValor}>{formatPercent(ultima.metrics.rel_alpha, 0)}</Text>
+            <Text style={styles.alfaUnidade}>de alfa no espectro — sem valência</Text>
+            <InfoButton term="rel_alpha" accent={papel.accent} />
+          </View>
+        ) : null}
+
+        <Text style={styles.ultimaMeta}>
+          {[
+            formatDuration(sessionDurationSeconds(ultima.metrics)),
+            ultima.engine_version ? `motor ${ultima.engine_version}` : null,
+          ]
+            .filter(Boolean)
+            .join(" · ")}
+        </Text>
+
+        <NavAction
+          label="Ver no histórico"
+          onPress={() => router.push("/patient/history")}
+          tone="neutral"
+        />
+      </Panel>
+    ) : null,
+
+    tendencias:
+      tendenciaAlfa.length > 1 || colunas.length > 1 ? (
+        <Panel
+          title="Tendências rápidas"
+          eyebrow={`últimas ${recentes.length} sessões`}
+          headerAccessory={<InfoButton term="trend_direction" />}
+          grow
+        >
+          {tendenciaAlfa.length > 1 ? (
+            <>
+              <Text style={styles.figuraLegenda}>Alfa · % do espectro por sessão</Text>
+              <TrendChart
+                data={tendenciaAlfa}
+                accent={t.colors.bandAlpha}
+                formatValue={(v) => formatPercent(v, 0)}
+              />
+            </>
+          ) : null}
+
+          {colunas.length > 1 ? (
+            <>
+              <Text style={styles.figuraLegenda}>Composição por banda · % por sessão</Text>
+              <BandColumns columns={colunas} />
+              <BandLegend relative={ultima?.metrics?.relative_band_powers ?? {}} />
+            </>
+          ) : null}
+
+          <Text style={styles.nota}>
+            Bandas sem valência — nenhuma é “boa” ou “ruim”. O interessante é como a
+            composição se move junto com o seu contexto.
+          </Text>
+        </Panel>
+      ) : null,
+
+    /**
+     * A coluna direita do mockup tem **dois** cartões; aqui vai um.
+     *
+     * O "Qualidade do sinal" (a média de contato com barras verdes e amarelas)
+     * não foi portado, e não é esquecimento: o nosso `Result` não tem "% de
+     * contato" — tem `signal_std`, `mains_power` e `mains_power_ratio` — e a
+     * faixa de verde/amarelo dependeria de um limiar de "sinal bom o
+     * suficiente" que é a **Q-TEC-06, em aberto**. Ver `Documentation/15`.
+     */
+    acompanha:
+      acompanhantes.length > 0 ? (
+        <Panel title="Quem me acompanha" eyebrow="autorização sua" grow>
+          {acompanhantes.map((v) => (
+            <View key={v.id} style={styles.acompanhante}>
+              <Avatar name={v.counterpart_display_name} tone={t.colors.accentDoctorText} />
+              <View style={styles.acompanhanteTextos}>
+                <Text style={styles.acompanhanteNome}>
+                  {v.counterpart_display_name ?? "Profissional de bem-estar"}
+                </Text>
+                <Text style={styles.acompanhanteNota}>
+                  profissional de bem-estar · vê suas medidas e notas
+                </Text>
+              </View>
+            </View>
+          ))}
+          <NavAction
+            label="Gerenciar no perfil"
+            onPress={() => router.push("/patient/profile")}
+            tone="neutral"
+          />
+        </Panel>
+      ) : null,
+  };
 
   return (
     <ScreenContainer largura="app">
@@ -302,145 +428,8 @@ export default function PatientHomeScreen() {
         </EmptyState>
       ) : null}
 
-      {/* ===== herói + última sessão ===== */}
-      {sessoes.length > 0 ? (
-        <View style={[styles.grade, emColunas && styles.gradeLinha]}>
-          <View
-            style={[
-              styles.coluna,
-              emColunas && styles.colunaLinha,
-              faixa === "largo" && styles.colunaPrincipalLarga,
-            ]}
-          >
-            <Panel grow>
-              <Text style={styles.heroiTitulo}>Um bom momento para uma nova onda?</Text>
-              <Text style={styles.heroiTexto}>
-                A sessão guiada leva 2 minutos — 60 s de olhos abertos, 60 s de olhos
-                fechados, com guia por voz. O alfa costuma contar uma boa história.
-              </Text>
-              {capturaDisponivel() ? (
-                <Button
-                  label="Iniciar sessão"
-                  onPress={() => router.push("/patient/live")}
-                  accent={papel.accent}
-                />
-              ) : (
-                <Text style={styles.heroiNota}>
-                  A captação acontece no app do celular. Por aqui você acompanha histórico e
-                  tendências.
-                </Text>
-              )}
-              <WaveField height={90} opacity={0.4} amplitude={12} />
-            </Panel>
-          </View>
-
-          {ultima ? (
-            <View
-            style={[
-              styles.coluna,
-              emColunas && styles.colunaLinha,
-              faixa === "largo" && styles.colunaLateralLarga,
-            ]}
-          >
-              <Panel title="Última sessão" eyebrow={carimbo(ultima.created_at)} grow>
-                {ultima.metrics?.relative_band_powers ? (
-                  <>
-                    <BandStack
-                      relative={ultima.metrics.relative_band_powers}
-                      tamanho="destaque"
-                    />
-                    <BandLegend relative={ultima.metrics.relative_band_powers} />
-                  </>
-                ) : null}
-
-                {typeof ultima.metrics?.rel_alpha === "number" ? (
-                  <View style={styles.alfaLinha}>
-                    <Text style={styles.alfaValor}>
-                      {formatPercent(ultima.metrics.rel_alpha, 0)}
-                    </Text>
-                    <Text style={styles.alfaUnidade}>
-                      de alfa no espectro — sem valência
-                    </Text>
-                    <InfoButton term="rel_alpha" accent={papel.accent} />
-                  </View>
-                ) : null}
-
-                <Text style={styles.ultimaMeta}>
-                  {[
-                    formatDuration(sessionDurationSeconds(ultima.metrics)),
-                    ultima.engine_version ? `motor ${ultima.engine_version}` : null,
-                  ]
-                    .filter(Boolean)
-                    .join(" · ")}
-                </Text>
-
-                <NavAction
-                  label="Ver no histórico"
-                  onPress={() => router.push("/patient/history")}
-                  tone="neutral"
-                />
-              </Panel>
-            </View>
-          ) : null}
-        </View>
-      ) : null}
-
-      {/* ===== tendências rápidas ===== */}
-      {tendenciaAlfa.length > 1 || colunas.length > 1 ? (
-        <Panel
-          title="Tendências rápidas"
-          eyebrow={`últimas ${recentes.length} sessões`}
-          headerAccessory={<InfoButton term="trend_direction" />}
-        >
-          {tendenciaAlfa.length > 1 ? (
-            <>
-              <Text style={styles.figuraLegenda}>Alfa · % do espectro por sessão</Text>
-              <TrendChart
-                data={tendenciaAlfa}
-                accent={t.colors.bandAlpha}
-                formatValue={(v) => formatPercent(v, 0)}
-              />
-            </>
-          ) : null}
-
-          {colunas.length > 1 ? (
-            <>
-              <Text style={styles.figuraLegenda}>Composição por banda · % por sessão</Text>
-              <BandColumns columns={colunas} />
-              <BandLegend relative={ultima?.metrics?.relative_band_powers ?? {}} />
-            </>
-          ) : null}
-
-          <Text style={styles.nota}>
-            Bandas sem valência — nenhuma é “boa” ou “ruim”. O interessante é como a
-            composição se move junto com o seu contexto.
-          </Text>
-        </Panel>
-      ) : null}
-
-      {/* ===== quem acompanha ===== */}
-      {acompanhantes.length > 0 ? (
-        <Panel title="Quem me acompanha" eyebrow="autorização sua">
-          {acompanhantes.map((v) => (
-            <View key={v.id} style={styles.acompanhante}>
-              <Avatar name={v.counterpart_display_name} tone={t.colors.accentDoctorText} />
-              <View style={styles.acompanhanteTextos}>
-                <Text style={styles.acompanhanteNome}>
-                  {v.counterpart_display_name ?? "Profissional de bem-estar"}
-                </Text>
-                <Text style={styles.acompanhanteNota}>
-                  profissional de bem-estar · vê suas medidas e notas
-                </Text>
-              </View>
-            </View>
-          ))}
-          <NavAction
-            label="Gerenciar no perfil"
-            onPress={() => router.push("/patient/profile")}
-            tone="neutral"
-          />
-        </Panel>
-      ) : null}
+      {/* ===== a grade da home ===== */}
+      {sessoes.length > 0 ? <GradeHome faixa={faixa} celulas={celulas} /> : null}
 
       {/* Superfície por plataforma (P6-b): sem captação aqui (web de produção),
           "Estado ao vivo" não é função do produto — só histórico/tendências. */}
@@ -460,6 +449,77 @@ export default function PatientHomeScreen() {
 
       <Disclaimer />
     </ScreenContainer>
+  );
+}
+
+type CelulasHome = {
+  heroi: ReactNode;
+  ultima: ReactNode;
+  tendencias: ReactNode;
+  acompanha: ReactNode;
+};
+
+/**
+ * A `.home-grid` do mockup, nas suas três formas.
+ *
+ * ```
+ * ≥1200   1.4fr 1fr   "hero last"  "trend right"
+ * ≤1199   1fr 1fr     "hero hero"  "last right"  "trend trend"
+ * ≤767    1fr         hero · last · right · trend
+ * ```
+ *
+ * **Três árvores, e não uma.** A ordem muda de faixa para faixa — o "trend"
+ * está à esquerda da linha 2 no desktop e sozinho numa terceira linha no
+ * tablet —, e não há arranjo de `flexWrap` que produza os dois com a mesma
+ * ordem de filhos. Isso significa que **cruzar 1199 ou 767 remonta os
+ * cartões**: os gráficos piscam e a onda reinicia. Decisão do fundador em
+ * 2026-08-14, com o custo exposto: a pessoa usa computador **ou** tablet
+ * **ou** celular, e não fica arrastando a janela pela quebra. Nada se perde na
+ * remontagem porque não há nada digitado nesta tela.
+ *
+ * Declarado **fora** do componente da tela de propósito: dentro, ele seria uma
+ * função nova a cada render e remontaria a grade inteira a cada carregamento.
+ */
+function GradeHome({ faixa, celulas }: { faixa: FaixaLargura; celulas: CelulasHome }) {
+  const t = useTheme();
+  const styles = useMemo(() => criarEstilos(t), [t]);
+  const { heroi, ultima, tendencias, acompanha } = celulas;
+
+  if (faixa === "movel") {
+    return (
+      <View style={styles.grade}>
+        {heroi}
+        {ultima}
+        {acompanha}
+        {tendencias}
+      </View>
+    );
+  }
+
+  if (faixa === "medio") {
+    return (
+      <View style={styles.grade}>
+        {heroi}
+        <View style={styles.gradeLinha}>
+          <View style={styles.celulaMeia}>{ultima}</View>
+          <View style={styles.celulaMeia}>{acompanha}</View>
+        </View>
+        {tendencias}
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.grade}>
+      <View style={styles.gradeLinha}>
+        <View style={styles.celulaLarga}>{heroi}</View>
+        <View style={styles.celulaEstreita}>{ultima}</View>
+      </View>
+      <View style={styles.gradeLinha}>
+        <View style={styles.celulaLarga}>{tendencias}</View>
+        <View style={styles.celulaEstreita}>{acompanha}</View>
+      </View>
+    </View>
   );
 }
 
@@ -490,34 +550,34 @@ const criarEstilos = (t: Theme) =>
       color: t.colors.textMuted,
       fontSize: 14,
     },
+    // `.home-grid{gap:20px}` — o valor é literal do mockup, entre o nosso
+    // `md` (16) e o `lg` (24).
     grade: {
-      gap: t.spacing.md,
+      gap: 20,
     },
     gradeLinha: {
       alignItems: "stretch",
       flexDirection: "row",
+      gap: 20,
     },
-    coluna: {
-      gap: t.spacing.md,
+    /**
+     * Proporção, não largura fixa: o mockup pede `1.4fr 1fr`, e uma coluna
+     * fixa de 360px não acompanharia o teto de 1600px desta tela.
+     *
+     * `minWidth: 0` porque o conteúdo (gráfico, nome longo) senão segura a
+     * célula acima da fração que lhe cabe e a proporção deixa de valer.
+     */
+    celulaLarga: {
+      flex: 1.4,
       minWidth: 0,
     },
-    // `flex` só quando a grade é uma LINHA. Empilhada no celular, o eixo
-    // principal vira o vertical e o `flex: 1` (que o RN-web resolve como
-    // `flex-basis: 0%`) reparte a ALTURA em partes iguais: sobra vazio no fim
-    // da primeira coluna e a segunda transborda por cima do que vem depois.
-    // Medido no perfil a 375px: 542px para cada coluna, 122px de vazio numa e
-    // 121px de transbordo na outra — o "espaçamento muito grande" e a
-    // "sobreposição" do pente fino eram a mesma causa.
-    colunaLinha: {
+    celulaEstreita: {
       flex: 1,
+      minWidth: 0,
     },
-    // Proporção, não largura fixa: o mockup pede `1.4fr 1fr`, e uma coluna
-    // fixa de 360px não acompanharia o teto de 1600px desta tela.
-    colunaPrincipalLarga: {
-      flex: 1.4,
-    },
-    colunaLateralLarga: {
+    celulaMeia: {
       flex: 1,
+      minWidth: 0,
     },
     heroiTitulo: {
       ...t.typography.title,
