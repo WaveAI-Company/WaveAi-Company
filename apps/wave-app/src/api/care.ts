@@ -36,6 +36,16 @@ export type CareLink = {
   message: string | null;
   created_at: string;
   consented_at: string | null;
+  /**
+   * Contagens do titular — **só chegam ao profissional, e só em vínculo
+   * ativo** (emenda à ADR-0037 de 2026-08-14).
+   *
+   * São `COUNT(*)` no servidor: nada é decifrado e nenhum evento de acesso é
+   * gravado. O limite é a contagem — valor derivado do sinal continua só no
+   * painel, pela rota auditada.
+   */
+  session_count?: number | null;
+  annotation_count?: number | null;
 };
 
 /** Teto do recado, igual ao do servidor (ADR-0043). */

@@ -150,7 +150,14 @@ Cada item é uma PR, sai de `main` e para no verde local.
     que apaga a segunda representação da mesma linha de sessão.
     Verificado contra a API: 14 sessões em 30 dias, **2** com `has_annotation`,
     **2** selos na tela.
-14. **Contagens no cartão do profissional** + emenda à ADR-0037.
+14. ~~**Contagens no cartão do profissional**~~ — **feito (#160)**. `COUNT(*)`
+    de sessões e de autorrelatos em cada `CareLinkResponse` **ativo**, sem
+    decifrar e **sem gerar evento de acesso**; o pendente não recebe nada.
+    A **emenda à ADR-0037 (2026-08-14)** saiu em commit próprio e registra
+    explicitamente o que se abre mão: sem trilha, o profissional observa o
+    ritmo de uso dos vinculados sem deixar registro. O limite fixado é
+    **cartão conta, cartão não mede** — alfa médio e qualidade seguem só no
+    painel, pela rota auditada.
 
 ## Gotchas de verificação descobertos nesta frente
 
