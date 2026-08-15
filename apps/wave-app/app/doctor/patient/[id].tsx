@@ -368,49 +368,74 @@ export default function PatientDetailScreen() {
             </Panel>
           ) : (
             <>
+              {/**
+               * Os quatro cartões grandes, **dois por linha** no desktop.
+               *
+               * No mockup eles são `.g-alpha`, `.g-comp`, `.g-sum` e
+               * `.g-notes`, todos com `grid-column: span 2` dentro do `.dash`
+               * de quatro colunas — ou seja, meia largura cada. Aqui eles
+               * ocupavam 100% e a tela virava uma pilha, que é o mesmo vício
+               * apontado na home do paciente.
+               *
+               * Abaixo de 1200 eles voltam à linha inteira, e isso também é o
+               * mockup: lá o `.dash` cai para duas colunas, e `span 2` de duas
+               * colunas é a linha toda.
+               */}
+              <View style={[styles.dupla, faixa === "largo" && styles.duplaLinha]}>
+                {tendenciaAlfa.length > 1 ? (
+                  <View style={faixa === "largo" ? styles.duplaCelula : undefined}>
+                    <Panel
+                      title="Alfa · % do espectro por sessão"
+                      eyebrow={`últimas ${recentes.length} sessões`}
+                      grow
+                    >
+                      <TrendChart
+                        data={tendenciaAlfa}
+                        accent={t.colors.bandAlpha}
+                        formatValue={(v) => formatPercent(v, 0)}
+                      />
+                      <Text style={styles.nota}>
+                        Proporção do alfa no espectro, sessão a sessão. Sem valência —
+                        descreve, não avalia.
+                      </Text>
+                    </Panel>
+                  </View>
+                ) : null}
 
-              {/* ===== gráficos ===== */}
-              {tendenciaAlfa.length > 1 ? (
-                <Panel
-                  title="Alfa · % do espectro por sessão"
-                  eyebrow={`últimas ${recentes.length} sessões`}
-                >
-                  <TrendChart
-                    data={tendenciaAlfa}
-                    accent={t.colors.bandAlpha}
-                    formatValue={(v) => formatPercent(v, 0)}
-                  />
-                  <Text style={styles.nota}>
-                    Proporção do alfa no espectro, sessão a sessão. Sem valência —
-                    descreve, não avalia.
-                  </Text>
-                </Panel>
-              ) : null}
+                {colunas.length > 1 ? (
+                  <View style={faixa === "largo" ? styles.duplaCelula : undefined}>
+                    <Panel
+                      title="Composição por banda · % por sessão"
+                      eyebrow="categórica · sem valência"
+                      grow
+                    >
+                      <BandColumns columns={colunas} />
+                      <BandLegend relative={ultima?.metrics?.relative_band_powers ?? {}} />
+                      <Text style={styles.nota}>
+                        Cada coluna vale 100% da própria sessão: a quantidade de sinal não
+                        é comparável entre dias, a composição é.
+                      </Text>
+                    </Panel>
+                  </View>
+                ) : null}
 
-              {colunas.length > 1 ? (
-                <Panel
-                  title="Composição por banda · % por sessão"
-                  eyebrow="categórica · sem valência"
-                >
-                  <BandColumns columns={colunas} />
-                  <BandLegend relative={ultima?.metrics?.relative_band_powers ?? {}} />
-                  <Text style={styles.nota}>
-                    Cada coluna vale 100% da própria sessão: a quantidade de sinal não é
-                    comparável entre dias, a composição é.
-                  </Text>
-                </Panel>
-              ) : null}
+                {/* ===== resumo do servidor ===== */}
+                {report && report.n_sessions > 0 ? (
+                  <View style={faixa === "largo" ? styles.duplaCelula : undefined}>
+                    <LongitudinalReport report={report} />
+                  </View>
+                ) : null}
 
-              {/* ===== resumo do servidor ===== */}
-              {report && report.n_sessions > 0 ? <LongitudinalReport report={report} /> : null}
-
-              {/* ===== nota de contexto (ADR-0037) ===== */}
-              {(() => {
-                const alvo = maisRecente(results);
-                return alvo && id ? (
-                  <SessionAnnotation sessionId={alvo.session_id} mode="read" patientId={id} />
-                ) : null;
-              })()}
+                {/* ===== nota de contexto (ADR-0037) ===== */}
+                {(() => {
+                  const alvo = maisRecente(results);
+                  return alvo && id ? (
+                    <View style={faixa === "largo" ? styles.duplaCelula : undefined}>
+                      <SessionAnnotation sessionId={alvo.session_id} mode="read" patientId={id} />
+                    </View>
+                  ) : null;
+                })()}
+              </View>
 
               <SessionsDashboard results={results} showTrend={false} />
 
@@ -578,6 +603,21 @@ const criarEstilos = (t: Theme) =>
       flexWrap: "wrap",
       gap: t.spacing.md,
     },
+    // ---------- os quatro cartões grandes (`span 2` do `.dash`) ----------
+    dupla: {
+      gap: 20,
+    },
+    duplaLinha: {
+      alignItems: "stretch",
+      flexDirection: "row",
+      flexWrap: "wrap",
+    },
+    // Metade menos a folga do `gap`: dois por linha, e o terceiro quebra.
+    duplaCelula: {
+      flexBasis: "48%",
+      flexGrow: 1,
+      minWidth: 0,
+    },
     tile: {
       flexGrow: 1,
       minWidth: 0,
@@ -588,9 +628,15 @@ const criarEstilos = (t: Theme) =>
       marginBottom: -t.spacing.md,
       minWidth: 0,
     },
-    // Quantos cabem por linha, por faixa. A base fica abaixo da fração exata
-    // para o `gap` caber sem empurrar o último para a linha de baixo.
-    tileLargo: { flexBasis: "30%" },
+    /**
+     * Quantos cabem por linha, por faixa. A base fica abaixo da fração exata
+     * para o `gap` caber sem empurrar o último para a linha de baixo.
+     *
+     * **Quatro no desktop**, e não três: o `.dash` do mockup é
+     * `repeat(4, minmax(0,1fr))`, e com 30% o quarto tile — o seletor de
+     * período — caía sozinho para a linha seguinte.
+     */
+    tileLargo: { flexBasis: "22%" },
     tileMedio: { flexBasis: "46%" },
     tileEstreito: { flexBasis: "100%" },
     tileRotulo: {
