@@ -20,8 +20,18 @@ import { ScreenContainer } from "../../src/components/ScreenContainer";
 import { SearchField } from "../../src/components/SearchField";
 import { diaMes } from "../../src/format/date";
 import { Skeleton } from "../../src/components/Skeleton";
-import { ThemeSelector } from "../../src/components/ThemeSelector";
-import { useRoleAccent, useTheme, type Theme } from "../../src/theme";
+import {
+  anelFoco,
+  elevar,
+  motion,
+  semContornoNativo,
+  transicao,
+  useInteracao,
+  useFaixa,
+  useRoleAccent,
+  useTheme,
+  type Theme,
+} from "../../src/theme";
 
 /** "há 5 dias" — idade do convite, com os casos curtos por extenso. */
 function enviadoHa(iso: string, agora: Date): string {
@@ -77,6 +87,8 @@ export default function DoctorScreen() {
   const router = useRouter();
   const t = useTheme();
   const { accent } = useRoleAccent();
+  /** `@media (max-width:767px){.search{width:100%}}` — no celular ela ocupa a linha. */
+  const buscaCheia = useFaixa() === "movel";
   const styles = useMemo(() => criarEstilos(t), [t]);
 
   const [links, setLinks] = useState<CareLink[]>([]);
@@ -212,7 +224,7 @@ export default function DoctorScreen() {
         </View>
         {links.length > 0 ? (
           <View style={styles.topoAcoes}>
-            <View style={styles.busca}>
+            <View style={[styles.busca, buscaCheia && styles.buscaCheia]}>
               <SearchField
                 value={busca}
                 onChangeText={setBusca}
@@ -248,34 +260,12 @@ export default function DoctorScreen() {
       {/* ===== grade de pessoas ===== */}
       <View style={styles.grade}>
         {ativosVisiveis.map((link) => (
-          <View key={link.id} style={styles.cartao}>
-            <Panel grow>
-              <View style={styles.cabeca}>
-                <Avatar name={link.counterpart_display_name} size={46} tone={accent} />
-                <View style={styles.cabecaTextos}>
-                  <Text style={styles.nome}>
-                    {link.counterpart_display_name ?? "Paciente"}
-                  </Text>
-                  <Text style={styles.nota}>
-                    autorizou em {diaMes(link.consented_at ?? link.created_at)}
-                  </Text>
-                </View>
-              </View>
-
-              <Text style={styles.explicacao}>
-                As medidas desta pessoa abrem no painel — e cada leitura fica registrada
-                em trilha de acesso.
-              </Text>
-
-              <View style={styles.acao}>
-                <Button
-                  label="Abrir painel"
-                  onPress={() => router.push(`/doctor/patient/${link.counterpart_user_id}`)}
-                  variant="secondary"
-                />
-              </View>
-            </Panel>
-          </View>
+          <CartaoPessoa
+            key={link.id}
+            link={link}
+            accent={accent}
+            onAbrir={() => router.push(`/doctor/patient/${link.counterpart_user_id}`)}
+          />
         ))}
 
         {pendentesVisiveis.map((link) => (
@@ -345,18 +335,87 @@ export default function DoctorScreen() {
         <Text style={styles.semResultado}>Nenhuma pessoa encontrada com esse nome.</Text>
       ) : null}
 
-      {/* Enquanto o profissional não tem tela de perfil própria, a preferência
-          de tema mora aqui — é o único lugar onde ele pode mudá-la. */}
-      <View style={styles.aparencia}>
-        <Text style={styles.aparenciaTitulo}>Aparência</Text>
-        <ThemeSelector />
-      </View>
+      {/* O seletor de tema saiu daqui (pente fino: "funções de aparência e sair
+          sem sentido para essa tela"). O comentário que o justificava — "o
+          profissional não tem tela de perfil própria" — estava vencido: o
+          perfil existe e já traz o mesmo seletor. Conferido antes de remover,
+          para não deixar o profissional sem como trocar o tema. */}
 
       {/* "Sair" saiu daqui: ele vive na sidebar (decisão do fundador em
           2026-08-13). Sem isso ele ficaria pendurado **depois** do aviso, que
           agora fecha a tela. */}
       <Disclaimer variant="profissional" />
     </ScreenContainer>
+  );
+}
+
+/**
+ * Cartão de pessoa — o `.pcard` do mockup, e o cartão **inteiro** é o alvo.
+ *
+ * `.pcard:hover{transform:translateY(-2px); border-color:var(--accent)}`: no
+ * design o cartão reage ao ponteiro e leva ao painel; aqui só o botão levava, e
+ * o resto do cartão era decoração inerte.
+ *
+ * O botão continua existindo por dentro. Não é redundância: ele é o alvo de
+ * teclado e o rótulo que diz **para onde** o cartão leva — um `Pressable` de
+ * 300px sem nome não se anuncia a leitor de tela. O RN resolve a disputa a
+ * favor do filho, então clicar no botão não dispara o cartão duas vezes.
+ *
+ * Declarado **fora** do componente da tela: cada cartão precisa do seu
+ * `useInteracao`, e um componente definido no render remontaria a lista a cada
+ * tecla digitada na busca.
+ */
+function CartaoPessoa({
+  link,
+  accent,
+  onAbrir,
+}: {
+  link: CareLink;
+  accent: string;
+  onAbrir: () => void;
+}) {
+  const t = useTheme();
+  const styles = useMemo(() => criarEstilos(t), [t]);
+  const { estado, handlers, reduzirMovimento } = useInteracao();
+
+  return (
+    <Pressable
+      accessibilityRole="link"
+      accessibilityLabel={`Abrir painel de ${link.counterpart_display_name ?? "paciente"}`}
+      onPress={onAbrir}
+      {...handlers}
+      style={[
+        styles.cartao,
+        // `transition:transform .15s, border-color .2s` — o cartão sobe e a
+        // borda o alcança, como no mockup.
+        transicao("transform, border-color", [motion.rapida, motion.media]),
+        estado.hovered && elevar(-2, reduzirMovimento),
+        estado.hovered && { borderColor: accent },
+        estado.focoVisivel && { boxShadow: anelFoco(accent, t.colors.background) },
+        semContornoNativo(),
+      ]}
+    >
+      <Panel grow>
+        <View style={styles.cabeca}>
+          <Avatar name={link.counterpart_display_name} size={46} tone={accent} />
+          <View style={styles.cabecaTextos}>
+            <Text style={styles.nome}>{link.counterpart_display_name ?? "Paciente"}</Text>
+            <Text style={styles.nota}>
+              autorizou em {diaMes(link.consented_at ?? link.created_at)}
+            </Text>
+          </View>
+        </View>
+
+        <Text style={styles.explicacao}>
+          As medidas desta pessoa abrem no painel — e cada leitura fica registrada em
+          trilha de acesso.
+        </Text>
+
+        <View style={styles.acao}>
+          <Button label="Abrir painel" onPress={onAbrir} variant="secondary" />
+        </View>
+      </Panel>
+    </Pressable>
   );
 }
 
@@ -398,16 +457,30 @@ const criarEstilos = (t: Theme) =>
       flexShrink: 1,
       flexWrap: "wrap",
       gap: t.spacing.sm,
+      // O `.sp{flex:1}` do `.page-top`: busca e botão encostam à direita, e o
+      // vão fica entre eles e a saudação.
+      justifyContent: "flex-end",
       minWidth: 240,
     },
+    /**
+     * `.search{width:min(320px,100%)}` e, no celular, `width:100%`.
+     *
+     * Com `flexGrow: 1` e teto de 320 ela parava de crescer no meio da linha e
+     * deixava um vão à direita — o "alinhamento do search não condiz com o do
+     * mockup". Lá o `.page-top .sp{flex:1}` encosta busca e botão à direita.
+     */
     busca: {
-      flexBasis: 200,
-      flexGrow: 1,
-      maxWidth: 320,
+      flexBasis: 320,
+      maxWidth: "100%",
       minWidth: 0,
     },
+    buscaCheia: {
+      flexBasis: "100%",
+    },
+    // Sem largura mínima: o `minWidth: 150` sobrava 37px à direita do rótulo e
+    // impedia o botão de encostar na borda junto com a busca.
     botaoConvidar: {
-      minWidth: 150,
+      alignItems: "flex-end",
     },
     erro: {
       ...t.typography.body,
@@ -477,17 +550,5 @@ const criarEstilos = (t: Theme) =>
       ...t.typography.caption,
       color: t.colors.textSubtle,
       textAlign: "center",
-    },
-    aparencia: {
-      gap: t.spacing.sm,
-      marginTop: t.spacing.md,
-    },
-    aparenciaTitulo: {
-      ...t.typography.caption,
-      color: t.colors.textSubtle,
-      fontSize: 11,
-      fontWeight: "700",
-      letterSpacing: 0.9,
-      textTransform: "uppercase",
     },
   });
