@@ -1,6 +1,6 @@
 import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useMemo, useState } from "react";
-import { StyleSheet, Text, useWindowDimensions, View } from "react-native";
+import { Pressable, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 
 import { listCareLinks, revokeCareLink, type CareLink } from "../../src/api/care";
 import { getConsentStatus, type ConsentStatus } from "../../src/api/consent";
@@ -10,6 +10,7 @@ import { DIAGNOSTICO_BLE_HABILITADO } from "../../src/capture/availability";
 import { Button } from "../../src/components/Button";
 import { Chip } from "../../src/components/Chip";
 import { Disclaimer } from "../../src/components/Disclaimer";
+import { Icon, type IconName } from "../../src/components/Icon";
 import { NavAction } from "../../src/components/NavAction";
 import { Panel } from "../../src/components/Panel";
 import { PersonRow, PersonRowSkeleton } from "../../src/components/profile/PersonRow";
@@ -19,10 +20,16 @@ import { ProfileSection } from "../../src/components/profile/ProfileSection";
 import { ScreenContainer } from "../../src/components/ScreenContainer";
 import { ThemeSelector } from "../../src/components/ThemeSelector";
 import {
+  anelFoco,
   bp,
+  motion,
+  semContornoNativo,
+  transicao,
   useAccentFor,
+  useInteracao,
   useRoleAccent,
   useTheme,
+  withAlpha,
   type Theme,
 } from "../../src/theme";
 
@@ -126,7 +133,7 @@ export default function PatientProfileScreen() {
             </Text>
           </Panel>
 
-          <AccountEditor />
+          <AccountEditor showEmail={false} showPassword={false} />
         </View>
 
         {/* ============ quem me acompanha ============ */}
@@ -178,32 +185,40 @@ export default function PatientProfileScreen() {
                 })
               : null}
 
-            {/* O consentimento é o gate que libera guardar resultados — some da
-                vista só quando está em dia, e mesmo assim continua acessível. */}
-            <NavAction
-              label={consentido ? "Consentimento de guarda dos resultados" : "Rever e autorizar a guarda dos resultados"}
-              description={
-                consentido
-                  ? consent?.consent_given_at
-                    ? `Ativo desde ${dataCurta(consent.consent_given_at)}.`
-                    : "Ativo."
-                  : "Sem consentimento, os resultados das suas sessões não são guardados."
-              }
-              tone={consentido ? "neutral" : "attention"}
-              onPress={() => router.push("/patient/consent")}
-            />
-
-            <NavAction
-              label={
-                pendentes === 0
-                  ? "Convites"
-                  : pendentes === 1
-                    ? "1 convite aguardando resposta"
-                    : `${pendentes} convites aguardando resposta`
-              }
-              tone={pendentes > 0 ? "accent" : "neutral"}
-              onPress={() => router.push("/patient/invites")}
-            />
+            {/**
+             * `.consent-links` do mockup: duas linhas discretas no pé do
+             * cartão, com ícone à esquerda e o badge da contagem à direita —
+             * e não dois `NavAction` da largura do cartão, que pesavam tanto
+             * quanto a lista de pessoas acima deles.
+             *
+             * **Com uma exceção que o mockup não previu:** sem consentimento
+             * os resultados não são guardados, e isso não é um link de
+             * navegação — é uma condição. Nesse estado a linha troca de tom e
+             * ganha a frase, em vez de virar mais um item cinza no rodapé.
+             */}
+            <View style={styles.linksConsentimento}>
+              <LinhaAcao
+                icone="mail"
+                label="Convites pendentes"
+                badge={pendentes}
+                onPress={() => router.push("/patient/invites")}
+              />
+              <LinhaAcao
+                icone="shield"
+                label={
+                  consentido
+                    ? "Consentimento de guarda dos resultados"
+                    : "Rever e autorizar a guarda dos resultados"
+                }
+                descricao={
+                  consentido
+                    ? undefined
+                    : "Sem consentimento, os resultados das suas sessões não são guardados."
+                }
+                atencao={!consentido}
+                onPress={() => router.push("/patient/consent")}
+              />
+            </View>
           </Panel>
 
           <Panel>
@@ -216,6 +231,12 @@ export default function PatientProfileScreen() {
           </Panel>
         </View>
       </View>
+
+      {/* As credenciais saem da coluna de configurações e viram uma faixa
+          própria, meio a meio na largura inteira: são dois formulários do
+          mesmo peso, e espremidos numa coluna eles empurravam "Dados da conta"
+          para longe do topo do cartão vizinho. */}
+      <AccountEditor showIdentity={false} credenciaisEmLinha={emColunas} />
 
       {/* Ferramenta de dev (ADR-0040): descoberta dos UUIDs BLE do headset. */}
       {DIAGNOSTICO_BLE_HABILITADO ? (
@@ -234,8 +255,124 @@ export default function PatientProfileScreen() {
   );
 }
 
+/**
+ * Uma linha do `.consent-links`: ícone, rótulo e, à direita, o badge da
+ * contagem — o mesmo gesto do item de navegação, em escala de rodapé.
+ *
+ * Declarada fora da tela porque cada linha precisa do seu `useInteracao`:
+ * dentro do render, seria um componente novo a cada quadro.
+ */
+function LinhaAcao({
+  icone,
+  label,
+  descricao,
+  badge = 0,
+  atencao,
+  onPress,
+}: {
+  icone: IconName;
+  label: string;
+  /** Só no estado de atenção: a linha explica o que está em falta. */
+  descricao?: string;
+  badge?: number;
+  atencao?: boolean;
+  onPress: () => void;
+}) {
+  const t = useTheme();
+  const papel = useRoleAccent();
+  const styles = useMemo(() => criarEstilos(t), [t]);
+  const { estado, handlers } = useInteracao();
+  const cor = atencao ? t.colors.warningText : t.colors.textMuted;
+
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={badge > 0 ? `${label}, ${badge} aguardando resposta` : label}
+      onPress={onPress}
+      {...handlers}
+      style={[
+        styles.linhaAcao,
+        estado.hovered && { backgroundColor: t.colors.surfaceAlt },
+        estado.pressed && { backgroundColor: t.colors.surfaceStrong },
+        estado.focoVisivel
+          ? { boxShadow: anelFoco(papel.accent, t.colors.surface) }
+          : null,
+      ]}
+    >
+      <Icon name={icone} size={17} color={cor} strokeWidth={1.8} />
+      <View style={styles.linhaAcaoTextos}>
+        <Text
+          style={[
+            styles.linhaAcaoLabel,
+            { color: estado.hovered && !atencao ? t.colors.text : cor },
+          ]}
+        >
+          {label}
+        </Text>
+        {descricao ? <Text style={styles.linhaAcaoNota}>{descricao}</Text> : null}
+      </View>
+      {badge > 0 ? (
+        <View
+          style={[
+            styles.linhaAcaoBadge,
+            { backgroundColor: withAlpha(papel.accent, t.isDark ? 0.18 : 0.12) },
+          ]}
+        >
+          <Text style={[styles.linhaAcaoBadgeTexto, { color: papel.accent }]}>{badge}</Text>
+        </View>
+      ) : null}
+    </Pressable>
+  );
+}
+
 const criarEstilos = (t: Theme) =>
   StyleSheet.create({
+    // `.consent-links{display:flex; flex-direction:column; gap:2px; margin-top:6px}`.
+    linksConsentimento: {
+      gap: 2,
+      marginTop: 6,
+    },
+    // `.consent-links a{min-height:44px; padding:0 12px; border-radius:var(--r-m)}`.
+    linhaAcao: {
+      alignItems: "center",
+      borderRadius: t.radius.md,
+      flexDirection: "row",
+      gap: 10,
+      minHeight: 44,
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      ...transicao("background-color, box-shadow", motion.rapida),
+      ...semContornoNativo(),
+    },
+    linhaAcaoTextos: {
+      flexShrink: 1,
+      gap: 2,
+    },
+    // `font-weight:600; font-size:13.5px`.
+    linhaAcaoLabel: {
+      ...t.typography.label,
+      fontSize: 13.5,
+      fontWeight: "600",
+    },
+    linhaAcaoNota: {
+      ...t.typography.caption,
+      color: t.colors.textSubtle,
+    },
+    // `.consent-links .badge{margin-left:auto; min-width:20px; height:20px}`.
+    linhaAcaoBadge: {
+      alignItems: "center",
+      borderRadius: t.radius.pill,
+      height: 20,
+      justifyContent: "center",
+      marginLeft: "auto",
+      minWidth: 20,
+      paddingHorizontal: 6,
+    },
+    linhaAcaoBadgeTexto: {
+      ...t.typography.caption,
+      fontSize: 11.5,
+      fontWeight: "700",
+    },
     erro: {
       ...t.typography.body,
       color: t.colors.dangerText,
@@ -243,8 +380,23 @@ const criarEstilos = (t: Theme) =>
     grade: {
       gap: t.spacing.lg,
     },
+    /**
+     * `stretch` dá às duas colunas a mesma altura — mas **os cartões dentro
+     * delas mantêm a altura do conteúdo**, e a sobra fica no fim da coluna,
+     * fora de qualquer borda.
+     *
+     * Esticar o último cartão para as bordas de baixo coincidirem foi a
+     * primeira tentativa, e ela quebra quando as colunas são desiguais: no
+     * perfil do profissional, com quatro pessoas na lista ao lado, sobravam
+     * ~250px **dentro** do cartão de identidade — vazio delimitado por borda,
+     * que lê como erro. Fora do cartão não há nada para o olho comparar, e a
+     * diferença que resta no perfil do paciente (9px) é invisível. Decisão do
+     * fundador em 2026-08-16: uma regra só para os dois papéis, sem enfeite
+     * para preencher — um ornamento cujo tamanho depende do tamanho da lista
+     * vizinha passa a carregar informação que não é dele.
+     */
     gradeLinha: {
-      alignItems: "flex-start",
+      alignItems: "stretch",
       flexDirection: "row",
     },
     // As duas colunas dividem a largura em partes iguais, então `flex: 1` é o

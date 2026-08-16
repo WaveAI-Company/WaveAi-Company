@@ -108,6 +108,9 @@ type IconeProps = {
   nome: IconName;
   accent: string;
   accentTexto: string;
+  /** Lado do disco — 88 no estado vazio, 64 no cabeçalho do consentimento. */
+  tamanho?: number;
+  tamanhoIcone?: number;
 };
 
 /**
@@ -118,7 +121,13 @@ type IconeProps = {
  * continua existindo, parado: é adorno, e sumir mudaria o desenho da tela para
  * quem tem a preferência ativa.
  */
-function IconeComAnel({ nome, accent, accentTexto }: IconeProps) {
+export function IconeComAnel({
+  nome,
+  accent,
+  accentTexto,
+  tamanho = 88,
+  tamanhoIcone = 36,
+}: IconeProps) {
   const t = useTheme();
   const styles = useMemo(() => criarEstilos(t), [t]);
   const reduzirMovimento = useReduzirMovimento();
@@ -138,14 +147,22 @@ function IconeComAnel({ nome, accent, accentTexto }: IconeProps) {
     transform: [{ scale: 1 + pulso.value * 0.25 }],
   }));
 
+  const disco = {
+    backgroundColor: withAlpha(accent, 0.14),
+    borderRadius: tamanho / 2,
+    height: tamanho,
+    width: tamanho,
+  };
+  const anel = { borderRadius: tamanho / 2 + 2, borderColor: accent };
+
   return (
-    <View style={[styles.disco, { backgroundColor: withAlpha(accent, 0.14) }]}>
+    <View style={[styles.disco, disco]}>
       {reduzirMovimento ? (
-        <View style={[styles.anel, { borderColor: accent, opacity: 0.35 }]} />
+        <View style={[styles.anel, anel, { opacity: 0.35 }]} />
       ) : (
-        <Animated.View style={[styles.anel, { borderColor: accent }, pulsar]} />
+        <Animated.View style={[styles.anel, anel, pulsar]} />
       )}
-      <Icon name={nome} size={36} color={accentTexto} strokeWidth={1.6} />
+      <Icon name={nome} size={tamanhoIcone} color={accentTexto} strokeWidth={1.6} />
     </View>
   );
 }
@@ -190,15 +207,12 @@ const criarEstilos = (t: Theme) =>
       maxWidth: 460,
       textAlign: "center",
     },
+    // Lado, raio e cor vêm da prop; aqui fica só o que não muda de tamanho.
     disco: {
       alignItems: "center",
-      borderRadius: 44,
-      height: 88,
       justifyContent: "center",
-      width: 88,
     },
     anel: {
-      borderRadius: 46,
       borderWidth: 2,
       bottom: -2,
       left: -2,

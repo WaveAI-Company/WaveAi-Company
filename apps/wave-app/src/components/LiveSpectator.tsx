@@ -3,7 +3,7 @@ import { StyleSheet, Text, View } from "react-native";
 
 import type { WatchHandlers } from "../api/liveWatch";
 import type { LiveEsense, LiveFeatures } from "../api/stream";
-import { useTheme, type Theme } from "../theme";
+import { larguras, useFaixa, useTheme, type Theme } from "../theme";
 import { BandBars } from "./charts/BandBars";
 import { LiveBandTrend } from "./charts/LiveBandTrend";
 import { Card } from "./Card";
@@ -29,6 +29,9 @@ type Props = {
 export function LiveSpectator({ subscribe, accent, semCaptacaoTexto }: Props) {
   const t = useTheme();
   const styles = useMemo(() => criarEstilos(t), [t]);
+  const faixa = useFaixa();
+  const emColunas = faixa === "largo";
+  const emMeio = faixa === "medio";
 
   const [live, setLive] = useState<boolean | null>(null);
   const [features, setFeatures] = useState<LiveFeatures | null>(null);
@@ -75,6 +78,8 @@ export function LiveSpectator({ subscribe, accent, semCaptacaoTexto }: Props) {
   }, []);
 
   const alfa = features?.rel_alpha;
+  /** A curva só existe com duas janelas; sem ela não há o que pôr no herói. */
+  const temHeroi = bandHistory.length > 1;
   const semCaptacao = live === false && features === null;
   //: Captando, mas sem autorização de acompanhar ao vivo. É estado próprio: não
   //: é "não está captando" nem erro — e dizer a coisa certa é o que impede a
@@ -109,15 +114,89 @@ export function LiveSpectator({ subscribe, accent, semCaptacaoTexto }: Props) {
         />
       ) : null}
 
-      {alfa !== undefined ? (
-        <View style={styles.destaque}>
-          <View style={styles.destaqueRotuloLinha}>
-            <Text style={styles.destaqueRotulo}>Alfa relativa</Text>
-            <InfoButton term="rel_alpha" accent={accent} />
+      {/**
+       * A mesma dinâmica do `.grid` da tela de captação: a figura que mais
+       * ganha com largura no herói, as leituras compactas no trilho de 360px
+       * ao lado, e a composição por banda em linha inteira embaixo.
+       *
+       * A grade só entra quando **há herói**: nos primeiros segundos a curva
+       * ainda não existe (precisa de duas janelas) e a linha abriria um vão de
+       * uma coluna inteira à esquerda do trilho. Sem ela, os cartões empilham
+       * na ordem de sempre — que também é o que acontece abaixo de 1200.
+       */}
+      <View style={[styles.grade, temHeroi && emColunas && styles.gradeLinha]}>
+        {temHeroi ? (
+          <View style={[styles.colunaHeroi, emColunas && styles.colunaHeroiLinha]}>
+            {/* `grow` para o cartão terminar na mesma linha que o trilho: as
+                duas colunas já têm a mesma altura (o `stretch` da linha), mas
+                sem isto o cartão para na altura do conteúdo e sobrava um
+                degrau de 13px contra o pé do eSense. */}
+            <Card
+              title="Ondas ao vivo"
+              accent={accent}
+              titleAccessory={<InfoButton term="live_band_trend" />}
+              grow={emColunas}
+            >
+              <LiveBandTrend history={bandHistory} accent={accent} />
+            </Card>
           </View>
-          <Text style={[styles.destaqueValor, { color: accent }]}>{(alfa * 100).toFixed(1)}%</Text>
+        ) : null}
+
+        <View
+          style={[
+            styles.trilho,
+            temHeroi && emColunas && styles.trilhoLateral,
+            temHeroi && emMeio && styles.trilhoDuplo,
+          ]}
+        >
+          {alfa !== undefined ? (
+            <View style={temHeroi && emMeio ? styles.trilhoMetade : undefined}>
+              {/* Lado a lado no tablet, os dois blocos empatam a altura: a
+                  célula já é esticada pela linha, quem precisa crescer é a
+                  caixa dentro dela. */}
+              <View style={[styles.destaque, temHeroi && emMeio && styles.blocoEstica]}>
+                <View style={styles.destaqueRotuloLinha}>
+                  <Text style={styles.destaqueRotulo}>Alfa relativa</Text>
+                  <InfoButton term="rel_alpha" accent={accent} />
+                </View>
+                <Text style={[styles.destaqueValor, { color: accent }]}>
+                  {(alfa * 100).toFixed(1)}%
+                </Text>
+              </View>
+            </View>
+          ) : null}
+
+          {esense && (esense.attention !== undefined || esense.meditation !== undefined) ? (
+            <View style={temHeroi && emMeio ? styles.trilhoMetade : undefined}>
+              <View style={[styles.esenseBox, temHeroi && emMeio && styles.blocoEstica]}>
+                <View style={styles.esenseCabecalho}>
+                  <Text style={styles.esenseTitulo}>eSense (NeuroSky)</Text>
+                  <InfoButton term="esense" />
+                </View>
+                <View style={styles.esenseLinha}>
+                  {esense.attention !== undefined ? (
+                    <View style={styles.esenseItem}>
+                      <Text style={styles.esenseValor}>{esense.attention}</Text>
+                      <Text style={styles.esenseRotulo}>Atenção</Text>
+                    </View>
+                  ) : null}
+                  {esense.meditation !== undefined ? (
+                    <View style={styles.esenseItem}>
+                      <Text style={styles.esenseValor}>{esense.meditation}</Text>
+                      <Text style={styles.esenseRotulo}>Meditação</Text>
+                    </View>
+                  ) : null}
+                </View>
+                <Text style={styles.esenseNota}>
+                  Métrica proprietária da NeuroSky (0–100), sem validação científica
+                  independente. Exploratória e não-clínica: complemento, nunca base de
+                  conclusão.
+                </Text>
+              </View>
+            </View>
+          ) : null}
         </View>
-      ) : null}
+      </View>
 
       {features?.relative_band_powers ? (
         <Card
@@ -127,44 +206,6 @@ export function LiveSpectator({ subscribe, accent, semCaptacaoTexto }: Props) {
         >
           <BandBars relative={features.relative_band_powers} accent={accent} />
         </Card>
-      ) : null}
-
-      {bandHistory.length > 1 ? (
-        <Card
-          title="Ondas ao vivo"
-          accent={accent}
-          titleAccessory={<InfoButton term="live_band_trend" />}
-        >
-          <LiveBandTrend history={bandHistory} accent={accent} />
-        </Card>
-      ) : null}
-
-      {esense && (esense.attention !== undefined || esense.meditation !== undefined) ? (
-        <View style={styles.esenseBox}>
-          <View style={styles.esenseCabecalho}>
-            <Text style={styles.esenseTitulo}>eSense (NeuroSky)</Text>
-            <InfoButton term="esense" />
-          </View>
-          <View style={styles.esenseLinha}>
-            {esense.attention !== undefined ? (
-              <View style={styles.esenseItem}>
-                <Text style={styles.esenseValor}>{esense.attention}</Text>
-                <Text style={styles.esenseRotulo}>Atenção</Text>
-              </View>
-            ) : null}
-            {esense.meditation !== undefined ? (
-              <View style={styles.esenseItem}>
-                <Text style={styles.esenseValor}>{esense.meditation}</Text>
-                <Text style={styles.esenseRotulo}>Meditação</Text>
-              </View>
-            ) : null}
-          </View>
-          <Text style={styles.esenseNota}>
-            Métrica proprietária da NeuroSky (0–100), sem validação científica
-            independente. Exploratória e não-clínica: complemento, nunca base de
-            conclusão.
-          </Text>
-        </View>
       ) : null}
 
       {encerrou ? (
@@ -188,10 +229,54 @@ const criarEstilos = (t: Theme) =>
       color: t.colors.dangerText,
       fontSize: 14,
     },
+
+    // ---------- a grade: herói + trilho (a mesma da tela de captação) ----------
+    grade: {
+      gap: t.spacing.md,
+    },
+    gradeLinha: {
+      alignItems: "stretch",
+      flexDirection: "row",
+    },
+    colunaHeroi: {
+      gap: t.spacing.md,
+      // Sem isto, o gráfico estica a coluna e a linha estoura.
+      minWidth: 0,
+    },
+    // `flex` só na LINHA: empilhada, o `flex:1` viraria `flex-basis:0%` na
+    // altura e repartiria a coluna em partes iguais.
+    colunaHeroiLinha: {
+      flex: 1,
+    },
+    trilho: {
+      gap: t.spacing.md,
+    },
+    trilhoLateral: {
+      flexGrow: 0,
+      flexShrink: 0,
+      width: larguras.trilhoLive,
+    },
+    // No tablet o trilho vira uma linha de duas leituras lado a lado.
+    trilhoDuplo: {
+      flexDirection: "row",
+    },
+    trilhoMetade: {
+      flex: 1,
+      minWidth: 0,
+    },
+    blocoEstica: {
+      flex: 1,
+    },
+
     destaque: {
       alignItems: "center",
       backgroundColor: t.colors.surface,
       borderRadius: t.radius.lg,
+      // Centrado nos dois eixos: só o horizontal estava declarado, e quando a
+      // caixa passou a esticar para empatar com o eSense o número ficou
+      // ancorado no topo. Nas outras faixas a caixa tem a altura do conteúdo,
+      // então isto não muda nada lá.
+      justifyContent: "center",
       paddingVertical: t.spacing.lg,
     },
     destaqueRotuloLinha: {
@@ -216,9 +301,13 @@ const criarEstilos = (t: Theme) =>
       borderRadius: t.radius.lg,
       padding: t.spacing.md,
     },
+    // Título e números centrados, como no cartão de alfa ao lado. A caixa
+    // segue esticada; quem centra é o próprio bloco (`alignSelf`), para o
+    // `alignItems` do contêiner não estreitar também a nota de rodapé.
     esenseCabecalho: {
-      flexDirection: "row",
       alignItems: "center",
+      alignSelf: "center",
+      flexDirection: "row",
       gap: t.spacing.xs,
     },
     esenseTitulo: {
@@ -230,6 +319,7 @@ const criarEstilos = (t: Theme) =>
     esenseLinha: {
       flexDirection: "row",
       gap: t.spacing.xl,
+      justifyContent: "center",
       marginTop: t.spacing.xs,
     },
     esenseItem: {

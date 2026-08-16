@@ -1,7 +1,7 @@
 import { useMemo, type ReactNode } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
-import { useTheme, type Theme } from "../../theme";
+import { useFaixa, useTheme, type Theme } from "../../theme";
 import { Avatar } from "../Avatar";
 import { Skeleton } from "../Skeleton";
 
@@ -37,6 +37,9 @@ export function PersonRow({
 }) {
   const t = useTheme();
   const styles = useMemo(() => criarEstilos(t), [t]);
+  // No celular a linha quebra e a ação cai sozinha embaixo — ali ela ocupa a
+  // largura e se centra, em vez de ficar encostada à esquerda sob o avatar.
+  const movel = useFaixa() === "movel";
 
   return (
     <View style={[styles.pessoa, ended && styles.atenuada]}>
@@ -48,7 +51,7 @@ export function PersonRow({
       {status ? (
         <Text style={styles.recibo}>{status}</Text>
       ) : action ? (
-        <View style={styles.acao}>{action}</View>
+        <View style={[styles.acao, movel && styles.acaoCentrada]}>{action}</View>
       ) : null}
     </View>
   );
@@ -102,6 +105,14 @@ const criarEstilos = (t: Theme) =>
     },
     acao: {
       minWidth: 160,
+    },
+    acaoCentrada: {
+      alignItems: "center",
+      flexBasis: "100%",
+      // Sem encolher, o `flexBasis:100%` viraria piso e a célula cresceria até
+      // o conteúdo — o estouro que já apareceu na faixa de bandas.
+      flexShrink: 1,
+      minWidth: 0,
     },
     recibo: {
       ...t.typography.caption,

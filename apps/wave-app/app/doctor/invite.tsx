@@ -217,9 +217,14 @@ export default function DoctorInviteScreen() {
 
         {/* ============ coluna lateral ============ */}
         <View style={[styles.coluna, emColunas && styles.colunaLinha]}>
+          {/* `grow`: par lado a lado, e o fundador pediu que este cresça até
+              o cartão do formulário em vez de deixar as duas bordas de baixo
+              desencontradas na mesma linha. */}
           <Panel
             title="O que a pessoa autoriza"
             headerAccessory={<Chip label="leitura · nunca edição" />}
+            grow={emColunas}
+            style={emColunas ? styles.autorizaDistribuido : undefined}
           >
             {[
               "Tendências e composição por banda ao longo das sessões.",
@@ -237,67 +242,70 @@ export default function DoctorInviteScreen() {
               registrada em trilha de acesso. A pessoa pode revogar tudo quando quiser.
             </Text>
           </Panel>
-
-          <Panel title="Convites enviados" eyebrow={`últimos ${DIAS_RECENTES} dias`}>
-            {carregando ? (
-              <View style={styles.linha}>
-                <Skeleton width={40} height={40} radius={20} />
-                <View style={styles.linhaTextos}>
-                  <Skeleton width="55%" height={15} />
-                  <Skeleton width="35%" height={11} />
-                </View>
-              </View>
-            ) : null}
-
-            {!carregando && recentes.length === 0 ? (
-              <Text style={styles.nota}>
-                Nenhum convite nos últimos {DIAS_RECENTES} dias.
-              </Text>
-            ) : null}
-
-            {!carregando
-              ? recentes.map((v) => {
-                  const aceito = v.status === "active";
-                  return (
-                    <View key={v.id} style={styles.linha}>
-                      <Avatar
-                        name={v.counterpart_display_name}
-                        size={40}
-                        tone={aceito ? accent : t.colors.textMuted}
-                      />
-                      <View style={styles.linhaTextos}>
-                        <Text style={styles.linhaNome} numberOfLines={1}>
-                          {v.counterpart_display_name ?? "Convite enviado"}
-                        </Text>
-                        <Text style={styles.linhaNota}>
-                          {quando(v.created_at, agora)}
-                        </Text>
-                      </View>
-                      {aceito ? (
-                        <View style={styles.aceito}>
-                          <Icon name="check" size={13} color={accent} strokeWidth={2.6} />
-                          <Text style={[styles.aceitoTexto, { color: accent }]}>aceito</Text>
-                        </View>
-                      ) : (
-                        <>
-                          <Chip label="pendente" />
-                          <View style={styles.linhaAcao}>
-                            <Button
-                              label="Cancelar"
-                              onPress={() => cancelar(v.id)}
-                              loading={cancelando === v.id}
-                              variant="secondary"
-                            />
-                          </View>
-                        </>
-                      )}
-                    </View>
-                  );
-                })
-              : null}
-          </Panel>
         </View>
       </View>
+
+      {/* A lista sai da coluna lateral e ocupa a largura inteira: são linhas
+          de pessoa com nome, carimbo e ação, e espremidas numa coluna de
+          metade da tela elas truncavam o nome ("Cadastro Porte …"). */}
+        <Panel title="Convites enviados" eyebrow={`últimos ${DIAS_RECENTES} dias`}>
+          {carregando ? (
+            <View style={styles.linha}>
+              <Skeleton width={40} height={40} radius={20} />
+              <View style={styles.linhaTextos}>
+                <Skeleton width="55%" height={15} />
+                <Skeleton width="35%" height={11} />
+              </View>
+            </View>
+          ) : null}
+
+          {!carregando && recentes.length === 0 ? (
+            <Text style={styles.nota}>
+              Nenhum convite nos últimos {DIAS_RECENTES} dias.
+            </Text>
+          ) : null}
+
+          {!carregando
+            ? recentes.map((v) => {
+                const aceito = v.status === "active";
+                return (
+                  <View key={v.id} style={styles.linha}>
+                    <Avatar
+                      name={v.counterpart_display_name}
+                      size={40}
+                      tone={aceito ? accent : t.colors.textMuted}
+                    />
+                    <View style={styles.linhaTextos}>
+                      <Text style={styles.linhaNome} numberOfLines={1}>
+                        {v.counterpart_display_name ?? "Convite enviado"}
+                      </Text>
+                      <Text style={styles.linhaNota}>
+                        {quando(v.created_at, agora)}
+                      </Text>
+                    </View>
+                    {aceito ? (
+                      <View style={styles.aceito}>
+                        <Icon name="check" size={13} color={accent} strokeWidth={2.6} />
+                        <Text style={[styles.aceitoTexto, { color: accent }]}>aceito</Text>
+                      </View>
+                    ) : (
+                      <>
+                        <Chip label="pendente" />
+                        <View style={[styles.linhaAcao, emColunas && styles.linhaAcaoAoFim]}>
+                          <Button
+                            label="Cancelar"
+                            onPress={() => cancelar(v.id)}
+                            loading={cancelando === v.id}
+                            variant="secondary"
+                          />
+                        </View>
+                      </>
+                    )}
+                  </View>
+                );
+              })
+            : null}
+        </Panel>
 
       <Disclaimer variant="profissional" />
     </ScreenContainer>
@@ -322,9 +330,17 @@ const criarEstilos = (t: Theme) =>
     grade: {
       gap: t.spacing.lg,
     },
+    // `stretch` para o par de cima poder empatar a altura; sem isto cada
+    // coluna para no próprio conteúdo e o `grow` não tem até onde crescer.
     gradeLinha: {
-      alignItems: "flex-start",
+      alignItems: "stretch",
       flexDirection: "row",
+    },
+    // Sobrando altura, o excedente é repartido entre os intervalos em vez de
+    // ficar todo no fim: os itens do que a pessoa autoriza respiram e a nota
+    // encosta no pé do cartão.
+    autorizaDistribuido: {
+      justifyContent: "space-between",
     },
     coluna: {
       gap: t.spacing.md,
@@ -437,6 +453,15 @@ const criarEstilos = (t: Theme) =>
       flexBasis: 150,
       flexGrow: 1,
       minWidth: 0,
+    },
+    /**
+     * Fora do celular a ação para de crescer e encosta na direita, no mesmo
+     * eixo do "aceito" das outras linhas. Crescendo, ela tomava a sobra da
+     * linha e o botão ficava parado no meio, desalinhado de todo o resto.
+     */
+    linhaAcaoAoFim: {
+      flexBasis: "auto",
+      flexGrow: 0,
     },
     aceito: {
       alignItems: "center",

@@ -30,6 +30,7 @@ import {
   useFaixa,
   useRoleAccent,
   useTheme,
+  type FaixaLargura,
   type Theme,
 } from "../../src/theme";
 
@@ -89,7 +90,13 @@ export default function DoctorScreen() {
   const t = useTheme();
   const { accent } = useRoleAccent();
   /** `@media (max-width:767px){.search{width:100%}}` — no celular ela ocupa a linha. */
-  const buscaCheia = useFaixa() === "movel";
+  const faixa = useFaixa();
+  // A fileira de busca desce para a própria linha fora do desktop: dividindo a
+  // linha com a saudação, ela espremia o título em duas ou três linhas.
+  const acoesEmLinhaPropria = faixa !== "largo";
+  // Já a busca só toma a linha inteira *dentro* da fileira no celular — no
+  // tablet ela divide a linha com o botão "Convidar", que é o do mockup.
+  const buscaCheia = faixa === "movel";
   const styles = useMemo(() => criarEstilos(t), [t]);
 
   const [links, setLinks] = useState<CareLink[]>([]);
@@ -216,7 +223,7 @@ export default function DoctorScreen() {
     <ScreenContainer largura="app">
       {/* ===== cabeçalho ===== */}
       <View style={styles.topo}>
-        <View style={styles.topoTextos}>
+        <View style={[styles.topoTextos, faixa === "movel" && styles.topoTextosMovel]}>
           <Text style={styles.saudacao}>
             {saudacao(agora)}
             {tratamento ? `, ${tratamento}` : ""}.
@@ -224,7 +231,7 @@ export default function DoctorScreen() {
           {links.length > 0 ? <Text style={styles.resumo}>{resumo}</Text> : null}
         </View>
         {links.length > 0 ? (
-          <View style={styles.topoAcoes}>
+          <View style={[styles.topoAcoes, acoesEmLinhaPropria && styles.topoAcoesCheio]}>
             <View style={[styles.busca, buscaCheia && styles.buscaCheia]}>
               <SearchField
                 value={busca}
@@ -270,56 +277,17 @@ export default function DoctorScreen() {
         ))}
 
         {pendentesVisiveis.map((link) => (
-          <View key={link.id} style={styles.cartao}>
-            <Panel grow>
-              <View style={styles.cabeca}>
-                <Avatar
-                  name={link.counterpart_display_name}
-                  size={46}
-                  tone={t.colors.textMuted}
-                />
-                <View style={styles.cabecaTextos}>
-                  <Text style={styles.nome}>
-                    {link.counterpart_display_name ?? "Convite enviado"}
-                  </Text>
-                  {/* O endereço só existe enquanto pende: é como quem
-                      convidou confere se digitou certo antes de insistir. */}
-                  <Text style={styles.nota}>
-                    {[link.counterpart_email, enviadoHa(link.created_at, agora)]
-                      .filter(Boolean)
-                      .join(" · ")}
-                  </Text>
-                </View>
-                <Chip label="pendente" />
-              </View>
-
-              <Text style={styles.explicacao}>
-                Aguardando o aceite. O acompanhamento só começa quando a pessoa autorizar —
-                e ela pode revogar depois, a qualquer momento.
-              </Text>
-
-              {reenviado === link.id ? (
-                <Text style={styles.explicacao}>
-                  Lembrete enviado. Ele não muda o convite nem o recado — só avisa de novo.
-                </Text>
-              ) : null}
-
-              <View style={styles.acoes}>
-                <Button
-                  label="Reenviar convite"
-                  onPress={() => reenviarConvite(link.id)}
-                  loading={reenviando === link.id}
-                  variant="secondary"
-                />
-                <Button
-                  label="Cancelar convite"
-                  onPress={() => cancelarConvite(link.id)}
-                  loading={cancelando === link.id}
-                  variant="secondary"
-                />
-              </View>
-            </Panel>
-          </View>
+          <CartaoPendente
+            key={link.id}
+            link={link}
+            agora={agora}
+            faixa={faixa}
+            reenviado={reenviado === link.id}
+            reenviando={reenviando === link.id}
+            cancelando={cancelando === link.id}
+            onReenviar={() => reenviarConvite(link.id)}
+            onCancelar={() => cancelarConvite(link.id)}
+          />
         ))}
 
         {/* Espaçadores de altura zero: sem eles, um cartão sozinho na última
@@ -347,6 +315,115 @@ export default function DoctorScreen() {
           agora fecha a tela. */}
       <Disclaimer variant="profissional" />
     </ScreenContainer>
+  );
+}
+
+/**
+ * Cartão de convite pendente.
+ *
+ * **Não é clicável** — não há painel para abrir enquanto ninguém aceitou —,
+ * mas reage ao ponteiro como os vizinhos: sem isso, ele era o único cartão
+ * inerte da fila e parecia desligado. O realce é só a borda e os 2px do
+ * `.pcard:hover`; não há `accessibilityRole` de botão, nem cursor de mão, nem
+ * foco de teclado próprio: quem age são os dois botões lá dentro.
+ *
+ * Declarado fora da tela porque precisa do seu próprio `useInteracao`.
+ */
+function CartaoPendente({
+  link,
+  agora,
+  faixa,
+  reenviado,
+  reenviando,
+  cancelando,
+  onReenviar,
+  onCancelar,
+}: {
+  link: CareLink;
+  agora: Date;
+  faixa: FaixaLargura;
+  reenviado: boolean;
+  reenviando: boolean;
+  cancelando: boolean;
+  onReenviar: () => void;
+  onCancelar: () => void;
+}) {
+  const t = useTheme();
+  const styles = useMemo(() => criarEstilos(t), [t]);
+  return (
+    /**
+     * **Sem realce de ponteiro, e não por esquecimento.** No RN-web 0.86 o
+     * hover só existe em `Pressable` que seja de fato interativo: `onHoverIn`
+     * é prop dele e a `View` a ignora, `onPointerEnter` na `View` não chega ao
+     * DOM (inspecionado: o nó sai sem handler nenhum), e um `Pressable` sem
+     * `onPress` — ou com `focusable={false}` — também não instala nada.
+     *
+     * As três saídas foram medidas e nenhuma serve sem custo: para acender a
+     * borda, este cartão teria de virar um alvo clicável e focável que **não
+     * leva a lugar nenhum** (não há painel enquanto ninguém aceitou). Um alvo
+     * que o leitor de tela anuncia como botão e não faz nada é pior que um
+     * cartão que não reage. Quem age aqui são os dois botões lá dentro.
+     */
+    <View style={styles.cartao}>
+      <Panel grow>
+            <View style={styles.cabeca}>
+              <Avatar
+                name={link.counterpart_display_name}
+                size={46}
+                tone={t.colors.textMuted}
+              />
+              <View style={styles.cabecaTextos}>
+                <Text style={styles.nome}>
+                  {link.counterpart_display_name ?? "Convite enviado"}
+                </Text>
+                {/* O endereço só existe enquanto pende: é como quem
+                    convidou confere se digitou certo antes de insistir. */}
+                <Text style={styles.nota}>
+                  {[link.counterpart_email, enviadoHa(link.created_at, agora)]
+                    .filter(Boolean)
+                    .join(" · ")}
+                </Text>
+              </View>
+              <Chip label="pendente" />
+            </View>
+
+            <Text style={styles.explicacao}>
+              Aguardando o aceite. O acompanhamento só começa quando a pessoa autorizar —
+              e ela pode revogar depois, a qualquer momento.
+            </Text>
+
+            {reenviado ? (
+              <Text style={styles.explicacao}>
+                Lembrete enviado. Ele não muda o convite nem o recado — só avisa de novo.
+              </Text>
+            ) : null}
+
+            {/* Lado a lado, meio a meio, enquanto houver largura; no
+                celular cada um volta a ocupar a linha, centrado. */}
+            <View style={[styles.acoes, faixa === "movel" && styles.acoesMovel]}>
+              <View style={faixa === "movel" ? undefined : styles.acaoMetade}>
+                <Button
+                  label="Reenviar convite"
+                  onPress={onReenviar}
+                  loading={reenviando}
+                  variant="secondary"
+                  largura={faixa === "movel" ? "conteudo" : "bloco"}
+                  compacto
+                />
+              </View>
+              <View style={faixa === "movel" ? undefined : styles.acaoMetade}>
+                <Button
+                  label="Cancelar convite"
+                  onPress={onCancelar}
+                  loading={cancelando}
+                  variant="secondary"
+                  largura={faixa === "movel" ? "conteudo" : "bloco"}
+                  compacto
+                />
+              </View>
+            </View>
+      </Panel>
+    </View>
   );
 }
 
@@ -391,12 +468,14 @@ function CartaoPessoa({
         // borda o alcança, como no mockup.
         transicao("transform, border-color", [motion.rapida, motion.media]),
         estado.hovered && elevar(-2, reduzirMovimento),
-        estado.hovered && { borderColor: accent },
         estado.focoVisivel && { boxShadow: anelFoco(accent, t.colors.background) },
         semContornoNativo(),
       ]}
     >
-      <Panel grow>
+      {/* A borda vive no `Panel`, não neste invólucro — que não tem borda
+          nenhuma. Enquanto o `borderColor` do hover ficou aqui, o cartão subia
+          os 2px e o contorno do `.pcard:hover` simplesmente não acontecia. */}
+      <Panel grow style={estado.hovered ? { borderColor: accent } : undefined}>
         <View style={styles.cabeca}>
           <Avatar name={link.counterpart_display_name} size={46} tone={accent} />
           <View style={styles.cabecaTextos}>
@@ -446,10 +525,25 @@ const criarEstilos = (t: Theme) =>
       flexWrap: "wrap",
       gap: t.spacing.md,
     },
+    /**
+     * `minWidth: 420` e não 240: a saudação é `display` (32px) e, com 240, ela
+     * quebrava em duas linhas já num laptop grande enquanto a busca ficava com
+     * a folga toda. Com o piso maior, a fileira de busca **quebra sozinha**
+     * para a linha de baixo quando não couber — é o `flexWrap` do `topo` que
+     * decide, sem mais um corte por largura.
+     */
     topoTextos: {
       flex: 1,
       gap: 2,
-      minWidth: 240,
+      minWidth: 420,
+    },
+    /**
+     * No celular o piso vira zero. Um `minWidth` maior que a tela é um piso
+     * que ninguém consegue honrar: o bloco ficava com os 420 numa faixa útil
+     * de ~328 e **o título saía pela borda** em vez de quebrar em duas linhas.
+     */
+    topoTextosMovel: {
+      minWidth: 0,
     },
     saudacao: {
       ...t.typography.display,
@@ -464,6 +558,13 @@ const criarEstilos = (t: Theme) =>
     // então este bloco não encolhia abaixo da largura do próprio conteúdo e
     // **transbordava** a coluna a 360 em vez de quebrar por dentro: a busca e o
     // botão saíam pela direita da tela.
+    // Fora do desktop a fileira desce para a própria linha: dividindo a linha
+    // com a saudação, ela deixava 240px para o título e o quebrava em duas ou
+    // três linhas. O `flexBasis:100%` precisa estar **aqui** e não na busca —
+    // ali ele só ocupava a largura da própria fileira.
+    topoAcoesCheio: {
+      flexBasis: "100%",
+    },
     topoAcoes: {
       alignItems: "center",
       flexDirection: "row",
@@ -505,11 +606,19 @@ const criarEstilos = (t: Theme) =>
       flexWrap: "wrap",
       gap: t.spacing.lg - 4,
     },
-    // Cartão elástico (não de largura fixa): abaixo de ~300 a linha quebra e
-    // ele ocupa a largura toda.
+    /**
+     * Cartão elástico (não de largura fixa): abaixo de ~300 a linha quebra e
+     * ele ocupa a largura toda.
+     *
+     * `flexShrink: 1` porque o padrão do RN é **0**: numa tela de 320px sobram
+     * 288 de largura útil, e o cartão ficava nos 300 do `flexBasis` sem
+     * encolher — 16px de margem à esquerda contra 4 à direita, com 12px
+     * saindo por baixo da borda da tela.
+     */
     cartao: {
       flexBasis: 300,
       flexGrow: 1,
+      flexShrink: 1,
       minWidth: 0,
     },
     espacador: {
@@ -581,6 +690,19 @@ const criarEstilos = (t: Theme) =>
       // mockup usa 6 px numa linha larga; aqui a folga vale mais.
       gap: t.spacing.sm,
       marginTop: t.spacing.xs,
+    },
+    // `flexWrap:"nowrap"` junto: numa coluna que quebra, o `center` alinha
+    // dentro da *linha do wrap* (a largura do conteúdo) e não do contêiner —
+    // o mesmo que segurou o botão do herói da home fora do centro.
+    acoesMovel: {
+      alignItems: "center",
+      flexDirection: "column",
+      flexWrap: "nowrap",
+    },
+    acaoMetade: {
+      flexBasis: 0,
+      flexGrow: 1,
+      minWidth: 0,
     },
     semResultado: {
       ...t.typography.caption,

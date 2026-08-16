@@ -28,6 +28,7 @@ export {
   anelFoco,
   comporSombras,
   elevar,
+  grudarNoTopo,
   semContornoNativo,
   sombraDestaque,
   transicao,

@@ -78,6 +78,12 @@ type Props = {
   paused?: boolean;
 };
 
+/**
+ * A altura é **fixa de propósito**, e não "o que sobrar no pai": o
+ * `preserveAspectRatio="none"` estica o desenho, então uma caixa mais alta não
+ * dá uma onda maior — dá a mesma onda com a amplitude ampliada e deformada.
+ * Quem cresce é a caixa em volta, com a figura centrada nela.
+ */
 export function LiveWave({ height = 260, accent, scale = 1, paused }: Props) {
   const t = useTheme();
   const reduzirMovimento = useReduzirMovimento();
