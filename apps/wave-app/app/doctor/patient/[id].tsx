@@ -27,12 +27,14 @@ import { ScreenContainer } from "../../../src/components/ScreenContainer";
 import { SearchField } from "../../../src/components/SearchField";
 import { SessionAnnotation } from "../../../src/components/SessionAnnotation";
 import { SessionsDashboard } from "../../../src/components/SessionsDashboard";
+import { WaveField } from "../../../src/components/brand/WaveField";
 import { Skeleton } from "../../../src/components/Skeleton";
 import { BandColumns, type BandColumn } from "../../../src/components/charts/BandColumns";
 import { BandLegend } from "../../../src/components/charts/BandLegend";
 import { TrendChart, type TrendPoint } from "../../../src/components/charts/TrendChart";
 import {
   anelFoco,
+  grudarNoTopo,
   larguras,
   motion,
   semContornoNativo,
@@ -301,7 +303,17 @@ export default function PatientDetailScreen() {
               semCaptacaoTexto="Esta pessoa não está captando agora."
             />
           ) : (
-            <Panel title="Ao vivo" eyebrow="acesso registrado">
+            <Panel title="Ao vivo" eyebrow="acesso registrado" style={styles.cartaoVivo}>
+              {/* `.live-banner`: a onda cobre o cartão (`inset:0`, meia
+                  opacidade) e o conteúdo passa por cima com `z-index:2`. É o
+                  único cartão do painel com fundo animado — o assunto dele é
+                  justamente uma captação acontecendo agora. */}
+              <WaveField
+                height={140}
+                opacity={0.5}
+                amplitude={12}
+                style={styles.ondaVivo}
+              />
               <Text style={styles.nota}>
                 Se esta pessoa estiver captando agora <Text style={styles.notaForte}>e
                 tiver ligado o compartilhamento desta sessão</Text>, você acompanha as
@@ -309,7 +321,7 @@ export default function PatientDetailScreen() {
                 ela liga e desliga na própria sessão, e o acesso fica registrado em
                 trilha.
               </Text>
-              <View style={styles.acaoVivo}>
+              <View style={[styles.acaoVivo, styles.acimaDaOnda]}>
                 <Button
                   label="Acompanhar ao vivo"
                   onPress={() => setAssistindo(true)}
@@ -369,45 +381,48 @@ export default function PatientDetailScreen() {
           ) : (
             <>
               {/**
-               * Os quatro cartões grandes, **dois por linha** no desktop.
+               * A ordem da tela, decidida pelo fundador em 2026-08-16.
                *
-               * No mockup eles são `.g-alpha`, `.g-comp`, `.g-sum` e
-               * `.g-notes`, todos com `grid-column: span 2` dentro do `.dash`
-               * de quatro colunas — ou seja, meia largura cada. Aqui eles
-               * ocupavam 100% e a tela virava uma pilha, que é o mesmo vício
-               * apontado na home do paciente.
+               * ```
+               * [ alfa por sessão — linha inteira ]
+               * [ composição por banda | panorama das sessões ]
+               * [ tendências por medida | última sessão       ]
+               * [ contexto da sessão — linha inteira ]
+               * [ todas as sessões ]
+               * ```
                *
-               * Abaixo de 1200 eles voltam à linha inteira, e isso também é o
-               * mockup: lá o `.dash` cai para duas colunas, e `span 2` de duas
-               * colunas é a linha toda.
+               * O alfa sozinho porque é a figura da tela; os quatro do meio
+               * emparelhados por peso (um gráfico ao lado de um texto, uma
+               * lista ao lado de um cartão); e o contexto embaixo, inteiro,
+               * porque é a fala da pessoa e não divide espaço com número.
+               *
+               * Abaixo de 1200 tudo volta à linha inteira, como no mockup —
+               * lá o `.dash` cai para duas colunas e `span 2` é a linha toda.
                */}
-              <View style={[styles.dupla, faixa === "largo" && styles.duplaLinha]}>
-                {tendenciaAlfa.length > 1 ? (
-                  <View style={faixa === "largo" ? styles.duplaCelula : undefined}>
-                    <Panel
-                      title="Alfa · % do espectro por sessão"
-                      eyebrow={`últimas ${recentes.length} sessões`}
-                      grow
-                    >
-                      <TrendChart
-                        data={tendenciaAlfa}
-                        accent={t.colors.bandAlpha}
-                        formatValue={(v) => formatPercent(v, 0)}
-                      />
-                      <Text style={styles.nota}>
-                        Proporção do alfa no espectro, sessão a sessão. Sem valência —
-                        descreve, não avalia.
-                      </Text>
-                    </Panel>
-                  </View>
-                ) : null}
+              {tendenciaAlfa.length > 1 ? (
+                <Panel
+                  title="Alfa · % do espectro por sessão"
+                  eyebrow={`últimas ${recentes.length} sessões`}
+                >
+                  <TrendChart
+                    data={tendenciaAlfa}
+                    accent={t.colors.bandAlpha}
+                    formatValue={(v) => formatPercent(v, 0)}
+                  />
+                  <Text style={styles.nota}>
+                    Proporção do alfa no espectro, sessão a sessão. Sem valência —
+                    descreve, não avalia.
+                  </Text>
+                </Panel>
+              ) : null}
 
+              <View style={[styles.dupla, faixa === "largo" && styles.duplaLinha]}>
                 {colunas.length > 1 ? (
                   <View style={faixa === "largo" ? styles.duplaCelula : undefined}>
                     <Panel
                       title="Composição por banda · % por sessão"
                       eyebrow="categórica · sem valência"
-                      grow
+                      grow={faixa === "largo"}
                     >
                       <BandColumns columns={colunas} />
                       <BandLegend relative={ultima?.metrics?.relative_band_powers ?? {}} />
@@ -419,25 +434,49 @@ export default function PatientDetailScreen() {
                   </View>
                 ) : null}
 
-                {/* ===== resumo do servidor ===== */}
                 {report && report.n_sessions > 0 ? (
                   <View style={faixa === "largo" ? styles.duplaCelula : undefined}>
-                    <LongitudinalReport report={report} />
+                    <LongitudinalReport
+                      report={report}
+                      showFeatureTrends={false}
+                      grow={faixa === "largo"}
+                    />
+                  </View>
+                ) : null}
+              </View>
+
+              <View style={[styles.dupla, faixa === "largo" && styles.duplaLinha]}>
+                {report && report.n_sessions > 0 ? (
+                  <View style={faixa === "largo" ? styles.duplaCelula : undefined}>
+                    <LongitudinalReport
+                      report={report}
+                      showSummary={false}
+                      grow={faixa === "largo"}
+                    />
                   </View>
                 ) : null}
 
-                {/* ===== nota de contexto (ADR-0037) ===== */}
-                {(() => {
-                  const alvo = maisRecente(results);
-                  return alvo && id ? (
-                    <View style={faixa === "largo" ? styles.duplaCelula : undefined}>
-                      <SessionAnnotation sessionId={alvo.session_id} mode="read" patientId={id} />
-                    </View>
-                  ) : null;
-                })()}
+                <View style={faixa === "largo" ? styles.duplaCelula : undefined}>
+                  <SessionsDashboard
+                    results={results}
+                    showTrend={false}
+                    showAllSessions={false}
+                    grow={faixa === "largo"}
+                  />
+                </View>
               </View>
 
-              <SessionsDashboard results={results} showTrend={false} />
+              {/* ===== nota de contexto (ADR-0037) ===== */}
+              {(() => {
+                const alvo = maisRecente(results);
+                return alvo && id ? (
+                  <SessionAnnotation sessionId={alvo.session_id} mode="read" patientId={id} />
+                ) : null;
+              })()}
+
+              {/* A lista completa fecha a tela. Filtro e paginação dela estão
+                  no backlog registrado no `Documentation/15`. */}
+              <SessionsDashboard results={results} showTrend={false} showLast={false} />
 
               <Text style={styles.rastro}>
                 {[
@@ -524,10 +563,21 @@ const criarEstilos = (t: Theme) =>
     // Largura fixa com estilo **próprio**, sem `flex`: `flex: 1` vira
     // `flex-basis: 0%` no RN-web e vence a largura no eixo principal — foi
     // assim que a coluna lateral da home colapsou (#111).
+    /**
+     * `.people{position:sticky; top:88px}` — a lista de pessoas acompanha a
+     * rolagem em vez de sumir no topo da página, que é o que permite trocar de
+     * pessoa sem voltar ao começo.
+     *
+     * `position:"sticky"` é **web-only**; no nativo o RN ignora o valor e a
+     * coluna se comporta como sempre. `alignSelf:"flex-start"` é o que impede
+     * a coluna de esticar até o pé do conteúdo — esticada, não há o que colar.
+     */
     colunaTrilho: {
+      alignSelf: "flex-start",
       flexGrow: 0,
       flexShrink: 0,
       width: larguras.listaPessoas,
+      ...grudarNoTopo(t.spacing.md),
     },
     conteudo: {
       flex: 1,
@@ -595,6 +645,22 @@ const criarEstilos = (t: Theme) =>
       fontWeight: "600",
     },
     // Só o respiro: largura é assunto do `Button` desde o pente fino de UI.
+    // `.live-banner{position:relative; overflow:hidden}`.
+    cartaoVivo: {
+      overflow: "hidden",
+    },
+    // `.live-banner .wavefield{position:absolute; inset:0; opacity:.5}`.
+    ondaVivo: {
+      bottom: 0,
+      left: 0,
+      pointerEvents: "none",
+      position: "absolute",
+      right: 0,
+    },
+    // `.live-banner > *{position:relative; z-index:2}`.
+    acimaDaOnda: {
+      zIndex: 2,
+    },
     acaoVivo: {
       marginTop: t.spacing.xs,
     },

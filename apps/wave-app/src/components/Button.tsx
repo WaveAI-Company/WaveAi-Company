@@ -42,6 +42,17 @@ type Props = {
    * das telas de autenticação.
    */
   largura?: ButtonLargura;
+  /**
+   * Botão menor — o `padding:0 16px; font-size:13.5px` que os mockups aplicam
+   * quando dois botões dividem uma coluna estreita (a dupla da sessão guiada,
+   * o par de "Acompanhamento" na home do paciente). É o que devolve largura ao
+   * rótulo antes que ele quebre em duas linhas.
+   *
+   * **A altura não encolhe junto.** O mockup pede `min-height:40px` e o nosso
+   * piso de toque é 44; o round 1 é alvo visual, não especificação de
+   * acessibilidade, então aqui fica o nosso (ADR-0042 / pente fino).
+   */
+  compacto?: boolean;
 };
 
 /**
@@ -74,6 +85,7 @@ export function Button({
   variant = "primary",
   accent,
   largura = "conteudo",
+  compacto,
 }: Props) {
   const t = useTheme();
   const papel = useRoleAccent();
@@ -114,6 +126,7 @@ export function Button({
       {...handlers}
       style={[
         styles.base,
+        compacto && styles.compacto,
         porConteudo && styles.porConteudo,
         preenchido ? { backgroundColor: fundo } : styles.delineado,
         // O delineado ganha o fundo do `.btn-ghost` no ponteiro.
@@ -127,7 +140,9 @@ export function Button({
       {loading ? (
         <ActivityIndicator color={corTexto} />
       ) : (
-        <Text style={[styles.label, { color: corTexto }]}>{label}</Text>
+        <Text style={[styles.label, compacto && styles.labelCompacto, { color: corTexto }]}>
+          {label}
+        </Text>
       )}
     </Pressable>
   );
@@ -147,6 +162,10 @@ const criarEstilos = (t: Theme) =>
         [motion.rapida, motion.media, motion.media, motion.media],
       ),
       ...semContornoNativo(),
+    },
+    // `padding:0 16px` do override compacto — a altura segue no piso de toque.
+    compacto: {
+      paddingHorizontal: t.spacing.md,
     },
     // Num pai em coluna isto é o que impede o RN de esticar o botão; num pai
     // em linha, o alinhamento no eixo transversal (o botão já tem `minHeight`).
@@ -168,5 +187,9 @@ const criarEstilos = (t: Theme) =>
     label: {
       ...t.typography.bodyStrong,
       fontSize: 16,
+    },
+    // `font-size:13.5px` do override compacto.
+    labelCompacto: {
+      fontSize: 13.5,
     },
   });

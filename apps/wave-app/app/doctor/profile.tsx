@@ -126,7 +126,7 @@ export default function DoctorProfileScreen() {
             </Text>
           </Panel>
 
-          <AccountEditor />
+          <AccountEditor showEmail={false} showPassword={false} />
         </View>
 
         {/* ============ quem autoriza você ============ */}
@@ -228,6 +228,11 @@ export default function DoctorProfileScreen() {
         </View>
       </View>
 
+      {/* As credenciais saem da coluna de configurações e viram uma faixa
+          própria, meio a meio na largura inteira — o mesmo arranjo do perfil
+          do paciente, para os dois lados lerem igual. */}
+      <AccountEditor showIdentity={false} credenciaisEmLinha={emColunas} />
+
       {/* "Sair" saiu do perfil: ele vive na sidebar (decisão do fundador em
           2026-08-13). */}
       <Disclaimer />
@@ -244,8 +249,11 @@ const criarEstilos = (t: Theme) =>
     grade: {
       gap: t.spacing.lg,
     },
+    // `stretch` dá às duas colunas a mesma altura; os cartões dentro delas
+    // mantêm a altura do conteúdo e a sobra fica no fim da coluna, fora de
+    // qualquer borda. Ver a nota longa no perfil do paciente.
     gradeLinha: {
-      alignItems: "flex-start",
+      alignItems: "stretch",
       flexDirection: "row",
     },
     // Duas colunas de larguras iguais: aqui `flex: 1` é exatamente o que se

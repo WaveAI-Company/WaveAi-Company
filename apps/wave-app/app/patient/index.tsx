@@ -1,6 +1,6 @@
 import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useMemo, useState, type ReactNode } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { listCareLinks, listPendingInvites, type CareLink } from "../../src/api/care";
 import { getConsentStatus } from "../../src/api/consent";
@@ -28,9 +28,15 @@ import { NavAction } from "../../src/components/NavAction";
 import { Panel } from "../../src/components/Panel";
 import { ScreenContainer } from "../../src/components/ScreenContainer";
 import { Skeleton } from "../../src/components/Skeleton";
+import { TextLink } from "../../src/components/TextLink";
 import { diaMes } from "../../src/format/date";
 import {
+  anelFoco,
+  elevar,
+  motion,
+  transicao,
   useFaixa,
+  useInteracao,
   useRoleAccent,
   useTheme,
   type FaixaLargura,
@@ -92,6 +98,24 @@ export default function PatientHomeScreen() {
   const styles = useMemo(() => criarEstilos(t), [t]);
   const faixa = useFaixa();
   const emColunas = faixa !== "movel";
+  /**
+   * `grow` (que é `flex:1`) só vale para um cartão que **divide uma linha**
+   * com outro — ali ele empata as alturas.
+   *
+   * Como filho direto da coluna da grade, o mesmo `flex:1` vira
+   * `flex-basis:0%` na **altura**: os cartões repartem a altura disponível em
+   * frações iguais e o que tem mais conteúdo transborda a própria borda —
+   * 131px do "Tendências rápidas" saindo para fora do cartão em 1160x568, com
+   * as colunas de banda e a legenda por baixo dele. Por isso cada cartão só
+   * recebe `grow` na faixa em que está lado a lado com outro:
+   *
+   * ```
+   * largo   [herói | última]   [tendências | acompanha]
+   * médio   [herói]  [última | acompanha]  [tendências]
+   * móvel   um por linha
+   * ```
+   */
+  const ultimaEmLinha = faixa !== "movel";
 
   const [consentido, setConsentido] = useState<boolean | null>(null);
   const [pendentes, setPendentes] = useState(0);
@@ -200,31 +224,49 @@ export default function PatientHomeScreen() {
    * conteúdo três vezes.
    */
   const celulas: CelulasHome = {
+    /**
+     * `.sess-hero{position:relative; overflow:hidden; justify-content:center;
+     * gap:14px; padding:36px 32px; min-height:260px}`.
+     *
+     * A onda é **fundo**, não composição: `.sess-hero .wavefield` é
+     * `position:absolute; inset:auto 0 -8px 0`, e a fileira de ações sobe por
+     * cima dela com `z-index:2`. Estava como último filho no fluxo, o que
+     * empurrava o botão para acima da onda e transformava o gradiente num
+     * elemento a mais da pilha.
+     */
     heroi: (
-      <Panel grow>
+      <Panel
+        grow={faixa === "largo"}
+        style={[styles.heroi, faixa === "movel" && styles.heroiMovel]}
+      >
+        <WaveField height={110} opacity={0.4} amplitude={12} style={styles.heroiOnda} />
+
         <Text style={styles.heroiTitulo}>Um bom momento para uma nova onda?</Text>
         <Text style={styles.heroiTexto}>
           A sessão guiada leva 2 minutos — 60 s de olhos abertos, 60 s de olhos fechados,
           com guia por voz. O alfa costuma contar uma boa história.
         </Text>
         {capturaDisponivel() ? (
-          <Button
-            label="Iniciar sessão"
-            onPress={() => router.push("/patient/live")}
-            accent={papel.accent}
-          />
+          // `.sess-hero .row` — e no celular ela vira coluna esticada, para o
+          // botão ocupar a linha inteira (`.row .btn{width:100%}`).
+          <View style={[styles.heroiAcoes, faixa === "movel" && styles.heroiAcoesMovel]}>
+            <Button
+              label="Iniciar sessão"
+              onPress={() => router.push("/patient/live")}
+              accent={papel.accent}
+            />
+          </View>
         ) : (
           <Text style={styles.heroiNota}>
             A captação acontece no app do celular. Por aqui você acompanha histórico e
             tendências.
           </Text>
         )}
-        <WaveField height={90} opacity={0.4} amplitude={12} />
       </Panel>
     ),
 
     ultima: ultima ? (
-      <Panel title="Última sessão" eyebrow={carimbo(ultima.created_at)} grow>
+      <Panel title="Última sessão" eyebrow={carimbo(ultima.created_at)} grow={ultimaEmLinha}>
         {ultima.metrics?.relative_band_powers ? (
           <>
             <BandStack relative={ultima.metrics.relative_band_powers} tamanho="destaque" />
@@ -249,11 +291,17 @@ export default function PatientHomeScreen() {
             .join(" · ")}
         </Text>
 
-        <NavAction
-          label="Ver no histórico"
-          onPress={() => router.push("/patient/history")}
-          tone="neutral"
-        />
+        {/* `<p style="margin-top:14px"><a>Ver sessão completa →</a></p>` — no
+            mockup é um link de texto, não um botão de navegação. O `NavAction`
+            é uma caixa da largura do cartão e pesava tanto quanto o gráfico
+            que ele acompanha. */}
+        <View style={styles.ultimaLink}>
+          <TextLink
+            label="Ver sessão completa →"
+            onPress={() => router.push("/patient/history")}
+            accent={papel.accent}
+          />
+        </View>
       </Panel>
     ) : null,
 
@@ -263,7 +311,7 @@ export default function PatientHomeScreen() {
           title="Tendências rápidas"
           eyebrow={`últimas ${recentes.length} sessões`}
           headerAccessory={<InfoButton term="trend_direction" />}
-          grow
+          grow={faixa === "largo"}
         >
           {tendenciaAlfa.length > 1 ? (
             <>
@@ -299,28 +347,28 @@ export default function PatientHomeScreen() {
      * contato" — tem `signal_std`, `mains_power` e `mains_power_ratio` — e a
      * faixa de verde/amarelo dependeria de um limiar de "sinal bom o
      * suficiente" que é a **Q-TEC-06, em aberto**. Ver `Documentation/15`.
+     *
+     * Sem `grow`: o cartão toma a **altura do seu conteúdo** e a célula o
+     * ancora no topo da linha. Esticado, ele abria um vão morto embaixo (102px
+     * medidos com um profissional) só para empatar com o gráfico ao lado.
+     * Crescendo com a lista, ele encosta no gráfico quando houver gente
+     * suficiente — que é o teto natural da linha.
+     *
+     * Cada pessoa é uma **linha clicável**, com o realce do `.pcard` do painel
+     * do profissional. O botão "Gerenciar no perfil" saiu: era uma segunda
+     * afordância para o mesmo destino, embaixo de linhas que pareciam
+     * clicáveis e não eram.
      */
     acompanha:
       acompanhantes.length > 0 ? (
-        <Panel title="Quem me acompanha" eyebrow="autorização sua" grow>
+        <Panel title="Quem me acompanha" eyebrow="autorização sua">
           {acompanhantes.map((v) => (
-            <View key={v.id} style={styles.acompanhante}>
-              <Avatar name={v.counterpart_display_name} tone={t.colors.accentDoctorText} />
-              <View style={styles.acompanhanteTextos}>
-                <Text style={styles.acompanhanteNome}>
-                  {v.counterpart_display_name ?? "Profissional de bem-estar"}
-                </Text>
-                <Text style={styles.acompanhanteNota}>
-                  profissional de bem-estar · vê suas medidas e notas
-                </Text>
-              </View>
-            </View>
+            <LinhaAcompanhante
+              key={v.id}
+              nome={v.counterpart_display_name}
+              onPress={() => router.push("/patient/profile")}
+            />
           ))}
-          <NavAction
-            label="Gerenciar no perfil"
-            onPress={() => router.push("/patient/profile")}
-            tone="neutral"
-          />
         </Panel>
       ) : null,
   };
@@ -449,6 +497,55 @@ export default function PatientHomeScreen() {
   );
 }
 
+/**
+ * Um profissional que acompanha, como **cartão clicável** — o gesto do
+ * `.pcard` do painel do profissional (sobe 2px, borda no destaque).
+ *
+ * Declarado fora da tela porque cada linha precisa do seu próprio
+ * `useInteracao`: dentro do render, seria um componente novo a cada quadro e
+ * perderia o estado de hover a cada atualização da home.
+ */
+function LinhaAcompanhante({
+  nome,
+  onPress,
+}: {
+  nome: string | null | undefined;
+  onPress: () => void;
+}) {
+  const t = useTheme();
+  const styles = useMemo(() => criarEstilos(t), [t]);
+  const { estado, handlers, reduzirMovimento } = useInteracao();
+
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`${nome ?? "Profissional de bem-estar"} — gerenciar acesso no perfil`}
+      onPress={onPress}
+      {...handlers}
+      style={[
+        styles.acompanhante,
+        estado.hovered && {
+          backgroundColor: t.colors.surfaceAlt,
+          borderColor: t.colors.accentDoctorText,
+        },
+        estado.hovered && elevar(-2, reduzirMovimento),
+        estado.pressed && { backgroundColor: t.colors.surfaceStrong },
+        estado.focoVisivel
+          ? { boxShadow: anelFoco(t.colors.accentDoctorText, t.colors.surface) }
+          : null,
+      ]}
+    >
+      <Avatar name={nome} tone={t.colors.accentDoctorText} />
+      <View style={styles.acompanhanteTextos}>
+        <Text style={styles.acompanhanteNome}>{nome ?? "Profissional de bem-estar"}</Text>
+        <Text style={styles.acompanhanteNota}>
+          profissional de bem-estar · vê suas medidas e notas
+        </Text>
+      </View>
+    </Pressable>
+  );
+}
+
 type CelulasHome = {
   heroi: ReactNode;
   ultima: ReactNode;
@@ -499,7 +596,7 @@ function GradeHome({ faixa, celulas }: { faixa: FaixaLargura; celulas: CelulasHo
         {heroi}
         <View style={styles.gradeLinha}>
           <View style={styles.celulaMeia}>{ultima}</View>
-          <View style={styles.celulaMeia}>{acompanha}</View>
+          <View style={[styles.celulaMeia, styles.celulaNoTopo]}>{acompanha}</View>
         </View>
         {tendencias}
       </View>
@@ -514,7 +611,7 @@ function GradeHome({ faixa, celulas }: { faixa: FaixaLargura; celulas: CelulasHo
       </View>
       <View style={styles.gradeLinha}>
         <View style={styles.celulaLarga}>{tendencias}</View>
-        <View style={styles.celulaEstreita}>{acompanha}</View>
+        <View style={[styles.celulaEstreita, styles.celulaNoTopo]}>{acompanha}</View>
       </View>
     </View>
   );
@@ -576,17 +673,82 @@ const criarEstilos = (t: Theme) =>
       flex: 1,
       minWidth: 0,
     },
+    /**
+     * Ancora o cartão no topo da linha em vez de esticá-lo até a altura do
+     * vizinho: `alignItems:"stretch"` da linha é o padrão e é o que criava o
+     * vão morto no "Quem me acompanha".
+     */
+    celulaNoTopo: {
+      alignSelf: "flex-start",
+    },
+    // `.sess-hero{gap:14px; padding:36px 32px; min-height:260px}`.
+    heroi: {
+      gap: 14,
+      justifyContent: "center",
+      minHeight: 260,
+      overflow: "hidden",
+      paddingHorizontal: 32,
+      paddingVertical: 36,
+    },
+    // `.sess-hero{padding:28px 22px; min-height:220px}` no celular.
+    heroiMovel: {
+      minHeight: 220,
+      paddingHorizontal: 22,
+      paddingVertical: 28,
+    },
+    // `.sess-hero .wavefield{position:absolute; inset:auto 0 -8px 0}`.
+    heroiOnda: {
+      bottom: -8,
+      left: 0,
+      pointerEvents: "none",
+      position: "absolute",
+      right: 0,
+    },
+    // `.sess-hero .row{margin-top:6px; position:relative; z-index:2}` — a
+    // fileira sobe por cima da onda em vez de empurrá-la para baixo.
+    heroiAcoes: {
+      alignItems: "center",
+      alignSelf: "flex-start",
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: 12,
+      marginTop: 6,
+      zIndex: 2,
+    },
+    /**
+     * `.sess-hero .row{flex-direction:column; align-items:stretch}` no celular,
+     * com `.row .btn{width:100%}`.
+     *
+     * O `flexWrap:"wrap"` **precisa** sair junto: numa coluna que quebra, o
+     * eixo transversal passa a ser a largura da *linha do wrap* — que é a do
+     * conteúdo — e o `stretch` esticava o botão até 144px em vez dos 292 do
+     * contêiner. Foi o que segurou o botão do tamanho do rótulo no celular.
+     */
+    heroiAcoesMovel: {
+      alignItems: "stretch",
+      alignSelf: "stretch",
+      flexDirection: "column",
+      flexWrap: "nowrap",
+    },
+    // `.sess-hero h2` e `p` param nos 420px, e não na largura do cartão.
     heroiTitulo: {
       ...t.typography.title,
       color: t.colors.text,
+      maxWidth: 420,
     },
     heroiTexto: {
       ...t.typography.body,
       color: t.colors.textMuted,
+      maxWidth: 420,
     },
     heroiNota: {
       ...t.typography.caption,
       color: t.colors.textSubtle,
+    },
+    // `<p style="margin-top:14px">` do mockup.
+    ultimaLink: {
+      alignSelf: "flex-start",
+      marginTop: 14,
     },
     alfaLinha: {
       alignItems: "center",
@@ -621,10 +783,17 @@ const criarEstilos = (t: Theme) =>
       color: t.colors.textSubtle,
       lineHeight: 18,
     },
+    // O `.pcard` como linha: a borda só aparece no realce, mas o espaço dela
+    // é reservado desde o começo — senão a linha pula 2px ao passar o mouse.
     acompanhante: {
       alignItems: "center",
+      borderColor: "transparent",
+      borderRadius: t.radius.md,
+      borderWidth: 1,
       flexDirection: "row",
       gap: t.spacing.sm,
+      padding: t.spacing.sm,
+      ...transicao("background-color, border-color, transform, box-shadow", motion.rapida),
     },
     acompanhanteTextos: {
       flexShrink: 1,

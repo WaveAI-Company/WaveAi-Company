@@ -219,6 +219,37 @@ fatias de UI. Cada um precisa de investigação própria:
 
 O fundador suspeita que 1 e 2 possam ser do simulador; 3 vale para os dois casos.
 
+## Adiado com decisão tomada: paginação do histórico (2026-08-16)
+
+Surgiu na revisão da tela de **Histórico**: com uma sessão por dia a lista vira
+um scroll longo. O fundador decidiu **não** fazer o paliativo de cliente (um
+"ver mais" sobre os dados já carregados) e **fazer a paginação de verdade
+depois**. Fica registrado o que já foi apurado, para a fatia futura não
+recomeçar do zero:
+
+- **Hoje não há paginação nenhuma.** `GET /me/results` (`services/api/app/api/
+  results.py`) não tem `limit`, `offset` nem `Query(`: a tela baixa o histórico
+  inteiro e filtra na memória. O `SegmentedFilter` de **período** que já está no
+  topo da tela é client-side sobre esse conjunto.
+- **Paginar a lista não pode paginar os números.** Tendência de alfa, "Panorama
+  das sessões", "Tendências por medida" e "Resumo do período" são calculados
+  sobre o conjunto carregado. Se os agregados passarem a seguir a página, a tela
+  dirá "resumo de 30 sessões" mostrando dez, ou mudará a tendência conforme a
+  página — a tela afirmando o que não é verdade (**ADR-0027**). O desenho é:
+  **lista paginada, agregados sobre o período inteiro** — duas chamadas.
+- **A trilha de auditoria muda de forma.** Ler dado de titular é auditado; na
+  tela do profissional, paginar multiplica os eventos e a trilha passa a
+  registrar "leitura da página 3" em vez de "leitura do histórico". Decidir isso
+  é parte da fatia, não detalhe de implementação.
+- Filtro extra barato quando for a hora: **só sessões com autorrelato** — o
+  `has_annotation` já vem do servidor como metadado (#159, emenda à ADR-0037 de
+  2026-08-10: a existência da nota não audita).
+- **A mesma fatia cobre a lista "Todas as sessões" do painel do profissional**
+  (2026-08-16). Lá o peso é maior: cada leitura de dado de titular é auditada,
+  então paginar multiplica os eventos de acesso de quem **não é** o titular —
+  é o caso que decide se a trilha registra "leitura da página 3" ou uma leitura
+  por visita.
+
 ## Banco de dev para a varredura
 
 Seed: `paciente.um/dois/tres@example.com` e `dra.ficticia@example.com`.

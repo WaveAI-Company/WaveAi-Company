@@ -32,16 +32,17 @@ import {
  * O que o aceite concede, em palavras da pessoa que aceita.
  *
  * Não é enfeite: é a lista que torna o consentimento **informado** (ADR-0024).
- * A sessão ao vivo entra porque o CareLink ativo é exatamente o que autoriza o
- * profissional a assistir (ADR-0039) — o mockup dizia que isso seria um aceite
- * à parte, e não é.
+ *
+ * **A sessão ao vivo saiu daqui, e o mockup estava certo o tempo todo.** Esta
+ * lista dizia "a sessão ao vivo, enquanto você capta" com a justificativa de
+ * que o CareLink ativo já autorizava assistir (ADR-0039) e que o mockup errava
+ * ao chamar isso de aceite à parte. A **ADR-0045** mudou esse fato: o
+ * profissional só acompanha ao vivo se o titular **ligar o compartilhamento
+ * naquela sessão**, e cada sessão começa desligada. Manter o item prometeria,
+ * no aceite, um acesso que o aceite não dá — a tela afirmando o que não é
+ * verdade (ADR-0027). Quem for reintroduzi-lo precisa antes reabrir a ADR-0045.
  */
-const ESCOPO = [
-  "tendências",
-  "resumos exploratórios",
-  "seus autorrelatos",
-  "a sessão ao vivo, enquanto você capta",
-];
+const ESCOPO = ["tendências", "resumos exploratórios", "seus autorrelatos"];
 
 /** "enviado ontem", "enviado há 3 dias" — e a data seca quando já é antigo. */
 function enviadoEm(iso: string, agora: Date): string {
@@ -238,9 +239,12 @@ export default function PatientInvitesScreen() {
                   </View>
                 </View>
 
+                {/* A segunda frase é o `.inv-note` do mockup, e diz o que a
+                    lista acima deixou de fora: o ao vivo não vem no aceite. */}
                 <Text style={styles.nota}>
                   Quem acompanha nunca vê o sinal bruto da sessão nem edita nada, e cada
-                  leitura fica registrada em trilha de acesso.
+                  leitura fica registrada em trilha de acesso. O acompanhamento ao vivo é
+                  um aceite separado, que você liga em cada sessão.
                 </Text>
               </>
             )}

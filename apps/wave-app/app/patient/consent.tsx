@@ -13,6 +13,7 @@ import { ApiError } from "../../src/auth/api";
 import { Button } from "../../src/components/Button";
 import { Checkbox } from "../../src/components/Checkbox";
 import { Disclaimer } from "../../src/components/Disclaimer";
+import { IconeComAnel } from "../../src/components/EmptyState";
 import { Icon, type IconName } from "../../src/components/Icon";
 import { Panel } from "../../src/components/Panel";
 import { ScreenContainer } from "../../src/components/ScreenContainer";
@@ -27,7 +28,7 @@ import {
   baixarCopia,
   podeCompartilhar,
 } from "../../src/privacy/dataExport";
-import { useRoleAccent, useTheme, withAlpha, type Theme } from "../../src/theme";
+import { useFaixa, useRoleAccent, useTheme, withAlpha, type Theme } from "../../src/theme";
 
 /**
  * Trechos em negrito dentro de um item — o design destaca o **quê**, não a
@@ -138,6 +139,9 @@ export default function ConsentScreen() {
   const router = useRouter();
   const { accent, accentText, onAccent } = useRoleAccent();
   const styles = useMemo(() => criarEstilos(t), [t]);
+  // No celular o documento perde o respiro de 40px e as ações voltam a ocupar
+  // a linha inteira, uma sob a outra.
+  const movel = useFaixa() === "movel";
 
   const [status, setStatus] = useState<ConsentStatus | null>(null);
   const [carregando, setCarregando] = useState(true);
@@ -291,7 +295,12 @@ export default function ConsentScreen() {
         <Text style={styles.gerenciarTitulo}>{titulo}</Text>
         <Text style={styles.gerenciarNota}>{descricao}</Text>
       </View>
-      <View style={styles.gerenciarAcao}>{acao}</View>
+      {/* No celular a linha quebra e a ação cai sozinha embaixo: ali ela toma
+          a largura e se centra, em vez de ficar encostada à esquerda sob o
+          texto que a explica. */}
+      <View style={[styles.gerenciarAcao, movel && styles.gerenciarAcaoCentrada]}>
+        {acao}
+      </View>
     </View>
   );
 
@@ -324,9 +333,18 @@ export default function ConsentScreen() {
 
       {status && precisaAceitar ? (
         <>
-          <Panel>
-            <View style={[styles.selo, { backgroundColor: withAlpha(accentText, 0.14) }]}>
-              <Icon name="shield" size={28} color={accentText} strokeWidth={1.6} />
+          <Panel style={[styles.documento, movel && styles.documentoMovel]}>
+            {/* `.doc-ic::after` com a animação `bigh` — o mesmo anel que
+                respira do estado vazio, aqui em 64px. Reusar o componente é o
+                que impede os dois pulsos de divergirem na próxima correção. */}
+            <View style={styles.selo}>
+              <IconeComAnel
+                nome="shield"
+                accent={accent}
+                accentTexto={accentText}
+                tamanho={64}
+                tamanhoIcone={28}
+              />
             </View>
             <Text style={styles.eyebrow}>Consentimento · versão {status.current_version}</Text>
             <Text style={styles.titulo}>Guardar os resultados das suas sessões</Text>
@@ -358,7 +376,7 @@ export default function ConsentScreen() {
             />
 
             <View style={styles.acoes}>
-              <View style={styles.acao}>
+              <View style={[styles.acao, movel && styles.acaoMovel]}>
                 <Button
                   label="Aceitar e guardar minhas sessões"
                   onPress={aceitar}
@@ -366,7 +384,7 @@ export default function ConsentScreen() {
                   disabled={!li}
                 />
               </View>
-              <View style={styles.acao}>
+              <View style={[styles.acao, movel && styles.acaoMovel]}>
                 <Button
                   label="Decidir depois"
                   onPress={() => router.push("/patient")}
@@ -387,7 +405,7 @@ export default function ConsentScreen() {
 
       {status && !precisaAceitar ? (
         <>
-          <Panel>
+          <Panel style={[styles.documento, movel && styles.documentoMovel]}>
             <View style={[styles.faixa, { backgroundColor: withAlpha(accentText, 0.14) }]}>
               <View style={[styles.faixaSelo, { backgroundColor: accent }]}>
                 <Icon name="check" size={19} color={onAccent} strokeWidth={2.6} />
@@ -496,13 +514,22 @@ const criarEstilos = (t: Theme) =>
       ...t.typography.body,
       color: t.colors.text,
     },
+    // `.doc{padding:40px 40px 36px}` — o documento respira mais que um cartão
+    // comum; é a tela em que se lê com atenção antes de decidir.
+    documento: {
+      paddingBottom: 36,
+      paddingHorizontal: 40,
+      paddingTop: 40,
+    },
+    documentoMovel: {
+      paddingBottom: t.spacing.lg,
+      paddingHorizontal: t.spacing.md,
+      paddingTop: t.spacing.lg,
+    },
+    // `.doc-ic{margin-bottom:18px}`.
     selo: {
-      alignItems: "center",
-      borderRadius: 32,
-      height: 64,
-      justifyContent: "center",
-      marginBottom: t.spacing.xs,
-      width: 64,
+      alignSelf: "flex-start",
+      marginBottom: 18 - t.spacing.sm,
     },
     eyebrow: {
       ...t.typography.caption,
@@ -572,15 +599,25 @@ const criarEstilos = (t: Theme) =>
       marginTop: t.spacing.md,
       padding: t.spacing.md,
     },
+    // `.doc-actions{display:flex; gap:12px; margin-top:22px; flex-wrap:wrap}`.
     acoes: {
       flexDirection: "row",
       flexWrap: "wrap",
-      gap: t.spacing.sm,
-      marginTop: t.spacing.sm,
+      gap: 12,
+      marginTop: 22 - t.spacing.sm,
     },
+    // Largura de conteúdo, como os `.btn` do mockup. Era `flex:1` com piso de
+    // 200px: os dois esticavam até as bordas do cartão e abriam entre si um vão
+    // que o mockup não tem. No celular cada um volta a ocupar a linha, que é o
+    // que o `Button` já faz sozinho quando o pai não o segura.
     acao: {
-      flex: 1,
-      minWidth: 200,
+      alignSelf: "flex-start",
+    },
+    acaoMovel: {
+      alignSelf: "stretch",
+      flexBasis: "100%",
+      flexShrink: 1,
+      minWidth: 0,
     },
     rodape: {
       ...t.typography.caption,
@@ -641,6 +678,14 @@ const criarEstilos = (t: Theme) =>
     },
     gerenciarAcao: {
       minWidth: 170,
+    },
+    gerenciarAcaoCentrada: {
+      alignItems: "center",
+      flexBasis: "100%",
+      // `flexBasis:100%` sem encolher viraria piso e a célula cresceria até o
+      // conteúdo — o estouro que já apareceu na faixa de bandas.
+      flexShrink: 1,
+      minWidth: 0,
     },
     confirmar: {
       gap: t.spacing.sm,
