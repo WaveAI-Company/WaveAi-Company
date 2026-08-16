@@ -9,7 +9,7 @@ import {
   updateDisplayName,
 } from "../../auth/api";
 import { useAuth } from "../../auth/AuthContext";
-import { useRoleAccent, useTheme, type Theme } from "../../theme";
+import { useFaixa, useRoleAccent, useTheme, type Theme } from "../../theme";
 import { Button } from "../Button";
 import { CodeInput } from "../CodeInput";
 import { Field } from "../Field";
@@ -37,8 +37,35 @@ const EMAIL_MAX = 254;
  * Serve aos dois papéis: paciente e profissional têm o mesmo painel de conta, e
  * duplicá-lo garantiria que divergissem na primeira correção.
  */
-export function AccountEditor() {
+type Props = {
+  /** "Dados da conta" (nome + e-mail atual). */
+  showIdentity?: boolean;
+  showEmail?: boolean;
+  showPassword?: boolean;
+  /** Estica "Dados da conta" para emparelhar com a coluna vizinha. */
+  grow?: boolean;
+  /** Põe "Trocar e-mail" e "Senha" lado a lado, meio a meio. */
+  credenciaisEmLinha?: boolean;
+};
+
+/**
+ * As três seções podem sair **separadas**: no perfil do paciente a identidade
+ * fica na coluna de configurações e as duas credenciais descem para uma faixa
+ * própria, meio a meio. Cada seção tem o seu estado e nenhum é compartilhado
+ * entre elas, então duas instâncias com recortes diferentes não se atrapalham.
+ */
+export function AccountEditor({
+  showIdentity = true,
+  showEmail = true,
+  showPassword = true,
+  grow,
+  credenciaisEmLinha,
+}: Props = {}) {
   const { user, recarregarUsuario } = useAuth();
+  // No celular as ações destes formulários ficam centradas no cartão: sozinhas
+  // numa coluna estreita, encostadas à esquerda, elas pareciam órfãs do campo
+  // de cima. Decisão do fundador em 2026-08-16.
+  const movel = useFaixa() === "movel";
   const t = useTheme();
   const papel = useRoleAccent();
   const styles = useMemo(() => criarEstilos(t), [t]);
@@ -166,9 +193,12 @@ export function AccountEditor() {
     }
   }
 
+  const credenciais = showEmail || showPassword;
+
   return (
-    <>
-      <Panel title="Dados da conta" eyebrow="identificação">
+    <View style={[styles.secoes, grow && styles.cresce]}>
+      {showIdentity ? (
+      <Panel title="Dados da conta" eyebrow="identificação" grow={grow}>
         <Field
           label="Nome"
           value={nome}
@@ -188,7 +218,7 @@ export function AccountEditor() {
           <Text style={styles.emailValor}>{user?.email ?? "—"}</Text>
         </View>
 
-        <View style={styles.acao}>
+        <View style={[styles.acao, movel && styles.acaoCentrada]}>
           <Button
             label="Salvar nome"
             onPress={salvarNome}
@@ -199,6 +229,12 @@ export function AccountEditor() {
         </View>
         {nomeSalvo ? <Text style={styles.recibo}>Nome atualizado.</Text> : null}
       </Panel>
+      ) : null}
+
+      {credenciais ? (
+        <View
+          style={[styles.credenciais, credenciaisEmLinha && styles.credenciaisLinha]}
+        >
 
       {/**
        * Troca de e-mail, em dois passos **dentro do painel**.
@@ -213,7 +249,9 @@ export function AccountEditor() {
        * entrega: nós entregamos ao provedor, não à caixa de ninguém. Daí o
        * condicional, que é verdadeiro nos dois ramos.
        */}
-      <Panel title="Trocar e-mail" eyebrow="dois passos">
+          {showEmail ? (
+            <View style={credenciaisEmLinha ? styles.credencialMetade : undefined}>
+      <Panel title="Trocar e-mail" eyebrow="dois passos" grow={credenciaisEmLinha}>
         {etapa === "pedir" ? (
           <>
             <Text style={styles.nota}>
@@ -246,7 +284,7 @@ export function AccountEditor() {
                 {erroEmail}
               </Text>
             ) : null}
-            <View style={styles.acao}>
+            <View style={[styles.acao, movel && styles.acaoCentrada]}>
               <Button
                 label="Enviar código"
                 onPress={pedirTrocaDeEmail}
@@ -282,7 +320,7 @@ export function AccountEditor() {
                 {erroEmail}
               </Text>
             ) : null}
-            <View style={styles.acaoLinha}>
+            <View style={[styles.acaoLinha, movel && styles.acaoLinhaCentrada]}>
               <Button
                 label="Confirmar troca"
                 onPress={confirmarTrocaDeEmail}
@@ -308,8 +346,12 @@ export function AccountEditor() {
           </Text>
         ) : null}
       </Panel>
+            </View>
+          ) : null}
 
-      <Panel title="Senha" eyebrow="acesso">
+          {showPassword ? (
+            <View style={credenciaisEmLinha ? styles.credencialMetade : undefined}>
+      <Panel title="Senha" eyebrow="acesso" grow={credenciaisEmLinha}>
         <Field
           label="Senha atual"
           value={atual}
@@ -359,7 +401,7 @@ export function AccountEditor() {
           </Text>
         ) : null}
 
-        <View style={styles.acao}>
+        <View style={[styles.acao, movel && styles.acaoCentrada]}>
           <Button
             label="Trocar senha"
             onPress={trocarSenha}
@@ -370,12 +412,37 @@ export function AccountEditor() {
         </View>
         {senhaTrocada ? <Text style={styles.recibo}>Senha atualizada.</Text> : null}
       </Panel>
-    </>
+            </View>
+          ) : null}
+        </View>
+      ) : null}
+    </View>
   );
 }
 
 const criarEstilos = (t: Theme) =>
   StyleSheet.create({
+    // O mesmo respiro da coluna que hospeda as seções.
+    secoes: {
+      gap: t.spacing.md,
+    },
+    // O `grow` precisa dos dois: o painel estica dentro do bloco e o bloco
+    // estica dentro da coluna. Só o de dentro pararia na altura do conteúdo.
+    cresce: {
+      flex: 1,
+    },
+    credenciais: {
+      gap: t.spacing.md,
+    },
+    credenciaisLinha: {
+      alignItems: "stretch",
+      flexDirection: "row",
+    },
+    credencialMetade: {
+      flexBasis: 0,
+      flexGrow: 1,
+      minWidth: 0,
+    },
     emailLinha: {
       gap: 2,
     },
@@ -391,12 +458,18 @@ const criarEstilos = (t: Theme) =>
       alignItems: "flex-start",
       marginTop: t.spacing.xs,
     },
+    acaoCentrada: {
+      alignItems: "center",
+    },
     acaoLinha: {
       alignItems: "center",
       flexDirection: "row",
       flexWrap: "wrap",
       gap: t.spacing.sm,
       marginTop: t.spacing.xs,
+    },
+    acaoLinhaCentrada: {
+      justifyContent: "center",
     },
     nota: {
       ...t.typography.caption,

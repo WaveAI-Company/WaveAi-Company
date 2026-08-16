@@ -7,6 +7,7 @@ import {
   motion,
   semContornoNativo,
   transicao,
+  useFaixa,
   useInteracao,
   useTheme,
   type Theme,
@@ -80,6 +81,8 @@ type Props = {
 export function GuidedProtocol({ accent, onPhaseChange, embedded }: Props) {
   const t = useTheme();
   const styles = useMemo(() => criarEstilos(t), [t]);
+  // Fora do celular a dupla de ações cabe em uma linha só.
+  const emLinha = useFaixa() !== "movel";
   // Estado do botão de silenciar a guia por voz.
   const som = useInteracao();
   const [indice, setIndice] = useState(OCIOSO);
@@ -200,12 +203,31 @@ export function GuidedProtocol({ accent, onPhaseChange, embedded }: Props) {
             <Text style={styles.contagem}>{mmss(restante)}</Text>
           </View>
           <Text style={styles.corpo}>{fase.instrucao}</Text>
-          <Button
-            label={indice + 1 < FASES.length ? "Próxima fase" : "Concluir"}
-            onPress={proxima}
-            accent={accent}
-          />
-          <Button label="Encerrar protocolo" onPress={encerrar} variant="secondary" />
+          {/* A dupla do mockup fica **lado a lado** (`display:flex; gap:10px`)
+              enquanto houver largura: no trilho de 360px são dois botões de
+              meia largura. No celular o card ocupa a tela inteira e a mesma
+              dupla volta a empilhar, com cada botão em linha cheia — o que já
+              estava certo e não muda. */}
+          <View style={[styles.acoes, emLinha && styles.acoesLinha]}>
+            <View style={emLinha ? styles.acaoMeia : undefined}>
+              <Button
+                label={indice + 1 < FASES.length ? "Próxima fase" : "Concluir"}
+                onPress={proxima}
+                accent={accent}
+                largura={emLinha ? "bloco" : "conteudo"}
+                compacto={emLinha}
+              />
+            </View>
+            <View style={emLinha ? styles.acaoMeia : undefined}>
+              <Button
+                label="Encerrar protocolo"
+                onPress={encerrar}
+                variant="secondary"
+                largura={emLinha ? "bloco" : "conteudo"}
+                compacto={emLinha}
+              />
+            </View>
+          </View>
         </>
       ) : null}
 
@@ -234,6 +256,18 @@ const criarEstilos = (t: Theme) =>
     // Sem cartão: quem desenha a moldura e o título é o `Panel` da tela.
     solto: {
       gap: t.spacing.sm,
+    },
+    acoes: {
+      gap: t.spacing.sm,
+    },
+    // `display:flex; gap:10px` do mockup, com as duas metades iguais.
+    acoesLinha: {
+      flexDirection: "row",
+    },
+    acaoMeia: {
+      flexBasis: 0,
+      flexGrow: 1,
+      minWidth: 0,
     },
     cabecalhoSolto: {
       justifyContent: "flex-end",

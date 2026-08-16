@@ -43,6 +43,11 @@ type Props = {
    * compacto não. Sem isso os dois viriam sempre colados, um sob o outro.
    */
   showLast?: boolean;
+  /**
+   * Estica o painel até a altura da célula, para emparelhar com o cartão ao
+   * lado. Pensado para quando **um** painel está visível.
+   */
+  grow?: boolean;
 };
 
 /**
@@ -60,6 +65,7 @@ export function SessionsDashboard({
   showAllSessions = true,
   showTrend = true,
   showLast = true,
+  grow,
 }: Props) {
   const t = useTheme();
   const papel = useRoleAccent();
@@ -80,7 +86,7 @@ export function SessionsDashboard({
   const qualidade = ultima?.metrics?.quality;
 
   return (
-    <View style={styles.wrapper}>
+    <View style={[styles.wrapper, grow && styles.cresce]}>
       {showTrend && tendencia.length > 0 ? (
         <Panel
           title="Tendência de alfa relativo"
@@ -161,6 +167,9 @@ export function SessionsDashboard({
 
 const criarEstilos = (t: Theme) =>
   StyleSheet.create({
+    cresce: {
+      flex: 1,
+    },
     wrapper: {
       gap: t.spacing.md,
     },

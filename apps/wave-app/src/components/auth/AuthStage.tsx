@@ -103,10 +103,18 @@ export function AuthStage({
           />
         ) : null}
 
-        <View style={[styles.colunaAuth, duasColunas && styles.colunaAuthLado]}>
-          <View style={styles.barraTopo}>
-            <AlternarTema />
-          </View>
+        <View
+          style={[
+            styles.colunaAuth,
+            duasColunas ? styles.colunaAuthLado : null,
+            marcaCheia ? styles.colunaAuthRespiro : styles.colunaAuthRespiroCompacto,
+          ]}
+        >
+          {/* `.theme-toggle{position:absolute; top:20px; right:20px}` — fora do
+              fluxo, no canto do painel de autenticação. No fluxo ele entrava na
+              centralização da coluna e descia junto com o cartão (medido: 212px
+              do topo em 1400x900, contra os 20 do mockup). */}
+          <AlternarTema />
 
           {!marcaCheia ? (
             <View style={styles.marcaCompacta}>
@@ -117,24 +125,18 @@ export function AuthStage({
           ) : null}
 
           <View style={[styles.cartao, { maxWidth: larguraCartao }]}>{children}</View>
-        </View>
-      </ScrollView>
 
-      {/* O aviso fica fora da rolagem: é o `.page-foot`, que no mockup é
-          `position:absolute; bottom:14px` justamente para **não** participar
-          da centralização do formulário. O espaçador replica a proporção das
-          colunas para ele ficar centrado sob o formulário, e não sob a tela
-          inteira — sem precisar medir nada. */}
-      <View style={styles.rodapeLinha}>
-        <View style={duasColunas ? styles.espacadorMarca : styles.espacadorVazio} />
-        <View style={styles.rodape}>
-          {/* O respiro fica num filho: no pai ele entraria como base do flex e
-              roubaria 48px da fração da coluna, desalinhando o aviso do cartão. */}
-          <View style={styles.rodapeInterno}>
+          {/* `.page-foot{position:absolute; bottom:14px; left:0; right:0}`,
+              dentro do painel de autenticação. Era uma **linha irmã** abaixo da
+              rolagem: como consumia altura (32px medidos em 1400x900), a coluna
+              da marca parava antes do fundo e, no tema claro, sobrava uma faixa
+              clara sob ela. Fora do fluxo, a marca vai até o fim e o aviso já
+              nasce centrado sob o formulário, sem replicar proporção nenhuma. */}
+          <View style={styles.rodape}>
             <Disclaimer placement="auth" />
           </View>
         </View>
-      </View>
+      </ScrollView>
     </View>
   );
 }
@@ -268,8 +270,21 @@ const criarEstilos = (t: Theme) =>
       overflow: "hidden",
       padding: t.spacing.xl,
     },
+    /**
+     * Empilhado, a marca é a linha `auto` do `grid-template-rows:auto 1fr` —
+     * **altura de conteúdo**, com 380 de piso.
+     *
+     * Era `flex: 0`, que o RN-web traduz para `flex: 0 1 0%`: base zero e
+     * `flexShrink:1` colavam a altura no `minHeight` e o `overflow:hidden`
+     * cortava o resto — 144px do herói do cadastro sumiam em 1041x840
+     * (`scrollHeight` 524 contra `clientHeight` 380), e a onda do rodapé
+     * subia junto. No login o texto é curto e cabia, então só o cadastro
+     * mostrava o corte.
+     */
     painelMarcaEmpilhado: {
-      flex: 0,
+      flexBasis: "auto",
+      flexGrow: 0,
+      flexShrink: 0,
       minHeight: 380,
       padding: t.spacing.lg,
     },
@@ -378,17 +393,31 @@ const criarEstilos = (t: Theme) =>
       backgroundColor: t.colors.background,
       flexGrow: 1,
       justifyContent: "center",
-      padding: t.spacing.lg,
     },
     colunaAuthLado: {
       flexBasis: 0,
     },
-    barraTopo: {
-      alignItems: "flex-end",
-      alignSelf: "stretch",
+    // `.auth-panel{padding:48px 32px}` e, no tablet, `40px 32px 64px`. O fundo
+    // maior é o que impede o cartão centralizado de encostar no aviso, agora
+    // que ele saiu do fluxo.
+    colunaAuthRespiro: {
+      paddingBottom: 64,
+      paddingHorizontal: t.spacing.lg + 8,
+      paddingTop: 48,
+    },
+    // `.auth-panel{padding:28px 20px 72px}` — no compacto o aviso divide a
+    // coluna com a marca reduzida, então o fundo reservado é maior ainda.
+    colunaAuthRespiroCompacto: {
+      paddingBottom: 72,
+      paddingHorizontal: t.spacing.md,
+      paddingTop: 28,
     },
     botaoTema: {
       alignItems: "center",
+      position: "absolute",
+      right: 20,
+      top: 20,
+      zIndex: 5,
       backgroundColor: t.colors.surface,
       borderColor: t.colors.borderStrong,
       borderRadius: t.radius.pill,
@@ -418,26 +447,12 @@ const criarEstilos = (t: Theme) =>
       gap: t.spacing.md,
       width: "100%",
     },
-    // `.page-foot{bottom:14px; left:0; right:0; padding:0 24px}` — a coluna
-    // inteira, e não uma caixa de 480px encostada à esquerda.
-    rodapeLinha: {
-      backgroundColor: t.colors.background,
-      flexDirection: "row",
-    },
-    // As mesmas proporções das colunas: 1,15 para a marca, 1 para o formulário.
-    espacadorMarca: {
-      flex: 1.15,
-    },
-    espacadorVazio: {
-      flex: 0,
-    },
+    // `.page-foot{position:absolute; bottom:14px; left:0; right:0; padding:0 24px}`.
     rodape: {
-      flexBasis: 0,
-      flexGrow: 1,
-      minWidth: 0,
-    },
-    rodapeInterno: {
-      paddingBottom: 14,
+      bottom: 14,
+      left: 0,
       paddingHorizontal: t.spacing.lg,
+      position: "absolute",
+      right: 0,
     },
   });

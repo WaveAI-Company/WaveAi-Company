@@ -1,5 +1,5 @@
 import { useMemo, type ReactNode } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View, type StyleProp, type ViewStyle } from "react-native";
 
 import { shadows, useTheme, type Theme } from "../theme";
 
@@ -24,14 +24,20 @@ type Props = {
   children?: ReactNode;
   /** Preenche a altura disponível (usado nas colunas do grid). */
   grow?: boolean;
+  /**
+   * Ajuste do cartão para um uso específico — o `class="card sess-hero"` do
+   * mockup, que troca padding e altura mínima sem deixar de ser um `.card`.
+   * Para variações pontuais de uma tela; o que se repetir vira prop.
+   */
+  style?: StyleProp<ViewStyle>;
 };
 
-export function Panel({ title, eyebrow, headerAccessory, children, grow }: Props) {
+export function Panel({ title, eyebrow, headerAccessory, children, grow, style }: Props) {
   const t = useTheme();
   const styles = useMemo(() => criarEstilos(t), [t]);
 
   return (
-    <View style={[styles.painel, grow && styles.cresce]}>
+    <View style={[styles.painel, grow && styles.cresce, style]}>
       {title || eyebrow || headerAccessory ? (
         <View style={styles.cabecalho}>
           {title ? <Text style={styles.titulo}>{title}</Text> : null}
