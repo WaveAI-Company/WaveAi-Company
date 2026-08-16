@@ -351,3 +351,132 @@ def test_desligar_encerra_o_stream_do_profissional(
     assert inicial == {"live": True, "shared": True}
     assert _status(aviso) == {"type": "share", "shared": False}
     assert fim == "encerrou"
+
+
+# -- ligar com a captação já em curso -----------------------------------
+
+
+class _AnalysisFake:
+    """Devolve uma janela pronta, para o gateway ter o que espelhar."""
+
+    def analyze_window(self, samples, fs, device=None):
+        return {"rel_alpha": 0.42, "engine_version": "fake/1.0"}
+
+    def analyze_session(self, samples, fs, labels=None, device=None, history=None):
+        return {"rel_alpha": 0.33, "engine_version": "fake/1.0"}
+
+
+def test_ligar_com_a_sessao_correndo_passa_a_publicar(db_session: Session):
+    """O caminho **real** do compartilhamento, e o que estava quebrado.
+
+    Toda sessão nasce desligada (ADR-0045), então ligar durante a captação é a
+    única forma de compartilhar. O gateway carrega a sessão uma vez, no
+    `start`, e quem liga é outra requisição: sem reler a coluna, a conexão do
+    WebSocket seguia publicando `compartilhado=False` para sempre — o
+    espectador via `shared: true` no status e não recebia janela nenhuma.
+
+    O teste anda pelo fluxo inteiro: abre o stream de verdade, liga pela rota
+    HTTP com a sessão já correndo e confere que a janela seguinte chega a quem
+    assina o barramento.
+    """
+    from app.api.deps import get_analysis_client
+    from app.services.live_bus import get_live_bus
+
+    app.dependency_overrides[get_session] = lambda: db_session
+    app.dependency_overrides[get_analysis_client] = lambda: _AnalysisFake()
+    try:
+        with TestClient(app, base_url="https://testserver") as client:
+            paciente = Ator(client)
+            p_user = _user(db_session, paciente.email)
+            bus = get_live_bus()
+            recebidos: list[dict] = []
+
+            with client.websocket_connect("/stream") as ws:
+                ws.send_json({"type": "auth", "token": paciente.token})
+                assert ws.receive_json() == {"type": "auth_ok"}
+                ws.send_json(
+                    {"type": "start", "device": "simulador", "sample_rate": 512}
+                )
+                session_id = ws.receive_json()["session_id"]
+
+                # Espia o barramento como um espectador autorizado faria: o
+                # corte de quem vê o quê é do `LiveBus`, e é dele que a fila
+                # de espectador recebe (ou não) a janela.
+                fila: asyncio.Queue[dict] = asyncio.Queue()
+                bus._espectadores[p_user.id].add(fila)
+
+                # Ainda desligado: a janela não pode vazar.
+                ws.send_json({"type": "samples", "seq": 1, "data": [1.0] * 1024})
+                assert "features" in ws.receive_json()
+                assert fila.empty()
+
+                # O titular liga **agora**, com a captação em curso.
+                resp = _ligar(client, paciente, session_id, True)
+                assert resp.status_code == 200
+
+                ws.send_json({"type": "samples", "seq": 2, "data": [1.0] * 1024})
+                assert "features" in ws.receive_json()
+                while not fila.empty():
+                    recebidos.append(fila.get_nowait())
+
+            tipos = [e["type"] for e in recebidos]
+            # O `share` é o aviso que a própria rota publica ao ligar; o que
+            # importa aqui é a **janela** que vem depois dele.
+            assert tipos == ["share", "features"], (
+                "a janela seguinte ao 'ligar' precisa chegar ao espectador"
+            )
+            janela = recebidos[-1]
+            assert janela["session_id"] == session_id
+            assert janela["features"]["rel_alpha"] == 0.42
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_publicar_le_o_compartilhamento_do_banco(
+    client: TestClient, db_session: Session
+):
+    """O mecanismo do bug, isolado: **duas sessões do SQLAlchemy**.
+
+    Em produção a conexão do WebSocket tem a sua sessão e a rota que liga o
+    compartilhamento tem outra. Sem reler a coluna na hora de publicar, a
+    primeira segue com o valor lido no `start` — `False`, sempre, porque toda
+    sessão nasce assim (ADR-0045).
+
+    O teste de fluxo acima **não** pega isso: no `TestClient` as duas pontas
+    compartilham a mesma sessão pelo override do `get_session`, e o objeto já
+    vem atualizado. Aqui a segunda sessão é criada à mão, e o alvo é
+    `_publicar_ao_vivo` — o **ponto de uso**, não o helper: testar o helper
+    sozinho deixaria passar justamente a regressão de alguém voltar a ler
+    `sessao.live_sharing_enabled` na hora de publicar.
+    """
+    from types import SimpleNamespace
+
+    from app.api.stream import _publicar_ao_vivo
+
+    paciente = _user(db_session, Ator(client).email)
+    sessao = _sessao_ativa(db_session, paciente)
+    db_session.commit()
+
+    # A "outra requisição": sessão própria, sobre a mesma conexão do teste.
+    outra = Session(
+        bind=db_session.connection(), join_transaction_mode="create_savepoint"
+    )
+    try:
+        espelho = outra.get(CaptureSession, sessao.id)
+        espelho.live_sharing_enabled = True
+        outra.commit()
+    finally:
+        outra.close()
+
+    # O objeto que o gateway carregou no `start` ainda não sabe de nada.
+    assert sessao.live_sharing_enabled is False
+
+    protocolo = SimpleNamespace(state=SimpleNamespace(user=paciente, session=sessao))
+
+    async def cenario() -> str:
+        bus = LiveBus()
+        async with bus.subscribe(paciente.id, espectador=True) as fila:
+            _publicar_ao_vivo(bus, protocolo, {"features": {"a": 1}}, db_session)
+            return await _vazio_ou_recebeu(fila)
+
+    assert asyncio.run(cenario()) == "recebeu"
