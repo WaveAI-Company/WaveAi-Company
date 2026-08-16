@@ -10,16 +10,20 @@ type Props = {
   accent?: string;
   /** Acessório à direita do título (ex.: um `InfoButton` didático). */
   titleAccessory?: ReactNode;
+  /** Preenche a altura disponível — para emparelhar com a coluna vizinha. */
+  grow?: boolean;
   children?: ReactNode;
 };
 
 /** Bloco de conteúdo com título e faixa de destaque opcional. */
-export function Card({ title, subtitle, accent, titleAccessory, children }: Props) {
+export function Card({ title, subtitle, accent, titleAccessory, grow, children }: Props) {
   const t = useTheme();
   const styles = useMemo(() => criarEstilos(t), [t]);
 
   return (
-    <View style={[styles.card, { borderLeftColor: accent ?? t.colors.border }]}>
+    <View
+      style={[styles.card, grow && styles.cresce, { borderLeftColor: accent ?? t.colors.border }]}
+    >
       <View style={styles.titleRow}>
         <Text style={styles.title}>{title}</Text>
         {titleAccessory}
@@ -38,6 +42,9 @@ const criarEstilos = (t: Theme) =>
       borderRadius: t.radius.md,
       gap: t.spacing.sm,
       padding: t.spacing.md,
+    },
+    cresce: {
+      flex: 1,
     },
     titleRow: {
       flexDirection: "row",

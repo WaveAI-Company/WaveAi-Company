@@ -48,6 +48,16 @@ const SUBDIV = 12;
  * caminhos.
  */
 const V = 1000;
+/**
+ * Folga vertical dentro do plot, em unidades do quadrado virtual (6%).
+ *
+ * Sem ela o mínimo e o máximo caem exatamente nas bordas do SVG, que tem
+ * `overflow:hidden` — e o traço é **cortado ao meio** nos extremos: a linha
+ * tem 2,2px e metade fica fora. Pior com `smooth`: a spline Catmull-Rom
+ * ultrapassa os pontos nos picos agudos (medido no ao vivo: 5 pontos em
+ * `y = -14,3`, 2,1px além do topo), e é isso que achatava os picos da onda.
+ */
+const FOLGA_Y = 60;
 
 type Pixel = { px: number; py: number };
 
@@ -144,7 +154,7 @@ export function TrendChart({
 
   // Tudo em coordenadas do quadrado virtual: x pelo índice, y pelo valor.
   const x = (i: number) => (data.length === 1 ? V / 2 : (i / (data.length - 1)) * V);
-  const y = (v: number) => V - ((v - min) / (max - min)) * V;
+  const y = (v: number) => V - FOLGA_Y - ((v - min) / (max - min)) * (V - 2 * FOLGA_Y);
 
   const pontosPixel: Pixel[] = data.map((d, i) => ({ px: x(i), py: y(d.value) }));
   const linha = smooth ? suavizar(pontosPixel, SUBDIV) : pontosPixel;

@@ -75,7 +75,10 @@ export function SessionRow({ result }: Props) {
         )}
       </View>
 
-      <View style={styles.alfa}>
+      {/* Empilhado, o alfa cai sozinho numa terceira linha do `flexWrap` e
+          ficava encostado à esquerda, sem nada ao lado para se alinhar. Ali
+          ele toma a linha inteira e se centra. */}
+      <View style={[styles.alfa, estreito && styles.alfaLarga]}>
         <Text style={styles.alfaValor}>
           {typeof alfa === "number" ? formatPercent(alfa, 0) : "—"}
         </Text>
@@ -171,6 +174,14 @@ const criarEstilos = (t: Theme) =>
     alfa: {
       alignItems: "flex-end",
       minWidth: 56,
+    },
+    alfaLarga: {
+      alignItems: "center",
+      flexBasis: "100%",
+      // Sem encolher, o `flexBasis:100%` vira piso e o bloco cresce até o
+      // conteúdo — o mesmo estouro que a faixa de bandas já deu.
+      flexShrink: 1,
+      minWidth: 0,
     },
     alfaValor: {
       ...t.typography.heading,

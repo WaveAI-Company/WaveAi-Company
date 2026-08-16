@@ -93,6 +93,8 @@ export default function PatientHistoryScreen() {
   const emMeio = faixa === "medio";
 
   const [results, setResults] = useState<SessionResult[]>([]);
+  /** Não há sessão nenhuma na conta — diferente de "nenhuma neste recorte". */
+  const [semNenhuma, setSemNenhuma] = useState(false);
   const [report, setReport] = useState<Report | null>(null);
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
@@ -107,7 +109,24 @@ export default function PatientHistoryScreen() {
     setLoading(true);
     setErro(null);
     try {
-      setResults(await listMyResults(dias(periodo)));
+      const dados = await listMyResults(dias(periodo));
+      setResults(dados);
+      /**
+       * Vazio **no recorte** não diz se a pessoa nunca captou: a lista já vem
+       * filtrada do servidor (P9-b), então "zero em 30 dias" e "zero desde
+       * sempre" chegam idênticos aqui. Como a tela abre em 30 dias, quem nunca
+       * captou via a mensagem de recorte — "escolha Tudo para ver o histórico
+       * inteiro" — em vez do convite à primeira sessão, e o convite só
+       * aparecia para quem fosse mexer no filtro.
+       *
+       * Uma segunda leitura, **só quando a primeira volta vazia**, desfaz o
+       * empate. Já em "Tudo" a resposta é a própria lista.
+       */
+      setSemNenhuma(
+        dados.length > 0
+          ? false
+          : periodo === "tudo" || (await listMyResults(dias("tudo"))).length === 0,
+      );
     } catch {
       setErro("Não foi possível carregar suas sessões.");
     } finally {
@@ -163,7 +182,7 @@ export default function PatientHistoryScreen() {
    * da primeira sessão só aparece com o período em "Tudo".
    */
   const pronto = !loading && !erro;
-  const nuncaCaptou = pronto && results.length === 0 && periodo === "tudo";
+  const nuncaCaptou = pronto && results.length === 0 && semNenhuma;
   //: A moldura (título + seletor) fica de pé mesmo com a janela vazia: é ela
   //: que dá a saída do recorte. Escondê-la prenderia a pessoa no filtro.
   const temSessoes = pronto && !nuncaCaptou;
@@ -299,49 +318,53 @@ export default function PatientHistoryScreen() {
           </View>
 
           {/**
-           * O panorama, depois da lista.
+           * O panorama, depois da lista. Esta área **não tem mockup**.
            *
-           * Eram três blocos empilhados a 100% — "cards jogados", no pente
-           * fino. Esta área **não tem mockup**, então segue o padrão do
-           * sistema: as mesmas proporções `1.4fr 1fr` da home do paciente.
+           * Três faixas, e o critério mudou: era "quem ganha com largura"
+           * (`1.4fr 1fr`, o gráfico e o texto na coluna larga). Agora a
+           * tendência de alfa fica **sozinha na linha inteira** — é a figura
+           * da tela e não divide com ninguém — e os outros quatro cartões se
+           * emparelham **meio a meio**, cada par numa linha. Decisão do
+           * fundador em 2026-08-16.
            *
-           * O critério do arranjo é **quem ganha com largura**: a tendência é
-           * um gráfico e o relatório é texto corrido, e os dois respiram na
-           * coluna larga; "Última sessão" e "Nota de contexto" são cartões
-           * compactos que só esticavam sem motivo.
-           *
-           * No tablet o relatório volta à linha inteira: texto longo em meia
-           * coluna vira coluna de jornal.
+           * Só no desktop: abaixo de 1200 todos voltam à linha inteira, e o
+           * "Panorama das sessões" agradece — é texto corrido, e meia coluna
+           * estreita o transforma em coluna de jornal.
            */}
-          <View
-            style={[styles.panorama, (emColunas || emMeio) && styles.panoramaLinha]}
-          >
-            <View
-              style={emColunas ? styles.panoramaLargo : emMeio ? styles.panoramaMeio : undefined}
-            >
-              <SessionsDashboard results={results} showAllSessions={false} showLast={false} />
+          <SessionsDashboard results={results} showAllSessions={false} showLast={false} />
+
+          {/* `grow` nos dois lados de cada par: a célula já é esticada pela
+              linha, mas o painel dentro dela parava na altura do conteúdo e
+              cada linha terminava em degrau. */}
+          <View style={[styles.panorama, emColunas && styles.panoramaLinha]}>
+            <View style={emColunas ? styles.panoramaMetade : undefined}>
+              <SessionsDashboard
+                results={results}
+                showAllSessions={false}
+                showTrend={false}
+                grow={emColunas}
+              />
             </View>
-            <View
-              style={
-                emColunas ? styles.panoramaEstreito : emMeio ? styles.panoramaMeio : undefined
-              }
-            >
-              <SessionsDashboard results={results} showAllSessions={false} showTrend={false} />
-            </View>
+            {report && report.n_sessions > 0 ? (
+              <View style={emColunas ? styles.panoramaMetade : undefined}>
+                <LongitudinalReport report={report} showSummary={false} grow={emColunas} />
+              </View>
+            ) : null}
           </View>
 
           <View style={[styles.panorama, emColunas && styles.panoramaLinha]}>
             {report && report.n_sessions > 0 ? (
-              <View style={emColunas ? styles.panoramaLargo : undefined}>
-                <LongitudinalReport report={report} />
+              <View style={emColunas ? styles.panoramaMetade : undefined}>
+                <LongitudinalReport report={report} showFeatureTrends={false} grow={emColunas} />
               </View>
             ) : null}
 
-            {/* Anotação de contexto (P2, ADR-0037) da sessão mais recente. */}
+            {/* Anotação de contexto (P2, ADR-0037) da sessão mais recente.
+                Último cartão da página, na coluna da direita. */}
             {(() => {
               const alvo = maisRecente(results);
               return alvo ? (
-                <View style={emColunas ? styles.panoramaEstreito : undefined}>
+                <View style={emColunas ? styles.panoramaMetade : undefined}>
                   <Panel title="Nota de contexto" eyebrow="sessão mais recente" grow>
                     <SessionAnnotation sessionId={alvo.session_id} mode="edit" embedded />
                   </Panel>
@@ -439,7 +462,7 @@ const criarEstilos = (t: Theme) =>
       flex: 1,
     },
     // ---------- panorama (área sem mockup) ----------
-    // Mesmas proporções da home do paciente: `1.4fr 1fr`, gap de 20.
+    // Gap de 20, como na home do paciente.
     panorama: {
       gap: 20,
     },
@@ -447,18 +470,11 @@ const criarEstilos = (t: Theme) =>
       alignItems: "stretch",
       flexDirection: "row",
     },
-    panoramaLargo: {
-      flex: 1.4,
-      minWidth: 0,
-    },
-    panoramaEstreito: {
-      flex: 1,
-      minWidth: 0,
-    },
-    // No tablet a primeira linha divide ao meio; a segunda empilha, porque
-    // texto corrido em meia coluna vira coluna de jornal.
-    panoramaMeio: {
-      flex: 1,
+    // Meio a meio: `flexBasis:0` para a divisão sair da fração e não do
+    // conteúdo — um dos pares tem um gráfico de um lado e uma lista do outro.
+    panoramaMetade: {
+      flexBasis: 0,
+      flexGrow: 1,
       minWidth: 0,
     },
     trilho: {

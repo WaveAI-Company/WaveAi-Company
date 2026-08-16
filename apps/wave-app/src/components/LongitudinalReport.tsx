@@ -16,6 +16,19 @@ type Props = {
   report: Report;
   /** Ignorado desde o porte "Maré": o painel não tem faixa de destaque. */
   accent?: string;
+  /**
+   * Os dois painéis podem sair **separados**: no histórico cada um divide uma
+   * linha com um vizinho diferente. Ligados os dois (o padrão), saem
+   * empilhados como sempre.
+   */
+  showSummary?: boolean;
+  showFeatureTrends?: boolean;
+  /**
+   * Estica o painel até a altura da célula, para emparelhar com o cartão ao
+   * lado. Pensado para quando **um** dos dois está visível — com os dois
+   * ligados, o `flex:1` repartiria a coluna entre eles.
+   */
+  grow?: boolean;
 };
 
 /**
@@ -27,7 +40,12 @@ type Props = {
  * escaneável. Nada aqui é veredito: "↑/↓/→" é a direção **numérica** de uma
  * feature, sem cor de "bom/ruim" (não há juízo — honestidade visual, ADR-0027).
  */
-export function LongitudinalReport({ report }: Props) {
+export function LongitudinalReport({
+  report,
+  showSummary = true,
+  showFeatureTrends = true,
+  grow,
+}: Props) {
   const t = useTheme();
   const styles = useMemo(() => criarEstilos(t), [t]);
 
@@ -35,41 +53,57 @@ export function LongitudinalReport({ report }: Props) {
   // Maior variação primeiro — o que mais mudou fica no topo (|delta_pct|).
   trends.sort((a, b) => Math.abs(b[1].delta_pct) - Math.abs(a[1].delta_pct));
 
+  /**
+   * Com **um** painel na célula, o rastro do motor entra dentro dele — é onde
+   * o `SessionsDashboard` já o põe, e fora do cartão ele virava 34px de
+   * degrau contra o vizinho de linha. Com os dois painéis, o rastro fica no
+   * pé do bloco, uma vez só, em vez de repetido em cada cartão.
+   */
+  const painelUnico = !showSummary || !showFeatureTrends;
+  const rastro = report.engine_version ? (
+    <Text style={styles.engine}>Motor de análise: {report.engine_version}</Text>
+  ) : null;
+
   const periodo = report.period
     ? `${formatDate(report.period.first)} – ${formatDate(report.period.last)}`
     : null;
 
   return (
-    <View style={styles.wrapper}>
-      {report.narrative ? (
+    <View style={[styles.wrapper, grow && styles.cresce]}>
+      {showSummary && report.narrative ? (
         // Camada de linguagem por LLM (N6-b): prosa aterrada no sumário.
         // Rotulada como gerada por IA e não-diagnóstica (ADR-0035 / Medical/71).
         <Panel
           title="Panorama das sessões"
           eyebrow={periodo ? `${report.n_sessions} sessões · ${periodo}` : undefined}
+          grow={grow}
         >
           <Text style={styles.sumario}>{report.narrative}</Text>
           <Text style={styles.aiLabel}>
             Texto gerado por IA a partir das suas medidas — não-diagnóstico.
           </Text>
+          {painelUnico ? rastro : null}
         </Panel>
-      ) : report.summary.length > 0 ? (
+      ) : showSummary && report.summary.length > 0 ? (
         <Panel
           title="Panorama das sessões"
           eyebrow={periodo ? `${report.n_sessions} sessões · ${periodo}` : undefined}
+          grow={grow}
         >
           {report.summary.map((linha, i) => (
             <Text key={`sum-${i}`} style={styles.sumario}>
               {linha}
             </Text>
           ))}
+          {painelUnico ? rastro : null}
         </Panel>
       ) : null}
 
-      {trends.length > 0 ? (
+      {showFeatureTrends && trends.length > 0 ? (
         <Panel
           title="Tendências por medida"
           headerAccessory={<InfoButton term="trend_direction" />}
+          grow={grow}
         >
           <Text style={styles.legenda}>
             Direção da medida ao longo das sessões — descrição, não diagnóstico.
@@ -91,12 +125,11 @@ export function LongitudinalReport({ report }: Props) {
               <InfoButton term={chave} />
             </View>
           ))}
+          {painelUnico ? rastro : null}
         </Panel>
       ) : null}
 
-      {report.engine_version ? (
-        <Text style={styles.engine}>Motor de análise: {report.engine_version}</Text>
-      ) : null}
+      {painelUnico ? null : rastro}
     </View>
   );
 }
@@ -105,6 +138,9 @@ const criarEstilos = (t: Theme) =>
   StyleSheet.create({
     wrapper: {
       gap: t.spacing.md,
+    },
+    cresce: {
+      flex: 1,
     },
     sumario: {
       ...t.typography.body,

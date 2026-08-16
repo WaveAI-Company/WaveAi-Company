@@ -226,8 +226,28 @@ export default function PatientLiveScreen() {
     if (rbp) setBandHistory((h) => [...h, rbp].slice(-MAX_PONTOS));
   }, []);
 
-  /** Zera o painel para uma sessão nova (os dois caminhos usam isto). */
+  /**
+   * Zera o painel para uma sessão nova (os dois caminhos usam isto).
+   *
+   * **Descarta a sessão anterior antes de tudo.** `parar()` deixa o socket
+   * aberto de propósito — é por ele que chega o relatório —, e só o handler
+   * `onClosed` fecha. Entre um e outro existe uma janela em que a sessão velha
+   * ainda está viva: quem clicasse em iniciar ali ganhava um `sessao.current`
+   * novo por cima do antigo, e o `closed` atrasado da sessão velha caía no
+   * `aoEncerrar`, que fecha **a sessão corrente** — ou seja, matava a captação
+   * recém-iniciada e mostrava o relatório da anterior no lugar dela, sem saída
+   * a não ser recarregar a página. O `encerrando` também precisa voltar: preso
+   * em `true`, o painel "Encerrando a sessão…" acompanharia a sessão nova.
+   *
+   * Não reproduzi o erro em quatro caminhos (ciclo normal, reinício em 2s,
+   * reinício com o protocolo guiado rodando e um terceiro ciclo seguido); o
+   * mecanismo veio da leitura, e a guarda é barata o bastante para valer sem a
+   * reprodução.
+   */
   function limparParaNovaSessao() {
+    sessao.current?.close();
+    sessao.current = null;
+    setEncerrando(false);
     setErro(null);
     setFeatures(null);
     setEsense(null);
@@ -368,6 +388,42 @@ export default function PatientLiveScreen() {
           ? t.colors.dangerText
           : t.colors.warningText;
 
+  /**
+   * O relatório da sessão encerrada, montado aqui porque **muda de lugar**: no
+   * desktop ele entra na linha do trio, ao lado da composição da última
+   * janela; nas outras faixas segue no fluxo, abaixo dela. Montar uma vez é o
+   * que impede as duas cópias de divergirem na primeira correção.
+   *
+   * Trocar de contêiner ao cruzar 1199 **remonta** o cartão — sem custo aqui,
+   * porque não há nada digitado nele (a "Nota de contexto", que tem, não sai
+   * do lugar).
+   */
+  const painelRelatorio = encerrada ? (
+    <Panel
+      title={
+        typeof encerrada.report?.rel_alpha === "number"
+          ? `Alfa relativa média: ${formatPercent(encerrada.report.rel_alpha)}`
+          : "Sessão encerrada"
+      }
+      eyebrow={`${encerrada.sampleCount} amostras`}
+      grow
+    >
+      {encerrada.report?.relative_band_powers ? (
+        <>
+          <Text style={styles.subsecao}>Composição por banda</Text>
+          <BandBars relative={encerrada.report.relative_band_powers} />
+        </>
+      ) : null}
+
+      {encerrada.report?.quality ? (
+        <>
+          <Text style={styles.subsecao}>Qualidade do sinal</Text>
+          <SignalQuality quality={encerrada.report.quality} />
+        </>
+      ) : null}
+    </Panel>
+  ) : null;
+
   return (
     <ScreenContainer largura="app">
       {/* ===== faixa superior: cronômetro e situação da sessão ===== */}
@@ -402,27 +458,51 @@ export default function PatientLiveScreen() {
       <View style={[styles.grade, emColunas && styles.gradeLinha]}>
         <View style={[styles.colunaHeroi, emColunas && styles.colunaHeroiLinha]}>
           <Panel grow>
-            <LiveWave
-              accent={papel.accent}
-              paused={!ativo}
-              scale={ativo ? 1 : 0.35}
-              // `.hero-inner{min-height:320px}`, e 260 abaixo de 1200 — a onda
-              // era o que cedia altura para o vazio que sobrava sob o botão.
-              height={emColunas ? 320 : 260}
-            />
-            <View style={styles.heroiChips}>
-              <Chip
-                label={ativo ? "ritmo ao vivo" : "em repouso"}
-                variant={ativo ? "estado" : "neutro"}
+            {/**
+             * `.hero-inner{position:relative; flex:1; min-height:320px}` com
+             * `.hero-meta` no canto de cima à esquerda e `.hero-note` no de
+             * baixo à direita, **os dois sobre a onda**.
+             *
+             * No desktop os dois estavam no fluxo, abaixo da onda: como os
+             * controles são ancorados no fim (`marginTop:"auto"`), sobrava um
+             * vão de 47px entre a nota e a linha de separação. Flutuando por
+             * cima, os dois acompanham a caixa da onda e a nota encosta no
+             * separador.
+             *
+             * **A onda continua com altura fixa**, centrada na caixa que
+             * cresce. Deixá-la preencher (o `inset:0` do canvas no mockup)
+             * esticou o desenho de 320 para 441px — e o `preserveAspectRatio=
+             * "none"` amplia a amplitude junto com a altura, então o traço
+             * saiu ampliado e deformado em vez de maior. O canvas do mockup
+             * redesenha na altura real; o nosso SVG escala.
+             *
+             * Nas faixas menores eles seguem no fluxo: o texto é longo — bem
+             * mais que o do mockup — e sobre uma onda estreita ele cobriria a
+             * figura inteira.
+             */}
+            <View style={[styles.heroiInterno, emColunas && styles.heroiInternoLargo]}>
+              <LiveWave
                 accent={papel.accent}
-                dot
+                paused={!ativo}
+                scale={ativo ? 1 : 0.35}
+                // `.hero-inner{min-height:320px}`, e 260 abaixo de 1200 — a onda
+                // era o que cedia altura para o vazio que sobrava sob o botão.
+                height={emColunas ? 320 : 260}
               />
-              <Chip label="visualização estilizada — não é exame" variant="cautela" />
+              <View style={[styles.heroiChips, emColunas && styles.heroiChipsSobre]}>
+                <Chip
+                  label={ativo ? "ritmo ao vivo" : "em repouso"}
+                  variant={ativo ? "estado" : "neutro"}
+                  accent={papel.accent}
+                  dot
+                />
+                <Chip label="visualização estilizada — não é exame" variant="cautela" />
+              </View>
+              <Text style={[styles.heroiNota, emColunas && styles.heroiNotaSobre]}>
+                A figura acima marca que a sessão está correndo; ela não desenha o seu
+                sinal. As medidas são calculadas no servidor e aparecem rotuladas abaixo.
+              </Text>
             </View>
-            <Text style={styles.heroiNota}>
-              A figura acima marca que a sessão está correndo; ela não desenha o seu
-              sinal. As medidas são calculadas no servidor e aparecem rotuladas abaixo.
-            </Text>
 
             {/* Fase ociosa: o mockup supõe sessão em curso, mas aqui é onde se
                 escolhe a fonte do sinal. */}
@@ -658,10 +738,27 @@ export default function PatientLiveScreen() {
        * Os três são condicionais (sem captação não há "Sessão guiada" nem
        * "Compartilhar"), e é por isso que a fila usa fração de largura em vez
        * de três colunas fixas: uma grade rígida deixaria buracos.
+       *
+       * **Encerrada, a linha muda de par**: saem a sessão guiada e o
+       * compartilhar (que só valem em captação) e entra o relatório, meio a
+       * meio com a composição. Sozinha, a composição esticava por uma tela de
+       * 1440 para desenhar cinco barras, com o relatório repetindo o mesmo
+       * desenho na linha de baixo. Só no desktop — abaixo dele o relatório
+       * segue no seu lugar, mais abaixo na página.
        */}
       <View style={[styles.trio, emColunas && styles.trioLinha, emMeio && styles.trioMeio]}>
         {features?.relative_band_powers ? (
-          <View style={emColunas ? styles.trioLargo : emMeio ? styles.trioCheio : undefined}>
+          <View
+            style={
+              emColunas
+                ? encerrada
+                  ? styles.trioMetade
+                  : styles.trioLargo
+                : emMeio
+                  ? styles.trioCheio
+                  : undefined
+            }
+          >
             <Panel
               title="Composição por banda"
               eyebrow="% do espectro · potência relativa"
@@ -716,6 +813,10 @@ export default function PatientLiveScreen() {
             </Panel>
           </View>
         ) : null}
+
+        {encerrada && emColunas ? (
+          <View style={styles.trioMetade}>{painelRelatorio}</View>
+        ) : null}
       </View>
 
       {/* Preparação do sensor (P4-a): antes de captar, como conseguir bom
@@ -731,31 +832,12 @@ export default function PatientLiveScreen() {
         </Panel>
       ) : null}
 
-      {/* Relatório da sessão encerrada (#17): fecha a jornada captar → ver. */}
+      {/* Relatório da sessão encerrada (#17): fecha a jornada captar → ver.
+          No desktop ele já subiu para a linha do trio, ao lado da composição
+          da última janela; aqui embaixo ele só aparece nas outras faixas. */}
       {encerrada ? (
         <>
-          <Panel
-            title={
-              typeof encerrada.report?.rel_alpha === "number"
-                ? `Alfa relativa média: ${formatPercent(encerrada.report.rel_alpha)}`
-                : "Sessão encerrada"
-            }
-            eyebrow={`${encerrada.sampleCount} amostras`}
-          >
-            {encerrada.report?.relative_band_powers ? (
-              <>
-                <Text style={styles.subsecao}>Composição por banda</Text>
-                <BandBars relative={encerrada.report.relative_band_powers} />
-              </>
-            ) : null}
-
-            {encerrada.report?.quality ? (
-              <>
-                <Text style={styles.subsecao}>Qualidade do sinal</Text>
-                <SignalQuality quality={encerrada.report.quality} />
-              </>
-            ) : null}
-          </Panel>
+          {emColunas ? null : painelRelatorio}
 
           {/* Ser explícito sobre guardar ou não é parte do consent-first. */}
           <Panel title={encerrada.storage.persisted ? "Sessão guardada" : "Sessão não guardada"}>
@@ -913,23 +995,75 @@ const criarEstilos = (t: Theme) =>
       flex: 0.9,
       minWidth: 0,
     },
-    // No tablet o primeiro card ocupa as duas colunas (`grid-column:1/-1`).
+    /**
+     * No tablet o primeiro card ocupa as duas colunas (`grid-column:1/-1`).
+     *
+     * Era `minWidth:"100%"`, e o cartão **saía da tela**: a célula herdava o
+     * `flexShrink:0` do RN, então o `min-width` virava piso sem teto e ela
+     * crescia até o `max-content` do texto longo lá dentro — 1126px medidos
+     * numa faixa de 861, com 265px para fora da janela. Com `flexBasis:"100%"`
+     * mais `flexShrink:1` e `minWidth:0`, a célula ocupa a linha e **encolhe**
+     * com ela.
+     */
     trioCheio: {
-      minWidth: "100%",
-    },
-    trioMetade: {
-      flexBasis: 0,
+      flexBasis: "100%",
       flexGrow: 1,
+      flexShrink: 1,
       minWidth: 0,
+    },
+    /**
+     * As duas metades da segunda linha.
+     *
+     * A base é 45% e não 0: com base zero elas caberiam na *mesma* linha do
+     * cartão de 100% (0 + 100 = 100) e a quebra que o `grid-column:1/-1`
+     * garante nunca aconteceria — as duas ficariam com largura zero. Com 45%,
+     * a linha estoura e elas descem juntas, e o `flexGrow` reparte o que sobra
+     * igualmente entre as duas.
+     */
+    trioMetade: {
+      flexBasis: "45%",
+      flexGrow: 1,
+      flexShrink: 1,
+      minWidth: 0,
+    },
+    heroiInterno: {
+      gap: t.spacing.sm,
+    },
+    // `.hero-inner{position:relative; flex:1; min-height:320px}` — a caixa
+    // cresce e a onda, de altura fixa, fica centrada nela.
+    heroiInternoLargo: {
+      flex: 1,
+      justifyContent: "center",
+      minHeight: 320,
+      position: "relative",
     },
     heroiChips: {
       flexDirection: "row",
       flexWrap: "wrap",
       gap: t.spacing.sm,
     },
+    // `.hero-meta{position:absolute; left:20px; top:16px; z-index:2}`.
+    heroiChipsSobre: {
+      left: 20,
+      position: "absolute",
+      right: 20,
+      top: 16,
+      zIndex: 2,
+    },
     heroiNota: {
       ...t.typography.caption,
       color: t.colors.textSubtle,
+    },
+    // `.hero-note{position:absolute; right:20px; bottom:14px; text-align:right;
+    // z-index:2}`. O teto de largura é nosso: a frase é bem mais longa que a do
+    // mockup e sem ele atravessaria a onda de ponta a ponta.
+    heroiNotaSobre: {
+      bottom: 14,
+      maxWidth: 460,
+      position: "absolute",
+      right: 20,
+      textAlign: "right",
+      zIndex: 2,
     },
     veu: {
       backgroundColor: t.colors.surfaceAlt,

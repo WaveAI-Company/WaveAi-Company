@@ -110,6 +110,20 @@ export function useInteracao() {
 }
 
 /**
+ * `position:sticky` — o elemento rola com a página até encostar no topo e
+ * então gruda ali (o `.people{position:sticky; top:88px}` do painel).
+ *
+ * **Web-only, como a `transicao`.** Os tipos do RN só conhecem `absolute`,
+ * `relative` e `static`, e o nativo não tem equivalente: lá o valor é ignorado
+ * e o elemento se comporta como sempre. Quem usa precisa de
+ * `alignSelf:"flex-start"` no mesmo estilo — esticado até o pé do conteúdo,
+ * não sobra o que grudar.
+ */
+export function grudarNoTopo(offset: number): ViewStyle {
+  return { position: "sticky", top: offset } as unknown as ViewStyle;
+}
+
+/**
  * Transição CSS — **só no web**.
  *
  * Em nativo não existe transição declarativa de estilo, e o comportamento
