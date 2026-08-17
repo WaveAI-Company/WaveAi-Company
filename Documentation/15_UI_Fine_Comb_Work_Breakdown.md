@@ -219,6 +219,25 @@ fatias de UI. Cada um precisa de investigação própria:
 
 O fundador suspeita que 1 e 2 possam ser do simulador; 3 vale para os dois casos.
 
+**Situação em 2026-08-16 (PRs #163 e #164 mergeadas):**
+
+1. **Fechado.** Era o compartilhamento ao vivo, e a causa estava no servidor:
+   quem publicava lia `live_sharing_enabled` do objeto carregado no `start` do
+   stream, que vive pela conexão WebSocket inteira; quem liga é outra
+   requisição, com outra sessão do SQLAlchemy. Como toda sessão nasce desligada
+   (ADR-0045), ligar durante a captação é o único caminho — e nunca funcionava.
+   Corrigido na **#164**, com dois testes (o de fluxo **não** trava a
+   regressão: no `TestClient` as duas pontas dividem a mesma sessão do
+   SQLAlchemy; quem trava é o que cria a segunda sessão à mão e chama
+   `_publicar_ao_vivo`, o ponto de uso). Validado pelo fundador na interface.
+2. **Fechado** na #163: `limparParaNovaSessao` passou a descartar a sessão
+   pendente. `parar()` deixa o socket aberto de propósito (é por ele que vem o
+   relatório) e só `onClosed` fecha; nessa janela, quem clicava em iniciar
+   ganhava um `sessao.current` novo por cima do antigo, e o `closed` atrasado da
+   sessão velha fechava **a sessão corrente**.
+3. **Ainda aberto** — captação que para ao reduzir a janela ou trocar de aba.
+   Não foi investigado nesta leva.
+
 ## Adiado com decisão tomada: paginação do histórico (2026-08-16)
 
 Surgiu na revisão da tela de **Histórico**: com uma sessão por dia a lista vira
@@ -249,6 +268,68 @@ recomeçar do zero:
   então paginar multiplica os eventos de acesso de quem **não é** o titular —
   é o caso que decide se a trilha registra "leitura da página 3" ou uma leitura
   por visita.
+
+## Estado da frente em 2026-08-16 — P13 essencialmente fechada
+
+As PRs **#163** (pente fino de layout em nove telas) e **#164** (correção do
+compartilhamento ao vivo) foram mergeadas, e o fundador validou o design tela a
+tela na aplicação rodando. Com isso:
+
+- **A fila 11 (reconcepção das áreas sem mockup) deixou de fazer sentido**: as
+  três áreas — assistir ao vivo, faixas de aviso da home e o cartão de alfa
+  relativa — foram redesenhadas dentro da própria leva, com o layout decidido
+  ao vivo com o fundador, e não como fatia separada.
+- O método que sobreviveu: **medir o baseline antes de mexer** e medir de novo
+  nas três faixas. Dois erros vieram de medir só a faixa que motivou o ajuste
+  (o piso de 420px do título quebrou o celular; o `flexBasis:300` sem
+  `flexShrink` só vazava abaixo de 360px).
+
+### O que resta de UI/backend antes da infra
+
+1. **Filtro e paginação** do histórico e da lista do painel — a seção acima.
+   É o único item com escopo de fatia já desenhado.
+2. **Bug 3 da tela ao vivo**: a captação para ao reduzir a janela ou trocar de
+   aba. Sem dono, sem investigação.
+3. **Duas questões de produto na home do paciente**, levantadas em 2026-08-16 e
+   não decididas: (a) tirar a faixa "convite aguardando resposta" — a sidebar
+   tem o badge, mas ele é **escondido no rail** (768–1199, fidelidade ao
+   mockup) e no celular a sidebar é gaveta, então o convite ficaria sem
+   indicação em duas das três faixas; (b) o **sino de notificações** proposto
+   pelo fundador. O sino não existe em lugar nenhum — varrido `services/api/app`
+   inteiro, zero ocorrência de `notification`/`notificac` — e seria dado novo +
+   estrutura nova, exigindo ADR. O aviso de consentimento **não** deve ir para
+   ele: sem consentimento os resultados não são guardados, e isso é condição, não
+   recado.
+4. **"Encerrar protocolo" em duas linhas** no layout grande: metade do trilho dá
+   133px, 101 úteis, e o rótulo pede 114 — faltam 13px. Ou encurta o rótulo
+   (cópia é do fundador) ou aceita.
+5. **Hover do cartão de convite pendente**: decidido **não fazer**. No RN-web
+   0.86 o hover só existe em `Pressable` de fato interativo, e o cartão não leva
+   a lugar nenhum.
+
+### Dívidas que a infra vai encontrar (registradas no código)
+
+Nenhuma delas bloqueia a P13; todas viram decisão quando houver mais de uma
+réplica ou operação real:
+
+- `app/api/deps.py:35` — **rate limiter em memória do processo** (ADR-0023).
+  `TODO(#19)`: Redis para múltiplas réplicas. Com duas réplicas, o limite de 5
+  tentativas por 60s vira 10.
+- `app/api/deps.py:268` — **IP do cliente vem de cabeçalho falsificável** sem um
+  proxy confiável à frente. Decidir o proxy é decisão de infra.
+- `app/api/live.py:12` — **o SSE segura a conexão do banco** durante a
+  transmissão inteira (a sessão do request só fecha no fim). Aceitável para
+  poucos espectadores por instância; ao escalar, sessão de vida curta ou driver
+  assíncrono.
+- `app/security/crypto.py:10` — **rotação da chave de cifra**: Fernet suporta
+  `MultiFernet` para rotacionar sem reprocessar tudo. Entra quando houver
+  operação real.
+
+### Estado do banco de dev
+
+O convite de `prof.convite1` para `paciente.um` **com recado** foi criado à mão
+em 2026-08-16, para conferir a citação atribuída da ADR-0043 na tela. Não vem do
+seed: recuse pela própria tela quando não precisar mais dele.
 
 ## Banco de dev para a varredura
 
