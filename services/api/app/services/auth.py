@@ -10,10 +10,14 @@ import uuid
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 
+from sqlalchemy import update
 from sqlalchemy.orm import Session
 
 from ..config import Settings
+from ..models.annotation import AnnotationAccessEvent
+from ..models.live_view import LiveViewAccessEvent
 from ..models.refresh_token import RefreshToken
+from ..models.result import ResultAccessEvent
 from ..models.user import User, UserRole
 from ..repositories.refresh_token import RefreshTokenRepository
 from ..repositories.user import UserRepository
@@ -289,6 +293,34 @@ class AuthService:
         de hashes, que é dado pessoal novo com custo permanente (2ª emenda).
         """
         return self.conferir_senha(user=user, password=new_password)
+
+    def excluir_conta(self, *, user: User) -> None:
+        """Apaga a conta e tudo o que é do titular (ADR-0047).
+
+        **A ordem importa.** Pseudonimizar antes de apagar: o `SET NULL` do
+        banco desfaz o vínculo, mas quem grava o pseudônimo é este método — se
+        o usuário sumisse primeiro, as linhas já teriam perdido o ator e não
+        haveria como marcá-las.
+
+        Só toca as linhas em que este usuário foi ator na trilha **de outra
+        pessoa**. As da própria trilha somem com ela, no CASCADE, que é o
+        comportamento desejado: a conta vai embora e leva o próprio rastro.
+
+        O resto — sessões, Result, notas, vínculos, tokens — sai pelo CASCADE
+        das chaves estrangeiras, sem varredura manual.
+        """
+        pseudonimo = uuid.uuid4()
+        for modelo in (ResultAccessEvent, AnnotationAccessEvent, LiveViewAccessEvent):
+            self._session.execute(
+                update(modelo)
+                .where(
+                    modelo.actor_user_id == user.id,
+                    modelo.patient_user_id != user.id,
+                )
+                .values(actor_user_id=None, actor_pseudonym=pseudonimo)
+            )
+        self._session.delete(user)
+        self._session.flush()
 
     def update_display_name(self, *, user: User, display_name: str) -> User:
         self._users.set_display_name(user, display_name)
