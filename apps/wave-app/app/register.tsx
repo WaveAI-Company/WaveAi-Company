@@ -229,12 +229,28 @@ export default function RegisterScreen() {
 
       <Button label="Criar conta" onPress={criar} loading={enviando} accent={destaque.accent} largura="bloco" />
 
-      {/* No lugar dos links de Termos/Privacidade do mockup, que não existem:
-          o compromisso que o produto de fato cumpre, e onde ele é decidido. */}
+      {/* Os links do mockup, agora que os documentos existem. A frase sobre o
+          consentimento fica: ela diz o que o produto faz **antes** de qualquer
+          documento — e é o compromisso que a pessoa mais precisa ler aqui. */}
       <Text style={styles.legal}>
         Nada das suas sessões é guardado antes de você autorizar — o termo de consentimento
         aparece no primeiro acesso, e você pode revogá-lo quando quiser.
       </Text>
+      <View style={styles.legalLinks}>
+        <Text style={styles.legal}>Ao criar a conta, você concorda com os </Text>
+        <TextLink
+          label="Termos de Uso"
+          onPress={() => router.push("/legal/termos")}
+          accent={destaque.accentText}
+        />
+        <Text style={styles.legal}> e a </Text>
+        <TextLink
+          label="Política de Privacidade"
+          onPress={() => router.push("/legal/privacidade")}
+          accent={destaque.accentText}
+        />
+        <Text style={styles.legal}>.</Text>
+      </View>
 
       <View style={styles.alternativa}>
         <Text style={styles.alternativaTexto}>Já tem conta? </Text>
@@ -368,6 +384,15 @@ const criarEstilos = (t: Theme) =>
       ...t.typography.caption,
       color: t.colors.textSubtle,
       lineHeight: 17,
+    },
+    legalLinks: {
+      alignItems: "center",
+      flexDirection: "row",
+      flexWrap: "wrap",
+      // `rowGap` e não `gap`: quebrando em duas linhas, os pedaços da frase não
+      // podem ganhar espaço entre si — "concorda com os" e "Termos de Uso" são
+      // uma frase só, e um gap horizontal a partiria em pedaços soltos.
+      rowGap: 2,
     },
     legal: {
       ...t.typography.caption,
