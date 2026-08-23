@@ -519,3 +519,50 @@ def test_troca_de_senha_tambem_derruba_o_access_token_antigo(client: TestClient)
     )
 
     assert client.get("/auth/me", headers=cabecalho).status_code == 401
+
+
+# -- exclusão de conta (ADR-0047) ---------------------------------------
+
+
+def test_exclusao_apaga_a_conta_e_o_login_deixa_de_funcionar(client: TestClient):
+    email = _email()
+    registrar_conta(client, email=email, senha=SENHA, display_name="Some")
+    token = client.post(
+        "/auth/login", json={"email": email, "password": SENHA, "client": "mobile"}
+    ).json()["access_token"]
+
+    apagou = client.request(
+        "DELETE",
+        "/auth/me",
+        json={"password": SENHA},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert apagou.status_code == 204
+    # A conta some de verdade: o login para de funcionar.
+    de_novo = client.post(
+        "/auth/login", json={"email": email, "password": SENHA, "client": "mobile"}
+    )
+    assert de_novo.status_code == 401
+
+
+def test_exclusao_exige_a_senha_correta(client: TestClient):
+    email = _email()
+    registrar_conta(client, email=email, senha=SENHA, display_name="Fica")
+    token = client.post(
+        "/auth/login", json={"email": email, "password": SENHA, "client": "mobile"}
+    ).json()["access_token"]
+
+    recusado = client.request(
+        "DELETE",
+        "/auth/me",
+        json={"password": "senha-errada-mas-bem-longa-9"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert recusado.status_code == 401
+    # E a conta continua de pé — senha errada não pode apagar nada.
+    ainda_entra = client.post(
+        "/auth/login", json={"email": email, "password": SENHA, "client": "mobile"}
+    )
+    assert ainda_entra.status_code == 200

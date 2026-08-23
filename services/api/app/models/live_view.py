@@ -30,9 +30,16 @@ class LiveViewAccessEvent(Base):
         ForeignKey("users.id", ondelete="CASCADE"), index=True, nullable=False
     )
     #: Profissional que abriu a transmissão.
-    actor_user_id: Mapped[uuid.UUID] = mapped_column(
-        ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    #: **Anulável e `SET NULL`** (ADR-0047): quando o ator apaga a própria
+    #: conta, o evento na trilha de OUTRA pessoa sobrevive. Com o CASCADE
+    #: anterior, quem é auditado apagava a própria auditoria ao sair.
+    actor_user_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True
     )
+    #: Identificador aleatório gravado **na exclusão** da conta do ator. Mantém
+    #: "foi o mesmo ator" legível na trilha sem dizer quem foi. Nulo enquanto a
+    #: conta existir — aí quem responde é o `actor_user_id`.
+    actor_pseudonym: Mapped[uuid.UUID | None] = mapped_column(Uuid, nullable=True)
     #: Sessão ao vivo no momento do acesso (informativo; pode não haver captação
     #: ativa quando o profissional abre a tela). Sem FK: só rastreabilidade.
     session_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, nullable=True)
