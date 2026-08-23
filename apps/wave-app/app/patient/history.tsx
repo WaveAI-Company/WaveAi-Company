@@ -5,11 +5,12 @@ import { StyleSheet, Text, View } from "react-native";
 import { getMyReport, type LongitudinalReport as Report } from "../../src/api/report";
 import {
   dias,
+  formatDate,
   formatDuration,
   formatNumber,
   formatPercent,
-  listMyResults,
-  sessionDurationSeconds,
+  listMyResultsPage,
+  ordenarPorData,
   type PeriodoOpcao,
   type SessionResult,
 } from "../../src/api/results";
@@ -37,6 +38,15 @@ import {
 /** A partir daqui a linha do tempo e o resumo ficam lado a lado. */
 // `.sess-grid` do mockup: `minmax(0,1fr) 320px` acima de 1199, uma coluna
 // abaixo.
+
+/**
+ * Sessões por página da linha do tempo.
+ *
+ * 12 e não 10: com uma captação por dia, doze cobrem um mês inteiro, que é a
+ * unidade de agrupamento da própria lista — um "carregar mais" que traz menos
+ * que um mês faria o cabeçalho de mês repetir sem nada novo embaixo.
+ */
+const POR_PAGINA = 12;
 
 /** Rótulos como o mockup do paciente escreve (`sessoes.html:342`). */
 const PERIODOS: Array<{ value: PeriodoOpcao; label: string }> = [
@@ -105,12 +115,22 @@ export default function PatientHistoryScreen() {
    */
   const [periodo, setPeriodo] = useState<PeriodoOpcao>("30");
 
+  /**
+   * Total do período, do servidor — **não** `results.length`, que conta só o
+   * que já foi carregado. É ele que rotula "12 de 40" e decide se ainda há o
+   * que buscar.
+   */
+  const [total, setTotal] = useState(0);
+  const [carregandoMais, setCarregandoMais] = useState(false);
+
   const carregar = useCallback(async () => {
     setLoading(true);
     setErro(null);
     try {
-      const dados = await listMyResults(dias(periodo));
+      const pagina = await listMyResultsPage(dias(periodo), { limit: POR_PAGINA });
+      const dados = pagina.results;
       setResults(dados);
+      setTotal(pagina.total);
       /**
        * Vazio **no recorte** não diz se a pessoa nunca captou: a lista já vem
        * filtrada do servidor (P9-b), então "zero em 30 dias" e "zero desde
@@ -125,7 +145,11 @@ export default function PatientHistoryScreen() {
       setSemNenhuma(
         dados.length > 0
           ? false
-          : periodo === "tudo" || (await listMyResults(dias("tudo"))).length === 0,
+          : periodo === "tudo" ||
+            // `limit: 1` porque a pergunta é "existe alguma?", e não "quais".
+            // Baixar o histórico inteiro para responder sim/não decifraria (e
+            // auditaria) tudo por causa de um booleano.
+            (await listMyResultsPage(dias("tudo"), { limit: 1 })).total === 0,
       );
     } catch {
       setErro("Não foi possível carregar suas sessões.");
@@ -141,6 +165,35 @@ export default function PatientHistoryScreen() {
     }
   }, [periodo]);
 
+  /**
+   * Próxima página, **acrescentada** à linha do tempo.
+   *
+   * Acrescenta em vez de trocar porque a linha do tempo é uma leitura contínua
+   * do período: trocar de página faria o mês de cima sumir a cada clique. E o
+   * `offset` sai de `results.length`, que é o que já se tem em mãos.
+   */
+  const carregarMais = useCallback(async () => {
+    setCarregandoMais(true);
+    try {
+      const pagina = await listMyResultsPage(dias(periodo), {
+        limit: POR_PAGINA,
+        offset: results.length,
+      });
+      // Dedup por id: se uma sessão nova entrar entre uma página e outra, o
+      // offset desloca e a mesma linha poderia chegar duas vezes.
+      setResults((atuais) => {
+        const vistos = new Set(atuais.map((r) => r.id));
+        return ordenarPorData([...atuais, ...pagina.results.filter((r) => !vistos.has(r.id))]);
+      });
+      setTotal(pagina.total);
+    } catch {
+      // Silencioso de propósito: a lista que já está na tela continua válida,
+      // e um alarme aqui sugeriria que ela ficou errada.
+    } finally {
+      setCarregandoMais(false);
+    }
+  }, [periodo, results.length]);
+
   // Recarrega **ao focar**, não só ao montar: voltando de uma captação, a
   // sessão recém-encerrada precisa aparecer sem recarregar o app (#17).
   useFocusEffect(
@@ -154,26 +207,43 @@ export default function PatientHistoryScreen() {
   // sessões filtradas aqui, qualidade e tendências vindas do histórico inteiro.
   const filtradas = results;
 
-  // Resumo do período: médias **descritivas**, sem veredito (ADR-0027).
-  const resumo = useMemo(() => {
-    const duracoes = filtradas
-      .map((r) => sessionDurationSeconds(r.metrics))
-      .filter((s): s is number => typeof s === "number");
-    const alfas = filtradas
-      .map((r) => r.metrics?.rel_alpha)
-      .filter((v): v is number => typeof v === "number");
-    return {
-      sessoes: filtradas.length,
-      tempo: duracoes.length > 0 ? duracoes.reduce((a, b) => a + b, 0) : null,
-      alfaMedio: alfas.length > 0 ? alfas.reduce((a, b) => a + b, 0) / alfas.length : null,
-      // A qualidade média vem do relatório longitudinal, que é quem calcula
-      // isso no servidor — o app não deriva um índice próprio.
+  /**
+   * Resumo do período: médias **descritivas**, sem veredito (ADR-0027).
+   *
+   * Todos os cinco vêm do **servidor**, sobre o período inteiro — nenhum é
+   * derivado de `results`, que agora é só a página carregada. Somar a página
+   * diria "12 sessões" num recorte de 40, e a linha de tendência mudaria de
+   * forma a cada "carregar mais": a tela afirmando o que não é verdade.
+   *
+   * `null` em qualquer um deles lê-se **"não sei"** (o relatório não veio, ou
+   * a Analysis está fora) e a linha mostra "—". Nunca zero: zero afirmaria uma
+   * medição que ninguém fez.
+   */
+  const resumo = useMemo(
+    () => ({
+      sessoes: total,
+      tempo: report?.total_duration_seconds ?? null,
+      alfaMedio: report?.report.features?.rel_alpha?.mean ?? null,
       qualidade: report?.report.quality?.mean ?? null,
-      // Contagem do cliente, e não uma rota nova: o `has_annotation` que o selo
-      // já usa responde isso de graça (emenda à ADR-0037).
-      comAutorrelato: filtradas.filter((r) => r.has_annotation).length,
-    };
-  }, [filtradas, report]);
+      comAutorrelato: report?.annotation_count ?? null,
+    }),
+    [total, report],
+  );
+
+  /**
+   * Pontos da tendência, do período inteiro. Vêm da série do relatório, e não
+   * de `results`, pelo mesmo motivo do resumo. Sem relatório, `undefined` faz
+   * o painel voltar a derivar da lista — degradação honesta: com a lista
+   * inteira carregada (períodos curtos) o desenho é o mesmo.
+   */
+  const tendenciaDoPeriodo = useMemo(
+    () =>
+      report?.series?.map((ponto) => ({
+        value: ponto.features.rel_alpha,
+        label: formatDate(ponto.at),
+      })).filter((p) => typeof p.value === "number"),
+    [report],
+  );
 
   const grupos = useMemo(() => porMes(filtradas), [filtradas]);
   /**
@@ -240,7 +310,11 @@ export default function PatientHistoryScreen() {
                     com uma segunda busca sem recorte — pedir o histórico
                     inteiro só para exibir um número desfaria a minimização que
                     o corte no servidor comprou. Dizemos o que sabemos. */}
-                {`${results.length} ${results.length === 1 ? "sessão" : "sessões"}`}
+                {/* `total` e não `results.length`: a contagem é do **período**,
+                    e `results` virou a página carregada. Dizer "12 sessões nos
+                    últimos 30 dias" com 29 no recorte seria a tela afirmando o
+                    que não é verdade (ADR-0027). */}
+                {`${total} ${total === 1 ? "sessão" : "sessões"}`}
                 {periodo === "tudo" ? "" : ` nos últimos ${periodo} dias`}
               </Text>
             </View>
@@ -275,6 +349,25 @@ export default function PatientHistoryScreen() {
                   </View>
                 ))
               )}
+              {/* A contagem diz o que está na tela **e** o que existe no
+                  período: sem os dois números, "12 sessões" numa lista de 40
+                  seria a tela escondendo o resto sem avisar. O botão some
+                  quando não há mais o que buscar. */}
+              {temSessoes && total > results.length ? (
+                <View style={styles.maisLinha}>
+                  <Text style={styles.maisContagem}>
+                    {`${results.length} de ${total} ${total === 1 ? "sessão" : "sessões"}`}
+                  </Text>
+                  <Button
+                    label={carregandoMais ? "Carregando…" : "Carregar mais"}
+                    onPress={carregarMais}
+                    variant="secondary"
+                    compacto
+                    largura="conteudo"
+                    disabled={carregandoMais}
+                  />
+                </View>
+              ) : null}
             </View>
 
             <View style={[styles.trilho, emColunas && styles.trilhoLateral]}>
@@ -300,7 +393,9 @@ export default function PatientHistoryScreen() {
                 />
                 <ResumoLinha
                   rotulo="Sessões com autorrelato"
-                  valor={String(resumo.comAutorrelato)}
+                  valor={
+                    resumo.comAutorrelato !== null ? String(resumo.comAutorrelato) : "—"
+                  }
                 />
                 <Text style={styles.resumoNota}>
                   Médias descritivas do período — sem veredito. As bandas não têm valência.
@@ -331,7 +426,12 @@ export default function PatientHistoryScreen() {
            * "Panorama das sessões" agradece — é texto corrido, e meia coluna
            * estreita o transforma em coluna de jornal.
            */}
-          <SessionsDashboard results={results} showAllSessions={false} showLast={false} />
+          <SessionsDashboard
+            results={results}
+            trend={tendenciaDoPeriodo}
+            showAllSessions={false}
+            showLast={false}
+          />
 
           {/* `grow` nos dois lados de cada par: a célula já é esticada pela
               linha, mas o painel dentro dela parava na altura do conteúdo e
@@ -484,6 +584,15 @@ const criarEstilos = (t: Theme) =>
       flexGrow: 0,
       flexShrink: 0,
       width: larguras.trilhoSessoes,
+    },
+    maisLinha: {
+      alignItems: "center",
+      gap: t.spacing.sm,
+      paddingTop: t.spacing.md,
+    },
+    maisContagem: {
+      ...t.typography.caption,
+      color: t.colors.textMuted,
     },
     grupo: {
       gap: t.spacing.sm,

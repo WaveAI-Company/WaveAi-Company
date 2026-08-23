@@ -18,6 +18,15 @@ import { InfoButton } from "./InfoButton";
 
 type Props = {
   results: SessionResult[];
+  /**
+   * Pontos da tendência vindos de fora, quando `results` é só uma **página**.
+   *
+   * Sem isto a linha seria derivada da página visível e mudaria de forma a
+   * cada "carregar mais" — o gráfico afirmando um período que não é o rotulado
+   * (ADR-0027). Quem passa isto usa a série do relatório longitudinal, que
+   * enxerga a janela inteira. Ausente = deriva de `results`, como sempre.
+   */
+  trend?: TrendPoint[];
   accent?: string;
   /**
    * Mostra a lista "Todas as sessões" ao final.
@@ -61,6 +70,7 @@ type Props = {
  */
 export function SessionsDashboard({
   results,
+  trend,
   accent,
   showAllSessions = true,
   showTrend = true,
@@ -74,12 +84,14 @@ export function SessionsDashboard({
 
   // Só entram sessões que realmente têm a métrica: plotar 0 por ausência
   // inventaria uma medição que não existe.
-  const tendencia: TrendPoint[] = results
-    .filter((r) => typeof r.metrics?.rel_alpha === "number")
-    .map((r) => ({
-      value: r.metrics.rel_alpha as number,
-      label: formatDate(r.created_at),
-    }));
+  const tendencia: TrendPoint[] =
+    trend ??
+    results
+      .filter((r) => typeof r.metrics?.rel_alpha === "number")
+      .map((r) => ({
+        value: r.metrics.rel_alpha as number,
+        label: formatDate(r.created_at),
+      }));
 
   const ultima = results.length > 0 ? results[results.length - 1] : null;
   const relativas = ultima?.metrics?.relative_band_powers;

@@ -10,7 +10,8 @@ import {
   formatDate,
   formatNumber,
   formatPercent,
-  listPatientResults,
+  listPatientResultsPage,
+  ordenarPorData,
   type PeriodoOpcao,
   type SessionResult,
 } from "../../../src/api/results";
@@ -86,6 +87,15 @@ function chave(texto: string): string {
  * uma leitura auditada por pessoa a cada visita — a mesma razão que manteve os
  * cartões do início do profissional sem números.
  */
+/**
+ * Sessões por página da lista "Todas as sessões".
+ *
+ * Cada página é uma **leitura auditada em nome do titular** por quem não é o
+ * titular, então o tamanho não é só desempenho: doze é o que cobre um mês de
+ * captação diária sem obrigar a folhear, e sem trazer o ano inteiro de uma vez.
+ */
+const POR_PAGINA = 12;
+
 export default function PatientDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
@@ -115,6 +125,9 @@ export default function PatientDetailScreen() {
    * senão a tela misturaria dois períodos diferentes no mesmo painel.
    */
   const [periodo, setPeriodo] = useState<PeriodoOpcao>("30");
+  /** Total do período, do servidor — `results` é só a página carregada. */
+  const [total, setTotal] = useState(0);
+  const [carregandoMais, setCarregandoMais] = useState(false);
 
   const carregar = useCallback(async () => {
     if (!id) return;
@@ -122,12 +135,13 @@ export default function PatientDetailScreen() {
     setErro(null);
     try {
       // `listCareLinks` não lê dado de ninguém — não entra na trilha de acesso.
-      const [links, sessoes] = await Promise.all([
+      const [links, pagina] = await Promise.all([
         listCareLinks(),
-        listPatientResults(id, dias(periodo)),
+        listPatientResultsPage(id, dias(periodo), { limit: POR_PAGINA }),
       ]);
       setVinculos(links);
-      setResults(sessoes);
+      setResults(pagina.results);
+      setTotal(pagina.total);
     } catch {
       // Cobre 403 (vínculo revogado enquanto a tela estava aberta) e falhas
       // de rede: em ambos os casos não há o que mostrar.
@@ -143,6 +157,34 @@ export default function PatientDetailScreen() {
       setReport(null);
     }
   }, [id, periodo]);
+
+  /**
+   * Próxima página da lista "Todas as sessões".
+   *
+   * Aqui o peso é maior que no histórico do titular: **cada página é uma
+   * leitura auditada em nome de quem não é o titular** (emenda à ADR-0037 de
+   * 2026-08-22). Por isso a página só vem quando o profissional pede — nada de
+   * buscar adiante "por via das dúvidas".
+   */
+  const carregarMais = useCallback(async () => {
+    if (!id) return;
+    setCarregandoMais(true);
+    try {
+      const pagina = await listPatientResultsPage(id, dias(periodo), {
+        limit: POR_PAGINA,
+        offset: results.length,
+      });
+      setResults((atuais) => {
+        const vistos = new Set(atuais.map((r) => r.id));
+        return ordenarPorData([...atuais, ...pagina.results.filter((r) => !vistos.has(r.id))]);
+      });
+      setTotal(pagina.total);
+    } catch {
+      // A lista já na tela continua válida; alarmar aqui sugeriria o contrário.
+    } finally {
+      setCarregandoMais(false);
+    }
+  }, [id, periodo, results.length]);
 
   useEffect(() => {
     void carregar();
@@ -338,7 +380,10 @@ export default function PatientDetailScreen() {
           <View style={styles.tiles}>
             {tile(
               "Sessões no período",
-              String(report?.n_sessions ?? results.length),
+              // Recuo para `total` (contagem do período) e não para
+              // `results.length`, que agora é a página: sem relatório, o número
+              // continua sendo o do recorte.
+              String(report?.n_sessions ?? total),
               intervaloObservado ?? undefined,
             )}
             {tile(
@@ -478,6 +523,25 @@ export default function PatientDetailScreen() {
                   no backlog registrado no `Documentation/15`. */}
               <SessionsDashboard results={results} showTrend={false} showLast={false} />
 
+              {/* A contagem diz o que está na tela **e** o que existe no
+                  período. Cada "carregar mais" é uma leitura auditada em nome
+                  do titular, então a página só vem quando se pede. */}
+              {total > results.length ? (
+                <View style={styles.maisLinha}>
+                  <Text style={styles.maisContagem}>
+                    {`${results.length} de ${total} ${total === 1 ? "sessão" : "sessões"}`}
+                  </Text>
+                  <Button
+                    label={carregandoMais ? "Carregando…" : "Carregar mais"}
+                    onPress={carregarMais}
+                    variant="secondary"
+                    compacto
+                    largura="conteudo"
+                    disabled={carregandoMais}
+                  />
+                </View>
+              ) : null}
+
               <Text style={styles.rastro}>
                 {[
                   ultima?.engine_version ? `motor ${ultima.engine_version}` : null,
@@ -549,6 +613,16 @@ function LinhaPessoa({
 
 const criarEstilos = (t: Theme) =>
   StyleSheet.create({
+
+    maisLinha: {
+      alignItems: "center",
+      gap: t.spacing.sm,
+      paddingTop: t.spacing.md,
+    },
+    maisContagem: {
+      ...t.typography.caption,
+      color: t.colors.textMuted,
+    },
     erro: {
       ...t.typography.body,
       color: t.colors.dangerText,
