@@ -782,3 +782,21 @@ A decisão original (link com token opaco, 24 h / 30 min) foi tomada sobre esse 
 
 **Consequências:** o `infra/` ganha um caminho de produção separado do `docker compose` de desenvolvimento, que **continua sendo o ambiente local** e a garantia de portabilidade; workflow de deploy no GitHub Actions com build, job de migração, publicação e rollback por healthcheck; o cabeçalho de IP do cliente ([deps.py:268](services/api/app/api/deps.py:268)) passa a vir de um proxy à frente e precisa de fatia própria, senão o limite por IP ou vira global ou continua falsificável; a Política de Privacidade passa a declarar **onde os dados ficam** e some o pressuposto de servidor próprio. Não altera o `AnalysisEngine`, o modelo de dados, papéis nem qualquer fluxo de produto. Relaciona ADR-0023 (rate limiter em memória, cuja dívida o item 3 congela), ADR-0025 (raw não persiste, o que mantém o banco pequeno), ADR-0039 e ADR-0045 (o ao vivo que o item 3 protege), ADR-0027 (não prometer disponibilidade nem velocidade que não temos) e Medical/72 (onde o dado do titular reside).
 
+### Emenda à ADR-0049 (2026-08-23) — o domínio próprio nos **dois** endereços é requisito técnico, não estética
+**Status:** Proposta (2026-08-23) — vira Aceita no merge. Complementa a decisão 5 da ADR-0049; não altera nada do que ela decidiu.
+
+**Contexto:** a decisão 5 justificou o domínio próprio por credibilidade — um `*.a.run.app` numa ficha de loja não passa confiança. Ao preparar a publicação estática apurou-se que **o motivo real é mais duro que isso**, e que a alternativa "usar os domínios gratuitos dos provedores" **quebraria o login no web**.
+
+**[FATO] apurado:** o refresh token do web é **cookie httpOnly** (ADR-0021), gravado com `samesite="lax"` e sem `domain` ([api/auth.py:159](services/api/app/api/auth.py:159), [config.py:58](services/api/app/config.py:58)). `SameSite=Lax` só acompanha requisição cujo **site** (eTLD+1) coincide com o do cookie. Separar as camadas em `waveai.pages.dev` e `algo.a.run.app` são **sites diferentes**: o navegador não enviaria o cookie, e renovar sessão no web pararia de funcionar. Sob `waveai.tec.br` e `api.waveai.tec.br` os dois são **o mesmo site**, e o cookie viaja — origens diferentes, site igual.
+
+**Decisão:**
+1. **O app web fica em `waveai.tec.br` e a API em `api.waveai.tec.br`.** Não é preferência: é a condição para a sessão do web sobreviver. Os endereços gratuitos dos provedores servem só para conferir um deploy isoladamente, nunca como endereço de produção.
+2. **`cors_origins` deixa de ter default útil em produção.** O comentário em [config.py:152](services/api/app/config.py:152) dizia que "em produção o MVP assume same-origin" — isso **deixou de ser verdade** com a ADR-0049, e a origem do app passa a ser configuração obrigatória de ambiente. Com `allow_credentials=True`, curinga é proibido pelo padrão: a lista tem de ser explícita.
+3. **O fallback de rota é responsabilidade do host estático.** O `expo export --platform web` produz **um** `index.html` e resolve rotas no cliente; sem regra de reescrita, `/legal/privacidade` responde **404** — justamente a URL que a Play Store exige. Vai versionada como `public/_redirects`, e não configurada à mão num painel, para não depender de alguém lembrar.
+
+**O que se abre mão:** amarrar-se ao domínio significa que perder o registro derruba app e API juntos, não só o endereço bonito. O registro passa a ser ativo crítico, com renovação a acompanhar.
+
+**Alternativas consideradas:** (a) **`SameSite=None; Secure`** para permitir sites diferentes — preterida: exigiria cookie de terceiros, que os navegadores vêm restringindo, e trocaria uma configuração de DNS por uma fragilidade permanente; (b) **token de refresh no `localStorage`** — rejeitada: desfaz a proteção que a ADR-0021 escolheu ao usar httpOnly; (c) **proxy reverso pondo tudo na mesma origem** — preterida por ora: reintroduz um componente sempre ligado à frente de dois serviços que escalam a zero, contra o item 1 da ADR-0049; reabrível se surgir outro motivo para ter proxy.
+
+**Consequências:** `public/_redirects` e `public/_headers` versionados no app; os comentários de `config.py` e `.env.example` que afirmam same-origin em produção passam a dizer a verdade; `WAVEAI_API_CORS_ORIGINS` vira variável obrigatória do ambiente de produção. Não altera código de runtime.
+

@@ -1,0 +1,12 @@
+# Fim de linha para arquivos lidos por servidores, não por editores.
+#
+# `_redirects` e `_headers` são interpretados linha a linha pelo runtime do host
+# estático (Cloudflare Pages). Um checkout no Windows os converteria para CRLF,
+# e o \r passaria a fazer parte do valor de cada regra — falha silenciosa: o
+# arquivo continua parecendo certo no editor. Foram validados com LF, então é
+# LF que precisa chegar ao host, venha o checkout de onde vier.
+apps/wave-app/public/_redirects text eol=lf
+apps/wave-app/public/_headers   text eol=lf
+
+# Scripts de shell pelo mesmo motivo: CRLF quebra o shebang no Linux.
+*.sh text eol=lf
