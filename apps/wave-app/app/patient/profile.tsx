@@ -219,6 +219,20 @@ export default function PatientProfileScreen() {
                 atencao={!consentido}
                 onPress={() => router.push("/patient/consent")}
               />
+              {/* Os documentos ficam aqui, ao lado do convite e do
+                  consentimento, porque é o mesmo assunto para quem lê: o que
+                  eu autorizei e sob que regras. Decisão do fundador em
+                  2026-08-23. */}
+              <LinhaAcao
+                icone="fileText"
+                label="Termos de Uso"
+                onPress={() => router.push("/legal/termos")}
+              />
+              <LinhaAcao
+                icone="lock"
+                label="Política de Privacidade"
+                onPress={() => router.push("/legal/privacidade")}
+              />
             </View>
           </Panel>
 
