@@ -12,8 +12,11 @@
  * pode prometer o que o produto não faz**. Onde um direito ainda não tem botão,
  * o documento diz como exercê-lo hoje — não finge que o botão existe.
  *
- * `[PREENCHER]` marca o que depende de dados que só o controlador tem. Nenhum
- * deles foi inventado.
+ * `[PREENCHER]` marcava o que dependia de dados que só o controlador tem, e
+ * nenhum deles foi inventado enquanto faltou. **Não resta nenhum** desde
+ * 2026-08-23: controlador, canal de contato, prazos de retenção e foro foram
+ * preenchidos com dados reais. Se um voltar a aparecer, ele **tem** de ficar
+ * visível na tela — ver o comentário de `components/LegalDocument.tsx`.
  */
 
 export type SecaoLegal = {
@@ -35,15 +38,27 @@ export type DocumentoLegal = {
   secoes: SecaoLegal[];
 };
 
-/** Identificação do controlador. Sem isto, a política não identifica ninguém. */
-const CONTROLADOR = "[PREENCHER: razão social, CNPJ e endereço do controlador]";
-const CONTATO_ENCARREGADO = "[PREENCHER: e-mail do encarregado (DPO)]";
-const CONTATO_SUPORTE = "[PREENCHER: e-mail de contato para pedidos do titular]";
+/**
+ * Identificação do controlador. Sem isto, a política não identifica ninguém.
+ *
+ * **Pessoa física, um controlador só.** Não há CNPJ nesta fase. Nomear os três
+ * integrantes do grupo publicaria o nome completo de duas pessoas num documento
+ * público e permanente sem melhorar em nada a prestação de contas — o canal de
+ * contato é um só. Quando houver empresa, isto vira razão social e sobe versão.
+ *
+ * **Sem endereço, de propósito.** O único endereço que existiria é residencial.
+ * A identificação se faz por nome + canal de contato, e o foro nos Termos é o do
+ * domicílio do usuário justamente para não precisar do endereço de ninguém.
+ */
+const CONTROLADOR = "Tiago Bryan Ramos de Oliveira, pessoa física";
+/** Hoje encarregado e suporte são o mesmo canal — separados porque um dia divergem. */
+const CONTATO_ENCARREGADO = "waveai999.company@gmail.com";
+const CONTATO_SUPORTE = "waveai999.company@gmail.com";
 
 export const POLITICA_DE_PRIVACIDADE: DocumentoLegal = {
   slug: "privacidade",
   titulo: "Política de Privacidade",
-  versao: "1.1",
+  versao: "1.2",
   atualizadoEm: "2026-08-23",
   resumo:
     "O que o WaveAI coleta, por quanto tempo guarda, com quem compartilha e como você exerce seus direitos.",
@@ -114,13 +129,21 @@ export const POLITICA_DE_PRIVACIDADE: DocumentoLegal = {
         "Nenhuma medida de segurança é infalível. Se ocorrer um incidente que possa gerar risco relevante a você, comunicaremos você e a autoridade competente conforme a lei.",
       ],
     },
+    // TODO(infra): os "até 12 meses" abaixo são a ÚNICA promessa de prazo deste
+    // documento, e hoje nada os cumpre — não existe rotina de expurgo. A regra da
+    // ADR-0027 (e o precedente da ADR-0047, que recusou carência de 30 dias pelo
+    // mesmo motivo) diz que prazo sem executor é afirmar o que não é verdade.
+    // Este texto só pode ir ao ar depois do job de expurgo agendado; se ele não
+    // sair, o parágrafo volta a "enquanto for necessário" ANTES da publicação.
     {
       titulo: "Por quanto tempo guardamos",
       paragrafos: [
         "Enquanto sua conta existir, seus dados continuam disponíveis para você. Não apagamos seu histórico por inatividade.",
         "Você pode apagar todas as medidas e anotações quando quiser, pelo próprio aplicativo, e o efeito é imediato e definitivo.",
         "Os registros de acesso são mantidos mesmo após a exclusão dos dados que eles descrevem: são a prova de quem leu o quê, e apagá-los tiraria de você justamente a evidência que a trilha existe para dar.",
-        "[PREENCHER: prazos concretos de retenção por tipo de dado, incluindo o que acontece após a revogação do consentimento e após o encerramento da conta.]",
+        "Ao encerrar sua conta, tudo o que é seu é apagado na hora: seu perfil, suas sessões, suas medidas, suas anotações, seus vínculos e a trilha de acessos aos seus dados. Não há período de carência, não há conta desativada e não há como restaurar depois.",
+        "Se você é profissional e encerra sua conta, os registros das leituras que você fez nos dados de outras pessoas não são apagados junto — mas deixam de ter o seu nome: passam a apontar para um identificador aleatório e são mantidos por até 12 meses. Sem isso, quem você acompanhou perderia a evidência de que houve acesso.",
+        "Revogar o consentimento interrompe novas gravações; ele não apaga o que já foi coletado. Apagar é um pedido separado e você o faz quando quiser, pelo próprio aplicativo.",
       ],
     },
     {
@@ -164,7 +187,7 @@ export const POLITICA_DE_PRIVACIDADE: DocumentoLegal = {
       titulo: "Mudanças nesta política",
       paragrafos: [
         "Se este texto mudar de forma material, publicaremos a nova versão aqui, com data e número de versão novos, e avisaremos no aplicativo.",
-        "Esta é a versão 1.1, de 23 de agosto de 2026. A versão 1.0 dizia que o encerramento da conta ainda não tinha caminho no aplicativo; agora tem, e a seção foi reescrita.",
+        "Esta é a versão 1.2, de 23 de agosto de 2026. Ela identifica o controlador e o canal de contato, que a versão anterior deixava em branco, e passa a dizer por quanto tempo cada tipo de dado é guardado. A versão 1.0 dizia que o encerramento da conta ainda não tinha caminho no aplicativo; desde a 1.1, tem.",
       ],
     },
   ],
@@ -173,7 +196,7 @@ export const POLITICA_DE_PRIVACIDADE: DocumentoLegal = {
 export const TERMOS_DE_USO: DocumentoLegal = {
   slug: "termos",
   titulo: "Termos de Uso",
-  versao: "1.0",
+  versao: "1.1",
   atualizadoEm: "2026-08-23",
   resumo:
     "As regras para usar o WaveAI: o que ele faz, o que você pode esperar dele e o que esperamos de você.",
@@ -257,14 +280,14 @@ export const TERMOS_DE_USO: DocumentoLegal = {
       titulo: "Lei aplicável e foro",
       paragrafos: [
         "Estes Termos são regidos pela lei brasileira.",
-        "[PREENCHER: foro eleito.]",
+        "Qualquer questão decorrente deles pode ser levada ao foro do seu domicílio. Não elegemos um foro diferente do seu: obrigar você a litigar longe de casa dificultaria seu acesso à Justiça, e a legislação de proteção ao consumidor não admite que você abra mão disso.",
       ],
     },
     {
       titulo: "Mudanças nestes Termos",
       paragrafos: [
         "Se estes Termos mudarem de forma material, publicaremos a nova versão aqui, com data e número de versão novos, e avisaremos no aplicativo.",
-        "Esta é a versão 1.0, de 23 de agosto de 2026.",
+        "Esta é a versão 1.1, de 23 de agosto de 2026. Ela diz que você pode litigar no foro do seu domicílio, o que a versão 1.0 deixava em branco, e acompanha a versão 1.2 da Política de Privacidade, que é parte destes Termos por referência.",
       ],
     },
   ],
