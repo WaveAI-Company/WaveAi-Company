@@ -9,6 +9,7 @@ import { dataCurta } from "../../src/format/date";
 import { DIAGNOSTICO_BLE_HABILITADO } from "../../src/capture/availability";
 import { Button } from "../../src/components/Button";
 import { Chip } from "../../src/components/Chip";
+import { DeleteAccount } from "../../src/components/DeleteAccount";
 import { Disclaimer } from "../../src/components/Disclaimer";
 import { Icon, type IconName } from "../../src/components/Icon";
 import { NavAction } from "../../src/components/NavAction";
@@ -250,6 +251,11 @@ export default function PatientProfileScreen() {
 
       {/* "Sair" saiu do perfil: ele vive na sidebar (decisão do fundador em
           2026-08-13). */}
+      {/* Última coisa da tela, e depois do resto: encerrar a conta não pode
+          ficar perto de nada que se clique por engano. */}
+      <ProfileSection label="Conta" />
+      <DeleteAccount />
+
       <Disclaimer />
     </ScreenContainer>
   );

@@ -6,6 +6,7 @@ import { listCareLinks, revokeCareLink, type CareLink } from "../../src/api/care
 import { useAuth } from "../../src/auth/AuthContext";
 import { Button } from "../../src/components/Button";
 import { Chip } from "../../src/components/Chip";
+import { DeleteAccount } from "../../src/components/DeleteAccount";
 import { Disclaimer } from "../../src/components/Disclaimer";
 import { NavAction } from "../../src/components/NavAction";
 import { Panel } from "../../src/components/Panel";
@@ -235,6 +236,11 @@ export default function DoctorProfileScreen() {
 
       {/* "Sair" saiu do perfil: ele vive na sidebar (decisão do fundador em
           2026-08-13). */}
+      {/* Última coisa da tela, e depois do resto: encerrar a conta não pode
+          ficar perto de nada que se clique por engano. */}
+      <ProfileSection label="Conta" />
+      <DeleteAccount />
+
       <Disclaimer />
     </ScreenContainer>
   );
