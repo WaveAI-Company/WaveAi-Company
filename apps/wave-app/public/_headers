@@ -1,0 +1,31 @@
+# Cabeçalhos de resposta do host estático (Cloudflare Pages lê este arquivo;
+# outros hosts o ignoram).
+#
+# Escolha conservadora: só cabeçalhos que não dependem de conhecer o conteúdo do
+# bundle. Cada um está aqui por um motivo, não por lista de boas práticas.
+
+/*
+  # Impede o navegador de "adivinhar" o tipo de um arquivo servido — a defesa
+  # contra fazer um arquivo qualquer ser interpretado como script.
+  X-Content-Type-Options: nosniff
+
+  # A Política e os Termos são páginas públicas que levam a lugar nenhum, mas o
+  # app tem rotas autenticadas; ao sair delas, não vaza o caminho completo para
+  # terceiros — só a origem.
+  Referrer-Policy: strict-origin-when-cross-origin
+
+  # Nada aqui deve ser embutido em iframe de outro site. Sem isto, uma página
+  # externa poderia sobrepor a tela de login e capturar cliques.
+  X-Frame-Options: DENY
+
+  # O web não captura EEG (`src/device/connection.web.ts` reporta supported:false)
+  # e nenhuma tela pede localização, microfone ou câmera. Negar por padrão é
+  # dizer isso de forma verificável.
+  Permissions-Policy: geolocation=(), microphone=(), camera=()
+
+# SEM Content-Security-Policy, de propósito e por honestidade: uma CSP restritiva
+# quebraria o bundle do Expo (estilos em linha, e `eval` no modo de
+# desenvolvimento), e uma CSP frouxa o bastante para não quebrar nada daria
+# aparência de proteção sem a proteção. Escrever uma que preste exige medir o que
+# o bundle realmente carrega em produção — trabalho de fatia própria, depois do
+# primeiro deploy real. Ver ADR-0027: não afirmar o que não é verdade.

@@ -1,0 +1,17 @@
+# Fallback de rota para host estático (Cloudflare Pages lê este arquivo na raiz
+# do diretório publicado; outros hosts o ignoram sem quebrar nada).
+#
+# POR QUE ISTO EXISTE: `expo export --platform web` gera UM `index.html` e
+# resolve as rotas no cliente. Sem esta regra, pedir /legal/privacidade direto
+# na barra de endereços devolve 404 — e essa é justamente a URL que a Play Store
+# exige que esteja pública e acessível sem login. Medido em 2026-08-23: o export
+# produz index.html, favicon.ico, metadata.json e um bundle. Nada mais.
+#
+# O status 200 (e não 301/302) é o que faz o servidor ENTREGAR o index.html
+# mantendo a URL pedida na barra — é isso que o roteador do cliente precisa ler
+# para montar a tela certa. Um redirecionamento levaria a pessoa para a raiz e
+# perderia o caminho.
+#
+# A regra é a última da lista de propósito: arquivos que existem de fato
+# (bundle, favicon) são servidos antes de ela ser considerada.
+/*  /index.html  200
