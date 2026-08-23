@@ -209,6 +209,26 @@ export async function logout(): Promise<void> {
   }
 }
 
+/**
+ * Exclusão da própria conta (ADR-0047). Irreversível, confirmada por senha.
+ *
+ * Limpa a sessão local **no `finally`**, como o `logout`: se a conta foi
+ * apagada e a limpeza falhasse, o app ficaria com um token de uma conta que
+ * não existe mais, tentando renovar para sempre.
+ *
+ * Senha errada devolve 401 e **não** limpa nada — a conta continua de pé, e
+ * derrubar a sessão de quem só errou a senha seria punir o engano.
+ */
+export async function deleteAccount(password: string): Promise<void> {
+  await request("/auth/me", { method: "DELETE", body: { password }, auth: true });
+  try {
+    // Chegou aqui: a conta foi apagada. O que sobra é limpar o rastro local.
+  } finally {
+    setAccessToken(null);
+    await tokenStorage.clearRefreshToken();
+  }
+}
+
 export async function me(): Promise<AuthUser> {
   return request<AuthUser>("/auth/me", { auth: true });
 }
