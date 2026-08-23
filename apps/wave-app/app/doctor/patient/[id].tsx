@@ -21,6 +21,7 @@ import { Chip } from "../../../src/components/Chip";
 import { Disclaimer } from "../../../src/components/Disclaimer";
 import { LiveSpectator } from "../../../src/components/LiveSpectator";
 import { LongitudinalReport } from "../../../src/components/LongitudinalReport";
+import { Pagination } from "../../../src/components/Pagination";
 import { Panel } from "../../../src/components/Panel";
 import { Select } from "../../../src/components/Select";
 import { diaMes } from "../../../src/format/date";
@@ -54,13 +55,6 @@ import {
 const JANELA = 8;
 
 /** Sessão mais recente (por data) — alvo da anotação lida na tela do médico. */
-function maisRecente(results: SessionResult[]): SessionResult | null {
-  return results.reduce<SessionResult | null>(
-    (mr, r) => (mr === null || r.created_at > mr.created_at ? r : mr),
-    null,
-  );
-}
-
 /** Rótulos como o mockup do profissional escreve (`painel-profissional.html`). */
 const PERIODOS: Array<{ value: PeriodoOpcao; label: string }> = [
   { value: "30", label: "últimos 30 dias" },
@@ -127,7 +121,18 @@ export default function PatientDetailScreen() {
   const [periodo, setPeriodo] = useState<PeriodoOpcao>("30");
   /** Total do período, do servidor — `results` é só a página carregada. */
   const [total, setTotal] = useState(0);
-  const [carregandoMais, setCarregandoMais] = useState(false);
+  /** Página atual, começando em 1. */
+  const [pagina, setPagina] = useState(1);
+  const [trocandoPagina, setTrocandoPagina] = useState(false);
+  /**
+   * Sessão mais recente do **período**, buscada à parte (`limit:1`).
+   *
+   * Não sai de `results`: com paginação, `results` é a página aberta, e na
+   * página 3 tudo que diz "última sessão" — o tile, a legenda de bandas, a
+   * nota de contexto, o rastro do motor — passaria a falar de uma sessão do
+   * meio do recorte (ADR-0027).
+   */
+  const [ultimaDoPeriodo, setUltimaDoPeriodo] = useState<SessionResult | null>(null);
 
   const carregar = useCallback(async () => {
     if (!id) return;
@@ -135,19 +140,25 @@ export default function PatientDetailScreen() {
     setErro(null);
     try {
       // `listCareLinks` não lê dado de ninguém — não entra na trilha de acesso.
-      const [links, pagina] = await Promise.all([
+      const [links, atual, maisNova] = await Promise.all([
         listCareLinks(),
-        listPatientResultsPage(id, dias(periodo), { limit: POR_PAGINA }),
+        listPatientResultsPage(id, dias(periodo), {
+          limit: POR_PAGINA,
+          offset: (pagina - 1) * POR_PAGINA,
+        }),
+        listPatientResultsPage(id, dias(periodo), { limit: 1 }),
       ]);
       setVinculos(links);
-      setResults(pagina.results);
-      setTotal(pagina.total);
+      setResults(atual.results);
+      setTotal(atual.total);
+      setUltimaDoPeriodo(maisNova.results[maisNova.results.length - 1] ?? null);
     } catch {
       // Cobre 403 (vínculo revogado enquanto a tela estava aberta) e falhas
       // de rede: em ambos os casos não há o que mostrar.
       setErro("Não foi possível abrir esta pessoa. O acompanhamento pode ter sido revogado.");
     } finally {
       setCarregando(false);
+      setTrocandoPagina(false);
     }
     // O relatório depende da Analysis; sua falha não pode blindar o resto da
     // tela — carrega à parte e some sem alarde.
@@ -156,35 +167,20 @@ export default function PatientDetailScreen() {
     } catch {
       setReport(null);
     }
-  }, [id, periodo]);
+  }, [id, periodo, pagina]);
 
   /**
-   * Próxima página da lista "Todas as sessões".
+   * Troca de página da lista "Todas as sessões".
    *
    * Aqui o peso é maior que no histórico do titular: **cada página é uma
    * leitura auditada em nome de quem não é o titular** (emenda à ADR-0037 de
    * 2026-08-22). Por isso a página só vem quando o profissional pede — nada de
    * buscar adiante "por via das dúvidas".
    */
-  const carregarMais = useCallback(async () => {
-    if (!id) return;
-    setCarregandoMais(true);
-    try {
-      const pagina = await listPatientResultsPage(id, dias(periodo), {
-        limit: POR_PAGINA,
-        offset: results.length,
-      });
-      setResults((atuais) => {
-        const vistos = new Set(atuais.map((r) => r.id));
-        return ordenarPorData([...atuais, ...pagina.results.filter((r) => !vistos.has(r.id))]);
-      });
-      setTotal(pagina.total);
-    } catch {
-      // A lista já na tela continua válida; alarmar aqui sugeriria o contrário.
-    } finally {
-      setCarregandoMais(false);
-    }
-  }, [id, periodo, results.length]);
+  const irParaPagina = useCallback((alvo: number) => {
+    setTrocandoPagina(true);
+    setPagina(alvo);
+  }, []);
 
   useEffect(() => {
     void carregar();
@@ -223,7 +219,7 @@ export default function PatientDetailScreen() {
       relative: r.metrics.relative_band_powers ?? {},
     }));
 
-  const ultima = maisRecente(results);
+  const ultima = ultimaDoPeriodo;
   const qualidadeMedia = report?.report.quality?.mean;
   //: Intervalo **observado** (primeira e última sessão que entraram) — coisa
   //: diferente da janela **pedida**, que é o `periodo` do seletor. O design
@@ -513,7 +509,7 @@ export default function PatientDetailScreen() {
 
               {/* ===== nota de contexto (ADR-0037) ===== */}
               {(() => {
-                const alvo = maisRecente(results);
+                const alvo = ultimaDoPeriodo;
                 return alvo && id ? (
                   <SessionAnnotation sessionId={alvo.session_id} mode="read" patientId={id} />
                 ) : null;
@@ -523,23 +519,22 @@ export default function PatientDetailScreen() {
                   no backlog registrado no `Documentation/15`. */}
               <SessionsDashboard results={results} showTrend={false} showLast={false} />
 
-              {/* A contagem diz o que está na tela **e** o que existe no
-                  período. Cada "carregar mais" é uma leitura auditada em nome
-                  do titular, então a página só vem quando se pede. */}
-              {total > results.length ? (
-                <View style={styles.maisLinha}>
+              {/* A contagem responde "quanto do recorte estou vendo"; o
+                  controle responde "onde estou". Cada troca de página é uma
+                  leitura auditada em nome do titular. */}
+              {results.length > 0 ? (
+                <>
                   <Text style={styles.maisContagem}>
                     {`${results.length} de ${total} ${total === 1 ? "sessão" : "sessões"}`}
                   </Text>
-                  <Button
-                    label={carregandoMais ? "Carregando…" : "Carregar mais"}
-                    onPress={carregarMais}
-                    variant="secondary"
-                    compacto
-                    largura="conteudo"
-                    disabled={carregandoMais}
+                  <Pagination
+                    pagina={pagina}
+                    totalPaginas={Math.ceil(total / POR_PAGINA)}
+                    onChange={irParaPagina}
+                    label="Sessões do paciente"
+                    ocupado={trocandoPagina}
                   />
-                </View>
+                </>
               ) : null}
 
               <Text style={styles.rastro}>
@@ -614,14 +609,11 @@ function LinhaPessoa({
 const criarEstilos = (t: Theme) =>
   StyleSheet.create({
 
-    maisLinha: {
-      alignItems: "center",
-      gap: t.spacing.sm,
-      paddingTop: t.spacing.md,
-    },
     maisContagem: {
       ...t.typography.caption,
       color: t.colors.textMuted,
+      paddingTop: t.spacing.md,
+      textAlign: "center",
     },
     erro: {
       ...t.typography.body,

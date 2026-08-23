@@ -27,6 +27,14 @@ type Props = {
    * enxerga a janela inteira. Ausente = deriva de `results`, como sempre.
    */
   trend?: TrendPoint[];
+  /**
+   * Sessão mais recente vinda de fora, quando `results` é só uma **página**.
+   *
+   * Na página 3 a última linha da lista é uma sessão do meio do recorte, e o
+   * painel a rotularia como a mais recente. Quem passa isto busca a sessão
+   * mais nova do período à parte. Ausente = a última de `results`, como sempre.
+   */
+  last?: SessionResult | null;
   accent?: string;
   /**
    * Mostra a lista "Todas as sessões" ao final.
@@ -71,6 +79,7 @@ type Props = {
 export function SessionsDashboard({
   results,
   trend,
+  last,
   accent,
   showAllSessions = true,
   showTrend = true,
@@ -93,7 +102,7 @@ export function SessionsDashboard({
         label: formatDate(r.created_at),
       }));
 
-  const ultima = results.length > 0 ? results[results.length - 1] : null;
+  const ultima = last !== undefined ? last : (results.length > 0 ? results[results.length - 1] : null);
   const relativas = ultima?.metrics?.relative_band_powers;
   const qualidade = ultima?.metrics?.quality;
 
