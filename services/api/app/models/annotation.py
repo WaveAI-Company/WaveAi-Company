@@ -91,6 +91,13 @@ class AnnotationAccessEvent(Base):
     #: "foi o mesmo ator" legível na trilha sem dizer quem foi. Nulo enquanto a
     #: conta existir — aí quem responde é o `actor_user_id`.
     actor_pseudonym: Mapped[uuid.UUID | None] = mapped_column(Uuid, nullable=True)
+    #: Quando o pseudônimo foi gravado — é daqui que correm os 12 meses da
+    #: Política (emenda à ADR-0047), e não da data do evento. Nula significa
+    #: "não foi pseudonimizada", que é o que mantém a linha fora do expurgo
+    #: enquanto o ator existir.
+    pseudonymized_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     action: Mapped[AnnotationAccessAction] = mapped_column(
         Enum(AnnotationAccessAction, name="annotation_access_action",
              values_callable=lambda e: [m.value for m in e]),
