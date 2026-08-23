@@ -1143,3 +1143,48 @@ def test_contar_com_nota_nao_deixa_rastro_na_trilha(db_session: Session):
         )
     ).all()
     assert trilha == [], "contar não é ler: não pode virar evento de acesso"
+
+
+def test_relatorio_traz_a_serie_por_sessao_alinhada_com_o_periodo(
+    client_report: TestClient, db_session: Session
+):
+    """A linha de tendência precisa de um ponto por sessão do período.
+
+    Sem `series` o app teria de baixar a janela inteira para desenhá-la, e a
+    paginação da lista não economizaria nada.
+    """
+    from app.repositories.user import UserRepository
+    from app.security.password import Argon2PasswordHasher
+
+    pessoa = Paciente(client_report, consentiu=True)
+    hasher = Argon2PasswordHasher(memory_cost=8, time_cost=1, parallelism=1)
+    user = UserRepository(db_session, hasher).get_by_email(pessoa.email)
+    # Com `features`: sem elas o relatório ignora a sessão, e o teste mediria
+    # uma série vazia achando que media a série.
+    for alpha in (0.20, 0.30, 0.40):
+        _service(db_session).persistir(
+            patient=user,
+            session_id=_sessao(db_session, user).id,
+            metrics={**METRICS_FALSAS, "features": {"rel_alpha": alpha}},
+        )
+    db_session.commit()
+
+    corpo = pessoa.get("/me/report/longitudinal").json()
+
+    assert len(corpo["series"]) == corpo["n_sessions"] == 3
+    # Cronológica e alinhada: cada ponto tem carimbo e as features da sessão.
+    carimbos = [p["at"] for p in corpo["series"]]
+    assert carimbos == sorted(carimbos), "a série tem de vir do mais antigo ao mais novo"
+    assert all("features" in p for p in corpo["series"])
+
+
+def test_relatorio_de_janela_vazia_tem_serie_vazia(client: TestClient):
+    """Conta nova: série vazia, não ausente — a tela não pode quebrar nem
+    inventar ponto nenhum."""
+    pessoa = Paciente(client, consentiu=True)
+
+    corpo = pessoa.get("/me/report/longitudinal").json()
+
+    assert corpo["series"] == []
+    assert corpo["n_sessions"] == 0
+    assert corpo["total_duration_seconds"] is None
