@@ -21,6 +21,7 @@ from ..emails import (
     corpo_troca_de_email,
     corpo_verificacao,
 )
+from ..legal import TERMS_VERSION
 from ..models.single_use_token import SingleUseTokenPurpose
 from ..models.user import User
 from ..security.rate_limit import SlidingWindowRateLimiter
@@ -191,6 +192,18 @@ def register(
     existência de conta. Agora a resposta é única e quem é avisado é a pessoa
     certa: a dona do endereço recebe um e-mail dizendo que houve uma tentativa.
     """
+    # Versão dos Termos antes de tudo (ADR-0048): recusar depois de criar a
+    # conta deixaria uma conta sem aceite. A recusa é sobre o **texto**, nunca
+    # sobre o endereço, então não abre o oráculo que a ADR-0024 fechou.
+    if (
+        payload.accepted_terms_version is not None
+        and payload.accepted_terms_version != TERMS_VERSION
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="termos desatualizados; recarregue a pagina",
+        )
+
     # Throttle por IP. O e-mail **não** entra na chave: a própria chave viraria
     # o oráculo que esta rota passou a evitar.
     ip = client_ip(request)
@@ -205,6 +218,7 @@ def register(
         password=payload.password,
         role=payload.role,
         display_name=payload.display_name,
+        accepted_terms_version=payload.accepted_terms_version,
     )
     if resultado.user is not None:
         _enviar_codigo_de_verificacao(
