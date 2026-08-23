@@ -141,6 +141,20 @@ class Settings(BaseSettings):
     #: cadastros mortos segurando endereços.
     unverified_account_ttl_days: int = 7
 
+    # -- Retenção da trilha pseudonimizada (emenda à ADR-0047) ---------------
+    #: Por quanto tempo um registro de leitura que **perdeu o dono** é mantido.
+    #: A Política de Privacidade 1.2 promete "até 12 meses", e 365 dias é a
+    #: leitura literal disso — cabe dentro do prometido em qualquer ano.
+    #:
+    #: Conta a partir da **pseudonimização**, não da data do evento: contar do
+    #: evento faria a evidência sumir no instante da exclusão para toda leitura
+    #: com mais de um ano, reabrindo o buraco que a ADR-0047 fechou.
+    #:
+    #: **Configurável para baixo em teste, nunca para cima sem mexer no texto:**
+    #: aumentar aqui e deixar a Política dizendo 12 meses seria guardar dado
+    #: além do prometido.
+    audit_pseudonym_retention_days: int = 365
+
     # -- Rate limiting do cadastro (fatia P9-e) ------------------------------
     #: Por **IP apenas**: pôr o e-mail na chave transformaria a própria chave
     #: num oráculo de existência, que é o que este fluxo evita.

@@ -315,9 +315,13 @@ aberto ao público, com o app na Play Store**. Isso promove dois itens legais de
 
    **O que ainda falta:** a **revisão jurídica** e a **hospedagem sempre no ar**.
    E uma **dependência dura**: o texto promete apagar a trilha pseudonimizada em
-   **até 12 meses**, e nada a apaga hoje. O job de expurgo agendado tem de entrar
-   **antes** de a URL ficar pública; se não entrar, o parágrafo volta a "enquanto
-   for necessário" antes da publicação. Está anotado como `TODO(infra)` em
+   **até 12 meses**. Desde 2026-08-23 a **rotina existe e é testada**
+   (`services/api/app/services/audit_retention.py`, comando
+   `python -m scripts.purge_audit_trail`, emenda à ADR-0047), mas **ninguém a
+   executa sozinho** — falta o agendamento, que só vem com a infraestrutura. O
+   prazo está **cumprível, não cumprido**. O job agendado tem de entrar **antes**
+   de a URL ficar pública; se não entrar, o parágrafo volta a "enquanto for
+   necessário" antes da publicação. Anotado como `TODO(infra)` em
    `apps/wave-app/src/legal/documents.ts`, na própria seção.
 
    **Lacuna aberta e consciente:** a Política 1.1 promete que, mudando de forma
