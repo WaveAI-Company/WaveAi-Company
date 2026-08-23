@@ -19,6 +19,7 @@ import { Button } from "../../src/components/Button";
 import { Disclaimer } from "../../src/components/Disclaimer";
 import { EmptyState } from "../../src/components/EmptyState";
 import { LongitudinalReport } from "../../src/components/LongitudinalReport";
+import { Pagination } from "../../src/components/Pagination";
 import { Panel } from "../../src/components/Panel";
 import { ScreenContainer } from "../../src/components/ScreenContainer";
 import { SegmentedFilter } from "../../src/components/SegmentedFilter";
@@ -54,14 +55,6 @@ const PERIODOS: Array<{ value: PeriodoOpcao; label: string }> = [
   { value: "90", label: "90 dias" },
   { value: "tudo", label: "Tudo" },
 ];
-
-/** Sessão mais recente (por data) — alvo da anotação editável no histórico. */
-function maisRecente(results: SessionResult[]): SessionResult | null {
-  return results.reduce<SessionResult | null>(
-    (mr, r) => (mr === null || r.created_at > mr.created_at ? r : mr),
-    null,
-  );
-}
 
 /** Agrupa por mês, do mais recente para o mais antigo. */
 function porMes(results: SessionResult[]): Array<{ titulo: string; sessoes: SessionResult[] }> {
@@ -116,21 +109,50 @@ export default function PatientHistoryScreen() {
   const [periodo, setPeriodo] = useState<PeriodoOpcao>("30");
 
   /**
+   * Trocar de período **volta para a primeira página**: 90 dias tem mais
+   * páginas que 30, e ficar na página 4 ao encolher o recorte abriria uma
+   * página que não existe mais — lista vazia sem explicação.
+   */
+  const trocarPeriodo = useCallback((novo: PeriodoOpcao) => {
+    setPeriodo(novo);
+    setPagina(1);
+  }, []);
+
+  /**
    * Total do período, do servidor — **não** `results.length`, que conta só o
    * que já foi carregado. É ele que rotula "12 de 40" e decide se ainda há o
    * que buscar.
    */
   const [total, setTotal] = useState(0);
-  const [carregandoMais, setCarregandoMais] = useState(false);
+  /** Página atual, começando em 1. Trocar de período volta para a primeira. */
+  const [pagina, setPagina] = useState(1);
+  const [trocandoPagina, setTrocandoPagina] = useState(false);
+  /**
+   * Sessão mais recente do **período**, buscada à parte (`limit:1`).
+   *
+   * Não sai de `results`: com a lista paginada, `results` é a página aberta, e
+   * na página 3 a "última sessão" viraria uma do meio do recorte — a tela
+   * afirmando o que não é verdade (ADR-0027). Uma linha a mais no servidor
+   * custa menos que um painel que mente.
+   */
+  const [ultimaDoPeriodo, setUltimaDoPeriodo] = useState<SessionResult | null>(null);
 
   const carregar = useCallback(async () => {
     setLoading(true);
     setErro(null);
     try {
-      const pagina = await listMyResultsPage(dias(periodo), { limit: POR_PAGINA });
-      const dados = pagina.results;
+      const [atual, maisNova] = await Promise.all([
+        listMyResultsPage(dias(periodo), {
+          limit: POR_PAGINA,
+          offset: (pagina - 1) * POR_PAGINA,
+        }),
+        // A mais recente do recorte, independente da página aberta.
+        listMyResultsPage(dias(periodo), { limit: 1 }),
+      ]);
+      const dados = atual.results;
       setResults(dados);
-      setTotal(pagina.total);
+      setTotal(atual.total);
+      setUltimaDoPeriodo(maisNova.results[maisNova.results.length - 1] ?? null);
       /**
        * Vazio **no recorte** não diz se a pessoa nunca captou: a lista já vem
        * filtrada do servidor (P9-b), então "zero em 30 dias" e "zero desde
@@ -155,6 +177,7 @@ export default function PatientHistoryScreen() {
       setErro("Não foi possível carregar suas sessões.");
     } finally {
       setLoading(false);
+      setTrocandoPagina(false);
     }
     // O relatório depende da Analysis estar de pé; sua falha (ex.: 503) não pode
     // esconder as sessões — por isso carrega à parte e some sem alarde.
@@ -163,36 +186,19 @@ export default function PatientHistoryScreen() {
     } catch {
       setReport(null);
     }
-  }, [periodo]);
+  }, [periodo, pagina]);
 
   /**
-   * Próxima página, **acrescentada** à linha do tempo.
+   * Troca de página: **substitui** a lista.
    *
-   * Acrescenta em vez de trocar porque a linha do tempo é uma leitura contínua
-   * do período: trocar de página faria o mês de cima sumir a cada clique. E o
-   * `offset` sai de `results.length`, que é o que já se tem em mãos.
+   * Substituir e não acrescentar é o que o controle de setas promete: "Página
+   * 2 de 3" com as duas primeiras ainda na tela seria um rótulo falso. O
+   * carregamento em si mora no `carregar`, que já observa `pagina`.
    */
-  const carregarMais = useCallback(async () => {
-    setCarregandoMais(true);
-    try {
-      const pagina = await listMyResultsPage(dias(periodo), {
-        limit: POR_PAGINA,
-        offset: results.length,
-      });
-      // Dedup por id: se uma sessão nova entrar entre uma página e outra, o
-      // offset desloca e a mesma linha poderia chegar duas vezes.
-      setResults((atuais) => {
-        const vistos = new Set(atuais.map((r) => r.id));
-        return ordenarPorData([...atuais, ...pagina.results.filter((r) => !vistos.has(r.id))]);
-      });
-      setTotal(pagina.total);
-    } catch {
-      // Silencioso de propósito: a lista que já está na tela continua válida,
-      // e um alarme aqui sugeriria que ela ficou errada.
-    } finally {
-      setCarregandoMais(false);
-    }
-  }, [periodo, results.length]);
+  const irParaPagina = useCallback((alvo: number) => {
+    setTrocandoPagina(true);
+    setPagina(alvo);
+  }, []);
 
   // Recarrega **ao focar**, não só ao montar: voltando de uma captação, a
   // sessão recém-encerrada precisa aparecer sem recarregar o app (#17).
@@ -322,7 +328,7 @@ export default function PatientHistoryScreen() {
               label="Período"
               options={PERIODOS}
               value={periodo}
-              onChange={setPeriodo}
+              onChange={trocarPeriodo}
               accent={papel.accent}
             />
           </View>
@@ -349,24 +355,23 @@ export default function PatientHistoryScreen() {
                   </View>
                 ))
               )}
-              {/* A contagem diz o que está na tela **e** o que existe no
-                  período: sem os dois números, "12 sessões" numa lista de 40
-                  seria a tela escondendo o resto sem avisar. O botão some
-                  quando não há mais o que buscar. */}
-              {temSessoes && total > results.length ? (
-                <View style={styles.maisLinha}>
+              {/* A contagem fica **fora** do controle: "12 de 29" responde
+                  quanto do recorte se está vendo, e "Página 2 de 3" responde
+                  onde se está. São perguntas diferentes e o rodapé responde as
+                  duas. */}
+              {temSessoes ? (
+                <>
                   <Text style={styles.maisContagem}>
                     {`${results.length} de ${total} ${total === 1 ? "sessão" : "sessões"}`}
                   </Text>
-                  <Button
-                    label={carregandoMais ? "Carregando…" : "Carregar mais"}
-                    onPress={carregarMais}
-                    variant="secondary"
-                    compacto
-                    largura="conteudo"
-                    disabled={carregandoMais}
+                  <Pagination
+                    pagina={pagina}
+                    totalPaginas={Math.ceil(total / POR_PAGINA)}
+                    onChange={irParaPagina}
+                    label="Sessões"
+                    ocupado={trocandoPagina}
                   />
-                </View>
+                </>
               ) : null}
             </View>
 
@@ -440,6 +445,7 @@ export default function PatientHistoryScreen() {
             <View style={emColunas ? styles.panoramaMetade : undefined}>
               <SessionsDashboard
                 results={results}
+                last={ultimaDoPeriodo}
                 showAllSessions={false}
                 showTrend={false}
                 grow={emColunas}
@@ -462,7 +468,7 @@ export default function PatientHistoryScreen() {
             {/* Anotação de contexto (P2, ADR-0037) da sessão mais recente.
                 Último cartão da página, na coluna da direita. */}
             {(() => {
-              const alvo = maisRecente(results);
+              const alvo = ultimaDoPeriodo;
               return alvo ? (
                 <View style={emColunas ? styles.panoramaMetade : undefined}>
                   <Panel title="Nota de contexto" eyebrow="sessão mais recente" grow>
@@ -585,14 +591,11 @@ const criarEstilos = (t: Theme) =>
       flexShrink: 0,
       width: larguras.trilhoSessoes,
     },
-    maisLinha: {
-      alignItems: "center",
-      gap: t.spacing.sm,
-      paddingTop: t.spacing.md,
-    },
     maisContagem: {
       ...t.typography.caption,
       color: t.colors.textMuted,
+      paddingTop: t.spacing.md,
+      textAlign: "center",
     },
     grupo: {
       gap: t.spacing.sm,
