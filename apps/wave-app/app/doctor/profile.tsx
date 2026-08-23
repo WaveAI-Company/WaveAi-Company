@@ -211,6 +211,20 @@ export default function DoctorProfileScreen() {
               tone="neutral"
               onPress={() => router.push("/doctor/invite")}
             />
+
+            {/* O profissional aceita os mesmos documentos e precisa poder
+                relê-los — inclusive a parte que diz que a conta dele não tem
+                credencial verificada. */}
+            <NavAction
+              label="Termos de Uso"
+              tone="neutral"
+              onPress={() => router.push("/legal/termos")}
+            />
+            <NavAction
+              label="Política de Privacidade"
+              tone="neutral"
+              onPress={() => router.push("/legal/privacidade")}
+            />
           </Panel>
 
           <Panel>
