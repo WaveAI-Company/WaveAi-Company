@@ -71,6 +71,8 @@ type AuthState = {
     displayName: string;
   }): Promise<void>;
   signOut(): Promise<void>;
+  /** Apaga a conta e derruba a sessão. Irreversível (ADR-0047). */
+  deleteAccount(password: string): Promise<void>;
   /**
    * Relê `GET /auth/me` e atualiza quem está em memória.
    *
@@ -154,6 +156,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   }, []);
 
+  const deleteAccount = useCallback(async (password: string) => {
+    await api.deleteAccount(password);
+    // `setUser(null)` só depois do sucesso: senha errada lança antes daqui e a
+    // pessoa continua logada, que é o certo — errar a senha não é sair.
+    setUser(null);
+  }, []);
+
   const iniciarVerificacao = useCallback((email: string, senha?: string) => {
     setPendente({ email, senha, origem: "login" });
   }, []);
@@ -199,6 +208,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       signIn,
       signUp,
       signOut,
+      deleteAccount,
       recarregarUsuario,
       // Só o e-mail atravessa: a senha guardada não tem por que estar ao
       // alcance de nenhuma tela.
@@ -217,6 +227,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       signIn,
       signUp,
       signOut,
+      deleteAccount,
       pendente,
       iniciarVerificacao,
       verificarEmail,

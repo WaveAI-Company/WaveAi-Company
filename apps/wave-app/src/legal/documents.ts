@@ -43,7 +43,7 @@ const CONTATO_SUPORTE = "[PREENCHER: e-mail de contato para pedidos do titular]"
 export const POLITICA_DE_PRIVACIDADE: DocumentoLegal = {
   slug: "privacidade",
   titulo: "Política de Privacidade",
-  versao: "1.0",
+  versao: "1.1",
   atualizadoEm: "2026-08-23",
   resumo:
     "O que o WaveAI coleta, por quanto tempo guarda, com quem compartilha e como você exerce seus direitos.",
@@ -136,14 +136,22 @@ export const POLITICA_DE_PRIVACIDADE: DocumentoLegal = {
         "Corrigir seu nome de exibição, sua senha e seu e-mail.",
         "Revogar o consentimento, encerrando novas gravações.",
         "Revogar o vínculo com um profissional, encerrando o acesso dele.",
+        "Encerrar sua conta, apagando tudo de uma vez.",
+      ],
+    },
+    {
+      titulo: "Pedidos que o aplicativo não cobre",
+      paragrafos: [
+        `Para qualquer outro pedido — confirmação de tratamento, informação sobre compartilhamento, correção de algo que a tela não deixa corrigir — escreva para ${CONTATO_SUPORTE} a partir do e-mail cadastrado.`,
+        "Responderemos nos prazos da lei. Se você não ficar satisfeito, pode procurar a Autoridade Nacional de Proteção de Dados.",
       ],
     },
     {
       titulo: "Exclusão da conta",
       paragrafos: [
-        "A exclusão completa da conta ainda não tem botão no aplicativo. Estamos construindo esse caminho.",
-        `Até lá, peça a exclusão por ${CONTATO_SUPORTE} a partir do e-mail cadastrado, e faremos a remoção. Enquanto isso, você já pode apagar sozinho todas as suas medidas e anotações pelo aplicativo, que é o conteúdo derivado do seu sinal.`,
-        "Dizemos isso explicitamente porque preferimos descrever o produto como ele é a prometer um botão que ainda não existe.",
+        "Você pode encerrar sua conta pelo próprio aplicativo, no seu perfil. Pedimos sua senha para confirmar, porque a ação não pode ser desfeita.",
+        "O encerramento é imediato: apaga suas sessões, medidas, anotações, vínculos e o cadastro. Não há prazo de arrependimento e não guardamos cópia para restaurar. Se quiser levar seus dados, exporte-os antes.",
+        "Uma coisa sobrevive, e dizemos por que: se você acessou dados de outra pessoa, o registro desse acesso continua na trilha dela — sem identificar você. Apagá-lo tiraria dessa pessoa a evidência de que o acesso aconteceu, e essa evidência é dela, não sua.",
       ],
     },
     {
@@ -156,7 +164,7 @@ export const POLITICA_DE_PRIVACIDADE: DocumentoLegal = {
       titulo: "Mudanças nesta política",
       paragrafos: [
         "Se este texto mudar de forma material, publicaremos a nova versão aqui, com data e número de versão novos, e avisaremos no aplicativo.",
-        "Esta é a versão 1.0, de 23 de agosto de 2026.",
+        "Esta é a versão 1.1, de 23 de agosto de 2026. A versão 1.0 dizia que o encerramento da conta ainda não tinha caminho no aplicativo; agora tem, e a seção foi reescrita.",
       ],
     },
   ],
