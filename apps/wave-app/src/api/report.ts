@@ -57,6 +57,21 @@ export type LongitudinalReport = {
   window_days: number | null;
   engine_version: string | null;
   report: LongitudinalData;
+  /**
+   * Soma da duração das sessões do período, em segundos. `null` = **não dá
+   * para saber** (nenhuma sessão trouxe amostras/taxa) — diferente de zero,
+   * que afirmaria um tempo que ninguém captou.
+   */
+  total_duration_seconds?: number | null;
+  /** Quantas sessões do período têm autorrelato. Contagem, nunca o texto. */
+  annotation_count?: number;
+  /**
+   * Série **por sessão** do período, cronológica. É o que sustenta a linha de
+   * tendência quando a lista está paginada: os agregados acima não carregam
+   * ponto por sessão, e derivar a linha de uma página faria o gráfico mudar de
+   * forma conforme a página (ADR-0027).
+   */
+  series?: Array<{ at: string; features: Record<string, number> }>;
   /** Frases do sumário determinístico (N5-c). Já vêm rotuladas não-clínicas. */
   summary: string[];
   /**
