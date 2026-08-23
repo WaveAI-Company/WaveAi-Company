@@ -149,9 +149,14 @@ class Settings(BaseSettings):
 
     # -- CORS ----------------------------------------------------------------
     #: Origens permitidas (separadas por vírgula) para o app web.
-    #: Em produção o MVP assume **same-origin** (app e API atrás do mesmo
-    #: domínio/proxy), então CORS não é necessário; isto atende o dev, em que
-    #: o Expo serve na 8081 e a API na 8000.
+    #:
+    #: **Este default só serve ao desenvolvimento** (Expo na 8081, API na 8000).
+    #: Até a ADR-0049 valia dizer que produção seria *same-origin*; deixou de
+    #: valer: o app estático e a API passaram a viver em hosts diferentes
+    #: (`waveai.tec.br` e `api.waveai.tec.br`), então **a origem do app é
+    #: configuração obrigatória do ambiente de produção** — sem ela, o navegador
+    #: recusa toda chamada. Curinga não é alternativa: com `allow_credentials`
+    #: ligado, o padrão CORS o proíbe (ver `main.py`).
     cors_origins: str = "http://localhost:8081,http://127.0.0.1:8081"
 
     @property
