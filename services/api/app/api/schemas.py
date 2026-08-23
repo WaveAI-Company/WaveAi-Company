@@ -205,6 +205,18 @@ class UpdateMeRequest(BaseModel):
         return podado
 
 
+class DeleteMeRequest(BaseModel):
+    """Exclusão da própria conta (ADR-0047).
+
+    Pede a senha atual porque a ação é irreversível: um token roubado, ou um
+    aparelho destravado, não devem bastar para apagar a vida de alguém no
+    produto. Fica fora da regra de força pelo mesmo motivo da troca de senha —
+    é conferência contra o hash guardado, não senha nascendo.
+    """
+
+    password: str = Field(min_length=1, max_length=128)
+
+
 class ChangePasswordRequest(BaseModel):
     """Troca de senha do próprio titular.
 

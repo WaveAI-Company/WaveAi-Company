@@ -47,6 +47,7 @@ from .schemas import (
     ChangePasswordRequest,
     ClientPlatform,
     ConfirmEmailChangeRequest,
+    DeleteMeRequest,
     ForgotPasswordRequest,
     LoginRequest,
     RefreshRequest,
@@ -480,6 +481,50 @@ def update_me(
     service.update_display_name(user=user, display_name=payload.display_name)
     session.commit()
     return _resposta_usuario(user)
+
+
+@router.delete("/me", status_code=status.HTTP_204_NO_CONTENT)
+def delete_me(
+    payload: DeleteMeRequest,
+    request: Request,
+    response: Response,
+    session: Session = Depends(get_session),
+    service: AuthService = Depends(get_auth_service),
+    settings: Settings = Depends(get_settings),
+    user: User = Depends(get_current_user),
+    limiter: SlidingWindowRateLimiter = Depends(get_login_limiter),
+) -> Response:
+    """Exclusão da própria conta — **imediata e definitiva** (ADR-0047).
+
+    Apaga sessões, Result, notas, vínculos e tokens pelo CASCADE. O que
+    sobrevive é a trilha de leitura **de outras pessoas** em que este usuário
+    foi o ator: o evento fica, pseudonimizado, para o titular que permanece não
+    perder a evidência de que houve acesso.
+
+    **Throttled como a troca de senha**, e pela mesma razão: o campo "senha"
+    aqui é um oráculo, e sem limite seria um caminho mais silencioso do que o
+    próprio login para adivinhá-la.
+
+    Não há carência: quem confirmou, apagou. A tela tem de dizer isso **antes**.
+    """
+    ip = client_ip(request)
+    if not limiter.is_allowed(f"exclusao:{ip}|{user.id}"):
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="tentativas demais; tente novamente em instantes",
+        )
+
+    if not service.conferir_senha(user=user, password=payload.password):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail=CREDENCIAIS_INVALIDAS
+        )
+
+    service.excluir_conta(user=user)
+    session.commit()
+    # O cookie tem de sair junto: deixá-lo para trás faria o navegador tentar
+    # renovar a sessão de uma conta que não existe mais.
+    response.delete_cookie(settings.refresh_cookie_name, path="/auth")
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.post("/password", response_model=TokenResponse)
