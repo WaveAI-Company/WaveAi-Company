@@ -32,6 +32,7 @@ export function LegalPage({ documento }: { documento: DocumentoLegal }) {
       <View style={styles.centro}>
         <LegalDocument documento={documento} />
 
+
         <View style={styles.rodape}>
           <Text style={styles.rodapeTexto}>Leia também: </Text>
           <TextLink
@@ -56,6 +57,11 @@ const criarEstilos = (t: Theme) =>
   StyleSheet.create({
     centro: {
       alignItems: "center",
+      // Largura de leitura contida: linha longa demais faz o olho perder a
+      // linha seguinte, e este é o texto mais longo do produto.
+      alignSelf: "center",
+      gap: t.spacing.md,
+      maxWidth: 760,
       width: "100%",
     },
     rodape: {

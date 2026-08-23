@@ -104,6 +104,8 @@ export async function register(input: {
   password: string;
   role: UserRole;
   displayName: string;
+  /** Versão dos Termos que a tela **exibiu** (ADR-0048). */
+  acceptedTermsVersion: string;
 }): Promise<void> {
   await request("/auth/register", {
     method: "POST",
@@ -112,6 +114,7 @@ export async function register(input: {
       password: input.password,
       role: input.role,
       display_name: input.displayName,
+      accepted_terms_version: input.acceptedTermsVersion,
     },
   });
 }

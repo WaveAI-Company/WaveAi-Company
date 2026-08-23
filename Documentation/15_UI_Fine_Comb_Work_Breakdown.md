@@ -301,7 +301,19 @@ aberto ao público, com o app na Play Store**. Isso promove dois itens legais de
    já entrou) e linkados no cadastro. **O que falta:** os quatro `[PREENCHER]`
    (razão social/CNPJ/endereço, encarregado, contato de pedidos, prazos de
    retenção), a revisão jurídica, a **hospedagem sempre no ar** e o **registro
-   do aceite** no cadastro — este último é fatia própria, com ADR e migration.
+   do aceite** no cadastro — **feito em 2026-08-23** (ADR-0048): caixa
+   obrigatória, `accepted_terms_version` + `accepted_terms_at`, e 409 para
+   versão desatualizada.
+
+   **Lacuna aberta e consciente:** a Política 1.1 promete que, mudando de forma
+   material, *"avisaremos no aplicativo"* — e **esse aviso não existe**. Contas
+   anteriores ficaram com o campo nulo (nulo é "não temos registro", nunca
+   "recusou") e ninguém é interrompido ao entrar. Enquanto as contas antigas
+   forem as de teste e a do fundador, o custo é zero; deixa de ser zero no dia
+   em que houver gente de fora e os Termos mudarem. A alternativa — gate ao
+   entrar para quem tem campo nulo ou versão velha — está descrita na ADR-0048
+   como preterida **por tamanho**, não por mérito.
+
    Nota histórica do que motivou a entrada: Não existem:
    varrido o repo inteiro, as duas expressões só aparecem no mockup
    `Design/round1/criar-conta.html` e dentro de `.venv` (ruído de dependência).

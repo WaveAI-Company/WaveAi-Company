@@ -119,7 +119,13 @@ class AuthService:
         )
 
     def cadastrar(
-        self, *, email: str, password: str, role: UserRole, display_name: str
+        self,
+        *,
+        email: str,
+        password: str,
+        role: UserRole,
+        display_name: str,
+        accepted_terms_version: str | None = None,
     ) -> ResultadoCadastro:
         """Cadastro da rota pública: nunca revela se o endereço já tem dono.
 
@@ -143,6 +149,13 @@ class AuthService:
         user = self._users.create(
             email=email, password=password, role=role, display_name=display_name
         )
+        if accepted_terms_version is not None:
+            # `datetime.now` e não `func.now()`: o `now()` do Postgres é por
+            # transação, e o cadastro faz mais de uma escrita — o carimbo tem
+            # de ser o do ato, não o do início da transação.
+            user.accepted_terms_version = accepted_terms_version
+            user.accepted_terms_at = datetime.now(UTC)
+        self._session.flush()
         return ResultadoCadastro(user=user, ja_existia=False)
 
     def _pode_reciclar(self, user: User) -> bool:

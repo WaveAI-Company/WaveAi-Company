@@ -69,6 +69,7 @@ type AuthState = {
     password: string;
     role: UserRole;
     displayName: string;
+    acceptedTermsVersion: string;
   }): Promise<void>;
   signOut(): Promise<void>;
   /** Apaga a conta e derruba a sessão. Irreversível (ADR-0047). */
@@ -136,6 +137,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       password: string;
       role: UserRole;
       displayName: string;
+      acceptedTermsVersion: string;
     }) => {
       await api.register(input);
       // O 202 é uniforme (ADR-0024): se o e-mail já tinha dono, nenhum código

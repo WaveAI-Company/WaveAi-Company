@@ -239,6 +239,23 @@ export default function DoctorProfileScreen() {
       {/* Última coisa da tela, e depois do resto: encerrar a conta não pode
           ficar perto de nada que se clique por engano. */}
       <ProfileSection label="Conta" />
+
+      {/* O profissional aceita os mesmos documentos e precisa poder relê-los —
+          inclusive a parte que diz que a conta dele não tem credencial
+          verificada. */}
+      <NavAction
+        label="Termos de Uso"
+        description="As regras de uso do WaveAI, e o que ele não é."
+        tone="neutral"
+        onPress={() => router.push("/legal/termos")}
+      />
+      <NavAction
+        label="Política de Privacidade"
+        description="O que coletamos, por quanto tempo e com quem compartilhamos."
+        tone="neutral"
+        onPress={() => router.push("/legal/privacidade")}
+      />
+
       <DeleteAccount />
 
       <Disclaimer />

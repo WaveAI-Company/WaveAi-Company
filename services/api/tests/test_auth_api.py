@@ -566,3 +566,102 @@ def test_exclusao_exige_a_senha_correta(client: TestClient):
         "/auth/login", json={"email": email, "password": SENHA, "client": "mobile"}
     )
     assert ainda_entra.status_code == 200
+
+
+# -- aceite dos Termos (ADR-0048) ---------------------------------------
+
+
+def test_cadastro_guarda_a_versao_dos_termos_aceita(client: TestClient, db_session: Session):
+    from app.legal import TERMS_VERSION
+    from app.repositories.user import UserRepository
+    from app.security.password import Argon2PasswordHasher
+
+    email = _email()
+    resposta = client.post(
+        "/auth/register",
+        json={
+            "email": email,
+            "password": SENHA,
+            "role": "patient",
+            "display_name": "Aceitou",
+            "accepted_terms_version": TERMS_VERSION,
+        },
+    )
+
+    assert resposta.status_code == 202
+    hasher = Argon2PasswordHasher(memory_cost=8, time_cost=1, parallelism=1)
+    user = UserRepository(db_session, hasher).get_by_email(email)
+    assert user.accepted_terms_version == TERMS_VERSION
+    assert user.accepted_terms_at is not None, "sem data, não há prova de quando"
+
+
+def test_cadastro_recusa_versao_desatualizada_dos_termos(
+    client: TestClient, db_session: Session
+):
+    """409 como o consentimento: aceitar um texto que já mudou não é aceite."""
+    from app.repositories.user import UserRepository
+    from app.security.password import Argon2PasswordHasher
+
+    email = _email()
+    resposta = client.post(
+        "/auth/register",
+        json={
+            "email": email,
+            "password": SENHA,
+            "role": "patient",
+            "display_name": "Texto Velho",
+            "accepted_terms_version": "0.1-antiga",
+        },
+    )
+
+    assert resposta.status_code == 409
+    # E nada foi criado: recusar depois de criar deixaria conta sem aceite.
+    hasher = Argon2PasswordHasher(memory_cost=8, time_cost=1, parallelism=1)
+    assert UserRepository(db_session, hasher).get_by_email(email) is None
+
+
+def test_cadastro_sem_o_campo_continua_funcionando(client: TestClient, db_session: Session):
+    """Cliente antigo no ar não pode quebrar; fica sem registro, que é a verdade."""
+    from app.repositories.user import UserRepository
+    from app.security.password import Argon2PasswordHasher
+
+    email = _email()
+    resposta = client.post(
+        "/auth/register",
+        json={"email": email, "password": SENHA, "role": "patient", "display_name": "Sem"},
+    )
+
+    assert resposta.status_code == 202
+    hasher = Argon2PasswordHasher(memory_cost=8, time_cost=1, parallelism=1)
+    user = UserRepository(db_session, hasher).get_by_email(email)
+    assert user.accepted_terms_version is None
+    assert user.accepted_terms_at is None
+
+
+def test_recusa_dos_termos_nao_revela_se_o_email_existe(client: TestClient):
+    """A recusa é sobre o TEXTO, nunca sobre o endereço (ADR-0024).
+
+    Endereço novo e endereço já cadastrado têm de responder **igual** quando a
+    versão está velha — senão o 409 vira o oráculo que a resposta uniforme do
+    cadastro existe para fechar.
+    """
+    ja_existe = _email()
+    registrar_conta(client, email=ja_existe, senha=SENHA, display_name="Ja Existe")
+
+    def tentar(email: str):
+        return client.post(
+            "/auth/register",
+            json={
+                "email": email,
+                "password": SENHA,
+                "role": "patient",
+                "display_name": "Tentativa",
+                "accepted_terms_version": "0.1-antiga",
+            },
+        )
+
+    nova = tentar(_email())
+    repetida = tentar(ja_existe)
+
+    assert nova.status_code == repetida.status_code == 409
+    assert nova.json() == repetida.json()
