@@ -129,15 +129,39 @@ class ResultService:
     # -- direito de acesso ----------------------------------------------
 
     def listar(
-        self, *, titular: User, ator: User, desde: datetime | None = None
-    ) -> list[dict[str, Any]]:
+        self,
+        *,
+        titular: User,
+        ator: User,
+        desde: datetime | None = None,
+        apenas_com_nota: bool = False,
+        limit: int | None = None,
+        offset: int = 0,
+    ) -> tuple[list[dict[str, Any]], int]:
         """Lê os Result do titular (decifrando) e audita quem leu.
+
+        Devolve **a página e o total do recorte**. O total é `COUNT(*)` e não
+        decifra nada — é o que permite a tela dizer "12 de 40" sem inflar a
+        trilha nem pedir o histórico inteiro.
 
         `desde` recorta a janela. Minimização: quem pede "últimos 30 dias" não
         recebe (nem faz o servidor decifrar) três anos para o cliente esconder o
         resto — e a trilha de acesso conta o que a pessoa realmente viu.
+
+        `limit`/`offset` paginam, e **cada página deixa seu próprio evento**,
+        com `count` igual ao que saiu em claro naquela chamada (emenda à
+        ADR-0037 de 2026-08-22). Nenhuma página escapa da trilha.
         """
-        results = self._repo.listar_do_paciente(titular.id, desde=desde)
+        total = self._repo.contar_do_paciente(
+            titular.id, desde=desde, apenas_com_nota=apenas_com_nota
+        )
+        results = self._repo.listar_do_paciente(
+            titular.id,
+            desde=desde,
+            apenas_com_nota=apenas_com_nota,
+            limit=limit,
+            offset=offset,
+        )
         if results:
             self._repo.auditar(
                 patient_user_id=titular.id,
@@ -145,7 +169,7 @@ class ResultService:
                 action=ResultAccessAction.READ,
                 count=len(results),
             )
-        return [self._para_dict(r) for r in results]
+        return [self._para_dict(r) for r in results], total
 
     # -- direito de exportação (portabilidade) --------------------------
 

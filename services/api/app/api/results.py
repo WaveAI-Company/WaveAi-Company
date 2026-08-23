@@ -15,7 +15,7 @@ from __future__ import annotations
 import uuid
 from datetime import UTC, datetime
 
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy.orm import Session
 
 from ..consent import CONSENT_TERM_VERSION
@@ -27,12 +27,14 @@ from ..services.narrator import Narrator
 from ..services.results import ResultService
 from .deps import (
     Janela,
+    Paginacao,
     get_analysis_client,
     get_annotation_service,
     get_current_user,
     get_narrator,
     get_result_service,
     janela_periodo,
+    paginacao,
     require_active_care_link,
     require_role,
 )
@@ -113,20 +115,43 @@ def meus_results(
     service: ResultService = Depends(get_result_service),
     annotations: AnnotationService = Depends(get_annotation_service),
     janela: Janela | None = Depends(janela_periodo),
+    pagina: Paginacao = Depends(paginacao),
+    with_annotation: bool = Query(
+        False, description="Só as sessões que têm autorrelato."
+    ),
 ) -> dict:
     """Direito de **acesso**: o titular vê seus próprios Result.
 
     `?days=N` recorta a janela (ausente = tudo). `window_days` devolve o que foi
     aplicado, para a tela não depender só do próprio estado ao rotular o período.
 
+    `?limit=&offset=` paginam a lista; `total` conta o recorte **inteiro**, para
+    a tela poder dizer "12 de 40" sem baixar as 40. Os agregados do período não
+    saem por aqui — quem os calcula é o relatório longitudinal, sobre a janela
+    toda (ADR-0027: lista paginada com resumo que seguisse a página mentiria).
+
     Cada item leva `has_annotation` — **se** há autorrelato naquela sessão, nunca
     o texto (emenda à ADR-0037). É o que permite o selo na linha do tempo sem
-    uma consulta de nota por sessão.
+    uma consulta de nota por sessão, e é o mesmo metadado que `?with_annotation`
+    filtra.
     """
-    results = service.listar(titular=user, ator=user, desde=janela.desde if janela else None)
+    results, total = service.listar(
+        titular=user,
+        ator=user,
+        desde=janela.desde if janela else None,
+        apenas_com_nota=with_annotation,
+        limit=pagina.limit,
+        offset=pagina.offset,
+    )
     annotations.marcar_quais_tem_nota(titular=user, results=results)
     session.commit()
-    return {"results": results, "window_days": janela.days if janela else None}
+    return {
+        "results": results,
+        "window_days": janela.days if janela else None,
+        "total": total,
+        "limit": pagina.limit,
+        "offset": pagina.offset,
+    }
 
 
 @router.get("/me/results/export")
@@ -178,18 +203,33 @@ def results_do_paciente(
     service: ResultService = Depends(get_result_service),
     annotations: AnnotationService = Depends(get_annotation_service),
     janela: Janela | None = Depends(janela_periodo),
+    pagina: Paginacao = Depends(paginacao),
+    with_annotation: bool = Query(
+        False, description="Só as sessões que têm autorrelato."
+    ),
 ) -> dict:
     """Médico lê os Result de um paciente. Exige CareLink `active` (403 sem) e
     o acesso fica auditado em nome do titular.
 
     `?days=N` recorta a janela — o gate do vínculo roda antes e não muda.
 
+    `?limit=&offset=` paginam, e **cada página deixa seu próprio evento** de
+    acesso, com `count` igual ao que foi decifrado naquela chamada (emenda à
+    ADR-0037 de 2026-08-22). Folhear custa mais linhas na trilha do que uma
+    leitura única — a decisão está registrada, com o que se abre mão. O `total`
+    é `COUNT(*)` e **não** audita: contar não é ler.
+
     `has_annotation` diz **quais** sessões têm autorrelato, nunca o texto: a
     existência é metadado visível a quem tem vínculo ativo, e ler a nota
     continua sendo um ato à parte, auditado (emenda à ADR-0037).
     """
-    results = service.listar(
-        titular=paciente, ator=ator, desde=janela.desde if janela else None
+    results, total = service.listar(
+        titular=paciente,
+        ator=ator,
+        desde=janela.desde if janela else None,
+        apenas_com_nota=with_annotation,
+        limit=pagina.limit,
+        offset=pagina.offset,
     )
     annotations.marcar_quais_tem_nota(titular=paciente, results=results)
     session.commit()
@@ -197,6 +237,9 @@ def results_do_paciente(
         "patient_id": str(paciente.id),
         "results": results,
         "window_days": janela.days if janela else None,
+        "total": total,
+        "limit": pagina.limit,
+        "offset": pagina.offset,
     }
 
 
