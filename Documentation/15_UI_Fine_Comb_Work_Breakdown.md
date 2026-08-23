@@ -298,12 +298,27 @@ aberto ao público, com o app na Play Store**. Isso promove dois itens legais de
    2026-08-23.** Os dois documentos existem, versionados em
    `apps/wave-app/src/legal/documents.ts`, renderizados nas rotas **neutras**
    `/legal/privacidade` e `/legal/termos` (nem exigem login, nem expulsam quem
-   já entrou) e linkados no cadastro. **O que falta:** os quatro `[PREENCHER]`
-   (razão social/CNPJ/endereço, encarregado, contato de pedidos, prazos de
-   retenção), a revisão jurídica, a **hospedagem sempre no ar** e o **registro
-   do aceite** no cadastro — **feito em 2026-08-23** (ADR-0048): caixa
-   obrigatória, `accepted_terms_version` + `accepted_terms_at`, e 409 para
-   versão desatualizada.
+   já entrou) e linkados no cadastro. O **registro do aceite** foi **feito em
+   2026-08-23** (ADR-0048): caixa obrigatória, `accepted_terms_version` +
+   `accepted_terms_at`, e 409 para versão desatualizada.
+
+   **Os `[PREENCHER]` foram preenchidos em 2026-08-23.** Eram **cinco**, não
+   quatro: o quinto era o **foro**, que vive nos *Termos* e não na Política —
+   erro de contagem que se repetiu nesta seção e na conversa de infra até alguém
+   varrer o arquivo. Controlador = **uma** pessoa física (nomear os três
+   integrantes publicaria o nome completo de duas pessoas sem melhorar a
+   prestação de contas), **sem endereço** (o único que existiria é residencial),
+   canal único de contato, retenção descrita por tipo de dado e foro do
+   **domicílio do usuário** — que é o que dispensa endereço e o que o CDC
+   garante de qualquer modo. Política **1.2**, Termos **1.1**, `TERMS_VERSION`
+   **1.1** (um número só responde pelos dois, ADR-0048 §4).
+
+   **O que ainda falta:** a **revisão jurídica** e a **hospedagem sempre no ar**.
+   E uma **dependência dura**: o texto promete apagar a trilha pseudonimizada em
+   **até 12 meses**, e nada a apaga hoje. O job de expurgo agendado tem de entrar
+   **antes** de a URL ficar pública; se não entrar, o parágrafo volta a "enquanto
+   for necessário" antes da publicação. Está anotado como `TODO(infra)` em
+   `apps/wave-app/src/legal/documents.ts`, na própria seção.
 
    **Lacuna aberta e consciente:** a Política 1.1 promete que, mudando de forma
    material, *"avisaremos no aplicativo"* — e **esse aviso não existe**. Contas
