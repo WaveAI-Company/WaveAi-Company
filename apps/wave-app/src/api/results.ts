@@ -58,7 +58,40 @@ export type SessionResult = {
   has_annotation?: boolean;
 };
 
-type ResultsPayload = { results: SessionResult[]; window_days: number | null };
+type ResultsPayload = {
+  results: SessionResult[];
+  window_days: number | null;
+  /** Total do **recorte inteiro**, não da página. Ausente em respostas antigas. */
+  total?: number;
+};
+
+/**
+ * Uma página da lista, com o total do período.
+ *
+ * O total vem separado de propósito: é ele que deixa a tela dizer "12 de 40"
+ * sem baixar as 40. Nenhum agregado sai daqui — resumo, tendência e duração do
+ * período vêm do relatório longitudinal, que enxerga a janela toda. Derivar
+ * qualquer um deles desta página faria a tela afirmar o que não é verdade
+ * (ADR-0027).
+ */
+export type ResultsPage = { results: SessionResult[]; total: number };
+
+export type OpcoesDePagina = {
+  limit?: number;
+  offset?: number;
+  /** Só sessões com autorrelato (o `has_annotation` que o selo já usa). */
+  withAnnotation?: boolean;
+};
+
+function comPagina(path: string, days: Periodo, opcoes: OpcoesDePagina): string {
+  const q = new URLSearchParams();
+  if (days !== null) q.set("days", String(days));
+  if (opcoes.limit !== undefined) q.set("limit", String(opcoes.limit));
+  if (opcoes.offset) q.set("offset", String(opcoes.offset));
+  if (opcoes.withAnnotation) q.set("with_annotation", "true");
+  const s = q.toString();
+  return s ? `${path}?${s}` : path;
+}
 
 /**
  * Recorte de período pedido ao servidor (P9-b). `null` = histórico inteiro.
@@ -106,6 +139,38 @@ export async function listPatientResults(
 }
 
 /**
+ * Uma página dos próprios Result, com o total do período.
+ *
+ * Separada de `listMyResults` em vez de substituí-la: a home pede as últimas
+ * sessões e não pagina nada, e trocar a assinatura de lá por causa do
+ * histórico seria mexer numa tela que esta fatia não toca.
+ */
+export async function listMyResultsPage(
+  days: Periodo = null,
+  opcoes: OpcoesDePagina = {},
+): Promise<ResultsPage> {
+  const payload = await request<ResultsPayload>(comPagina("/me/results", days, opcoes), {
+    auth: true,
+  });
+  const results = ordenarPorData(payload.results ?? []);
+  return { results, total: payload.total ?? results.length };
+}
+
+/** Uma página dos Result de um paciente. 403 sem vínculo ativo. */
+export async function listPatientResultsPage(
+  patientId: string,
+  days: Periodo = null,
+  opcoes: OpcoesDePagina = {},
+): Promise<ResultsPage> {
+  const payload = await request<ResultsPayload>(
+    comPagina(`/patients/${patientId}/results`, days, opcoes),
+    { auth: true },
+  );
+  const results = ordenarPorData(payload.results ?? []);
+  return { results, total: payload.total ?? results.length };
+}
+
+/**
  * Direito de **portabilidade** (Medical/72): tudo o que é do titular em JSON
  * aberto — Result e notas de contexto. Devolve o objeto cru, porque quem chama
  * o transforma em arquivo.
@@ -129,7 +194,7 @@ export async function deleteMyResults(): Promise<{ deleted: number; annotations_
 }
 
 /** Mais antigo → mais recente: é a ordem que a linha do tempo espera. */
-function ordenarPorData(results: SessionResult[]): SessionResult[] {
+export function ordenarPorData(results: SessionResult[]): SessionResult[] {
   return [...results].sort(
     (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
   );
