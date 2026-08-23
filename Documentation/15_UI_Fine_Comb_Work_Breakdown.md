@@ -294,7 +294,15 @@ aberto ao público, com o app na Play Store**. Isso promove dois itens legais de
 
 1. **Filtro e paginação** do histórico e da lista do painel — a seção acima.
    É o único item com escopo de fatia já desenhado. **Aberto.**
-2. **Política de Privacidade e Termos de Uso** — **novo, aberto.** Não existem:
+2. **Política de Privacidade e Termos de Uso** — **parcialmente entregue em
+   2026-08-23.** Os dois documentos existem, versionados em
+   `apps/wave-app/src/legal/documents.ts`, renderizados nas rotas **neutras**
+   `/legal/privacidade` e `/legal/termos` (nem exigem login, nem expulsam quem
+   já entrou) e linkados no cadastro. **O que falta:** os quatro `[PREENCHER]`
+   (razão social/CNPJ/endereço, encarregado, contato de pedidos, prazos de
+   retenção), a revisão jurídica, a **hospedagem sempre no ar** e o **registro
+   do aceite** no cadastro — este último é fatia própria, com ADR e migration.
+   Nota histórica do que motivou a entrada: Não existem:
    varrido o repo inteiro, as duas expressões só aparecem no mockup
    `Design/round1/criar-conta.html` e dentro de `.venv` (ruído de dependência).
    A tela implementada já trata a ausência com honestidade —

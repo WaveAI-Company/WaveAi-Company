@@ -22,6 +22,16 @@ const ROTAS_PUBLICAS = new Set([
 ]);
 
 /**
+ * Rotas **neutras**: o guard não mexe em quem as abre, nos dois sentidos.
+ *
+ * Documento legal não é rota pública nem privada. Se fosse pública, quem já
+ * está logado seria mandado para a home ao clicar no link do rodapé — o link
+ * simplesmente não funcionaria. Se fosse privada, a URL exigiria login, e a
+ * loja de aplicativos exige que a política abra **sem** conta.
+ */
+const ROTAS_NEUTRAS = new Set(["legal"]);
+
+/**
  * Guarda de rota: manda quem não tem sessão para o login e leva quem tem para
  * a área do seu papel — inclusive se tentar abrir a área do outro papel.
  */
@@ -37,6 +47,9 @@ function RouteGuard() {
 
     const raiz = segments[0];
     const emRotaPublica = raiz === undefined || ROTAS_PUBLICAS.has(raiz);
+
+    // Nem manda para o login, nem tira de lá.
+    if (raiz !== undefined && ROTAS_NEUTRAS.has(raiz)) return;
 
     if (!user) {
       if (!emRotaPublica) router.replace("/login");
