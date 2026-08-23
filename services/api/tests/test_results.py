@@ -892,3 +892,182 @@ def _leituras_de_nota(db_session: Session, patient_user_id) -> int:
             )
         ).all()
     )
+
+
+# -- paginação da lista (emenda à ADR-0037 de 2026-08-22) ----------------
+
+
+def _semear_n(db_session: Session, paciente: User, n: int) -> list[Result]:
+    """N Result sintéticos do mesmo titular, na MESMA transação de propósito.
+
+    É o caso que a ordenação estável precisa aguentar: o `now()` do Postgres é
+    por transação, então todos nascem com o mesmo `created_at`.
+    """
+    service = _service(db_session)
+    criados = []
+    for _ in range(n):
+        sessao = _sessao(db_session, paciente)
+        criados.append(
+            service.persistir(patient=paciente, session_id=sessao.id, metrics=METRICS_FALSAS)
+        )
+    db_session.flush()
+    return criados
+
+
+def test_sem_limit_devolve_tudo_como_antes(db_session: Session):
+    """Parâmetro novo só estreita: ausente, a rota se comporta como sempre."""
+    paciente = _paciente(db_session, consentiu=True)
+    _semear_n(db_session, paciente, 7)
+
+    pagina, total = _service(db_session).listar(titular=paciente, ator=paciente)
+
+    assert len(pagina) == 7
+    assert total == 7
+
+
+def test_limit_e_offset_recortam_a_pagina_e_o_total_conta_o_recorte_inteiro(
+    db_session: Session,
+):
+    paciente = _paciente(db_session, consentiu=True)
+    _semear_n(db_session, paciente, 12)
+    service = _service(db_session)
+
+    primeira, total = service.listar(titular=paciente, ator=paciente, limit=5)
+    segunda, total_de_novo = service.listar(
+        titular=paciente, ator=paciente, limit=5, offset=5
+    )
+    ultima, _ = service.listar(titular=paciente, ator=paciente, limit=5, offset=10)
+
+    assert [len(primeira), len(segunda), len(ultima)] == [5, 5, 2]
+    # O total é do recorte inteiro, não da página: é o que deixa a tela dizer
+    # "5 de 12" sem baixar as 12.
+    assert total == total_de_novo == 12
+
+
+def test_paginacao_nao_repete_nem_pula_com_created_at_igual(db_session: Session):
+    """Ordem total: os 12 nascem na mesma transação e compartilham `created_at`.
+
+    Sem o desempate por `id` o banco não tem ordem definida entre eles, e as
+    páginas podem repetir uma linha e esconder outra.
+    """
+    paciente = _paciente(db_session, consentiu=True)
+    semeados = _semear_n(db_session, paciente, 12)
+    assert len({r.created_at for r in semeados}) == 1, "premissa: mesmo created_at"
+    service = _service(db_session)
+
+    vistos = []
+    for offset in (0, 5, 10):
+        pagina, _ = service.listar(
+            titular=paciente, ator=paciente, limit=5, offset=offset
+        )
+        vistos.extend(item["id"] for item in pagina)
+
+    assert len(vistos) == 12
+    assert len(set(vistos)) == 12, "alguma linha apareceu em duas páginas"
+    assert set(vistos) == {str(r.id) for r in semeados}, "alguma linha ficou de fora"
+    # A asserção que DISCRIMINA: sem o desempate o Postgres devolve estas
+    # linhas na ordem em que foram inseridas, e o `id` é uuid4 — aleatório
+    # em relação a essa ordem. Exigir `id` decrescente é exigir que exista
+    # uma ordem total, que é o que a paginação precisa para não pular linha.
+    assert vistos == sorted(vistos, reverse=True), (
+        "com created_at igual a ordem tem de ser total (desempate por id)"
+    )
+
+
+def test_cada_pagina_deixa_seu_proprio_evento_de_leitura(db_session: Session):
+    """Emenda à ADR-0037: um evento por página, `count` = itens da página."""
+    paciente = _paciente(db_session, consentiu=True)
+    _semear_n(db_session, paciente, 12)
+    service = _service(db_session)
+
+    antes = db_session.scalars(
+        select(ResultAccessEvent).where(
+            ResultAccessEvent.patient_user_id == paciente.id,
+            ResultAccessEvent.action == ResultAccessAction.READ,
+        )
+    ).all()
+
+    service.listar(titular=paciente, ator=paciente, limit=5)
+    service.listar(titular=paciente, ator=paciente, limit=5, offset=5)
+
+    eventos = db_session.scalars(
+        select(ResultAccessEvent).where(
+            ResultAccessEvent.patient_user_id == paciente.id,
+            ResultAccessEvent.action == ResultAccessAction.READ,
+        )
+    ).all()
+
+    novos = [e for e in eventos if e not in antes]
+    assert len(novos) == 2, "duas chamadas têm de deixar duas leituras"
+    assert [e.count for e in novos] == [5, 5], "o count é o que saiu em claro"
+
+
+def test_contar_nao_audita(db_session: Session):
+    """`total` é COUNT(*): não decifra e não pode inflar a trilha."""
+    paciente = _paciente(db_session, consentiu=True)
+    _semear_n(db_session, paciente, 4)
+    service = _service(db_session)
+
+    # Página vazia (offset além do fim): conta 4, não decifra nada.
+    pagina, total = service.listar(
+        titular=paciente, ator=paciente, limit=5, offset=99
+    )
+
+    assert pagina == []
+    assert total == 4
+    leituras = db_session.scalars(
+        select(ResultAccessEvent).where(
+            ResultAccessEvent.patient_user_id == paciente.id,
+            ResultAccessEvent.action == ResultAccessAction.READ,
+        )
+    ).all()
+    assert leituras == [], "contar sem entregar nada não é leitura"
+
+
+def test_filtro_de_autorrelato_recorta_lista_e_total(db_session: Session):
+    """`apenas_com_nota` filtra pela EXISTÊNCIA da nota, sem ler nota nenhuma.
+
+    O blob cifrado é bytes arbitrários de propósito: se o filtro precisasse
+    decifrar para funcionar, este teste quebraria — e é justamente isso que a
+    emenda à ADR-0037 de 2026-08-10 não permite.
+    """
+    from app.models.annotation import SessionAnnotation
+
+    paciente = _paciente(db_session, consentiu=True)
+    semeados = _semear_n(db_session, paciente, 6)
+    com_nota = semeados[:2]
+    for result in com_nota:
+        db_session.add(
+            SessionAnnotation(
+                session_id=result.session_id,
+                patient_user_id=paciente.id,
+                note_encrypted=b"blob-sintetico-nunca-lido",
+            )
+        )
+    db_session.flush()
+    service = _service(db_session)
+
+    pagina, total = service.listar(
+        titular=paciente, ator=paciente, apenas_com_nota=True
+    )
+
+    assert total == 2, "o total tem de seguir o mesmo filtro da lista"
+    assert {item["id"] for item in pagina} == {str(r.id) for r in com_nota}
+
+
+def test_rota_do_titular_devolve_total_limit_e_offset(
+    client: TestClient, db_session: Session
+):
+    """A tela precisa do total para dizer '5 de 12' sem baixar as 12."""
+    pessoa = Paciente(client, consentiu=True)
+    for _ in range(3):
+        _semear_result(db_session, pessoa.email)
+
+    resposta = pessoa.get("/me/results?limit=2")
+
+    assert resposta.status_code == 200
+    corpo = resposta.json()
+    assert len(corpo["results"]) == 2
+    assert corpo["total"] == 3
+    assert corpo["limit"] == 2
+    assert corpo["offset"] == 0
