@@ -18,4 +18,8 @@ aceita. Ao subir a versão lá, suba aqui.
 from __future__ import annotations
 
 #: Versão vigente dos Termos de Uso. Suba a cada mudança material do texto.
-TERMS_VERSION = "1.0"
+#: Como este número responde também pela Política (ela é parte dos Termos por
+#: referência), mudança material **em qualquer um dos dois** faz este subir.
+#: 1.1: foro do domicílio do usuário nos Termos; identificação do controlador,
+#: canal de contato e prazos de retenção na Política (que foi para 1.2).
+TERMS_VERSION = "1.1"
