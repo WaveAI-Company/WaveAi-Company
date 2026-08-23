@@ -5,11 +5,12 @@ import { StyleSheet, Text, View } from "react-native";
 import { getMyReport, type LongitudinalReport as Report } from "../../src/api/report";
 import {
   dias,
+  formatDate,
   formatDuration,
   formatNumber,
   formatPercent,
-  listMyResults,
-  sessionDurationSeconds,
+  listMyResultsPage,
+  ordenarPorData,
   type PeriodoOpcao,
   type SessionResult,
 } from "../../src/api/results";
@@ -18,6 +19,7 @@ import { Button } from "../../src/components/Button";
 import { Disclaimer } from "../../src/components/Disclaimer";
 import { EmptyState } from "../../src/components/EmptyState";
 import { LongitudinalReport } from "../../src/components/LongitudinalReport";
+import { Pagination } from "../../src/components/Pagination";
 import { Panel } from "../../src/components/Panel";
 import { ScreenContainer } from "../../src/components/ScreenContainer";
 import { SegmentedFilter } from "../../src/components/SegmentedFilter";
@@ -38,20 +40,21 @@ import {
 // `.sess-grid` do mockup: `minmax(0,1fr) 320px` acima de 1199, uma coluna
 // abaixo.
 
+/**
+ * Sessões por página da linha do tempo.
+ *
+ * 12 e não 10: com uma captação por dia, doze cobrem um mês inteiro, que é a
+ * unidade de agrupamento da própria lista — um "carregar mais" que traz menos
+ * que um mês faria o cabeçalho de mês repetir sem nada novo embaixo.
+ */
+const POR_PAGINA = 12;
+
 /** Rótulos como o mockup do paciente escreve (`sessoes.html:342`). */
 const PERIODOS: Array<{ value: PeriodoOpcao; label: string }> = [
   { value: "30", label: "30 dias" },
   { value: "90", label: "90 dias" },
   { value: "tudo", label: "Tudo" },
 ];
-
-/** Sessão mais recente (por data) — alvo da anotação editável no histórico. */
-function maisRecente(results: SessionResult[]): SessionResult | null {
-  return results.reduce<SessionResult | null>(
-    (mr, r) => (mr === null || r.created_at > mr.created_at ? r : mr),
-    null,
-  );
-}
 
 /** Agrupa por mês, do mais recente para o mais antigo. */
 function porMes(results: SessionResult[]): Array<{ titulo: string; sessoes: SessionResult[] }> {
@@ -105,12 +108,51 @@ export default function PatientHistoryScreen() {
    */
   const [periodo, setPeriodo] = useState<PeriodoOpcao>("30");
 
+  /**
+   * Trocar de período **volta para a primeira página**: 90 dias tem mais
+   * páginas que 30, e ficar na página 4 ao encolher o recorte abriria uma
+   * página que não existe mais — lista vazia sem explicação.
+   */
+  const trocarPeriodo = useCallback((novo: PeriodoOpcao) => {
+    setPeriodo(novo);
+    setPagina(1);
+  }, []);
+
+  /**
+   * Total do período, do servidor — **não** `results.length`, que conta só o
+   * que já foi carregado. É ele que rotula "12 de 40" e decide se ainda há o
+   * que buscar.
+   */
+  const [total, setTotal] = useState(0);
+  /** Página atual, começando em 1. Trocar de período volta para a primeira. */
+  const [pagina, setPagina] = useState(1);
+  const [trocandoPagina, setTrocandoPagina] = useState(false);
+  /**
+   * Sessão mais recente do **período**, buscada à parte (`limit:1`).
+   *
+   * Não sai de `results`: com a lista paginada, `results` é a página aberta, e
+   * na página 3 a "última sessão" viraria uma do meio do recorte — a tela
+   * afirmando o que não é verdade (ADR-0027). Uma linha a mais no servidor
+   * custa menos que um painel que mente.
+   */
+  const [ultimaDoPeriodo, setUltimaDoPeriodo] = useState<SessionResult | null>(null);
+
   const carregar = useCallback(async () => {
     setLoading(true);
     setErro(null);
     try {
-      const dados = await listMyResults(dias(periodo));
+      const [atual, maisNova] = await Promise.all([
+        listMyResultsPage(dias(periodo), {
+          limit: POR_PAGINA,
+          offset: (pagina - 1) * POR_PAGINA,
+        }),
+        // A mais recente do recorte, independente da página aberta.
+        listMyResultsPage(dias(periodo), { limit: 1 }),
+      ]);
+      const dados = atual.results;
       setResults(dados);
+      setTotal(atual.total);
+      setUltimaDoPeriodo(maisNova.results[maisNova.results.length - 1] ?? null);
       /**
        * Vazio **no recorte** não diz se a pessoa nunca captou: a lista já vem
        * filtrada do servidor (P9-b), então "zero em 30 dias" e "zero desde
@@ -125,12 +167,17 @@ export default function PatientHistoryScreen() {
       setSemNenhuma(
         dados.length > 0
           ? false
-          : periodo === "tudo" || (await listMyResults(dias("tudo"))).length === 0,
+          : periodo === "tudo" ||
+            // `limit: 1` porque a pergunta é "existe alguma?", e não "quais".
+            // Baixar o histórico inteiro para responder sim/não decifraria (e
+            // auditaria) tudo por causa de um booleano.
+            (await listMyResultsPage(dias("tudo"), { limit: 1 })).total === 0,
       );
     } catch {
       setErro("Não foi possível carregar suas sessões.");
     } finally {
       setLoading(false);
+      setTrocandoPagina(false);
     }
     // O relatório depende da Analysis estar de pé; sua falha (ex.: 503) não pode
     // esconder as sessões — por isso carrega à parte e some sem alarde.
@@ -139,7 +186,19 @@ export default function PatientHistoryScreen() {
     } catch {
       setReport(null);
     }
-  }, [periodo]);
+  }, [periodo, pagina]);
+
+  /**
+   * Troca de página: **substitui** a lista.
+   *
+   * Substituir e não acrescentar é o que o controle de setas promete: "Página
+   * 2 de 3" com as duas primeiras ainda na tela seria um rótulo falso. O
+   * carregamento em si mora no `carregar`, que já observa `pagina`.
+   */
+  const irParaPagina = useCallback((alvo: number) => {
+    setTrocandoPagina(true);
+    setPagina(alvo);
+  }, []);
 
   // Recarrega **ao focar**, não só ao montar: voltando de uma captação, a
   // sessão recém-encerrada precisa aparecer sem recarregar o app (#17).
@@ -154,26 +213,43 @@ export default function PatientHistoryScreen() {
   // sessões filtradas aqui, qualidade e tendências vindas do histórico inteiro.
   const filtradas = results;
 
-  // Resumo do período: médias **descritivas**, sem veredito (ADR-0027).
-  const resumo = useMemo(() => {
-    const duracoes = filtradas
-      .map((r) => sessionDurationSeconds(r.metrics))
-      .filter((s): s is number => typeof s === "number");
-    const alfas = filtradas
-      .map((r) => r.metrics?.rel_alpha)
-      .filter((v): v is number => typeof v === "number");
-    return {
-      sessoes: filtradas.length,
-      tempo: duracoes.length > 0 ? duracoes.reduce((a, b) => a + b, 0) : null,
-      alfaMedio: alfas.length > 0 ? alfas.reduce((a, b) => a + b, 0) / alfas.length : null,
-      // A qualidade média vem do relatório longitudinal, que é quem calcula
-      // isso no servidor — o app não deriva um índice próprio.
+  /**
+   * Resumo do período: médias **descritivas**, sem veredito (ADR-0027).
+   *
+   * Todos os cinco vêm do **servidor**, sobre o período inteiro — nenhum é
+   * derivado de `results`, que agora é só a página carregada. Somar a página
+   * diria "12 sessões" num recorte de 40, e a linha de tendência mudaria de
+   * forma a cada "carregar mais": a tela afirmando o que não é verdade.
+   *
+   * `null` em qualquer um deles lê-se **"não sei"** (o relatório não veio, ou
+   * a Analysis está fora) e a linha mostra "—". Nunca zero: zero afirmaria uma
+   * medição que ninguém fez.
+   */
+  const resumo = useMemo(
+    () => ({
+      sessoes: total,
+      tempo: report?.total_duration_seconds ?? null,
+      alfaMedio: report?.report.features?.rel_alpha?.mean ?? null,
       qualidade: report?.report.quality?.mean ?? null,
-      // Contagem do cliente, e não uma rota nova: o `has_annotation` que o selo
-      // já usa responde isso de graça (emenda à ADR-0037).
-      comAutorrelato: filtradas.filter((r) => r.has_annotation).length,
-    };
-  }, [filtradas, report]);
+      comAutorrelato: report?.annotation_count ?? null,
+    }),
+    [total, report],
+  );
+
+  /**
+   * Pontos da tendência, do período inteiro. Vêm da série do relatório, e não
+   * de `results`, pelo mesmo motivo do resumo. Sem relatório, `undefined` faz
+   * o painel voltar a derivar da lista — degradação honesta: com a lista
+   * inteira carregada (períodos curtos) o desenho é o mesmo.
+   */
+  const tendenciaDoPeriodo = useMemo(
+    () =>
+      report?.series?.map((ponto) => ({
+        value: ponto.features.rel_alpha,
+        label: formatDate(ponto.at),
+      })).filter((p) => typeof p.value === "number"),
+    [report],
+  );
 
   const grupos = useMemo(() => porMes(filtradas), [filtradas]);
   /**
@@ -240,7 +316,11 @@ export default function PatientHistoryScreen() {
                     com uma segunda busca sem recorte — pedir o histórico
                     inteiro só para exibir um número desfaria a minimização que
                     o corte no servidor comprou. Dizemos o que sabemos. */}
-                {`${results.length} ${results.length === 1 ? "sessão" : "sessões"}`}
+                {/* `total` e não `results.length`: a contagem é do **período**,
+                    e `results` virou a página carregada. Dizer "12 sessões nos
+                    últimos 30 dias" com 29 no recorte seria a tela afirmando o
+                    que não é verdade (ADR-0027). */}
+                {`${total} ${total === 1 ? "sessão" : "sessões"}`}
                 {periodo === "tudo" ? "" : ` nos últimos ${periodo} dias`}
               </Text>
             </View>
@@ -248,7 +328,7 @@ export default function PatientHistoryScreen() {
               label="Período"
               options={PERIODOS}
               value={periodo}
-              onChange={setPeriodo}
+              onChange={trocarPeriodo}
               accent={papel.accent}
             />
           </View>
@@ -275,6 +355,24 @@ export default function PatientHistoryScreen() {
                   </View>
                 ))
               )}
+              {/* A contagem fica **fora** do controle: "12 de 29" responde
+                  quanto do recorte se está vendo, e "Página 2 de 3" responde
+                  onde se está. São perguntas diferentes e o rodapé responde as
+                  duas. */}
+              {temSessoes ? (
+                <>
+                  <Text style={styles.maisContagem}>
+                    {`${results.length} de ${total} ${total === 1 ? "sessão" : "sessões"}`}
+                  </Text>
+                  <Pagination
+                    pagina={pagina}
+                    totalPaginas={Math.ceil(total / POR_PAGINA)}
+                    onChange={irParaPagina}
+                    label="Sessões"
+                    ocupado={trocandoPagina}
+                  />
+                </>
+              ) : null}
             </View>
 
             <View style={[styles.trilho, emColunas && styles.trilhoLateral]}>
@@ -300,7 +398,9 @@ export default function PatientHistoryScreen() {
                 />
                 <ResumoLinha
                   rotulo="Sessões com autorrelato"
-                  valor={String(resumo.comAutorrelato)}
+                  valor={
+                    resumo.comAutorrelato !== null ? String(resumo.comAutorrelato) : "—"
+                  }
                 />
                 <Text style={styles.resumoNota}>
                   Médias descritivas do período — sem veredito. As bandas não têm valência.
@@ -331,7 +431,12 @@ export default function PatientHistoryScreen() {
            * "Panorama das sessões" agradece — é texto corrido, e meia coluna
            * estreita o transforma em coluna de jornal.
            */}
-          <SessionsDashboard results={results} showAllSessions={false} showLast={false} />
+          <SessionsDashboard
+            results={results}
+            trend={tendenciaDoPeriodo}
+            showAllSessions={false}
+            showLast={false}
+          />
 
           {/* `grow` nos dois lados de cada par: a célula já é esticada pela
               linha, mas o painel dentro dela parava na altura do conteúdo e
@@ -340,6 +445,7 @@ export default function PatientHistoryScreen() {
             <View style={emColunas ? styles.panoramaMetade : undefined}>
               <SessionsDashboard
                 results={results}
+                last={ultimaDoPeriodo}
                 showAllSessions={false}
                 showTrend={false}
                 grow={emColunas}
@@ -362,7 +468,7 @@ export default function PatientHistoryScreen() {
             {/* Anotação de contexto (P2, ADR-0037) da sessão mais recente.
                 Último cartão da página, na coluna da direita. */}
             {(() => {
-              const alvo = maisRecente(results);
+              const alvo = ultimaDoPeriodo;
               return alvo ? (
                 <View style={emColunas ? styles.panoramaMetade : undefined}>
                   <Panel title="Nota de contexto" eyebrow="sessão mais recente" grow>
@@ -484,6 +590,12 @@ const criarEstilos = (t: Theme) =>
       flexGrow: 0,
       flexShrink: 0,
       width: larguras.trilhoSessoes,
+    },
+    maisContagem: {
+      ...t.typography.caption,
+      color: t.colors.textMuted,
+      paddingTop: t.spacing.md,
+      textAlign: "center",
     },
     grupo: {
       gap: t.spacing.sm,
