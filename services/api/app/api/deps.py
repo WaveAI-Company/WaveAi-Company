@@ -261,6 +261,50 @@ def janela_periodo(
     return Janela(days=days, desde=datetime.now(UTC) - timedelta(days=days))
 
 
+#: Teto de itens por página. Não é limite de segurança — é o que impede um
+#: `limit=100000` de fazer o servidor decifrar o histórico inteiro de uma vez
+#: só, que é justamente o custo que a paginação existe para evitar.
+PAGINA_MAX_ITENS = 200
+
+
+@dataclass(frozen=True)
+class Paginacao:
+    """Recorte de página pedido pelo cliente (`?limit=&offset=`)."""
+
+    limit: int | None
+    offset: int
+
+
+def paginacao(
+    limit: int | None = Query(
+        None,
+        ge=1,
+        le=PAGINA_MAX_ITENS,
+        description=(
+            "Quantos itens devolver. Ausente = o recorte inteiro, como antes "
+            "de existir paginação."
+        ),
+    ),
+    offset: int = Query(
+        0,
+        ge=0,
+        description="Quantos itens pular. Só tem efeito com `limit`.",
+    ),
+) -> Paginacao:
+    """Traduz `?limit=&offset=` numa página.
+
+    **Ausente = comportamento de sempre** (o recorte inteiro), pelo mesmo
+    princípio do `?days=N`: parâmetro novo só estreita, e nenhuma tela que já
+    funcionava precisa mudar para continuar funcionando.
+
+    Os **agregados não passam por aqui de propósito**. Se o resumo do período
+    seguisse a página, a tela diria "resumo de 30 sessões" mostrando dez, ou
+    mudaria a tendência conforme a página — a tela afirmando o que não é
+    verdade (ADR-0027). Lista pagina; agregado é do período inteiro.
+    """
+    return Paginacao(limit=limit, offset=offset)
+
+
 def client_ip(request: Request) -> str:
     """IP do cliente para o rate limiting.
 
