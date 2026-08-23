@@ -244,21 +244,32 @@ export default function RegisterScreen() {
 
       {/* Ordem importa: os links para ler, a caixa para aceitar, e só então o
           botão. Aceite depois da ação seria enfeite. */}
-      <View style={styles.legalLinks}>
-        <Text style={styles.legal}>Leia os </Text>
-        <TextLink
-          label="Termos de Uso"
+      {/* Um `Text` só, com os links **aninhados** — e não quatro caixas num
+          contêiner em linha, que era o que estava aqui. Em `flexWrap` cada
+          pedaço vira uma caixa: no celular a primeira linha ia até a borda e a
+          segunda ficava centrada, com o bloco visivelmente torto. Aninhado, o
+          RN quebra como texto corrido e o `textAlign` volta a valer. */}
+      <Text style={styles.legal}>
+        Leia os{" "}
+        <Text
+          role="link"
+          accessibilityLabel="Termos de Uso"
+          style={[styles.legalLink, { color: destaque.accentText }]}
           onPress={() => router.push("/legal/termos")}
-          accent={destaque.accentText}
-        />
-        <Text style={styles.legal}> e a </Text>
-        <TextLink
-          label="Política de Privacidade"
+        >
+          Termos de Uso
+        </Text>{" "}
+        e a{" "}
+        <Text
+          role="link"
+          accessibilityLabel="Política de Privacidade"
+          style={[styles.legalLink, { color: destaque.accentText }]}
           onPress={() => router.push("/legal/privacidade")}
-          accent={destaque.accentText}
-        />
-        <Text style={styles.legal}>.</Text>
-      </View>
+        >
+          Política de Privacidade
+        </Text>
+        .
+      </Text>
 
       {/* A caixa é que aceita; a linha abaixo só convida a ler. Antes a frase
           dizia "ao criar a conta você concorda", o que era aceite implícito —
@@ -415,19 +426,18 @@ const criarEstilos = (t: Theme) =>
       color: t.colors.textSubtle,
       lineHeight: 17,
     },
-    legalLinks: {
-      alignItems: "center",
-      flexDirection: "row",
-      flexWrap: "wrap",
-      // `rowGap` e não `gap`: quebrando em duas linhas, os pedaços da frase não
-      // podem ganhar espaço entre si — "concorda com os" e "Termos de Uso" são
-      // uma frase só, e um gap horizontal a partiria em pedaços soltos.
-      rowGap: 2,
+    /** Herda tamanho e altura de linha do texto que o cerca — é a mesma frase. */
+    legalLink: {
+      fontWeight: "600",
     },
     legal: {
       ...t.typography.caption,
       color: t.colors.textSubtle,
-      lineHeight: 17,
+      // 13 e não os 12 do `caption`: a frase mistura texto e link, e o link
+      // vinha em `bodyStrong` (15). Duas alturas de letra na mesma frase era o
+      // que a fazia parecer desalinhada.
+      fontSize: 13,
+      lineHeight: 19,
       textAlign: "center",
     },
     alternativa: {
