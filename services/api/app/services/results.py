@@ -146,6 +146,10 @@ class ResultService:
             #: metadado sobre elas (ex.: quantas têm autorrelato). Nunca sai
             #: para o cliente por aqui.
             "session_ids": session_ids,
+            #: Carimbos das sessões que entraram, na mesma ordem de `sessions`.
+            #: É o que permite montar a série por sessão sem uma segunda
+            #: leitura: os pontos já estão decifrados aqui.
+            "times": [t.isoformat() for t in times],
             #: `None` e não `0` quando nenhuma sessão trouxe amostras/taxa:
             #: "não dá para saber" e "zero segundos" são coisas diferentes, e
             #: mostrar 0 s seria inventar (ADR-0027).
