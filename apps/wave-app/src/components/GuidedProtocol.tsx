@@ -219,8 +219,12 @@ export function GuidedProtocol({ accent, onPhaseChange, embedded }: Props) {
               />
             </View>
             <View style={emLinha ? styles.acaoMeia : undefined}>
+              {/* "Encerrar" e não "Encerrar protocolo": no trilho em linha o
+                  botão tem 101px úteis e o rótulo longo pedia 114 (13.5px/600),
+                  quebrando em duas linhas. O substantivo era redundante — o
+                  botão vive dentro do cartão do protocolo guiado. */}
               <Button
-                label="Encerrar protocolo"
+                label="Encerrar"
                 onPress={encerrar}
                 variant="secondary"
                 largura={emLinha ? "bloco" : "conteudo"}
