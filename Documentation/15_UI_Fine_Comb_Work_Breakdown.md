@@ -284,28 +284,64 @@ tela na aplicação rodando. Com isso:
   (o piso de 420px do título quebrou o celular; o `flexBasis:300` sem
   `flexShrink` só vazava abaixo de 360px).
 
-### O que resta de UI/backend antes da infra
+### O que resta de UI/backend antes da infra — revisado em 2026-08-22
+
+Revisado com o fundador em 2026-08-22, ao abrir a conversa de infraestrutura.
+Duas entradas fecharam **sem código**, uma foi **descartada**, e **duas novas
+entraram**: o alvo deixou de ser demonstração interna e passou a ser **cadastro
+aberto ao público, com o app na Play Store**. Isso promove dois itens legais de
+"algum dia" a **pré-requisito de publicação**.
 
 1. **Filtro e paginação** do histórico e da lista do painel — a seção acima.
-   É o único item com escopo de fatia já desenhado.
-2. **Bug 3 da tela ao vivo**: a captação para ao reduzir a janela ou trocar de
-   aba. Sem dono, sem investigação.
-3. **Duas questões de produto na home do paciente**, levantadas em 2026-08-16 e
-   não decididas: (a) tirar a faixa "convite aguardando resposta" — a sidebar
-   tem o badge, mas ele é **escondido no rail** (768–1199, fidelidade ao
-   mockup) e no celular a sidebar é gaveta, então o convite ficaria sem
-   indicação em duas das três faixas; (b) o **sino de notificações** proposto
-   pelo fundador. O sino não existe em lugar nenhum — varrido `services/api/app`
-   inteiro, zero ocorrência de `notification`/`notificac` — e seria dado novo +
-   estrutura nova, exigindo ADR. O aviso de consentimento **não** deve ir para
-   ele: sem consentimento os resultados não são guardados, e isso é condição, não
-   recado.
-4. **"Encerrar protocolo" em duas linhas** no layout grande: metade do trilho dá
-   133px, 101 úteis, e o rótulo pede 114 — faltam 13px. Ou encurta o rótulo
-   (cópia é do fundador) ou aceita.
+   É o único item com escopo de fatia já desenhado. **Aberto.**
+2. **Política de Privacidade e Termos de Uso** — **novo, aberto.** Não existem:
+   varrido o repo inteiro, as duas expressões só aparecem no mockup
+   `Design/round1/criar-conta.html` e dentro de `.venv` (ruído de dependência).
+   A tela implementada já trata a ausência com honestidade —
+   `apps/wave-app/app/register.tsx:232` diz, em comentário, que os links do
+   mockup não existem. Com cadastro aberto isso vira bloqueador: a Play Store
+   exige a política numa **URL pública acessível sem login**, logo ela **não
+   pode morar num servidor que fica desligado**. O texto é do fundador; a
+   engenharia só hospeda e liga.
+3. **Exclusão de conta** — **novo, aberto.** Zero ocorrências no repo inteiro
+   (`excluir conta`, `delete_account`, `apagar conta`, `encerrar conta`).
+   Exigida pela Play Store para apps com login e pelo direito de eliminação da
+   LGPD. **Começa por ADR**, porque colide de frente com a **ADR-0037**: apagar
+   a conta e preservar a trilha de auditoria de leitura de dado do titular são
+   objetivos opostos, e a fronteira entre eles é decisão do fundador.
+4. **"Encerrar protocolo" em duas linhas** no layout grande — **fechado em
+   2026-08-22**: o rótulo passa a ser **"Encerrar"**. Metade do trilho dá 133px,
+   101 úteis, e o rótulo antigo pedia 114. O botão já vive dentro do cartão do
+   protocolo guiado, então o substantivo era redundante.
 5. **Hover do cartão de convite pendente**: decidido **não fazer**. No RN-web
    0.86 o hover só existe em `Pressable` de fato interativo, e o cartão não leva
    a lugar nenhum.
+
+### Fechados sem código em 2026-08-22
+
+- **Bug 3 da tela ao vivo** (a captação parava ao trocar de aba ou reduzir a
+  janela): **é dev-only e não será corrigido.** A captação no web de produção
+  não existe — `apps/wave-app/src/device/connection.web.ts:16` tem
+  `supported: false`, e `apps/wave-app/src/capture/availability.ts:40` define
+  `capturaDisponivel() = supported || SIMULADOR_HABILITADO`, com o simulador
+  **desligado em produção por regra**. O que travava era o `setInterval` de
+  `apps/wave-app/app/patient/live.tsx:321` e `:373`, que o navegador estrangula
+  em aba oculta; no Android (`src/device/connection.ts:85`) e no iOS
+  (`src/device/connection.ios.ts:104`) não existe "trocar de aba".
+  **Ressalva honesta:** o mecanismo foi **traçado, não reproduzido**. E o
+  espectador ao vivo usa `fetch`+`getReader`
+  (`apps/wave-app/src/api/liveWatch.ts:105`), mecanismo diferente de timer —
+  **não foi medido**. É um risco distinto, nunca relatado, e segue sem dono.
+- **Faixa "convite aguardando resposta" na home do paciente**: decidido
+  **manter**. Tirá-la deixaria o convite sem indicação em duas das três faixas,
+  porque o badge da sidebar é escondido no rail (768–1199, fidelidade ao
+  mockup) e no celular a sidebar é gaveta.
+- **Sino de notificações**: **descartado — não será feito.** Era proposta do
+  fundador em 2026-08-16 e foi retirada por ele em 2026-08-22. Não existia nada
+  no backend (varrido `services/api/app`, zero ocorrência de
+  `notification`/`notificac`) e teria exigido ADR. O aviso de consentimento
+  nunca deveria ter ido para ele de todo jeito: sem consentimento os resultados
+  não são guardados, e isso é condição, não recado.
 
 ### Dívidas que a infra vai encontrar (registradas no código)
 
