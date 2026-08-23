@@ -73,6 +73,10 @@ class RegisterRequest(BaseModel):
     password: SenhaNova
     role: UserRole
     display_name: str = Field(min_length=1, max_length=120)
+    #: Versão dos Termos que a tela **exibiu** (ADR-0048). Ausente é aceito
+    #: para não quebrar cliente antigo no ar; presente e desatualizada é
+    #: recusada, como o consentimento já faz.
+    accepted_terms_version: str | None = Field(default=None, max_length=32)
 
 
 class LoginRequest(BaseModel):

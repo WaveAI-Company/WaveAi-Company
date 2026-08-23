@@ -7,6 +7,7 @@ import { useAuth } from "../src/auth/AuthContext";
 import { AuthStage } from "../src/components/auth/AuthStage";
 import { AuthSteps } from "../src/components/auth/AuthSteps";
 import { Button } from "../src/components/Button";
+import { Checkbox } from "../src/components/Checkbox";
 import { Field } from "../src/components/Field";
 import { Icon, type IconName } from "../src/components/Icon";
 import {
@@ -17,6 +18,7 @@ import {
   senhaValida,
 } from "../src/components/PasswordStrength";
 import { StateView } from "../src/components/StateView";
+import { TERMOS_DE_USO } from "../src/legal/documents";
 import { TextLink } from "../src/components/TextLink";
 import {
   anelFoco,
@@ -83,12 +85,18 @@ export default function RegisterScreen() {
   const [password, setPassword] = useState("");
   const [confirma, setConfirma] = useState("");
   const [role, setRole] = useState<UserRole>("patient");
+  /**
+   * Aceite dos Termos (ADR-0048). Marcar é um ato; ler a frase não é — por
+   * isso a caixa, e não só o aviso de que criar a conta implica concordar.
+   */
+  const [aceitou, setAceitou] = useState(false);
 
   const [erros, setErros] = useState<{
     nome?: string;
     email?: string;
     senha?: string;
     confirma?: string;
+    termos?: string;
     geral?: string;
   }>({});
   const [enviando, setEnviando] = useState(false);
@@ -108,13 +116,22 @@ export default function RegisterScreen() {
       novos.senha = "A senha precisa de ao menos 8 caracteres, com letra e número.";
     }
     if (confirma !== password) novos.confirma = "As senhas não coincidem.";
+    if (!aceitou) novos.termos = "Aceite os Termos e a Política para continuar.";
 
     setErros(novos);
     if (Object.keys(novos).length > 0) return;
 
     setEnviando(true);
     try {
-      await signUp({ email: email.trim(), password, role, displayName: displayName.trim() });
+      await signUp({
+        email: email.trim(),
+        password,
+        role,
+        displayName: displayName.trim(),
+        // A versão que ESTA tela exibe. O servidor recusa se já mudou —
+        // aceitar um texto que não é mais o publicado não é aceite informado.
+        acceptedTermsVersion: TERMOS_DE_USO.versao,
+      });
       // `replace` e não `push`: a conta já foi criada. Voltar a este formulário
       // e reenviá-lo só levaria à mesma resposta uniforme, agora sem código
       // novo — quem precisa de outro código usa o "Reenviar" do passo 2.
@@ -225,19 +242,10 @@ export default function RegisterScreen() {
         </View>
       </View>
 
-      <StateView error={erros.geral} />
-
-      <Button label="Criar conta" onPress={criar} loading={enviando} accent={destaque.accent} largura="bloco" />
-
-      {/* Os links do mockup, agora que os documentos existem. A frase sobre o
-          consentimento fica: ela diz o que o produto faz **antes** de qualquer
-          documento — e é o compromisso que a pessoa mais precisa ler aqui. */}
-      <Text style={styles.legal}>
-        Nada das suas sessões é guardado antes de você autorizar — o termo de consentimento
-        aparece no primeiro acesso, e você pode revogá-lo quando quiser.
-      </Text>
+      {/* Ordem importa: os links para ler, a caixa para aceitar, e só então o
+          botão. Aceite depois da ação seria enfeite. */}
       <View style={styles.legalLinks}>
-        <Text style={styles.legal}>Ao criar a conta, você concorda com os </Text>
+        <Text style={styles.legal}>Leia os </Text>
         <TextLink
           label="Termos de Uso"
           onPress={() => router.push("/legal/termos")}
@@ -251,6 +259,28 @@ export default function RegisterScreen() {
         />
         <Text style={styles.legal}>.</Text>
       </View>
+
+      {/* A caixa é que aceita; a linha abaixo só convida a ler. Antes a frase
+          dizia "ao criar a conta você concorda", o que era aceite implícito —
+          e a tela não podia afirmar um aceite que não registrava (ADR-0027). */}
+      <Checkbox
+        checked={aceitou}
+        onChange={setAceitou}
+        label="Li e aceito os Termos de Uso e a Política de Privacidade."
+      />
+      <StateView error={erros.termos} />
+
+      <StateView error={erros.geral} />
+
+      <Button label="Criar conta" onPress={criar} loading={enviando} accent={destaque.accent} largura="bloco" />
+
+      {/* A frase sobre o consentimento fica: ela diz o que o produto faz
+          **antes** de qualquer documento — e é o compromisso que a pessoa mais
+          precisa ler aqui. */}
+      <Text style={styles.legal}>
+        Nada das suas sessões é guardado antes de você autorizar — o termo de consentimento
+        aparece no primeiro acesso, e você pode revogá-lo quando quiser.
+      </Text>
 
       <View style={styles.alternativa}>
         <Text style={styles.alternativaTexto}>Já tem conta? </Text>

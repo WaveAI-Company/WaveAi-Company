@@ -79,6 +79,15 @@ class User(Base):
     #: que** foi consentido, não só quando). `None` quando não há consentimento.
     consent_version: Mapped[str | None] = mapped_column(String(32), nullable=True)
 
+    #: Aceite dos Termos no cadastro (ADR-0048), espelhando o consentimento.
+    #: **Anulável de propósito:** nulo é "não temos registro", que é a verdade
+    #: para as contas anteriores a esta coluna — nunca "recusou", e nunca
+    #: preenchido por suposição.
+    accepted_terms_version: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    accepted_terms_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
