@@ -321,8 +321,18 @@ class AuthService:
 
         O resto — sessões, Result, notas, vínculos, tokens — sai pelo CASCADE
         das chaves estrangeiras, sem varredura manual.
+
+        Grava também **quando** pseudonimizou: é dessa data que correm os 12
+        meses prometidos pela Política (emenda à ADR-0047). Apagar aqui não é
+        atribuição deste método — quem apaga é o expurgo, em
+        `services/audit_retention.py`.
         """
         pseudonimo = uuid.uuid4()
+        # Uma data só para todas as linhas desta exclusão: elas perderam o dono
+        # no mesmo ato, e é daqui que correm os 12 meses da Política (emenda à
+        # ADR-0047). `now()` do Postgres é por transação e ficaria igual de todo
+        # modo; fixar aqui deixa a intenção explícita e testável.
+        pseudonimizado_em = datetime.now(UTC)
         for modelo in (ResultAccessEvent, AnnotationAccessEvent, LiveViewAccessEvent):
             self._session.execute(
                 update(modelo)
@@ -330,7 +340,11 @@ class AuthService:
                     modelo.actor_user_id == user.id,
                     modelo.patient_user_id != user.id,
                 )
-                .values(actor_user_id=None, actor_pseudonym=pseudonimo)
+                .values(
+                    actor_user_id=None,
+                    actor_pseudonym=pseudonimo,
+                    pseudonymized_at=pseudonimizado_em,
+                )
             )
         self._session.delete(user)
         self._session.flush()

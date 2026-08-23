@@ -79,6 +79,27 @@ motivo explicado lá dentro.
 **Verificado em 2026-08-23:** servindo `dist` sem fallback, `/legal/privacidade`
 responde **404**; com fallback, **200** e a página certa.
 
+## Job pendente de agendamento — expurgo da trilha pseudonimizada
+
+A Política de Privacidade 1.2 promete apagar em **até 12 meses** os registros de
+leitura que perderam o dono. O comando que cumpre isso já existe e é testado:
+
+```
+cd services/api
+python -m scripts.purge_audit_trail --simular   # conta, não apaga
+python -m scripts.purge_audit_trail             # apaga
+```
+
+Ele roda uma vez e sai, não precisa da API no ar — só do banco. Prazo em
+`WAVEAI_API_AUDIT_PSEUDONYM_RETENTION_DAYS` (padrão 365); aumentar esse valor sem
+mudar o texto da Política seria guardar dado além do prometido.
+
+**Falta agendá-lo.** Enquanto ninguém o executar de tempos em tempos, o prazo é
+cumprível e não cumprido — e a Política **não pode ir a público** nesse estado
+(ADR-0027 e a emenda à ADR-0047). Diário é frequência de sobra: o que ele apaga
+tem um ano de idade. Sai com código 0 quando não há nada a apagar, de propósito:
+um agendador que trate "nada vencido" como falha vira alarme falso diário.
+
 ## CI
 
 `.github/workflows/ci.yml` roda em PR e push para `main`:

@@ -130,10 +130,14 @@ export const POLITICA_DE_PRIVACIDADE: DocumentoLegal = {
       ],
     },
     // TODO(infra): os "até 12 meses" abaixo são a ÚNICA promessa de prazo deste
-    // documento, e hoje nada os cumpre — não existe rotina de expurgo. A regra da
-    // ADR-0027 (e o precedente da ADR-0047, que recusou carência de 30 dias pelo
-    // mesmo motivo) diz que prazo sem executor é afirmar o que não é verdade.
-    // Este texto só pode ir ao ar depois do job de expurgo agendado; se ele não
+    // documento. A rotina que os cumpre **já existe** desde 2026-08-23
+    // (`services/api/app/services/audit_retention.py`, executável por
+    // `python -m scripts.purge_audit_trail`), mas **ninguém a executa sozinho**:
+    // falta o agendamento, que só existe com a infraestrutura de produção
+    // (ADR-0049). Ou seja, hoje o prazo é cumprível, não cumprido.
+    // A regra da ADR-0027 — e o precedente da ADR-0047, que recusou carência de
+    // 30 dias pelo mesmo motivo — diz que prazo sem executor é afirmar o que não
+    // é verdade. Este texto só pode ir ao ar depois do job AGENDADO; se ele não
     // sair, o parágrafo volta a "enquanto for necessário" ANTES da publicação.
     {
       titulo: "Por quanto tempo guardamos",
