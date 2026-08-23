@@ -249,6 +249,7 @@ def results_do_paciente(
 def _relatorio_longitudinal(
     *, titular: User, ator: User, session: Session,
     service: ResultService, analysis: AnalysisClient, narrator: Narrator,
+    annotations: AnnotationService,
     janela: Janela | None = None,
 ) -> dict:
     """Monta a série do titular (audita leitura) e pede o relatório à Analysis.
@@ -284,6 +285,10 @@ def _relatorio_longitudinal(
             "summary": [],
             "narrative": None,
             "disclaimer": None,
+            #: Sem sessão não há duração a somar — `None` ("não dá para saber")
+            #: e não `0 s`, que seria afirmar um tempo que ninguém captou.
+            "total_duration_seconds": None,
+            "annotation_count": 0,
         }
 
     try:
@@ -315,6 +320,17 @@ def _relatorio_longitudinal(
         #: cai no `summary` determinístico no app. Nunca quebra o relatório.
         "narrative": narrator.narrate(report, summary),
         "disclaimer": resposta.get("disclaimer"),
+        #: Agregados do **período inteiro**, e é esse o ponto: com a lista
+        #: paginada o app não tem mais o período em mãos, e derivá-los de uma
+        #: página faria o resumo dizer "3 sessões" num período de 30
+        #: (ADR-0027). Ficam aqui, ao lado dos outros agregados da janela.
+        "total_duration_seconds": serie["total_duration_seconds"],
+        #: Contagem de autorrelatos: metadado, não conteúdo — não decifra nota
+        #: nenhuma e **não audita**, pelo mesmo raciocínio da emenda à ADR-0037
+        #: de 2026-08-14. É a mesma consulta que já alimenta o selo da lista.
+        "annotation_count": annotations.contar_com_nota(
+            titular=titular, session_ids=serie["session_ids"]
+        ),
     }
 
 
@@ -325,6 +341,7 @@ def meu_relatorio_longitudinal(
     service: ResultService = Depends(get_result_service),
     analysis: AnalysisClient = Depends(get_analysis_client),
     narrator: Narrator = Depends(get_narrator),
+    annotations: AnnotationService = Depends(get_annotation_service),
     janela: Janela | None = Depends(janela_periodo),
 ) -> dict:
     """Titular vê o **relatório longitudinal** das próprias sessões (N5).
@@ -333,7 +350,8 @@ def meu_relatorio_longitudinal(
     """
     return _relatorio_longitudinal(
         titular=user, ator=user, session=session, service=service,
-        analysis=analysis, narrator=narrator, janela=janela,
+        analysis=analysis, narrator=narrator, annotations=annotations,
+        janela=janela,
     )
 
 
@@ -346,6 +364,7 @@ def relatorio_longitudinal_do_paciente(
     service: ResultService = Depends(get_result_service),
     analysis: AnalysisClient = Depends(get_analysis_client),
     narrator: Narrator = Depends(get_narrator),
+    annotations: AnnotationService = Depends(get_annotation_service),
     janela: Janela | None = Depends(janela_periodo),
 ) -> dict:
     """Médico vê o relatório longitudinal de um paciente. Exige CareLink `active`
@@ -355,5 +374,6 @@ def relatorio_longitudinal_do_paciente(
     """
     return _relatorio_longitudinal(
         titular=paciente, ator=ator, session=session, service=service,
-        analysis=analysis, narrator=narrator, janela=janela,
+        analysis=analysis, narrator=narrator, annotations=annotations,
+        janela=janela,
     )

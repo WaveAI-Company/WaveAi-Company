@@ -102,6 +102,9 @@ class ResultService:
         sessions: list[dict[str, Any]] = []
         quality_scores: list[float | None] = []
         times: list[Any] = []
+        session_ids: list[uuid.UUID] = []
+        duracao_total = 0.0
+        tem_duracao = False
         for result in results:
             metrics = self._cipher.decrypt(result.metrics_encrypted)
             feats = metrics.get("features")
@@ -112,6 +115,17 @@ class ResultService:
             score = quality.get("score")
             quality_scores.append(float(score) if score is not None else None)
             times.append(result.created_at)
+            session_ids.append(result.session_id)
+            # Duração = amostras / taxa, o mesmo cálculo que o app fazia sobre a
+            # lista inteira. Sobe para cá porque com a lista paginada o cliente
+            # deixa de ter o período todo em mãos, e um total derivado de uma
+            # página seria a tela afirmando o que não é verdade (ADR-0027).
+            # Não é DSP: é aritmética de metadado da captação, não análise de
+            # sinal — a ciência continua toda atrás do `AnalysisEngine`.
+            n_amostras, fs = metrics.get("n_samples"), metrics.get("fs")
+            if isinstance(n_amostras, int | float) and isinstance(fs, int | float) and fs:
+                duracao_total += float(n_amostras) / float(fs)
+                tem_duracao = True
 
         if sessions:
             self._repo.auditar(
@@ -124,7 +138,19 @@ class ResultService:
         period = None
         if times:
             period = {"first": times[0].isoformat(), "last": times[-1].isoformat()}
-        return {"sessions": sessions, "quality_scores": quality_scores, "period": period}
+        return {
+            "sessions": sessions,
+            "quality_scores": quality_scores,
+            "period": period,
+            #: Ids das sessões que entraram — só para quem precisa contar
+            #: metadado sobre elas (ex.: quantas têm autorrelato). Nunca sai
+            #: para o cliente por aqui.
+            "session_ids": session_ids,
+            #: `None` e não `0` quando nenhuma sessão trouxe amostras/taxa:
+            #: "não dá para saber" e "zero segundos" são coisas diferentes, e
+            #: mostrar 0 s seria inventar (ADR-0027).
+            "total_duration_seconds": duracao_total if tem_duracao else None,
+        }
 
     # -- direito de acesso ----------------------------------------------
 

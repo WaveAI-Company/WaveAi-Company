@@ -9,6 +9,7 @@ editável).
 from __future__ import annotations
 
 import uuid
+from collections.abc import Sequence
 from typing import Any
 
 from sqlalchemy.orm import Session
@@ -97,6 +98,25 @@ class AnnotationService:
         for r in results:
             r["has_annotation"] = uuid.UUID(r["session_id"]) in com_nota
         return results
+
+    def contar_com_nota(
+        self, *, titular: User, session_ids: Sequence[uuid.UUID]
+    ) -> int:
+        """Quantas dessas sessões têm autorrelato. **Contagem, não conteúdo.**
+
+        Não decifra nota nenhuma e **não audita**, pelo mesmo raciocínio da
+        emenda à ADR-0037 de 2026-08-14: contar é metadado, e registrar isto
+        como leitura encheria a trilha de acessos que não aconteceram.
+
+        Existe porque, com a lista paginada, o app não consegue mais derivar
+        esse número do `has_annotation` da página — ele passou a ser agregado
+        do período, e agregado do período se calcula sobre o período inteiro.
+        """
+        return len(
+            self._repo.sessoes_com_nota(
+                patient_user_id=titular.id, session_ids=list(session_ids)
+            )
+        )
 
     # -- exclusão da nota (só o titular) --------------------------------
 
