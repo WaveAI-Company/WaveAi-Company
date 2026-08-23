@@ -289,6 +289,7 @@ def _relatorio_longitudinal(
             #: e não `0 s`, que seria afirmar um tempo que ninguém captou.
             "total_duration_seconds": None,
             "annotation_count": 0,
+            "series": [],
         }
 
     try:
@@ -331,6 +332,19 @@ def _relatorio_longitudinal(
         "annotation_count": annotations.contar_com_nota(
             titular=titular, session_ids=serie["session_ids"]
         ),
+        #: Série **por sessão** do período (cronológica), ao lado dos agregados.
+        #: O gráfico de tendência precisa de um ponto por sessão, e os agregados
+        #: do relatório não o carregam — só média, desvio e inclinação. Sem isto
+        #: a tela teria de baixar a janela inteira para desenhar a linha, e a
+        #: paginação da lista não economizaria nada.
+        #:
+        #: Não custa leitura nova: são exatamente os pontos que já foram
+        #: decifrados para montar o relatório, e por isso **não gera evento
+        #: adicional** — a leitura já foi auditada por `serie_longitudinal`.
+        "series": [
+            {"at": quando, "features": feats}
+            for quando, feats in zip(serie["times"], serie["sessions"], strict=True)
+        ],
     }
 
 
