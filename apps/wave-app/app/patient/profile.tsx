@@ -219,20 +219,6 @@ export default function PatientProfileScreen() {
                 atencao={!consentido}
                 onPress={() => router.push("/patient/consent")}
               />
-              {/* Os documentos ficam aqui, ao lado do convite e do
-                  consentimento, porque é o mesmo assunto para quem lê: o que
-                  eu autorizei e sob que regras. Decisão do fundador em
-                  2026-08-23. */}
-              <LinhaAcao
-                icone="fileText"
-                label="Termos de Uso"
-                onPress={() => router.push("/legal/termos")}
-              />
-              <LinhaAcao
-                icone="lock"
-                label="Política de Privacidade"
-                onPress={() => router.push("/legal/privacidade")}
-              />
             </View>
           </Panel>
 
@@ -268,6 +254,24 @@ export default function PatientProfileScreen() {
       {/* Última coisa da tela, e depois do resto: encerrar a conta não pode
           ficar perto de nada que se clique por engano. */}
       <ProfileSection label="Conta" />
+
+      {/* Documento legal é assunto de conta, não de quem acompanha — foi por
+          isso que saiu do cartão de acompanhamento. `NavAction` e não
+          `LinhaAcao`: fora de um `Panel`, o padrão da casa é a linha de
+          navegação delineada. */}
+      <NavAction
+        label="Termos de Uso"
+        description="As regras de uso do WaveAI, e o que ele não é."
+        tone="neutral"
+        onPress={() => router.push("/legal/termos")}
+      />
+      <NavAction
+        label="Política de Privacidade"
+        description="O que coletamos, por quanto tempo e com quem compartilhamos."
+        tone="neutral"
+        onPress={() => router.push("/legal/privacidade")}
+      />
+
       <DeleteAccount />
 
       <Disclaimer />
