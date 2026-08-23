@@ -1071,3 +1071,75 @@ def test_rota_do_titular_devolve_total_limit_e_offset(
     assert corpo["total"] == 3
     assert corpo["limit"] == 2
     assert corpo["offset"] == 0
+
+
+def test_serie_soma_a_duracao_do_periodo_inteiro(db_session: Session):
+    """Duração total sai do servidor: com a lista paginada o app não tem mais
+    o período em mãos para somar (F2b, ADR-0027)."""
+    service = _service(db_session)
+    paciente = _paciente(db_session, consentiu=True)
+    for amostras in (5120, 2560):  # 10 s e 5 s a 512 Hz
+        service.persistir(
+            patient=paciente,
+            session_id=_sessao(db_session, paciente).id,
+            metrics={
+                **METRICS_FALSAS,
+                "features": {"rel_alpha": 0.3},
+                "n_samples": amostras,
+                "fs": 512,
+            },
+        )
+    db_session.flush()
+
+    serie = service.serie_longitudinal(titular=paciente, ator=paciente)
+
+    assert serie["total_duration_seconds"] == pytest.approx(15.0)
+    assert len(serie["session_ids"]) == 2
+
+
+def test_duracao_desconhecida_e_none_e_nao_zero(db_session: Session):
+    """Sem amostras/taxa não dá para saber — e `0 s` seria inventar um tempo."""
+    service = _service(db_session)
+    paciente = _paciente(db_session, consentiu=True)
+    service.persistir(
+        patient=paciente,
+        session_id=_sessao(db_session, paciente).id,
+        metrics={**METRICS_FALSAS, "features": {"rel_alpha": 0.3}},
+    )
+    db_session.flush()
+
+    serie = service.serie_longitudinal(titular=paciente, ator=paciente)
+
+    assert serie["total_duration_seconds"] is None
+
+
+def test_contar_com_nota_nao_deixa_rastro_na_trilha(db_session: Session):
+    """Contagem de autorrelato é metadado (emenda à ADR-0037 de 2026-08-14)."""
+    from app.models.annotation import AnnotationAccessEvent, SessionAnnotation
+    from app.services.annotation import AnnotationService
+
+    paciente = _paciente(db_session, consentiu=True)
+    semeados = _semear_n(db_session, paciente, 3)
+    db_session.add(
+        SessionAnnotation(
+            session_id=semeados[0].session_id,
+            patient_user_id=paciente.id,
+            note_encrypted=b"blob-sintetico-nunca-lido",
+        )
+    )
+    db_session.flush()
+    annotations = AnnotationService(
+        session=db_session, cipher=get_metrics_cipher(get_settings())
+    )
+
+    quantas = annotations.contar_com_nota(
+        titular=paciente, session_ids=[r.session_id for r in semeados]
+    )
+
+    assert quantas == 1
+    trilha = db_session.scalars(
+        select(AnnotationAccessEvent).where(
+            AnnotationAccessEvent.patient_user_id == paciente.id
+        )
+    ).all()
+    assert trilha == [], "contar não é ler: não pode virar evento de acesso"
