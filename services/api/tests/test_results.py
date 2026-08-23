@@ -1188,3 +1188,81 @@ def test_relatorio_de_janela_vazia_tem_serie_vazia(client: TestClient):
     assert corpo["series"] == []
     assert corpo["n_sessions"] == 0
     assert corpo["total_duration_seconds"] is None
+
+
+# -- exclusão de conta e a trilha de terceiros (ADR-0047) ---------------
+
+
+def test_excluir_conta_do_ator_preserva_a_trilha_do_titular(db_session: Session):
+    """O buraco que a ADR-0047 fechou.
+
+    Antes, todas as FKs para `users.id` eram CASCADE — apagar a conta de um
+    profissional apagava os eventos em que ele leu dados **dos outros**. Quem
+    é auditado apagava a própria auditoria ao sair.
+    """
+    from app.models.user import UserRole as Papel
+    from app.repositories.user import UserRepository
+    from app.security.password import Argon2PasswordHasher
+    from app.services.auth import AuthService
+
+    hasher = Argon2PasswordHasher(memory_cost=8, time_cost=1, parallelism=1)
+    titular = _paciente(db_session, consentiu=True)
+    profissional = UserRepository(db_session, hasher).create(
+        email=_email(), password=SENHA, role=Papel.DOCTOR, display_name="Prof Sintetico"
+    )
+    db_session.flush()
+
+    # O profissional leu os dados do titular três vezes.
+    db_session.add(
+        ResultAccessEvent(
+            patient_user_id=titular.id,
+            actor_user_id=profissional.id,
+            action=ResultAccessAction.READ,
+            count=3,
+        )
+    )
+    db_session.flush()
+
+    AuthService(
+        session=db_session, settings=get_settings(), hasher=hasher
+    ).excluir_conta(user=profissional)
+    db_session.flush()
+
+    eventos = db_session.scalars(
+        select(ResultAccessEvent).where(ResultAccessEvent.patient_user_id == titular.id)
+    ).all()
+    assert len(eventos) == 1, "a trilha do titular não pode sumir com a conta do ator"
+    evento = eventos[0]
+    assert evento.count == 3, "o que foi lido continua registrado"
+    assert evento.actor_user_id is None, "o vínculo com a conta encerrada é desfeito"
+    assert evento.actor_pseudonym is not None, "sem pseudônimo, some 'foi o mesmo ator'"
+
+
+def test_excluir_conta_leva_a_propria_trilha_junto(db_session: Session):
+    """A trilha do próprio titular vai embora com ele — CASCADE, como deve."""
+    from app.security.password import Argon2PasswordHasher
+    from app.services.auth import AuthService
+
+    hasher = Argon2PasswordHasher(memory_cost=8, time_cost=1, parallelism=1)
+    titular = _paciente(db_session, consentiu=True)
+    _semear_n(db_session, titular, 2)
+    _service(db_session).listar(titular=titular, ator=titular)
+    db_session.flush()
+    id_titular = titular.id
+    assert db_session.scalars(
+        select(ResultAccessEvent).where(ResultAccessEvent.patient_user_id == id_titular)
+    ).all(), "premissa: havia trilha"
+
+    AuthService(
+        session=db_session, settings=get_settings(), hasher=hasher
+    ).excluir_conta(user=titular)
+    db_session.flush()
+
+    assert (
+        db_session.scalars(
+            select(ResultAccessEvent).where(
+                ResultAccessEvent.patient_user_id == id_titular
+            )
+        ).all()
+        == []
+    )
