@@ -820,3 +820,26 @@ A decisão original (link com token opaco, 24 h / 30 min) foi tomada sobre esse 
 
 **Consequências:** `public/_redirects` e `public/_headers` versionados no app; os comentários de `config.py` e `.env.example` que afirmam same-origin em produção passam a dizer a verdade; `WAVEAI_API_CORS_ORIGINS` vira variável obrigatória do ambiente de produção. Não altera código de runtime.
 
+### Emenda à ADR-0049 (2026-08-23) — o backend vai para **Azure Container Apps**: sem cartão hoje, com data de validade e saída escrita
+**Status:** Proposta (2026-08-23) — vira Aceita no merge. Substitui a escolha de provedor da decisão 1 da ADR-0049; **tudo o mais que ela decidiu continua valendo**, inclusive a instância única, a migração como passo do pipeline e o estático no Cloudflare Pages (já publicado e verificado em `https://waveai.tec.br`).
+
+**Contexto:** a decisão 1 escolheu Google Cloud Run. Ao chegar a hora de criar a conta, o fundador informou que possui **Azure for Students, que dá crédito sem exigir cartão** — e que seguirá estudante pelos próximos 12 meses. O banco no **Neon já foi criado**. "Sem cartão" ataca de frente a fraqueza (b) que a própria ADR-0049 registrou: o free tier do GCP não é teto rígido e pode gerar fatura.
+
+**[FATO] apurado antes de decidir:**
+- **Azure Container Apps tem free tier equivalente ao Cloud Run** — 180.000 vCPU-segundos, 360.000 GiB-segundos e 2 milhões de requisições por mês, com **escala a zero** e sem cobrança enquanto zerado. Roda a **mesma imagem** `python:3.11-slim` que já construímos, sem tocar em código.
+- **Mas o free tier não sobrevive à assinatura.** Expirado o crédito Students (12 meses, ou antes se os US$ 100 acabarem), a Azure **desabilita a assinatura** e os recursos são **descomissionados** — os serviços gratuitos vão junto, porque vivem dentro dela. O free tier do GCP, ao contrário, é permanente dentro da cota. A renovação existe, por mais 12 meses, **condicionada a ainda ser estudante**.
+
+**Decisão:**
+1. **API e Analysis em Azure Container Apps**, plano Consumption, escala a zero. A decisão 3 da ADR-0049 continua íntegra e apenas troca de nome: **uma réplica no máximo**, porque o fan-out ao vivo e o rate limiter vivem na memória do processo.
+2. **Aceita-se trocar um risco por um custo.** Sai o risco de fatura inesperada (não há cartão a cobrar); entra um **desligamento certo e datado**. Entre um risco difuso e um custo previsível com data marcada, o previsível é gerenciável — desde que esteja escrito, que é o que os itens 4 e 5 fazem.
+3. **O banco fica FORA da assinatura, no Neon.** É este ponto — e não a renovação — que torna a decisão reversível: quando a assinatura cair, cai o **serviço**, não o **dado**. Voltar ao ar vira reconfiguração, não recuperação de desastre. Pôr o Postgres dentro da Azure destruiria essa propriedade e está **proibido** por esta emenda.
+4. **Nada de serviço proprietário além do runtime de container e do agendador.** Sem banco gerenciado da Azure, sem fila, sem função específica de plataforma. É a disciplina que mantém a saída barata, e é a mesma que a ADR-0049 já exige ao dizer que nada pode virar dependência que impeça sair.
+5. **A expiração é compromisso explícito do fundador**, com lembrete de pelo menos 30 dias de antecedência. Uma data de desligamento conhecida que ninguém anotou é, na prática, uma queda surpresa.
+6. **A saída fica escrita antes de ser necessária**, em `infra/RUNBOOK_PORTABILIDADE.md`: o contrato mínimo que qualquer nuvem precisa cumprir e o procedimento de mudança. Runbook escrito sob pressão é runbook errado.
+
+**O que se abre mão, explicitamente:** (a) **uma data de validade**, que o GCP não teria. Se a matrícula terminar, ou se a renovação for negada, o serviço para — e o app publicado para com ele; (b) **a renovação não é garantia**: depende de continuar estudante e de o programa existir nos mesmos termos; (c) trocar de provedor **não é gratuito** mesmo com o runbook: há DNS a reapontar, segredos a recriar e uma janela de indisponibilidade; (d) **não foi verificado** se Container Apps está disponível em **Brazil South** — se não estiver, o dado sai do Brasil e isso é decisão nova do fundador, não detalhe de configuração (decisão 9 da ADR-0049).
+
+**Alternativas consideradas:** (a) **Google Cloud Run** — preterida **agora** por exigir cartão, e mantida como **destino do plano de saída**: free tier permanente, mesma imagem, mesmo desenho; (b) **manter o crédito Azure só para eventos**, como a ADR-0049 previa — superada: se o baseline cabe no free tier de Container Apps, separar em dois lugares só multiplica configuração; (c) **Azure com o Postgres também na Azure** — rejeitada pelo item 3: economizaria um fornecedor e transformaria a expiração em perda de dado.
+
+**Consequências:** a fatia de deploy passa a mirar Container Apps (imagem, variáveis, job de migração, job de cron para o expurgo); `infra/README.md` e o runbook novo passam a ser a documentação operacional; o alvo do plano de saída é Cloud Run. Não altera código de runtime, rotas, telas nem o `AnalysisEngine` — as imagens são as mesmas.
+
