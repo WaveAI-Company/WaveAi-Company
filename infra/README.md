@@ -79,6 +79,25 @@ motivo explicado lá dentro.
 **Verificado em 2026-08-23:** servindo `dist` sem fallback, `/legal/privacidade`
 responde **404**; com fallback, **200** e a página certa.
 
+## Backend em produção — Azure Container Apps, com data de validade
+
+Decidido na emenda à ADR-0049 de 2026-08-23. API e Analysis rodam como
+containers na Azure, plano Consumption, escala a zero, **uma réplica no máximo**;
+o Postgres é o **Neon**, fora da assinatura da Azure.
+
+O crédito é Azure for Students e **expira**: quando isso acontece, a assinatura é
+desabilitada e os recursos, descomissionados. Duas consequências práticas:
+
+- **A data de expiração precisa estar no calendário do fundador**, com pelo menos
+  30 dias de antecedência. Data de desligamento conhecida que ninguém anotou é
+  queda surpresa.
+- **A saída está escrita em [RUNBOOK_PORTABILIDADE.md](RUNBOOK_PORTABILIDADE.md)** —
+  contrato de configuração, invariantes e procedimento de mudança. O banco estar
+  no Neon é o que torna a queda um problema de disponibilidade, e não de dado.
+
+Nada de serviço proprietário além do runtime de container e do agendador: é essa
+disciplina que mantém a saída barata.
+
 ## Job pendente de agendamento — expurgo da trilha pseudonimizada
 
 A Política de Privacidade 1.2 promete apagar em **até 12 meses** os registros de
