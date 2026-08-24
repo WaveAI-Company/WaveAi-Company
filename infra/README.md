@@ -85,18 +85,45 @@ Decidido na emenda à ADR-0049 de 2026-08-23. API e Analysis rodam como
 containers na Azure, plano Consumption, escala a zero, **uma réplica no máximo**;
 o Postgres é o **Neon**, fora da assinatura da Azure.
 
-O crédito é Azure for Students e **expira**: quando isso acontece, a assinatura é
-desabilitada e os recursos, descomissionados. Duas consequências práticas:
+O crédito é Azure for Students e **expira no final de 2026** (informado pelo
+fundador em 2026-08-23; a data exata está no portal, em Subscriptions). Quando
+isso acontece, a assinatura é desabilitada e os recursos, descomissionados. Duas
+consequências práticas:
 
-- **A data de expiração precisa estar no calendário do fundador**, com pelo menos
-  30 dias de antecedência. Data de desligamento conhecida que ninguém anotou é
-  queda surpresa.
+- **Renovar ou migrar é tarefa de novembro de 2026**, não de um futuro distante:
+  restam cerca de quatro meses. A emenda à ADR-0049 foi escrita supondo horizonte
+  de doze — o horizonte real é menor, e é isso que vale. Data de desligamento
+  conhecida que ninguém anotou é queda surpresa.
 - **A saída está escrita em [RUNBOOK_PORTABILIDADE.md](RUNBOOK_PORTABILIDADE.md)** —
   contrato de configuração, invariantes e procedimento de mudança. O banco estar
   no Neon é o que torna a queda um problema de disponibilidade, e não de dado.
 
 Nada de serviço proprietário além do runtime de container e do agendador: é essa
 disciplina que mantém a saída barata.
+
+### Provisionar
+
+`bash infra/azure/provision.sh`, do Azure Cloud Shell ou de uma máquina com `az`.
+É **idempotente** e **não contém segredo nenhum** — recusa-se a rodar sem as
+variáveis de ambiente, do mesmo jeito que o `docker compose` recusa sem o segredo
+do JWT. O cabeçalho do script lista quais são e como gerar cada uma.
+
+| Recurso | Nome |
+|---|---|
+| Grupo de recursos | `rg-waveai-prod` |
+| Região | `brazilsouth` — dado de EEG em território brasileiro (decisão 9 da ADR-0049) |
+| Ambiente | `cae-waveai-prod` |
+| API (ingress **externo**) | `ca-waveai-api`, porta 8000 |
+| Analysis (ingress **interno**) | `ca-waveai-analysis`, porta 8001 |
+
+Duas escolhas que não são detalhe:
+
+- **Imagens no GHCR, não no Azure Container Registry.** O ACR Basic custaria por
+  volta de US$ 5/mês — mais da metade do que o crédito representa por mês. O GHCR
+  é gratuito, já é do GitHub que hospeda código e CI, e qualquer nuvem puxa de lá.
+- **A Analysis não é alcançável de fora.** Ela não tem autenticação própria: o que
+  a protege é o ingress interno. No `docker compose` isso vale por acidente de
+  topologia; aqui é configuração explícita.
 
 ## Job pendente de agendamento — expurgo da trilha pseudonimizada
 
