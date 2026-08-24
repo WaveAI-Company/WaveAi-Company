@@ -45,6 +45,14 @@ services:
       WAVEAI_API_REFRESH_COOKIE_SECURE: ${WAVEAI_API_REFRESH_COOKIE_SECURE:-false}
       # O gateway encaminha as janelas para a Analysis (#14).
       WAVEAI_API_ANALYSIS_URL: http://analysis:8001
+      # Provedor real de e-mail (emenda à ADR-0044). Vazios por padrão: em dev
+      # os e-mails continuam saindo no stdout do container. Preenchidos os três
+      # em infra/.env, o envio vira real — inclusive aqui, de propósito.
+      WAVEAI_API_SMTP_HOST: ${WAVEAI_API_SMTP_HOST:-}
+      WAVEAI_API_SMTP_PORT: ${WAVEAI_API_SMTP_PORT:-587}
+      WAVEAI_API_SMTP_USER: ${WAVEAI_API_SMTP_USER:-}
+      WAVEAI_API_SMTP_PASSWORD: ${WAVEAI_API_SMTP_PASSWORD:-}
+      WAVEAI_API_EMAIL_FROM: ${WAVEAI_API_EMAIL_FROM:-WaveAI <nao-responda@waveai.local>}
     ports:
       - "${API_PORT:-8000}:8000"
     depends_on:
