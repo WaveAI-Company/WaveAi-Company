@@ -105,6 +105,25 @@ class Settings(BaseSettings):
     #: item 5): não há deep link nativo nesta fase — quem está no celular
     #: verifica no navegador, e universal links dependem do domínio do P5.
     email_link_base_url: str = "http://localhost:8081"
+    #: -- Provedor real de envio (emenda à ADR-0044) ------------------------
+    #: SMTP do Gmail com **senha de app**. Preenchidos os três campos abaixo, o
+    #: `build_email_sender` usa SMTP em **qualquer** ambiente — inclusive
+    #: `development`, para dar como exercitar o envio de verdade antes de
+    #: produção. Vazios, vale a regra antiga: console em dev, e levanta fora.
+    #:
+    #: `smtp_password` é a senha de app de 16 dígitos, **não** a senha da conta.
+    #: Segredo de ambiente, como o JWT e a chave Fernet — nunca em `compose`,
+    #: `Dockerfile`, CI ou repositório.
+    smtp_host: str = ""
+    smtp_port: int = 587
+    smtp_user: str = ""
+    smtp_password: str = ""
+    #: STARTTLS na 587 é o caminho do Gmail. Existe como interruptor porque um
+    #: servidor de teste local não fala TLS — nunca para desligar em produção.
+    smtp_use_tls: bool = True
+    #: Quanto esperar por um servidor que não responde. Sem limite, uma rota de
+    #: cadastro ficaria pendurada até o cliente desistir.
+    smtp_timeout_seconds: float = 10.0
     #: Prazo do código/token, igual para os dois propósitos (emenda à ADR-0044):
     #: o design verifica **com a pessoa na tela**, então prazo longo não teria
     #: função. `Design/round1/criar-conta.html` diz "vale por 10 minutos".

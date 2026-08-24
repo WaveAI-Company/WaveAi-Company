@@ -648,6 +648,27 @@ A decisão original (link com token opaco, 24 h / 30 min) foi tomada sobre esse 
 
 **Consequências:** duas rotas novas (`/auth/forgot-password`, `/auth/reset-password`), ambas com resposta **uniforme** (ADR-0024) e rate limit por IP; nenhuma tabela nova, nenhuma migration — a fatia 4 já criou tudo. **Fora do escopo, registrado:** o mockup mostra um medidor com **três** requisitos de senha (≥8 caracteres, uma letra, um número) e a API exige só o comprimento; casar isso mexe **também** no cadastro e invalidaria toda senha de fixture do repo (as de teste não têm dígito), então é decisão própria, de outra fatia.
 
+### Emenda à ADR-0044 (2026-08-23) — o provedor real é **SMTP do Gmail com senha de app**, terceiro adapter do mesmo `Protocol`
+**Status:** Proposta (2026-08-23) — vira Aceita no merge. Preenche o "provedor real (P5)" que a ADR-0044 deixou em aberto; **não altera** o contrato, o fail-closed nem os tokens que ela decidiu.
+
+**Contexto:** [`build_email_sender`](services/api/app/services/email.py:75) só conhece o adapter de console e **levanta fora de `development`**. Descoberto ao levantar o inventário para o runbook de portabilidade: a API **sobe**, mas toda rota que envia e-mail falha — verificação, recuperação de senha, convite e troca de e-mail. Como `email_verification_required` é `True` por padrão, isso significa que **ninguém consegue criar conta em produção**. Com o estático já publicado em `https://waveai.tec.br` e o backend a caminho, isto passou de pendência a bloqueador: um deploy sem provedor entregaria backend no ar e inútil.
+
+**[FATO] apurado antes de decidir (2026-08-23):** a conta é `waveai999.company@gmail.com`, **Gmail pessoal, não Workspace**. Isso decide entre os dois caminhos:
+- **SMTP com senha de app**: o Google removeu o acesso de "apps menos seguros" em maio de 2025, e a senha de app (16 dígitos, exige 2FA) é hoje o caminho oficial. Envio via `smtplib`, da **biblioteca padrão** — nenhuma dependência nova.
+- **Gmail API com OAuth2**: em conta pessoal a tela de consentimento só pode ser **External**; em modo *Testing* o refresh token expira em poucos dias, e estabilizá-lo exige publicar o app com escopo sensível (`gmail.send`), sujeito a verificação do Google de duração imprevisível.
+
+**Decisão:**
+1. **`SmtpEmailSender` como terceiro adapter**, atrás do mesmo `EmailSender`. A ADR-0044 previu exatamente isto: o provedor entra sem tocar em texto, rota ou fluxo.
+2. **SMTP, não Gmail API.** Um token que expira sozinho em poucos dias quebraria o envio **em silêncio**, num fluxo em que a pessoa fica do lado de fora sem conseguir entrar — o mesmo dano que o fail-closed da ADR-0044 existe para evitar, chegando por outra porta. Somado a zero dependência nova, a escolha se paga.
+3. **A escolha do adapter passa a ser por configuração, não por adivinhação.** Havendo credenciais SMTP no ambiente, usa-se SMTP — **em qualquer ambiente**, inclusive `development`, para que dê para exercitar o envio real antes de produção. Sem credenciais: console em `development`, e **levanta** fora dele. O fail-closed permanece intacto.
+4. **A senha de app é segredo de ambiente**, como o JWT e a chave Fernet. Nunca em `compose`, `Dockerfile`, CI ou repositório.
+
+**O que se abre mão, explicitamente:** (a) **remetente `@gmail.com`**, não `@waveai.tec.br` — a entregabilidade é pior que a de domínio próprio autenticado, e quem não recebe a verificação **não entra**. É risco de produto, não só técnico, e não deve ser tratado como detalhe; (b) **teto de 500 e-mails por dia**, folgado para transacional nesta fase e insuficiente se o produto crescer; (c) **a senha de app dá acesso amplo à conta pelo protocolo** — se vazar, um terceiro envia como nós. Mitigação: só por ambiente, e revogável a qualquer momento gerando outra; (d) **a conta pessoal do fundador vira infraestrutura do produto** — trocá-la depois exige mexer em produção.
+
+**Alternativas consideradas:** (a) **Gmail API com OAuth2** — preterida pelo item 2; (b) **provedor transacional dedicado** (Resend, SES, Postmark) enviando de `nao-responda@waveai.tec.br` com SPF e DKIM próprios — **tecnicamente superior** e viável desde que o domínio foi registrado, mas é **fornecedor novo** (ADR própria, não emenda) e exigiria afrouxar de forma controlada o `v=spf1 -all` e o *null MX* que hoje declaram que ninguém envia pelo domínio. Preterida pelo fundador em 2026-08-23 para não adiar o deploy; **é o destino natural** quando a entregabilidade ou o teto de 500/dia doerem; (c) **desligar `email_verification_required`** para destravar o cadastro sem provedor — rejeitada: trocaria um bloqueio visível por um buraco de segurança silencioso.
+
+**Consequências:** campos de SMTP em `config.py`; `SmtpEmailSender` e um terceiro ramo em `build_email_sender`; testes que **não tocam a rede**; `infra/.env.example` e o runbook de portabilidade ganham as variáveis novas. Não altera rotas, telas, tokens, cópia dos e-mails nem o `AnalysisEngine`. Relaciona ADR-0023 e ADR-0026 (o mesmo padrão de segredo fail-closed), ADR-0024 (as respostas uniformes continuam), ADR-0027 (não fingir entrega que não houve) e ADR-0049 (onde o segredo vai viver).
+
 ## ADR-0045 — Compartilhamento ao vivo é **ato do titular, por sessão**: interruptor que nasce desligado e corta na hora
 **Status:** Proposta (2026-08-09) — vira Aceita no merge. **Complementa a ADR-0039** (espectador ao vivo); não revoga nada dela.
 
