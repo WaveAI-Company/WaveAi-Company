@@ -69,7 +69,11 @@ Obrigatórias na prática, ainda que tenham default de desenvolvimento:
 | `ANALYSIS_URL` | endereço interno do serviço Analysis | Default `http://localhost:8001` |
 | `CORS_ORIGINS` | `https://waveai.tec.br` | **Obrigatória** desde a emenda de 2026-08-23: app e API em hosts diferentes. Curinga é proibido com credenciais |
 | `EMAIL_LINK_BASE_URL` | `https://waveai.tec.br` | Base dos links de verificação e recuperação |
-| `EMAIL_FROM` | remetente real | O default é `@waveai.local`, que não existe |
+| `EMAIL_FROM` | remetente real, igual à conta que autentica | O default é `@waveai.local`, que não existe |
+| `SMTP_HOST` | `smtp.gmail.com` | Os **três** juntos ligam o envio real; faltando um, o serviço volta a ser fail-closed |
+| `SMTP_USER` | `waveai999.company@gmail.com` | |
+| `SMTP_PASSWORD` | senha de app de 16 dígitos | **Não** é a senha da conta. Revogável e regerável — ao contrário dos dois segredos acima |
+| `SMTP_PORT` | `587` | STARTTLS |
 | `AUDIT_PSEUDONYM_RETENTION_DAYS` | `365` | Aumentar sem mudar a Política seria guardar além do prometido |
 
 Analysis usa prefixo `WAVEAI_ANALYSIS_` e hoje só precisa de `APP_ENV`.
@@ -174,13 +178,11 @@ documento de um plano imaginário.
 
 Registrado aqui porque quem seguir este runbook vai esbarrar:
 
-- **Provedor de e-mail real.** [`build_email_sender`](../services/api/app/services/email.py:75)
-  só conhece o console, e **levanta erro fora de `development`**. A API sobe, mas
-  toda rota que envia e-mail falha: **cadastro, verificação, recuperação de senha
-  e convite**. Com `email_verification_required=True`, isso significa que
-  **ninguém consegue criar conta em produção**. A decisão já foi tomada — conta
-  Gmail corporativa com chave de API, como terceira implementação do mesmo
-  `Protocol`, por emenda à ADR-0044 — mas **não foi implementada**.
 - **Agendador do expurgo.** O comando existe e é testado; ninguém o chama.
+- **Remetente próprio.** O envio sai de `@gmail.com`, não de `@waveai.tec.br`, com
+  teto de 500 e-mails por dia e entregabilidade pior que a de domínio autenticado
+  — quem não recebe a verificação não entra. Migrar para um provedor transacional
+  com SPF e DKIM do domínio é o destino natural, e está registrado como
+  alternativa preterida na emenda à ADR-0044.
 - **Índice em `pseudonymized_at`.** Irrelevante no volume atual; num banco grande,
   o `DELETE` do expurgo faria varredura sequencial.
