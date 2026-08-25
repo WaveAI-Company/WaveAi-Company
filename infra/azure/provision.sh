@@ -79,12 +79,32 @@ echo "==> assinatura: $(az account show --query name -o tsv)"
 echo "==> grupo: ${GRUPO} | região: ${LOCALIZACAO}"
 
 # -- Extensão e provedores ---------------------------------------------------
-# Necessários na PRIMEIRA vez em qualquer assinatura nova. Registrar duas vezes
-# não faz mal; não registrar faz o comando seguinte falhar com erro obscuro.
+# Necessários na PRIMEIRA vez em qualquer assinatura nova.
+#
+# `--wait` NÃO é zelo excessivo: sem ele, `az provider register` devolve o
+# controle imediatamente enquanto o registro corre de forma ASSÍNCRONA, e o
+# `containerapp env create` logo abaixo falha com "Subscription is not
+# registered for the Microsoft.OperationalInsights resource provider".
+# Aconteceu na primeira execução real, em 2026-08-24.
+#
+# A consulta antes evita esperar de novo quando já está pronto — é o que mantém
+# o script idempotente sem custar minutos a cada rodada.
+registrar_provider() {
+  local ns="$1" estado
+  estado="$(az provider show --namespace "${ns}" --query registrationState -o tsv 2>/dev/null || echo NotRegistered)"
+  if [ "${estado}" = "Registered" ]; then
+    echo "    ${ns}: já registrado"
+    return
+  fi
+  echo "    ${ns}: registrando — leva alguns minutos na primeira vez, aguarde"
+  az provider register --namespace "${ns}" --wait --only-show-errors >/dev/null
+  echo "    ${ns}: pronto"
+}
+
 echo "==> garantindo extensão e provedores"
 az extension add --name containerapp --upgrade --only-show-errors >/dev/null
-az provider register --namespace Microsoft.App --only-show-errors >/dev/null
-az provider register --namespace Microsoft.OperationalInsights --only-show-errors >/dev/null
+registrar_provider Microsoft.App
+registrar_provider Microsoft.OperationalInsights
 
 # -- Grupo de recursos -------------------------------------------------------
 # Tudo num grupo só: apagar o grupo apaga o ambiente inteiro, que é o que torna
