@@ -1,0 +1,183 @@
+# Publica as imagens, migra o banco e atualiza os apps na Azure (ADR-0049).
+#
+# A ORDEM É A DECISÃO: migrar ANTES de trocar as imagens, e abortar se a
+# migração falhar. Código novo contra schema velho é o modo de falha que a
+# decisão 4 da ADR-0049 existe para evitar — e é por isso que a migração é
+# passo daqui, nunca do boot do container.
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  # Sem gatilho manual, um deploy só aconteceria mexendo na `main` — o que é
+  # exatamente o que ninguém quer fazer sob pressão para reverter algo.
+  workflow_dispatch:
+
+# Nenhum deploy concorrente: com uma réplica só, duas execuções simultâneas
+# disputariam a mesma revisão e a mesma migração.
+concurrency:
+  group: deploy-producao
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  packages: write   # publicar no GHCR
+  id-token: write   # OIDC para a Azure, sem segredo de longa duração
+
+env:
+  REGISTRO: ghcr.io
+  GRUPO: rg-waveai-prod
+  APP_API: ca-waveai-api
+  APP_ANALYSIS: ca-waveai-analysis
+  JOB_MIGRACAO: caj-waveai-migrate
+
+jobs:
+  imagens:
+    name: Construir e publicar imagens
+    runs-on: ubuntu-latest
+    outputs:
+      api: ${{ steps.nomes.outputs.api }}
+      analysis: ${{ steps.nomes.outputs.analysis }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Nomes das imagens
+        id: nomes
+        # O dono precisa vir em minúsculas: o GHCR recusa maiúscula no caminho,
+        # e o nome do repositório aqui tem maiúsculas.
+        run: |
+          dono="$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')"
+          echo "api=${{ env.REGISTRO }}/${dono}/waveai-api:${{ github.sha }}" >> "$GITHUB_OUTPUT"
+          echo "analysis=${{ env.REGISTRO }}/${dono}/waveai-analysis:${{ github.sha }}" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRO }}
+          username: ${{ github.actor }}
+          # O token do próprio workflow basta para publicar. O PAT criado para o
+          # Container Apps serve só para PUXAR a imagem, e não entra no CI.
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: API
+        uses: docker/build-push-action@v6
+        with:
+          context: services/api
+          push: true
+          tags: ${{ steps.nomes.outputs.api }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Analysis
+        uses: docker/build-push-action@v6
+        with:
+          # Contexto na RAIZ, e não em `services/analysis`: a imagem precisa de
+          # `packages/wave-eeg`, que está fora daquela pasta. O `docker-compose`
+          # já faz assim, pelo mesmo motivo. Com o contexto errado o build falha
+          # em `COPY services/analysis/app` — medido em 2026-08-24.
+          context: .
+          file: services/analysis/Dockerfile
+          push: true
+          tags: ${{ steps.nomes.outputs.analysis }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Tamanho das imagens (baseline)
+        # Medir aqui é barato e evita a pergunta "quanto isto cresceu?" ficar
+        # sem resposta por falta de número anterior.
+        run: |
+          docker pull -q "${{ steps.nomes.outputs.api }}"
+          docker pull -q "${{ steps.nomes.outputs.analysis }}"
+          docker image ls --format '{{.Repository}}:{{.Tag}}  {{.Size}}' \
+            | grep waveai || true
+
+  publicar:
+    name: Migrar e atualizar
+    needs: imagens
+    runs-on: ubuntu-latest
+    steps:
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Extensão containerapp
+        run: az extension add --name containerapp --upgrade --only-show-errors
+
+      # -- Migração ---------------------------------------------------------
+      # Roda com a imagem NOVA, antes de qualquer app passar a servi-la. Se
+      # falhar, o workflow para aqui e a produção segue na versão anterior.
+      - name: Apontar o job de migração para a imagem nova
+        run: |
+          az containerapp job update \
+            --name "$JOB_MIGRACAO" --resource-group "$GRUPO" \
+            --image "${{ needs.imagens.outputs.api }}" \
+            --only-show-errors
+
+      - name: Rodar a migração e esperar o resultado
+        run: |
+          set -euo pipefail
+          execucao="$(az containerapp job start \
+            --name "$JOB_MIGRACAO" --resource-group "$GRUPO" \
+            --query name -o tsv)"
+          echo "execução: ${execucao}"
+
+          # `job start` devolve na hora; quem espera somos nós. Sem este laço,
+          # o deploy seguiria sem saber se o schema foi aplicado.
+          for _ in $(seq 1 60); do
+            estado="$(az containerapp job execution show \
+              --name "$JOB_MIGRACAO" --resource-group "$GRUPO" \
+              --job-execution-name "${execucao}" \
+              --query properties.status -o tsv 2>/dev/null || echo '')"
+            echo "  estado: ${estado:-consultando}"
+            case "${estado}" in
+              Succeeded) echo "migração concluída"; exit 0 ;;
+              Failed|Degraded)
+                echo "::error::a migração falhou — produção continua na versão anterior"
+                az containerapp job logs show \
+                  --name "$JOB_MIGRACAO" --resource-group "$GRUPO" \
+                  --execution "${execucao}" --tail 100 || true
+                exit 1 ;;
+            esac
+            sleep 10
+          done
+          echo "::error::a migração não terminou em 10 minutos"
+          exit 1
+
+      # -- Deploy -----------------------------------------------------------
+      # Analysis primeiro: a API depende dela, e é melhor a dependência já estar
+      # na versão nova quando quem a chama subir.
+      - name: Atualizar Analysis
+        run: |
+          az containerapp update \
+            --name "$APP_ANALYSIS" --resource-group "$GRUPO" \
+            --image "${{ needs.imagens.outputs.analysis }}" \
+            --only-show-errors
+
+      - name: Atualizar API
+        run: |
+          az containerapp update \
+            --name "$APP_API" --resource-group "$GRUPO" \
+            --image "${{ needs.imagens.outputs.api }}" \
+            --only-show-errors
+
+      - name: Conferir que a API responde
+        # Prova de vida, e também a primeira medida de cold start: com escala a
+        # zero, esta requisição é a que acorda a instância.
+        run: |
+          set -euo pipefail
+          fqdn="$(az containerapp show --name "$APP_API" --resource-group "$GRUPO" \
+            --query properties.configuration.ingress.fqdn -o tsv)"
+          echo "endereço: https://${fqdn}"
+          for tentativa in $(seq 1 30); do
+            inicio=$(date +%s%3N)
+            codigo="$(curl -s -o /dev/null -w '%{http_code}' --max-time 60 "https://${fqdn}/health" || echo 000)"
+            fim=$(date +%s%3N)
+            echo "  tentativa ${tentativa}: HTTP ${codigo} em $((fim - inicio)) ms"
+            [ "${codigo}" = "200" ] && exit 0
+            sleep 10
+          done
+          echo "::error::a API não respondeu 200 em /health após o deploy"
+          exit 1
