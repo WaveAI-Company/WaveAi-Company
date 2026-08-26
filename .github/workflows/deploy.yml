@@ -30,6 +30,7 @@ env:
   APP_API: ca-waveai-api
   APP_ANALYSIS: ca-waveai-analysis
   JOB_MIGRACAO: caj-waveai-migrate
+  JOB_EXPURGO: caj-waveai-purge
 
 jobs:
   imagens:
@@ -160,6 +161,17 @@ jobs:
         run: |
           az containerapp update \
             --name "$APP_API" --resource-group "$GRUPO" \
+            --image "${{ needs.imagens.outputs.api }}" \
+            --only-show-errors
+
+      # Sem este passo o expurgo rodaria para sempre com a imagem provisória —
+      # o cron dispararia todos os dias e não apagaria nada, e a Política
+      # continuaria prometendo um prazo que ninguém cumpre, agora com a
+      # aparência de que alguém cumpre.
+      - name: Atualizar o job do expurgo
+        run: |
+          az containerapp job update \
+            --name "$JOB_EXPURGO" --resource-group "$GRUPO" \
             --image "${{ needs.imagens.outputs.api }}" \
             --only-show-errors
 

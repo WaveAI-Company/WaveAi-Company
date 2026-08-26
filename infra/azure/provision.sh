@@ -33,6 +33,11 @@ AMBIENTE="${WAVEAI_AZ_ENVIRONMENT:-cae-waveai-prod}"
 APP_API="${WAVEAI_AZ_APP_API:-ca-waveai-api}"
 APP_ANALYSIS="${WAVEAI_AZ_APP_ANALYSIS:-ca-waveai-analysis}"
 JOB_MIGRACAO="${WAVEAI_AZ_JOB_MIGRATE:-caj-waveai-migrate}"
+JOB_EXPURGO="${WAVEAI_AZ_JOB_PURGE:-caj-waveai-purge}"
+# 04:00 UTC = 01:00 no horário de Brasília. O expurgo apaga registro com um ano
+# de idade: a hora exata não importa, mas a madrugada evita disputar CPU com
+# quem estiver usando o produto.
+CRON_EXPURGO="${WAVEAI_AZ_PURGE_CRON:-0 4 * * *}"
 
 # Registro de imagens no GHCR e não no Azure Container Registry: o ACR Basic
 # custaria por volta de US$5/mês, mais da metade do que o crédito representa por
@@ -327,6 +332,67 @@ az containerapp job update \
     WAVEAI_API_DATABASE_URL=secretref:database-url \
   --only-show-errors >/dev/null
 
+# -- Job do expurgo ----------------------------------------------------------
+# É ESTE job que faz a Política de Privacidade parar de dever prazo: ela promete
+# apagar em até 12 meses a trilha de leitura que perdeu o dono, e sem alguém
+# executando a rotina o texto publicado afirma o que o produto não faz
+# (ADR-0027 e a emenda à ADR-0047).
+#
+# `python scripts/purge_audit_trail.py` com `PYTHONPATH=/app`, e NÃO
+# `python -m scripts.purge_audit_trail`: o `-m` esbarraria no mesmo parser que
+# recusou o `-c` do job de migração. Verificado dentro da imagem em 2026-08-24 —
+# sem `PYTHONPATH` o import de `app` falha; com ele, o script roda chamado por
+# caminho, sem hífen nenhum no comando.
+echo "==> job ${JOB_EXPURGO} (cron: ${CRON_EXPURGO})"
+if ! az containerapp job show --name "${JOB_EXPURGO}" --resource-group "${GRUPO}" >/dev/null 2>&1; then
+  az containerapp job create \
+    --name "${JOB_EXPURGO}" \
+    --resource-group "${GRUPO}" \
+    --environment "${AMBIENTE}" \
+    --trigger-type Schedule \
+    --cron-expression "${CRON_EXPURGO}" \
+    --replica-timeout 600 \
+    --replica-retry-limit 1 \
+    --replica-completion-count 1 \
+    --parallelism 1 \
+    --image "${IMAGEM_PROVISORIA}" \
+    --cpu 0.25 --memory 0.5Gi \
+    --command "python" \
+    --args "scripts/purge_audit_trail.py" \
+    --registry-server "${REGISTRO}" \
+    --registry-username "${GHCR_USER}" \
+    --registry-password "${GHCR_TOKEN}" \
+    --only-show-errors >/dev/null
+  echo "    criado — o pipeline troca a imagem a cada deploy"
+else
+  echo "    (já existe)"
+fi
+
+# Diferente da migração, aqui uma repetição é segura: apagar o que já venceu é
+# idempotente, e a falha mais provável é conexão intermitente com o banco.
+echo "==> segredos do job de expurgo"
+for par in \
+  "jwt-secret=${WAVEAI_API_JWT_SECRET}" \
+  "result-encryption-key=${WAVEAI_API_RESULT_ENCRYPTION_KEY}" \
+  "database-url=${WAVEAI_API_DATABASE_URL}"
+do
+  az containerapp job secret set \
+    --name "${JOB_EXPURGO}" --resource-group "${GRUPO}" \
+    --secrets "${par}" --only-show-errors >/dev/null
+  echo "    ${par%%=*}: definido"
+done
+
+az containerapp job update \
+  --name "${JOB_EXPURGO}" --resource-group "${GRUPO}" \
+  --set-env-vars \
+    PYTHONPATH=/app \
+    WAVEAI_API_APP_ENV=production \
+    WAVEAI_API_JWT_SECRET=secretref:jwt-secret \
+    WAVEAI_API_RESULT_ENCRYPTION_KEY=secretref:result-encryption-key \
+    WAVEAI_API_DATABASE_URL=secretref:database-url \
+    WAVEAI_API_AUDIT_PSEUDONYM_RETENTION_DAYS=365 \
+  --only-show-errors >/dev/null
+
 FQDN_API="$(az containerapp show --name "${APP_API}" --resource-group "${GRUPO}" --query properties.configuration.ingress.fqdn -o tsv)"
 
 cat <<FIM
@@ -338,12 +404,11 @@ Provisionado.
   Analysis (interno, sem acesso externo): ${ANALYSIS_URL}
 
 O QUE AINDA NÃO ESTÁ FEITO:
-  - As imagens são PROVISÓRIAS, inclusive a do job de migração. O pipeline
-    publica as nossas e troca a imagem do job antes de executá-lo.
-  - Nenhuma migration rodou. É passo do pipeline, nunca do boot.
-  - O expurgo não está agendado (fatia 3c) — e sem ele a Política promete
-    um prazo que ninguém cumpre.
-  - api.waveai.tec.br não aponta para cá (fatia 3c).
+  - Numa assinatura nova, as imagens são PROVISÓRIAS até o primeiro deploy.
+    O pipeline publica as nossas e troca a dos dois jobs também.
+  - Nenhuma migration roda aqui. É passo do pipeline, nunca do boot.
+  - O domínio api.waveai.tec.br é vinculado por
+    'bash infra/azure/vincular-dominio.sh' — precisa de registros no DNS.
 
 NÃO USE o endereço acima como produção: ele é de outro domínio registrável,
 e o cookie de sessão SameSite=Lax não viaja — o login no web não funcionaria.

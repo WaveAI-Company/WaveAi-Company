@@ -178,10 +178,32 @@ Entra ID. O plano B é um service principal com senha
 `creds:` no `azure/login` — funciona, mas é credencial permanente, e por isso é
 plano B e não escolha.
 
-## Job pendente de agendamento — expurgo da trilha pseudonimizada
+### Domínio da API
+
+`api.waveai.tec.br` é vinculado por `bash infra/azure/vincular-dominio.sh`, em
+duas etapas — sem argumento ele **mostra** os dois registros de DNS a criar; com
+`--vincular` ele valida e emite o certificado.
+
+Não é estética: o refresh token é cookie `SameSite=Lax`, e entre `waveai.tec.br`
+e um endereço `azurecontainerapps.io` o navegador não o envia — **o login no web
+para de funcionar**. Sob `api.waveai.tec.br` é o mesmo site registrável.
+
+**O CNAME precisa ficar em "DNS only" (nuvem cinza), não "Proxied".** Com o proxy
+da Cloudflare ligado, quem responde no endereço é a Cloudflare, e a Azure não
+alcança o Container App para validar o domínio nem emitir o certificado.
+
+### Expurgo da trilha pseudonimizada — agendado
 
 A Política de Privacidade 1.2 promete apagar em **até 12 meses** os registros de
-leitura que perderam o dono. O comando que cumpre isso já existe e é testado:
+leitura que perderam o dono. Quem cumpre isso é o job `caj-waveai-purge`, criado
+pelo `provision.sh` com gatilho **cron diário às 04:00 UTC** (01:00 em Brasília).
+
+Diário é frequência de sobra — o que ele apaga tem um ano de idade —, e a
+madrugada evita disputar CPU com quem estiver usando o produto. O comando sai com
+código 0 quando não há nada a apagar, de propósito: um agendador que trate "nada
+vencido" como falha vira alarme falso diário.
+
+O mesmo comando roda à mão, sem precisar da API no ar — só do banco:
 
 ```
 cd services/api
@@ -189,15 +211,14 @@ python -m scripts.purge_audit_trail --simular   # conta, não apaga
 python -m scripts.purge_audit_trail             # apaga
 ```
 
-Ele roda uma vez e sai, não precisa da API no ar — só do banco. Prazo em
-`WAVEAI_API_AUDIT_PSEUDONYM_RETENTION_DAYS` (padrão 365); aumentar esse valor sem
-mudar o texto da Política seria guardar dado além do prometido.
+Prazo em `WAVEAI_API_AUDIT_PSEUDONYM_RETENTION_DAYS` (padrão 365); aumentar esse
+valor sem mudar o texto da Política seria guardar dado além do prometido.
 
-**Falta agendá-lo.** Enquanto ninguém o executar de tempos em tempos, o prazo é
-cumprível e não cumprido — e a Política **não pode ir a público** nesse estado
-(ADR-0027 e a emenda à ADR-0047). Diário é frequência de sobra: o que ele apaga
-tem um ano de idade. Sai com código 0 quando não há nada a apagar, de propósito:
-um agendador que trate "nada vencido" como falha vira alarme falso diário.
+**Detalhe que parece capricho e não é:** dentro do job o comando é
+`python scripts/purge_audit_trail.py` com `PYTHONPATH=/app`, e **não**
+`python -m scripts.purge_audit_trail`. O parser da CLI da Azure para de consumir
+argumentos ao encontrar um que começa com hífen — foi o que recusou o `-c` do job
+de migração. Sem hífen, não há ambiguidade.
 
 ## CI
 
