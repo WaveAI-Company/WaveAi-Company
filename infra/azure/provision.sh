@@ -79,12 +79,74 @@ echo "==> assinatura: $(az account show --query name -o tsv)"
 echo "==> grupo: ${GRUPO} | região: ${LOCALIZACAO}"
 
 # -- Extensão e provedores ---------------------------------------------------
-# Necessários na PRIMEIRA vez em qualquer assinatura nova. Registrar duas vezes
-# não faz mal; não registrar faz o comando seguinte falhar com erro obscuro.
+# Necessários na PRIMEIRA vez em qualquer assinatura nova.
+#
+# `--wait` NÃO é zelo excessivo: sem ele, `az provider register` devolve o
+# controle imediatamente enquanto o registro corre de forma ASSÍNCRONA, e o
+# `containerapp env create` logo abaixo falha com "Subscription is not
+# registered for the Microsoft.OperationalInsights resource provider".
+# Aconteceu na primeira execução real, em 2026-08-24.
+#
+# A consulta antes evita esperar de novo quando já está pronto — é o que mantém
+# o script idempotente sem custar minutos a cada rodada.
+registrar_provider() {
+  local ns="$1" estado
+  estado="$(az provider show --namespace "${ns}" --query registrationState -o tsv 2>/dev/null || echo NotRegistered)"
+  if [ "${estado}" = "Registered" ]; then
+    echo "    ${ns}: já registrado"
+    return
+  fi
+  echo "    ${ns}: registrando — leva alguns minutos na primeira vez, aguarde"
+  az provider register --namespace "${ns}" --wait --only-show-errors >/dev/null
+  echo "    ${ns}: pronto"
+}
+
+# Um app recém-criado leva alguns segundos até sair de "InProgress". Mexer nele
+# antes disso devolve `(InternalServerError) Internal server error occurred` —
+# erro opaco que não diz o que houve. Aconteceu na segunda execução real, em
+# 2026-08-24, no `secret set` logo após o `create`.
+aguardar_app() {
+  local app="$1" estado=""
+  for _ in $(seq 1 60); do
+    estado="$(az containerapp show --name "${app}" --resource-group "${GRUPO}" --query properties.provisioningState -o tsv 2>/dev/null || echo "")"
+    if [ "${estado}" = "Succeeded" ]; then
+      echo "    ${app}: pronto"
+      return 0
+    fi
+    if [ "${estado}" = "Failed" ]; then
+      echo "ERRO: ${app} está em estado Failed. Veja no portal o que houve antes de rodar de novo." >&2
+      return 1
+    fi
+    sleep 5
+  done
+  echo "ERRO: ${app} não ficou pronto em 5 minutos (último estado: ${estado:-desconhecido})" >&2
+  return 1
+}
+
+# Um segredo por chamada, e não os quatro de uma vez: quando a Azure devolve um
+# erro genérico, saber QUAL falhou é a diferença entre corrigir e adivinhar.
+# O retry existe porque erro interno aqui costuma ser transitório.
+definir_segredo() {
+  local nome="$1" valor="$2" tentativa
+  for tentativa in 1 2 3 4 5; do
+    if az containerapp secret set \
+        --name "${APP_API}" --resource-group "${GRUPO}" \
+        --secrets "${nome}=${valor}" --only-show-errors >/dev/null 2>&1; then
+      echo "    ${nome}: definido"
+      return 0
+    fi
+    echo "    ${nome}: tentativa ${tentativa} falhou; nova tentativa em $((tentativa * 10))s"
+    sleep $((tentativa * 10))
+  done
+  echo "ERRO: não consegui definir o segredo '${nome}' após 5 tentativas." >&2
+  echo "      O valor NÃO é impresso aqui de propósito. Confira se ele tem quebra de linha." >&2
+  return 1
+}
+
 echo "==> garantindo extensão e provedores"
 az extension add --name containerapp --upgrade --only-show-errors >/dev/null
-az provider register --namespace Microsoft.App --only-show-errors >/dev/null
-az provider register --namespace Microsoft.OperationalInsights --only-show-errors >/dev/null
+registrar_provider Microsoft.App
+registrar_provider Microsoft.OperationalInsights
 
 # -- Grupo de recursos -------------------------------------------------------
 # Tudo num grupo só: apagar o grupo apaga o ambiente inteiro, que é o que torna
@@ -165,18 +227,20 @@ else
   echo "    (já existe)"
 fi
 
+# Esperar os dois antes de qualquer alteração: é o app que precisa estar
+# estável, e a Analysis também será atualizada pelo pipeline depois.
+echo "==> aguardando os apps ficarem prontos"
+aguardar_app "${APP_ANALYSIS}"
+aguardar_app "${APP_API}"
+
 echo "==> segredos da API"
-az containerapp secret set \
-  --name "${APP_API}" \
-  --resource-group "${GRUPO}" \
-  --secrets \
-    jwt-secret="${WAVEAI_API_JWT_SECRET}" \
-    result-encryption-key="${WAVEAI_API_RESULT_ENCRYPTION_KEY}" \
-    database-url="${WAVEAI_API_DATABASE_URL}" \
-    smtp-password="${WAVEAI_API_SMTP_PASSWORD}" \
-  --only-show-errors >/dev/null
+definir_segredo jwt-secret "${WAVEAI_API_JWT_SECRET}"
+definir_segredo result-encryption-key "${WAVEAI_API_RESULT_ENCRYPTION_KEY}"
+definir_segredo database-url "${WAVEAI_API_DATABASE_URL}"
+definir_segredo smtp-password "${WAVEAI_API_SMTP_PASSWORD}"
 
 echo "==> variáveis da API"
+aguardar_app "${APP_API}"
 az containerapp update \
   --name "${APP_API}" \
   --resource-group "${GRUPO}" \
