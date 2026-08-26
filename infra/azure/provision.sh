@@ -268,6 +268,14 @@ az containerapp update \
 # workflow — e ele aborta o deploy se isto falhar.
 #
 # Usa a MESMA imagem da API: `alembic.ini` e `migrations/` já estão lá dentro.
+#
+# SEM SHELL, e isto não é preferência de estilo. A primeira tentativa foi
+# `--command "/bin/sh" "-c" "alembic upgrade head"` e a CLI recusou com
+# `unrecognized arguments: -c alembic upgrade head` (2026-08-24): o parser para
+# de consumir valores ao encontrar `-c`, porque **parece uma flag**. Chamar o
+# executável direto, com argumentos que não começam por hífen, contorna isso e
+# ainda dispensa um shell no meio do caminho. O mesmo cuidado vale para
+# qualquer job futuro — inclusive o do expurgo.
 echo "==> job ${JOB_MIGRACAO}"
 if ! az containerapp job show --name "${JOB_MIGRACAO}" --resource-group "${GRUPO}" >/dev/null 2>&1; then
   az containerapp job create \
@@ -281,7 +289,8 @@ if ! az containerapp job show --name "${JOB_MIGRACAO}" --resource-group "${GRUPO
     --parallelism 1 \
     --image "${IMAGEM_PROVISORIA}" \
     --cpu 0.5 --memory 1.0Gi \
-    --command "/bin/sh" "-c" "alembic upgrade head" \
+    --command "alembic" \
+    --args "upgrade" "head" \
     --registry-server "${REGISTRO}" \
     --registry-username "${GHCR_USER}" \
     --registry-password "${GHCR_TOKEN}" \
