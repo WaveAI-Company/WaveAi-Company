@@ -125,6 +125,59 @@ Duas escolhas que não são detalhe:
   a protege é o ingress interno. No `docker compose` isso vale por acidente de
   topologia; aqui é configuração explícita.
 
+### Deploy automático
+
+`.github/workflows/deploy.yml` roda a cada push na `main` e também sob demanda
+(`workflow_dispatch`, para reverter sem precisar mexer na `main` sob pressão).
+
+A ordem é a decisão: **constrói as imagens → migra o banco → só então troca as
+imagens dos apps.** Se a migração falhar, o workflow para e a produção continua
+na versão anterior — código novo contra schema velho é o modo de falha que a
+decisão 4 da ADR-0049 existe para evitar.
+
+Publicar no GHCR usa o `GITHUB_TOKEN` do próprio workflow. O PAT que o Container
+Apps usa serve só para **puxar** a imagem e não entra no CI.
+
+#### Autenticação na Azure por OIDC
+
+Sem segredo de longa duração: o GitHub troca um token efêmero, válido só para
+este repositório. Rode uma vez, no Cloud Shell:
+
+```bash
+APP_ID=$(az ad app create --display-name waveai-github-deploy --query appId -o tsv)
+az ad sp create --id "$APP_ID"
+ASSINATURA=$(az account show --query id -o tsv)
+az role assignment create --assignee "$APP_ID" --role Contributor \
+  --scope "/subscriptions/${ASSINATURA}/resourceGroups/rg-waveai-prod"
+az ad app federated-credential create --id "$APP_ID" --parameters '{
+  "name": "github-main",
+  "issuer": "https://token.actions.githubusercontent.com",
+  "subject": "repo:WaveAI-Company/WaveAi-Company:ref:refs/heads/main",
+  "audiences": ["api://AzureADTokenExchange"]
+}'
+echo "AZURE_CLIENT_ID=$APP_ID"
+echo "AZURE_TENANT_ID=$(az account show --query tenantId -o tsv)"
+echo "AZURE_SUBSCRIPTION_ID=$ASSINATURA"
+```
+
+O papel `Contributor` é dado **apenas sobre `rg-waveai-prod`**, não sobre a
+assinatura: o pipeline não tem por que poder criar recursos fora do que opera.
+
+Os três valores impressos ao final viram *secrets* do repositório
+(Settings → Secrets and variables → Actions): `AZURE_CLIENT_ID`,
+`AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`. Nenhum deles é segredo de verdade —
+são identificadores —, mas ficam como secret por convenção e para não vazarem em
+log de execução.
+
+O `subject` amarra a credencial à branch `main` deste repositório. Deploy a
+partir de outra branch **não** autentica, e isso é proposital.
+
+**Se `az ad app create` falhar por permissão**, a conta educacional restringe o
+Entra ID. O plano B é um service principal com senha
+(`az ad sp create-for-rbac --sdk-auth`), guardada como secret e usada com
+`creds:` no `azure/login` — funciona, mas é credencial permanente, e por isso é
+plano B e não escolha.
+
 ## Job pendente de agendamento — expurgo da trilha pseudonimizada
 
 A Política de Privacidade 1.2 promete apagar em **até 12 meses** os registros de

@@ -32,6 +32,7 @@ GRUPO="${WAVEAI_AZ_RESOURCE_GROUP:-rg-waveai-prod}"
 AMBIENTE="${WAVEAI_AZ_ENVIRONMENT:-cae-waveai-prod}"
 APP_API="${WAVEAI_AZ_APP_API:-ca-waveai-api}"
 APP_ANALYSIS="${WAVEAI_AZ_APP_ANALYSIS:-ca-waveai-analysis}"
+JOB_MIGRACAO="${WAVEAI_AZ_JOB_MIGRATE:-caj-waveai-migrate}"
 
 # Registro de imagens no GHCR e não no Azure Container Registry: o ACR Basic
 # custaria por volta de US$5/mês, mais da metade do que o crédito representa por
@@ -260,6 +261,63 @@ az containerapp update \
     WAVEAI_API_AUDIT_PSEUDONYM_RETENTION_DAYS=365 \
   --only-show-errors >/dev/null
 
+# -- Job de migração ---------------------------------------------------------
+# A migração é passo do PIPELINE, nunca do boot (decisão 4 da ADR-0049): migrar
+# no boot faria duas instâncias rodarem a mesma migração ao mesmo tempo no dia
+# em que houver duas. Como Job de gatilho manual, quem decide quando rodar é o
+# workflow — e ele aborta o deploy se isto falhar.
+#
+# Usa a MESMA imagem da API: `alembic.ini` e `migrations/` já estão lá dentro.
+echo "==> job ${JOB_MIGRACAO}"
+if ! az containerapp job show --name "${JOB_MIGRACAO}" --resource-group "${GRUPO}" >/dev/null 2>&1; then
+  az containerapp job create \
+    --name "${JOB_MIGRACAO}" \
+    --resource-group "${GRUPO}" \
+    --environment "${AMBIENTE}" \
+    --trigger-type Manual \
+    --replica-timeout 600 \
+    --replica-retry-limit 0 \
+    --replica-completion-count 1 \
+    --parallelism 1 \
+    --image "${IMAGEM_PROVISORIA}" \
+    --cpu 0.5 --memory 1.0Gi \
+    --command "/bin/sh" "-c" "alembic upgrade head" \
+    --registry-server "${REGISTRO}" \
+    --registry-username "${GHCR_USER}" \
+    --registry-password "${GHCR_TOKEN}" \
+    --only-show-errors >/dev/null
+  echo "    criado — o pipeline troca a imagem antes de cada execução"
+else
+  echo "    (já existe)"
+fi
+
+# `--replica-retry-limit 0` é deliberado: migração que falhou não deve ser
+# repetida sozinha. Alembic é transacional, mas repetir às cegas esconde a causa
+# — e o pipeline precisa PARAR, não insistir.
+echo "==> segredos do job de migração"
+for par in \
+  "jwt-secret=${WAVEAI_API_JWT_SECRET}" \
+  "result-encryption-key=${WAVEAI_API_RESULT_ENCRYPTION_KEY}" \
+  "database-url=${WAVEAI_API_DATABASE_URL}"
+do
+  az containerapp job secret set \
+    --name "${JOB_MIGRACAO}" --resource-group "${GRUPO}" \
+    --secrets "${par}" --only-show-errors >/dev/null
+  echo "    ${par%%=*}: definido"
+done
+
+# O job carrega JWT e chave de cifra porque o `Settings` os valida ao ser
+# importado — fail-closed (ADR-0023/0026). Ele não os usa para migrar; sem eles,
+# o processo nem chega ao Alembic.
+az containerapp job update \
+  --name "${JOB_MIGRACAO}" --resource-group "${GRUPO}" \
+  --set-env-vars \
+    WAVEAI_API_APP_ENV=production \
+    WAVEAI_API_JWT_SECRET=secretref:jwt-secret \
+    WAVEAI_API_RESULT_ENCRYPTION_KEY=secretref:result-encryption-key \
+    WAVEAI_API_DATABASE_URL=secretref:database-url \
+  --only-show-errors >/dev/null
+
 FQDN_API="$(az containerapp show --name "${APP_API}" --resource-group "${GRUPO}" --query properties.configuration.ingress.fqdn -o tsv)"
 
 cat <<FIM
@@ -271,7 +329,8 @@ Provisionado.
   Analysis (interno, sem acesso externo): ${ANALYSIS_URL}
 
 O QUE AINDA NÃO ESTÁ FEITO:
-  - As imagens são PROVISÓRIAS. O pipeline publica as nossas (fatia 3b).
+  - As imagens são PROVISÓRIAS, inclusive a do job de migração. O pipeline
+    publica as nossas e troca a imagem do job antes de executá-lo.
   - Nenhuma migration rodou. É passo do pipeline, nunca do boot.
   - O expurgo não está agendado (fatia 3c) — e sem ele a Política promete
     um prazo que ninguém cumpre.
