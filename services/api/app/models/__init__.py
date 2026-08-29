@@ -14,6 +14,7 @@ from .care_link import (
 )
 from .live_share import LiveShareEvent
 from .live_view import LiveViewAccessEvent
+from .profile_photo import ProfilePhoto
 from .refresh_token import RefreshToken
 from .result import Result, ResultAccessAction, ResultAccessEvent
 from .session import CaptureSession, SessionStatus
@@ -41,6 +42,7 @@ __all__ = [
     "CareLinkEventType",
     "LiveViewAccessEvent",
     "LiveShareEvent",
+    "ProfilePhoto",
     "SingleUseToken",
     "SingleUseTokenPurpose",
     "normalize_email",
