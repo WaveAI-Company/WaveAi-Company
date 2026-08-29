@@ -342,10 +342,19 @@ proíbe** (100 h de instância ativa/mês contra 730 do mês). Então **não há
 de infra a fazer aqui**, e é honesto dizer isso em vez de otimizar a imagem para
 ganhar 1 s.
 
-**O que a fatia D vira, então: honestidade visual (ADR-0027), e é fatia de UI.**
-Já que o cold start não sai dentro do orçamento, a tela **não pode girar ~25 s em
-silêncio** afirmando nada — precisa dizer que o serviço está acordando. Fica
-registrado aqui e some da fila de infra; entra na fila de UI quando ela reabrir.
+**Decisão do fundador (2026-08-29): deixar como está, sem tarefa.** Nesta fase o
+produto só é ativado em **demonstrações**, com o operador ciente de que a
+primeira chamada acorda a instância — o cold start não surpreende ninguém e não
+custa nada em repouso. A lógica de orçamento (e, com ela, a decisão de manter uma
+réplica viva ou não) chega junto com o **uso comercial**; até lá, os ~25 s são
+custo aceitável e conhecido.
+
+Não há conflito com a ADR-0027: aquela regra proíbe a tela **afirmar o que não é
+verdade** (entrega de e-mail, sucesso de share, "só você vê"). Um spinner lento
+não afirma falsidade — só não explica a espera. A ligação que se havia feito com
+a ADR-0027 era fraca; por isso **não vira fatia de UI** nem fica no backlog. Se e
+quando o produto for comercial e o cold start incomodar um usuário real, aí sim
+entra a decisão (réplica viva vs. aviso de "acordando"), com orçamento na mão.
 
 ### E. E-mails estilizados — *pedido do fundador, 2026-08-26*
 
