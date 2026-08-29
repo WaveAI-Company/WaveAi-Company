@@ -2,8 +2,8 @@ import { useMemo } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
 import { useTheme, type Theme } from "../../theme";
-import { Avatar } from "../Avatar";
 import { Chip } from "../Chip";
+import { PhotoField } from "./PhotoField";
 
 /**
  * Cabeçalho do perfil: avatar, nome, e-mail e o selo do papel.
@@ -32,7 +32,7 @@ export function ProfileHeader({
 
   return (
     <View style={styles.cabecalho}>
-      <Avatar name={name} size={64} />
+      <PhotoField name={name} size={64} />
       <View style={styles.textos}>
         <Text style={styles.nome}>{name ?? fallback}</Text>
         <Text style={styles.email}>{email}</Text>

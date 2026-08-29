@@ -159,6 +159,7 @@ export default function DoctorProfileScreen() {
                     <PersonRow
                       key={link.id}
                       name={link.counterpart_display_name}
+                      photoUserId={link.counterpart_user_id}
                       fallback="Pessoa"
                       note={`autorizou em ${dataCurta(link.consented_at ?? link.created_at)}`}
                       tone={paciente.accentText}
