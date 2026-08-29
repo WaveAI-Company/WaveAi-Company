@@ -692,6 +692,21 @@ A decisão original (link com token opaco, 24 h / 30 min) foi tomada sobre esse 
 
 **Consequências:** campos de SMTP em `config.py`; `SmtpEmailSender` e um terceiro ramo em `build_email_sender`; testes que **não tocam a rede**; `infra/.env.example` e o runbook de portabilidade ganham as variáveis novas. Não altera rotas, telas, tokens, cópia dos e-mails nem o `AnalysisEngine`. Relaciona ADR-0023 e ADR-0026 (o mesmo padrão de segredo fail-closed), ADR-0024 (as respostas uniformes continuam), ADR-0027 (não fingir entrega que não houve) e ADR-0049 (onde o segredo vai viver).
 
+### Emenda à ADR-0044 (2026-08-29) — os e-mails ganham **alternativa HTML**, sempre pareada com o texto; zero asset remoto; cópia e layout na API
+**Status:** Proposta (2026-08-29) — vira Aceita no merge. Estende o contrato `EmailSender`; não revoga nada.
+
+**Contexto:** pedido do fundador — os e-mails saíam em texto puro e passam a ter visual (sistema "Maré"). O `EmailMessage` já suporta `multipart/alternative` sem trocar de biblioteca, então não entra dependência nova.
+
+**Decisão:**
+1. **O contrato `EmailSender.send` ganha um `html: str | None = None`** opcional. Extensão **retrocompatível**: quem não passa `html` segue mandando só texto. O `SmtpEmailSender` faz `set_content(texto)` e, havendo HTML, `add_alternative(html, subtype="html")`.
+2. **O texto viaja SEMPRE, ao lado do HTML.** Um cliente que não renderiza HTML não pode perder o **código** — senão a pessoa fica trancada fora da conta, o mesmo dano que o fail-closed da ADR-0044 existe para evitar. Por isso a cópia em texto dos e-mails **não muda**, e cada e-mail passa a ser um par `CorpoEmail(texto, html)`.
+3. **Zero asset remoto.** Nada de `<img src=http…>`, pixel de rastreio ou "ver no navegador". Imagem remota em e-mail **revela quando e se a mensagem foi aberta** — é rastreio, contra a privacidade do projeto (LGPD, Medical/72). A marca vai como **wordmark em texto/CSS**. O HTML é auto-contido: tabelas + estilo **inline** (o mundo real dos clientes de e-mail).
+4. **Cópia e layout continuam na API** (`app/emails.py`), não no adapter — item 1 da ADR-0044 intacto: trocar o provedor não toca em cópia nem em visual.
+
+**Não muda:** os **assuntos**, os **tokens**, as respostas uniformes (ADR-0024), as três exclusões do e-mail de convite (ADR-0043: sem recado, sem nome, sem link de ação), a ausência de claim clínica (Medical/71), o fail-closed e a escolha de adapter por ambiente. O `ConsoleEmailSender` de dev continua imprimindo o **texto** (é onde o dev lê o código).
+
+**Honestidade visual (ADR-0027):** o HTML **espelha** o texto, não inventa. Não afirma entrega, não simula ação (o convite segue sem botão de aceite), não promete o que não valida.
+
 ## ADR-0045 — Compartilhamento ao vivo é **ato do titular, por sessão**: interruptor que nasce desligado e corta na hora
 **Status:** Proposta (2026-08-09) — vira Aceita no merge. **Complementa a ADR-0039** (espectador ao vivo); não revoga nada dela.
 
