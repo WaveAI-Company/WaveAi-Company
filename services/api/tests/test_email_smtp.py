@@ -171,6 +171,38 @@ def test_cabecalhos_e_remetente(smtp_falso):
     assert "123456" in mensagem.get_content()
 
 
+def test_html_vira_multipart_com_as_duas_partes_e_o_codigo_nas_duas(smtp_falso):
+    """Emenda à ADR-0044: com `html`, a mensagem é multipart/alternative e o
+    código aparece nas DUAS partes — quem não renderiza HTML não pode perdê-lo."""
+    _sender().send(
+        to="a@example.com",
+        subject="Seu código",
+        body="Seu código é: 246810",
+        html="<table><tr><td>246810</td></tr></table>",
+    )
+
+    mensagem = smtp_falso.ultima.enviadas[0]
+    assert mensagem.get_content_type() == "multipart/alternative"
+
+    texto = mensagem.get_body(preferencelist=("plain",))
+    html = mensagem.get_body(preferencelist=("html",))
+    assert texto is not None and html is not None, "faltou uma das duas partes"
+    assert texto.get_content_type() == "text/plain"
+    assert html.get_content_type() == "text/html"
+    # O código sobrevive nas duas — é a asserção que discrimina o pareamento.
+    assert "246810" in texto.get_content()
+    assert "246810" in html.get_content()
+
+
+def test_sem_html_continua_so_texto(smtp_falso):
+    """Retrocompatível: sem `html`, nada de multipart — só text/plain."""
+    _sender().send(to="a@example.com", subject="s", body="123456")
+
+    mensagem = smtp_falso.ultima.enviadas[0]
+    assert mensagem.get_content_type() == "text/plain"
+    assert "123456" in mensagem.get_content()
+
+
 def test_assunto_com_acento_sobrevive_a_codificacao(smtp_falso):
     """Assunto acentuado tem de chegar legível, não como 'Ã­'."""
     _sender().send(to="a@example.com", subject="Verificação da conta", body="olá")

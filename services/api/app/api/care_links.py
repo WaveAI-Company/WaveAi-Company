@@ -113,16 +113,20 @@ def _avisar_contraparte(link: CareLink, sender: EmailSender) -> None:
     ganhou acesso. São situações diferentes e o texto acompanha.
     """
     if link.initiated_by is CareLinkParty.DOCTOR:
+        corpo = corpo_convite(de_profissional=True)
         sender.send(
             to=link.patient.email,
             subject=ASSUNTO_CONVITE,
-            body=corpo_convite(de_profissional=True),
+            body=corpo.texto,
+            html=corpo.html,
         )
     else:
+        corpo = corpo_acesso_autorizado()
         sender.send(
             to=link.doctor.email,
             subject=ASSUNTO_ACESSO_AUTORIZADO,
-            body=corpo_acesso_autorizado(),
+            body=corpo.texto,
+            html=corpo.html,
         )
 
 
@@ -256,12 +260,14 @@ def reenviar_convite(
         ) from None
 
     contraparte = link.patient if link.initiated_by is CareLinkParty.DOCTOR else link.doctor
+    corpo = corpo_convite(
+        de_profissional=link.initiated_by is CareLinkParty.DOCTOR, lembrete=True
+    )
     sender.send(
         to=contraparte.email,
         subject=ASSUNTO_CONVITE_LEMBRETE,
-        body=corpo_convite(
-            de_profissional=link.initiated_by is CareLinkParty.DOCTOR, lembrete=True
-        ),
+        body=corpo.texto,
+        html=corpo.html,
     )
     session.commit()
     return _para_resposta(link, user, care)
