@@ -31,6 +31,7 @@ quando o WaveAI passou a existir em produção. Guarda o que **está medido**, o
 |---|---|---|
 | Resposta quente | **154–317 ms** | três medições |
 | **Cold start** | **~24,5 s** | após 12 min ocioso; a 2ª requisição já veio em 173 ms |
+| Cold start (2ª medição, 2026-08-29) | **23,0 s** | `/health` após três dias sem deploy — confirma que os 24 s não foram um azar isolado |
 | Primeira resposta após deploy | 21,0 s | imagem nova em nó frio |
 | Migração no pipeline | ~35 s | |
 | Imagem da API (GHCR) | 245 MB | |
@@ -155,7 +156,15 @@ continuarem existentes na Cloudflare.
 Ordem acordada com o fundador em 2026-08-26. O critério é **proteger quem chegar
 primeiro** antes de ampliar alcance.
 
-### A. IP confiável e rate limit — *segurança, prioridade*
+> **Ordem de execução, revista em 2026-08-29: começar pela B, não pela A.** A
+> lista continua em ordem de prioridade *conceitual* — a A é segurança e por
+> isso vem escrita primeiro. Mas a B é de poucos minutos, tem benefício
+> imediato e evita que cada PR de documentação derrube a instância quente,
+> inclusive os PRs desta própria fila. E a A pode **encolher** para "confirmar e
+> documentar" se o teste mostrar que o IP real já chega: vale medir antes de
+> dimensionar a correção.
+
+### A. IP confiável e rate limit — *segurança, prioridade conceitual*
 
 [`client_ip`](../services/api/app/api/deps.py:308) usa o IP do **socket**. Atrás
 do ingress do Container Apps, esse IP é o do proxy da Azure.
@@ -170,7 +179,34 @@ visitante erra cinco senhas e tranca o login de todo mundo, indefinidamente. Se
 passar a vir de cabeçalho sem validação, vira falsificável. A correção é a
 mesma: tratar `X-Forwarded-For` **sabendo** que há um proxy confiável à frente.
 
-### B. Conferir a primeira execução do expurgo — *barato*
+**O teste que discrimina** (registrado aqui porque é fácil fazê-lo errado e
+concluir nada): esgotar as cinco tentativas no computador e, **dentro dos 60
+segundos**, tentar do celular em **4G — não no Wi-Fi de casa**. No Wi-Fi os dois
+aparelhos saem pelo mesmo IP público, e depois de 60 s a janela expira sozinha;
+nos dois casos o resultado é ambíguo e não prova nada.
+
+### B. `paths-ignore` no deploy — *poucos minutos, benefício imediato*
+
+O workflow de deploy roda em **todo** push na `main`, inclusive num PR que só
+mexe em `.md`. Cada um desses cria revisão nova do Container App: a instância
+quente é descartada, quem estiver usando paga o cold start (**23,0 s medidos em
+2026-08-29**) e a migração roda à toa.
+
+O filtro entra só no `deploy.yml` e cobre `**.md` e `Design/**` — as pastas
+puramente documentais foram **enumeradas**, e fora dos `.md` elas contêm apenas
+`Design/round1/*.html`, mockups que não entram em imagem alguma. Um push que
+misture documentação e código continua fazendo o deploy inteiro.
+
+**O `ci.yml` não recebe o filtro**, e isso é decisão, não esquecimento: seus jobs
+são checks exigidos pela proteção da `main` e, num PR filtrado, o check nunca
+reporta — o PR ficaria travado esperando um status que não vem. Gastar minutos de
+runner é mais barato que travar a `main`.
+
+**Efeito colateral aceito:** a imagem em produção passa a corresponder ao último
+commit que tocou **código**, não ao HEAD da `main`. O `workflow_dispatch` do
+workflow é a saída para forçar um deploy do HEAD.
+
+### C. Conferir a primeira execução do expurgo — *barato*
 
 O cron nunca disparou. Depois da primeira madrugada:
 
@@ -181,7 +217,7 @@ az containerapp job execution list -n caj-waveai-purge -g rg-waveai-prod -o tabl
 Fecha a última dívida da Política: hoje o texto público promete um prazo cuja
 rotina existe, foi testada, mas **nunca executou de verdade**.
 
-### C. Diagnóstico do cold start — *medir antes de mitigar*
+### D. Diagnóstico do cold start — *medir antes de mitigar*
 
 24,5 segundos, causa desconhecida. Se a maior parte for o Neon acordando, a
 solução é barata e não toca a Azure. Manter uma réplica sempre viva **está fora
@@ -191,7 +227,7 @@ mês, e o mês tem 730.
 Também é assunto de honestidade visual: uma tela girando por meio minuto sem
 dizer nada esconde o que está acontecendo (ADR-0027).
 
-### D. E-mails estilizados — *pedido do fundador, 2026-08-26*
+### E. E-mails estilizados — *pedido do fundador, 2026-08-26*
 
 Hoje os e-mails saem em texto puro. O adapter SMTP já usa `EmailMessage`, que
 suporta alternativa HTML sem trocar de biblioteca.
@@ -200,7 +236,7 @@ suporta alternativa HTML sem trocar de biblioteca.
 (cliente que não renderiza precisa continuar recebendo o código); onde a cópia
 vai morar; e se o visual segue o sistema "Maré" das telas.
 
-### E. Foto de perfil — *pedido do fundador, 2026-08-26*
+### F. Foto de perfil — *pedido do fundador, 2026-08-26*
 
 **Não é uma fatia de UI.** Traz decisões estruturais que precisam de ADR antes de
 qualquer código:
@@ -218,7 +254,7 @@ qualquer código:
 4. **Um profissional veria a foto do paciente?** Se sim, isso é leitura de dado
    do titular e cai na trilha auditada da ADR-0037.
 
-### F. Play Store — *o alvo declarado*
+### G. Play Store — *o alvo declarado*
 
 Ainda não começou: conta de desenvolvedor, build Android assinado, ficha da loja,
 classificação de conteúdo, teste fechado. A URL pública da Política — que a loja
