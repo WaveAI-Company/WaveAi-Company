@@ -37,16 +37,28 @@ quando o WaveAI passou a existir em produção. Guarda o que **está medido**, o
 | Imagem da API (GHCR) | 245 MB | |
 | Imagem da Analysis (GHCR) | 378 MB | |
 
-**Sobre os 24 segundos:** a hipótese inicial era que o cold start "normal" seria
-menor que o do deploy, porque não incluiria puxar imagem nova. **A medição
-desmentiu isso** — com a imagem já conhecida, deu igual ou pior. **Onde esse
-tempo é gasto continua desconhecido**: pode ser pull de camada ou boot da
-aplicação. Medir antes de mitigar.
+**Sobre os 24 segundos — DECOMPOSTO em 2026-08-29 (fatia D fechada).** A hipótese
+inicial era que o cold start "normal" seria menor que o do deploy; a medição
+desmentiu (deu igual ou pior). Os `ContainerAppSystemLogs_CL` mais a medição
+local do boot decompuseram o tempo, e **nenhuma das duas causas que dava para
+atacar é o gargalo**:
 
-*Atualização 2026-08-29:* a terceira hipótese desta lista era "o Neon acordando"
-(ele autossuspende após 5 min). **Está descartada** — `/health` não abre conexão
-com o banco e a app não tem nenhum gancho de inicialização que o faça. Detalhe e
-varredura na fatia **D** da §4.
+| Fase | O que é | Medido |
+|---|---|---|
+| Alocação de nó | Azure escala de zero: `AssigningReplica` → começar o pull | **~9–14 s** |
+| Pull da imagem | GHCR → nó (78 MB comprimidos, não os 245 MB) | **~4 s** (3,4–5,1 s em 5 amostras) |
+| Start + boot da app | contêiner sobe, `uvicorn` importa a app | **~2 s** (bate com o boot local isolado) |
+
+**O grosso é a plataforma alocando o nó** ao escalar de zero — mais a latência do
+KEDA e o intervalo do StartUp probe. É **inerente ao scale-to-zero do Container
+Apps no plano de consumo**, o preço da arquitetura custo-zero-em-repouso
+(ADR-0049), e **não controlamos** sem `min-replicas ≥ 1` — que o orçamento proíbe
+(100 h de instância ativa/mês, o mês tem 730). Encolher a imagem raspa 1–2 s do
+pull de 4 s: marginal. Detalhe na fatia **D** da §4.
+
+*A terceira hipótese antiga, "o Neon acordando"* (autossuspende após 5 min),
+também está descartada — `/health` não abre conexão e a app não tem gancho de
+inicialização que o faça.
 
 **Divergência não explicada:** as imagens construídas na máquina do dev deram
 362 MB e 817 MB, contra 245 MB e 378 MB no CI. Hipótese é cache de camadas
@@ -168,26 +180,36 @@ primeiro** antes de ampliar alcance.
 > documentar" se o teste mostrar que o IP real já chega: vale medir antes de
 > dimensionar a correção.
 
-### A. IP confiável e rate limit — *segurança, prioridade conceitual*
+### A. IP confiável e rate limit — *CORRIGIDO e VERIFICADO em produção (2026-08-29)*
 
-[`client_ip`](../services/api/app/api/deps.py:308) usa o IP do **socket**. Atrás
-do ingress do Container Apps, esse IP é o do proxy da Azure.
+`client_ip` usava o IP do **socket**, e o uvicorn, por padrão, reescrevia
+`request.client` a partir do `X-Forwarded-For` mais à esquerda — controlado por
+quem chama.
 
-**Medido em 2026-08-26:** o limitador funciona — cinco tentativas de login
-devolveram 401 e a sexta devolveu **429**. O que **não** foi medido é se o IP
-observado é o do visitante ou o do proxy.
+**A hipótese antiga ("vira global e tranca todo mundo") estava errada.** Medido
+em produção em 2026-08-29, com duas sondas que discriminam:
 
-**E isso não muda a conclusão:** nos dois cenários é preciso corrigir. Se o IP é
-o do proxy, o limite deixou de ser por pessoa e virou **global** — qualquer
-visitante erra cinco senhas e tranca o login de todo mundo, indefinidamente. Se
-passar a vir de cabeçalho sem validação, vira falsificável. A correção é a
-mesma: tratar `X-Forwarded-For` **sabendo** que há um proxy confiável à frente.
+| Sonda | `X-Forwarded-For` | Antes do fix | Depois do fix |
+|---|---|---|---|
+| Variado a cada request | forjado, diferente | **7×, 0 bloqueios** | **429 no 6º** |
+| Fixo | forjado, igual | 429 no 5º | 429 no 5º |
 
-**O teste que discrimina** (registrado aqui porque é fácil fazê-lo errado e
-concluir nada): esgotar as cinco tentativas no computador e, **dentro dos 60
-segundos**, tentar do celular em **4G — não no Wi-Fi de casa**. No Wi-Fi os dois
-aparelhos saem pelo mesmo IP público, e depois de 60 s a janela expira sozinha;
-nos dois casos o resultado é ambíguo e não prova nada.
+O limite chaveava pelo cabeçalho forjável → a defesa de brute-force estava
+**contornável** por rotação do cabeçalho (o oposto de "global", e pior). Para
+cliente honesto (sem o cabeçalho), o ingress preenche o XFF com o IP real e o
+limite por-pessoa já funcionava.
+
+**Correção (PR #190, emenda à ADR-0023):** `client_ip` lê o `X-Forwarded-For`
+cru e toma o elemento a `N` posições da direita — o IP que o proxy confiável
+anexa (`WAVEAI_API_TRUSTED_PROXY_HOPS`, default 1: só o ingress; a Cloudflare
+não fica na frente da API).
+
+**Verificado pós-deploy, com as duas provas que separam "1 salto" de "mais de
+um":** a sonda de XFF variado passou a **bloquear no 6º** (não é mais
+falsificável); e dois aparelhos em redes distintas **não** se bloquearam (o PC
+travou ao esgotar, o celular em 4G não) — logo a chave é o **cliente real**, não
+um IP interno constante. Se a Azure anexasse mais de um salto, o celular teria
+travado junto. A suposição de um salto se confirmou.
 
 ### B. `paths-ignore` no deploy — *poucos minutos, benefício imediato*
 
@@ -280,42 +302,50 @@ construção. Ou seja: no dia em que a migração quebrasse, o passo que existe 
 explicar a falha falharia junto, deixando um deploy abortado sem uma linha de
 log. Corrigido nesta mesma fatia.
 
-### D. Diagnóstico do cold start — *medir antes de mitigar*
+### D. Diagnóstico do cold start — *MEDIDO E FECHADO em 2026-08-29*
 
-23–24,5 segundos. Manter uma réplica sempre viva **está fora do orçamento**: a
-cota gratuita cobre cerca de 100 horas de instância ativa por mês, e o mês tem
-730.
+Cold start reproduzido e carimbado: **26,2 s** às 20:54 UTC, após ociosidade. A
+decomposição saiu de duas fontes que se confirmam.
 
-Também é assunto de honestidade visual: uma tela girando por meio minuto sem
-dizer nada esconde o que está acontecendo (ADR-0027).
+**Fonte 1 — boot da app isolado do pull (medição local).** `docker run` da imagem
+da API já presente (sem pull) até `/health=200`: **~1,8 s** (2,3 s na primeira, por
+warm-up do contêiner), três medições. Descarta a app como gargalo — e descarta,
+por inspeção, a hipótese "Neon acordando": [`/health`](../services/api/app/main.py:78)
+devolve dicionário estático, não abre conexão, e não há `lifespan`/`on_startup`/
+`@app.on_event` em `services/api/app/` (varrido). Nada toca o banco antes de a
+rota responder.
 
-**Uma das três hipóteses caiu, e sem precisar medir.** O texto acima dizia "pode
-ser pull de camada, boot do `uvicorn`, ou o Neon acordando". **O Neon está
-descartado:** [`/health`](../services/api/app/main.py:78) devolve um dicionário
-estático e não abre conexão, e não há `lifespan`, `on_startup` nem
-`@app.on_event` em lugar nenhum de `services/api/app/` (varrido em 2026-08-29) —
-nada toca o banco antes de a rota responder. Sobram o pull da imagem e o boot da
-aplicação. Foi inspeção de código, não medição, mas é conclusiva para esta
-pergunta.
+**Fonte 2 — `ContainerAppSystemLogs_CL` (medição em produção).** Os eventos de
+ciclo de vida de três cold starts reais (17:57, 19:00 e o scale 0→1 por tráfego às
+19:09) decompõem o tempo entre `AssigningReplica`, `PullingImage`/`PulledImage` e
+`ContainerStarted`:
 
-**Pista vinda do expurgo — pista, não medição.** O job do expurgo roda a **mesma
-imagem** da API e, do horário agendado até a linha do log, gastou **27,8 s
-(26/08), 19,3 s (27/08), 20,5 s (28/08) e 15,1 s (29/08)** — média ~20,7 s. Ele
-sobe o contêiner, importa a aplicação **e ainda conecta ao Neon**, tudo dentro de
-uma janela parecida com os 23–24,5 s que a API gasta para responder um endpoint
-que não toca banco. Isso reforça que o custo está no que os dois compartilham —
-subir o contêiner e importar a app — e não no `uvicorn` nem nas rotas.
+| Fase | Evento → evento | Medido |
+|---|---|---|
+| **Alocação de nó** | `AssigningReplica` → início do pull | **~9–14 s** |
+| **Pull da imagem** | duração na mensagem de `PulledImage` | **~4 s** (3,37 / 3,92 / 4,07 / 4,74 / 5,09) |
+| **Start + boot** | pull → `ContainerStarted` + probe | **~2 s** (bate com a Fonte 1) |
 
-**O que impede isso de ser medição:** o `StartTime` das quatro execuções é
-`04:00:00` exato, o que sugere ser o horário **agendado** e não o instante em que
-a réplica começou a rodar; a janela inclui, então, latência de agendamento
-desconhecida. E o job roda com **0,25 CPU / 0,5 GiB** contra **0,5 / 1,0 GiB** da
-API ([`provision.sh`](../infra/azure/provision.sh:200)), o que muda o tempo de
-boot. Serve para **ordenar hipóteses**, não para dimensionar correção.
+Duas leituras que a mensagem entrega de graça: o que se move no pull são **78 MB
+comprimidos** (`Image size: 81788928 bytes`), não os 245 MB descomprimidos; e o
+StartUp probe falha **uma vez** logo após o start (a app ainda não escuta) e passa
+na tentativa seguinte — daí o ~1 probe de atraso.
 
-O primeiro dia (27,8 s) é o mais lento dos quatro, o que é compatível com pull de
-imagem em nó frio — mas com N=4 e sem saber o que `StartTime` mede, é leitura de
-padrão, não resultado.
+**Conclusão:** o gargalo é a **alocação de nó pela Azure ao escalar de zero**
+(~9–14 s), mais a latência do KEDA e o intervalo do probe. É **inerente ao
+scale-to-zero do Container Apps no plano de consumo** — o preço da arquitetura
+custo-zero-em-repouso (ADR-0049). As duas causas que dava para atacar não são o
+gargalo: pull ~4 s (encolher a imagem raspa 1–2 s, marginal) e boot ~2 s.
+
+**A única alavanca que mataria o cold start — `min-replicas ≥ 1` — o orçamento
+proíbe** (100 h de instância ativa/mês contra 730 do mês). Então **não há correção
+de infra a fazer aqui**, e é honesto dizer isso em vez de otimizar a imagem para
+ganhar 1 s.
+
+**O que a fatia D vira, então: honestidade visual (ADR-0027), e é fatia de UI.**
+Já que o cold start não sai dentro do orçamento, a tela **não pode girar ~25 s em
+silêncio** afirmando nada — precisa dizer que o serviço está acordando. Fica
+registrado aqui e some da fila de infra; entra na fila de UI quando ela reabrir.
 
 ### E. E-mails estilizados — *pedido do fundador, 2026-08-26*
 
