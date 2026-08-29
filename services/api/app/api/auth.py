@@ -96,17 +96,19 @@ def _enviar_recuperacao_de_senha(
     """Emite o segredo de recuperação e manda **link e código** (o design pede
     os dois na mesma tela — `Design/round1/login.html`)."""
     emitido = tokens.emitir(user=user, purpose=SingleUseTokenPurpose.PASSWORD_RESET)
+    corpo = corpo_recuperacao(
+        codigo=emitido.codigo,
+        link=(
+            f"{settings.email_link_base_url.rstrip('/')}"
+            f"/reset-password?token={emitido.valor}"
+        ),
+        minutos=settings.single_use_token_ttl_minutes,
+    )
     sender.send(
         to=user.email,
         subject=ASSUNTO_RECUPERACAO,
-        body=corpo_recuperacao(
-            codigo=emitido.codigo,
-            link=(
-                f"{settings.email_link_base_url.rstrip('/')}"
-                f"/reset-password?token={emitido.valor}"
-            ),
-            minutos=settings.single_use_token_ttl_minutes,
-        ),
+        body=corpo.texto,
+        html=corpo.html,
     )
 
 
@@ -120,12 +122,14 @@ def _enviar_codigo_de_verificacao(
     inacessível para sempre.
     """
     emitido = tokens.emitir(user=user, purpose=SingleUseTokenPurpose.EMAIL_VERIFICATION)
+    corpo = corpo_verificacao(
+        codigo=emitido.codigo, minutos=settings.single_use_token_ttl_minutes
+    )
     sender.send(
         to=user.email,
         subject=ASSUNTO_VERIFICACAO,
-        body=corpo_verificacao(
-            codigo=emitido.codigo, minutos=settings.single_use_token_ttl_minutes
-        ),
+        body=corpo.texto,
+        html=corpo.html,
     )
 
 
@@ -225,10 +229,12 @@ def register(
             user=resultado.user, tokens=tokens, sender=sender, settings=settings
         )
     else:
+        corpo = corpo_cadastro_existente()
         sender.send(
             to=payload.email,
             subject=ASSUNTO_CADASTRO_EXISTENTE,
-            body=corpo_cadastro_existente(),
+            body=corpo.texto,
+            html=corpo.html,
         )
     session.commit()
     return CADASTRO_REGISTRADO
@@ -632,12 +638,14 @@ def request_email_change(
         # livre. Se dependesse disso, a presença do aviso contaria se o
         # endereço tem conta — e o titular é justamente quem não pode ficar sem
         # esse sinal quando alguém tenta mover a conta dele.
+        aviso = corpo_troca_aviso_endereco_antigo(
+            minutos=settings.single_use_token_ttl_minutes
+        )
         sender.send(
             to=user.email,
             subject=ASSUNTO_TROCA_AVISO,
-            body=corpo_troca_aviso_endereco_antigo(
-                minutos=settings.single_use_token_ttl_minutes
-            ),
+            body=aviso.texto,
+            html=aviso.html,
         )
         if service.endereco_disponivel(payload.new_email):
             emitido = tokens.emitir(
@@ -645,21 +653,25 @@ def request_email_change(
                 purpose=SingleUseTokenPurpose.EMAIL_CHANGE,
                 new_email=payload.new_email,
             )
+            corpo = corpo_troca_de_email(
+                codigo=emitido.codigo,
+                minutos=settings.single_use_token_ttl_minutes,
+            )
             sender.send(
                 to=payload.new_email,
                 subject=ASSUNTO_TROCA_DE_EMAIL,
-                body=corpo_troca_de_email(
-                    codigo=emitido.codigo,
-                    minutos=settings.single_use_token_ttl_minutes,
-                ),
+                body=corpo.texto,
+                html=corpo.html,
             )
         else:
             # Endereço ocupado: nenhum token, nenhum código — e quem fica
             # sabendo é a dona do endereço, não quem pediu (ADR-0024).
+            corpo = corpo_endereco_ja_em_uso()
             sender.send(
                 to=payload.new_email,
                 subject=ASSUNTO_ENDERECO_JA_EM_USO,
-                body=corpo_endereco_ja_em_uso(),
+                body=corpo.texto,
+                html=corpo.html,
             )
 
     session.commit()

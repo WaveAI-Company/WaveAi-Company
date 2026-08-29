@@ -112,12 +112,12 @@ class EmailRecorder:
     """
 
     def __init__(self) -> None:
-        self.enviados: list[dict[str, str]] = []
+        self.enviados: list[dict[str, str | None]] = []
 
-    def send(self, *, to: str, subject: str, body: str) -> None:
-        self.enviados.append({"to": to, "subject": subject, "body": body})
+    def send(self, *, to: str, subject: str, body: str, html: str | None = None) -> None:
+        self.enviados.append({"to": to, "subject": subject, "body": body, "html": html})
 
-    def para(self, email: str) -> list[dict[str, str]]:
+    def para(self, email: str) -> list[dict[str, str | None]]:
         return [e for e in self.enviados if e["to"] == email]
 
 
