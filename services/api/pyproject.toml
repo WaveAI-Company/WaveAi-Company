@@ -22,6 +22,10 @@ dependencies = [
     # Narrativa-LLM aterrada (N6-b, ADR-0035). Opcional em runtime: sem
     # ANTHROPIC_API_KEY o gateway usa o sumário determinístico (N5-c).
     "anthropic>=0.40",
+    # Foto de perfil (ADR-0050): a imagem recebida é RE-CODIFICADA no servidor —
+    # redimensiona, normaliza para JPEG e remove EXIF/GPS. É a re-codificação que
+    # mata polyglot e limpa metadado de localização de foto de rosto.
+    "pillow>=10.0",
 ]
 
 [project.optional-dependencies]

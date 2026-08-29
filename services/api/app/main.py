@@ -17,6 +17,7 @@ from .api import (
     auth_router,
     care_links_router,
     live_router,
+    profile_photos_router,
     results_router,
     stream_router,
 )
@@ -43,6 +44,7 @@ app.include_router(results_router)
 app.include_router(annotations_router)
 app.include_router(stream_router)
 app.include_router(live_router)
+app.include_router(profile_photos_router)
 
 
 #: Chaves do erro do pydantic que devolvem ao cliente o que ELE mandou.
