@@ -48,6 +48,13 @@ class Settings(BaseSettings):
     #: Tentativas permitidas por janela, por (IP + e-mail) e por IP.
     login_rate_limit_attempts: int = 5
     login_rate_limit_window_seconds: int = 60
+    #: Saltos de proxy confiáveis à frente da API (emenda à ADR-0023,
+    #: 2026-08-29). O IP real do cliente é o elemento do `X-Forwarded-For` a
+    #: esta distância da direita — o que o último proxy confiável anexa. Em
+    #: produção há UM salto: o ingress da Azure (a Cloudflare não fica na frente
+    #: da API — CNAME "DNS only"). Sem o cabeçalho, `client_ip` cai no socket,
+    #: então em dev/local sem proxy o valor aqui é indiferente.
+    trusted_proxy_hops: int = 1
 
     # -- Cookie do refresh no web (ADR-0021) ---------------------------------
     refresh_cookie_name: str = "waveai_refresh"
