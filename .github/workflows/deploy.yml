@@ -162,8 +162,30 @@ jobs:
               Succeeded) echo "migração concluída"; exit 0 ;;
               Failed|Degraded)
                 echo "::error::a migração falhou — produção continua na versão anterior"
+                # `--container` é OBRIGATÓRIO neste comando. Sem ele o `az`
+                # recusa a chamada, e o passo que existe para EXPLICAR a falha
+                # falhava junto: um deploy abortado sem uma linha de log, no
+                # exato momento em que o log é tudo o que se tem.
+                #
+                # Descoberto em 2026-08-29 rodando o mesmo comando à mão contra
+                # o job do expurgo. Este bloco nunca tinha sido exercitado —
+                # a migração nunca falhou desde que foi escrito — e o `|| true`
+                # do fim escondia o defeito por construção.
+                #
+                # O nome do contêiner vem do próprio job em vez de escrito à
+                # mão: hoje coincide com o nome do job, mas isso é convenção da
+                # CLI, não contrato.
+                conteiner="$(az containerapp job show \
+                  --name "$JOB_MIGRACAO" --resource-group "$GRUPO" \
+                  --query 'properties.template.containers[0].name' -o tsv)"
+                # Ainda pode vir vazio com "No replicas found for execution":
+                # `logs show` lê a réplica VIVA, e réplica de execução encerrada
+                # é reciclada. Aqui isso é improvável (consultamos segundos após
+                # a falha), mas quando acontecer o log histórico está no Log
+                # Analytics — ver `infra/README.md`.
                 az containerapp job logs show \
                   --name "$JOB_MIGRACAO" --resource-group "$GRUPO" \
+                  --container "${conteiner}" \
                   --execution "${execucao}" --tail 100 || true
                 exit 1 ;;
             esac
