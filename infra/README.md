@@ -251,10 +251,26 @@ registros apagados (retenção 365 dias, corte em …)`:
 az monitor log-analytics query -w "$(az containerapp env show -n cae-waveai-prod -g rg-waveai-prod --query properties.appLogsConfiguration.logAnalyticsConfiguration.customerId -o tsv)" --analytics-query "ContainerAppConsoleLogs_CL | where Log_s contains 'expurgo' | project TimeGenerated, ContainerAppName_s, Log_s | order by TimeGenerated desc | take 30" -o table
 ```
 
-**`az containerapp job logs show` não serve para execução passada:** ele lê a
-réplica **viva**, e réplica de execução encerrada é reciclada — a resposta é
-`No replicas found for execution`. Ele também exige `--container`, que não é
-opcional. Ambos medidos em 2026-08-29.
+**Três armadilhas, todas medidas em 2026-08-29:**
+
+1. **`az containerapp job logs show` não serve para execução passada.** Ele lê a
+   réplica **viva**, e réplica de execução encerrada é reciclada — a resposta é
+   `No replicas found for execution`. Ele também exige `--container`, que não é
+   opcional (foi este defeito, no `deploy.yml`, que a conferência revelou).
+2. **A consulta filtra pelo TEXTO do log, e não pelo nome do app, de propósito.**
+   Nas linhas de job a coluna `ContainerAppName_s` vem **vazia** — um
+   `where ContainerAppName_s == 'caj-waveai-purge'` devolveria zero linhas e
+   pareceria "o expurgo não rodou". Filtrar pela frase que o script imprime
+   procura diretamente a asserção que interessa.
+3. **A extensão `log-analytics` é preview** e a CLI pede confirmação para
+   instalá-la na primeira vez.
+
+Saída esperada hoje — uma linha por execução, com o corte exatamente 365 dias
+antes:
+
+```
+2026-08-29T04:00:17Z  expurgo da trilha pseudonimizada: 0 registros apagados (retenção 365 dias, corte em 2025-08-29T04:00:15…)
+```
 
 ## CI
 
