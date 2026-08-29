@@ -220,6 +220,42 @@ valor sem mudar o texto da Política seria guardar dado além do prometido.
 argumentos ao encontrar um que começa com hífen — foi o que recusou o `-c` do job
 de migração. Sem hífen, não há ambiguidade.
 
+#### Como conferir que o expurgo está mesmo rodando
+
+As execuções agendadas:
+
+```
+az containerapp job execution list -n caj-waveai-purge -g rg-waveai-prod -o table
+```
+
+**`Succeeded` não basta como prova, e a razão importa.** Com a retenção em 365
+dias, uma execução correta apaga **zero** registros hoje — e sair 0 sem apagar
+nada é o comportamento desejado. Um job que subisse com a imagem errada também
+sairia 0. Para separar os dois casos, confira **o que o job está configurado para
+rodar**:
+
+```
+az containerapp job show -n caj-waveai-purge -g rg-waveai-prod --query "properties.template.containers[].{nome:name, imagem:image, comando:command, args:args}" -o json
+```
+
+A `imagem` tem de ser `ghcr.io/waveai-company/waveai-api:<sha>` — se ainda for a
+provisória com que o `provision.sh` cria o job, o passo "Atualizar o job do
+expurgo" do pipeline não pegou e o cron dispara todo dia sem cumprir nada.
+Atenção ao alcance da resposta: ela descreve a configuração **de agora**, não a
+que cada execução passada usou.
+
+Para o log — a prova direta, com a linha `expurgo da trilha pseudonimizada: N
+registros apagados (retenção 365 dias, corte em …)`:
+
+```
+az monitor log-analytics query -w "$(az containerapp env show -n cae-waveai-prod -g rg-waveai-prod --query properties.appLogsConfiguration.logAnalyticsConfiguration.customerId -o tsv)" --analytics-query "ContainerAppConsoleLogs_CL | where Log_s contains 'expurgo' | project TimeGenerated, ContainerAppName_s, Log_s | order by TimeGenerated desc | take 30" -o table
+```
+
+**`az containerapp job logs show` não serve para execução passada:** ele lê a
+réplica **viva**, e réplica de execução encerrada é reciclada — a resposta é
+`No replicas found for execution`. Ele também exige `--container`, que não é
+opcional. Ambos medidos em 2026-08-29.
+
 ## CI
 
 `.github/workflows/ci.yml` roda em PR e push para `main`:
