@@ -310,3 +310,12 @@ class CareService:
     def acesso_ativo(self, *, doctor: User, patient_id: uuid.UUID) -> CareLink | None:
         """Base do RBAC: devolve o vínculo **ativo**, ou `None`."""
         return self._links.get_ativo(doctor_id=doctor.id, patient_id=patient_id)
+
+    def ha_vinculo_ativo(self, *, a: uuid.UUID, b: uuid.UUID) -> bool:
+        """Existe um vínculo ativo entre dois usuários, em qualquer direção?
+
+        Usado pela foto de perfil (ADR-0050), cuja visibilidade é mútua: não há
+        papel de "quem vê" — os dois lados de um vínculo ativo veem a foto do
+        outro, como já veem o `display_name`.
+        """
+        return self._links.get_ativo_entre(a_id=a, b_id=b) is not None

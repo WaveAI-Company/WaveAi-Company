@@ -46,6 +46,23 @@ class CareLinkRepository:
         )
         return self._session.scalars(stmt).one_or_none()
 
+    def get_ativo_entre(self, *, a_id: uuid.UUID, b_id: uuid.UUID) -> CareLink | None:
+        """Vínculo ativo entre dois usuários, **em qualquer direção**.
+
+        A foto de perfil é visível ao contraparte de um vínculo ativo, e a
+        visibilidade é mútua (ADR-0050): o papel de cada um está fixo no vínculo
+        (um é médico, o outro paciente), mas quem *olha* pode ser qualquer dos
+        dois — daí os dois arranjos possíveis de `{doctor, patient}`.
+        """
+        stmt = select(CareLink).where(
+            CareLink.status == CareLinkStatus.ACTIVE,
+            or_(
+                (CareLink.doctor_user_id == a_id) & (CareLink.patient_user_id == b_id),
+                (CareLink.doctor_user_id == b_id) & (CareLink.patient_user_id == a_id),
+            ),
+        )
+        return self._session.scalars(stmt).one_or_none()
+
     def listar_do_usuario(self, user_id: uuid.UUID) -> list[CareLink]:
         """Vínculos vivos em que o usuário participa (como médico ou paciente).
 

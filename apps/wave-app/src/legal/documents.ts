@@ -58,8 +58,8 @@ const CONTATO_SUPORTE = "waveai999.company@gmail.com";
 export const POLITICA_DE_PRIVACIDADE: DocumentoLegal = {
   slug: "privacidade",
   titulo: "Política de Privacidade",
-  versao: "1.2",
-  atualizadoEm: "2026-08-23",
+  versao: "1.3",
+  atualizadoEm: "2026-08-29",
   resumo:
     "O que o WaveAI coleta, por quanto tempo guarda, com quem compartilha e como você exerce seus direitos.",
   secoes: [
@@ -88,6 +88,7 @@ export const POLITICA_DE_PRIVACIDADE: DocumentoLegal = {
         "Medidas derivadas do sinal: potências por banda, alfa relativa, indicadores de qualidade e índices proprietários do fabricante do aparelho. Ficam cifradas no banco.",
         "Anotações de contexto que você escrever sobre uma sessão. Ficam cifradas no banco.",
         "Vínculos de acompanhamento com profissionais, e os convites que os originaram.",
+        "Foto de perfil, se você optar por enviar uma. É opcional, fica no nosso banco de dados (não em serviço de terceiros), é visível para você e para as pessoas com quem você tem um vínculo de acompanhamento ativo, e é apagada junto com a sua conta.",
         "Registros técnicos de acesso: quem leu quais dados seus, quando e quantos. Servem para você e para auditoria.",
         "Dados de sessão de login (tokens), para manter você conectado.",
       ],
@@ -191,7 +192,7 @@ export const POLITICA_DE_PRIVACIDADE: DocumentoLegal = {
       titulo: "Mudanças nesta política",
       paragrafos: [
         "Se este texto mudar de forma material, publicaremos a nova versão aqui, com data e número de versão novos, e avisaremos no aplicativo.",
-        "Esta é a versão 1.2, de 23 de agosto de 2026. Ela identifica o controlador e o canal de contato, que a versão anterior deixava em branco, e passa a dizer por quanto tempo cada tipo de dado é guardado. A versão 1.0 dizia que o encerramento da conta ainda não tinha caminho no aplicativo; desde a 1.1, tem.",
+        "Esta é a versão 1.3, de 29 de agosto de 2026. Ela acrescenta a foto de perfil, opcional, à lista do que se coleta. A versão 1.2 identificou o controlador e o canal de contato, que a anterior deixava em branco, e passou a dizer por quanto tempo cada tipo de dado é guardado. A versão 1.0 dizia que o encerramento da conta ainda não tinha caminho no aplicativo; desde a 1.1, tem.",
       ],
     },
   ],
@@ -200,8 +201,8 @@ export const POLITICA_DE_PRIVACIDADE: DocumentoLegal = {
 export const TERMOS_DE_USO: DocumentoLegal = {
   slug: "termos",
   titulo: "Termos de Uso",
-  versao: "1.1",
-  atualizadoEm: "2026-08-23",
+  versao: "1.2",
+  atualizadoEm: "2026-08-29",
   resumo:
     "As regras para usar o WaveAI: o que ele faz, o que você pode esperar dele e o que esperamos de você.",
   secoes: [
@@ -291,7 +292,7 @@ export const TERMOS_DE_USO: DocumentoLegal = {
       titulo: "Mudanças nestes Termos",
       paragrafos: [
         "Se estes Termos mudarem de forma material, publicaremos a nova versão aqui, com data e número de versão novos, e avisaremos no aplicativo.",
-        "Esta é a versão 1.1, de 23 de agosto de 2026. Ela diz que você pode litigar no foro do seu domicílio, o que a versão 1.0 deixava em branco, e acompanha a versão 1.2 da Política de Privacidade, que é parte destes Termos por referência.",
+        "Esta é a versão 1.2, de 29 de agosto de 2026. Ela acompanha a versão 1.3 da Política de Privacidade — que passou a incluir a foto de perfil opcional — e que é parte destes Termos por referência. A versão 1.1 dizia que você pode litigar no foro do seu domicílio, o que a versão 1.0 deixava em branco.",
       ],
     },
   ],
