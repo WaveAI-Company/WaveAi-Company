@@ -242,6 +242,61 @@ def test_login_e_limitado_por_tentativas(client: TestClient, monkeypatch: pytest
     assert bloqueado.status_code == 429
 
 
+def test_rate_limit_chaveia_pelo_ip_real_e_nao_pelo_prefixo_forjado(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+):
+    """Emenda à ADR-0023: a chave vem do ÚLTIMO elemento do X-Forwarded-For (o
+    que o ingress anexa), não do prefixo que o cliente manda.
+
+    Encena o que o ingress faz: um prefixo forjado FIXO à esquerda + o IP real
+    VARIADO à direita. Se o limite chaveasse pelo prefixo (ou pelo socket, como
+    o código antigo), a chave seria constante e o 4º pedido daria 429. Como
+    chaveia pelo IP real, que muda a cada pedido, nenhum é bloqueado.
+
+    É o teste que DISCRIMINA: com o código antigo (socket constante) ele falha,
+    porque o socket do TestClient não muda e o limite dispararia.
+    """
+    monkeypatch.setenv("WAVEAI_API_LOGIN_RATE_LIMIT_ATTEMPTS", "3")
+    reset_login_limiter()
+
+    email = _email()
+    _registrar(client, email)
+
+    for i in range(6):
+        resp = client.post(
+            "/auth/login",
+            json={"email": email, "password": "errada"},
+            headers={"X-Forwarded-For": f"forjado-fixo, 203.0.113.{i}"},
+        )
+        # 401 (credencial errada), nunca 429: cada IP real é um balde distinto.
+        assert resp.status_code == 401, f"pedido {i} devolveu {resp.status_code}"
+
+
+def test_rate_limit_bloqueia_com_ip_real_fixo(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+):
+    """Contraprova do teste acima: com o IP real (último elemento) FIXO, o
+    prefixo forjado variando não salva o atacante — o limite dispara."""
+    monkeypatch.setenv("WAVEAI_API_LOGIN_RATE_LIMIT_ATTEMPTS", "3")
+    reset_login_limiter()
+
+    email = _email()
+    _registrar(client, email)
+
+    for i in range(3):
+        client.post(
+            "/auth/login",
+            json={"email": email, "password": "errada"},
+            headers={"X-Forwarded-For": f"forjado-{i}, 198.51.100.7"},
+        )
+    bloqueado = client.post(
+        "/auth/login",
+        json={"email": email, "password": "errada"},
+        headers={"X-Forwarded-For": "forjado-outro, 198.51.100.7"},
+    )
+    assert bloqueado.status_code == 429
+
+
 def test_throttle_acontece_antes_de_validar_a_senha(
     client: TestClient, monkeypatch: pytest.MonkeyPatch
 ):

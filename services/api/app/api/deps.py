@@ -305,10 +305,34 @@ def paginacao(
     return Paginacao(limit=limit, offset=offset)
 
 
-def client_ip(request: Request) -> str:
-    """IP do cliente para o rate limiting.
+def client_ip(request: Request, settings: Settings | None = None) -> str:
+    """IP do cliente para o rate limiting, atrás de um proxy confiável.
 
-    Usa o socket; atrás de proxy reverso será preciso tratar `X-Forwarded-For`
-    de forma confiável (TODO(#19) — cabeçalho é falsificável sem proxy confiável).
+    Chave do rate limit do login (ADR-0023 + emenda de 2026-08-29). Atrás do
+    ingress do Container Apps, `request.client.host` é o IP do **proxy**, não o
+    do cliente — e o `X-Forwarded-For` mais à **esquerda** é escrito por quem
+    chama, logo falsificável. Medido em produção: rotacionar o cabeçalho furava
+    o limite (7 tentativas sem bloqueio); com cabeçalho fixo, bloqueava no 5º.
+
+    Com **um** salto de proxy confiável à frente (só o ingress; a Cloudflare
+    não fica na frente da API — CNAME "DNS only"), o IP real é o elemento que o
+    ingress **anexa**: o **último** do cabeçalho. Tudo à esquerda veio do
+    cliente e é descartado. O número de saltos é configurável
+    (`WAVEAI_API_TRUSTED_PROXY_HOPS`, default 1) para acompanhar a topologia sem
+    tocar no código.
+
+    Lê o cabeçalho **cru** de propósito: é imune ao que o middleware de proxy do
+    uvicorn tenha feito com `request.client`. Sem cabeçalho (dev/local sem
+    proxy), cai no socket.
     """
+    settings = settings or get_settings()
+    forwarded = request.headers.get("x-forwarded-for")
+    if forwarded:
+        hosts = [parte.strip() for parte in forwarded.split(",") if parte.strip()]
+        hops = max(1, settings.trusted_proxy_hops)
+        # `-hops`: o salto confiável conta da direita (com 1 salto, o último).
+        # Cadeia mais curta que o esperado = a requisição não passou por todos
+        # os proxies confiáveis → não confiar no cabeçalho, cair no socket.
+        if len(hosts) >= hops:
+            return hosts[-hops]
     return request.client.host if request.client else "desconhecido"
