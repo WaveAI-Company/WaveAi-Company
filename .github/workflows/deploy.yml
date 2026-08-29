@@ -9,6 +9,31 @@ name: Deploy
 on:
   push:
     branches: [main]
+    # Um PR só de documentação não muda uma linha de nenhuma imagem, mas o
+    # deploy criava revisão nova do Container App assim mesmo: a instância
+    # quente era descartada e quem estivesse usando pagava ~24 s de cold start
+    # (medido em 2026-08-29), além de uma migração rodada à toa.
+    #
+    # O filtro só pula quando TODOS os arquivos do push casam. Push que mistura
+    # `.md` e código continua fazendo o deploy inteiro.
+    #
+    # A lista foi enumerada, não estimada: fora dos `.md`, as pastas puramente
+    # documentais do repositório contêm apenas `Design/round1/*.html`, que são
+    # mockups estáticos e não entram em imagem alguma. `Documentation/`,
+    # `Medical/`, `DataScience/`, `Architecture/` e os arquivos `00–09` da raiz
+    # são só `.md`.
+    #
+    # CONSEQUÊNCIA QUE O DIFF NÃO MOSTRA: a imagem em produção passa a
+    # corresponder ao último commit que tocou CÓDIGO, e não necessariamente ao
+    # HEAD da `main`. É intencional — e é para isso que o `workflow_dispatch`
+    # abaixo serve quando se quiser forçar um deploy do HEAD.
+    #
+    # O `ci.yml` deliberadamente NÃO ganha este filtro: seus jobs são checks
+    # exigidos pela proteção da `main` e, num PR filtrado, o check nunca
+    # reporta — o PR ficaria travado em "esperando status" para sempre.
+    paths-ignore:
+      - '**.md'
+      - 'Design/**'
   # Sem gatilho manual, um deploy só aconteceria mexendo na `main` — o que é
   # exatamente o que ninguém quer fazer sob pressão para reverter algo.
   workflow_dispatch:
