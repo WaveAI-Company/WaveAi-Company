@@ -4,6 +4,7 @@ import { StyleSheet, Text, View } from "react-native";
 import { useFaixa, useTheme, type Theme } from "../../theme";
 import { Avatar } from "../Avatar";
 import { Skeleton } from "../Skeleton";
+import { useProfilePhoto } from "./useProfilePhoto";
 
 /**
  * Uma pessoa do outro lado de um vínculo: avatar, nome, contexto e a ação (ou
@@ -22,6 +23,7 @@ export function PersonRow({
   ended,
   status,
   action,
+  photoUserId,
 }: {
   name: string | null | undefined;
   /** Nome mostrado quando a contraparte não tem um. */
@@ -34,16 +36,23 @@ export function PersonRow({
   /** Recibo ou estado, à direita. Tem precedência sobre `action`. */
   status?: string;
   action?: ReactNode;
+  /**
+   * Id do contraparte para buscar a foto (ADR-0050). Só carrega em vínculo
+   * ativo: com o vínculo encerrado o servidor devolve 404 e a linha fica nas
+   * iniciais — o que é o correto, o acesso à foto morre com o vínculo.
+   */
+  photoUserId?: string | null;
 }) {
   const t = useTheme();
   const styles = useMemo(() => criarEstilos(t), [t]);
+  const { uri } = useProfilePhoto(ended ? null : photoUserId);
   // No celular a linha quebra e a ação cai sozinha embaixo — ali ela ocupa a
   // largura e se centra, em vez de ficar encostada à esquerda sob o avatar.
   const movel = useFaixa() === "movel";
 
   return (
     <View style={[styles.pessoa, ended && styles.atenuada]}>
-      <Avatar name={name} size={46} tone={tone} />
+      <Avatar name={name} size={46} tone={tone} photoUri={uri} />
       <View style={styles.textos}>
         <Text style={[styles.nome, ended && styles.riscado]}>{name ?? fallback}</Text>
         <Text style={styles.nota}>{note}</Text>
