@@ -176,6 +176,29 @@ Quando reentrar, **pluga atrás do `AnalysisEngine`** (novo `engine_version`), c
 **Alternativas:** adiar todo rate-limit (rejeitado — expõe DoS/brute-force desde o 1º dia); default de segredo "para facilitar o dev" (rejeitado — é assim que chaves vazam).
 **Consequências:** login robusto desde o MVP. Reforça ADR-0021 (JWT) e ADR-0020 (Argon2id). O limiter in-memory não compartilha estado entre réplicas até o #19.
 
+### Emenda à ADR-0023 (2026-08-29) — atrás do ingress, o IP do rate limit vem do **X-Forwarded-For de um único salto confiável**, e é o **último** elemento
+**Status:** Proposta (2026-08-29) — vira Aceita no merge. Não altera a decisão do limiter; corrige **de onde** ele tira a chave.
+
+**Contexto — o que a topologia mudou.** A ADR-0023 disse "por IP" quando o MVP era same-origin, sem proxy: `request.client.host` (o IP do socket) *era* o do cliente. A emenda à ADR-0049 (Container Apps) pôs um **ingress reverso** na frente da API, e a partir daí o IP do socket é o do proxy. O comentário do código (`client_ip` em `services/api/app/api/deps.py`) que dizia "usa o socket; atrás de proxy será preciso tratar `X-Forwarded-For`" **passou a mentir**: era verdade quando escrito e ficou falso quando a arquitetura mudou — sem o diff acusar (mesmo modo de falha do "em produção o MVP assume same-origin").
+
+**Medido em produção (2026-08-29), duas sondas que discriminam:**
+- `X-Forwarded-For` **variado** a cada requisição → **7 tentativas, 0 bloqueios**.
+- `X-Forwarded-For` **fixo** → bloqueia no 5º (`429`).
+
+Conclusão: em produção o limite **chaveia pelo `X-Forwarded-For` mais à esquerda**, que é **controlado por quem chama**. A proteção de brute-force está **falsificável**: rotacionando o cabeçalho, um atacante tenta senhas sem nunca ser barrado. Não é o cenário "vira global e tranca todo mundo" que se temia — é o oposto, e pior para força bruta. Para **cliente honesto** (que não manda o cabeçalho), o ingress preenche o XFF com o IP real e o limite **por-pessoa funciona** — confirmado por dois aparelhos com IPs reais distintos não se bloqueando.
+
+**Decisão:**
+1. **A chave do rate limit é derivada do `X-Forwarded-For`, não do socket**, e a leitura é do cabeçalho **cru** — imune ao que o middleware de proxy do servidor tenha feito com `request.client`.
+2. **Um único salto de proxy** à frente da API: só o ingress da Azure. A Cloudflare **não** entra (o CNAME de `api.` é "DNS only", requisito já registrado na emenda à ADR-0049). Logo o IP real é o **último** elemento do cabeçalho — o que o ingress anexa; tudo à esquerda é o que o cliente enviou, e é descartado.
+3. **O número de saltos é configurável** (`WAVEAI_API_TRUSTED_PROXY_HOPS`, default **1**), não uma constante mágica: se a topologia ganhar um salto, muda-se o número, não o código.
+4. **Sem cabeçalho, cai no socket** — preserva o comportamento local/dev, onde não há proxy.
+
+**Por que não `forwarded_allow_ips` do uvicorn:** exigiria conhecer a faixa de IP interna do ingress da Azure, que não é derivável do nosso código e muda com a plataforma. Resolver no app é robusto contra o que a nuvem faz por baixo, e testável 100% sintético.
+
+**Risco assumido e como se mede:** a decisão 2 supõe **um** salto. Se o ingress anexar mais de um, o "último elemento" vira um IP interno constante e o limite viraria global. Não dá para contar os saltos só lendo código (o app não ecoa o cabeçalho); a prova é **pós-deploy** — a sonda de XFF-variado deve passar a **bloquear no 5º** (não é mais falsificável) **e** dois aparelhos em redes distintas **não** podem se bloquear (a chave é o cliente real, não um IP interno). Os dois juntos discriminam; a janela de 60s limita o estrago se a suposição cair.
+
+**Continua valendo:** throttle antes do Argon2, erros genéricos e tempo uniforme (anti-enumeração, ADR-0024), limiter in-memory até o #19 (Redis com a 2ª réplica). Relaciona a emenda à ADR-0049 (ingress) e a ADR-0024.
+
 ---
 
 ## ADR-0024 — Consentimento e ciclo de vida do vínculo médico-paciente (CareLink)
