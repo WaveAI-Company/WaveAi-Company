@@ -19,7 +19,7 @@ quando o WaveAI passou a existir em produção. Guarda o que **está medido**, o
 | Banco | Neon (`sa-east-1`) | migrations até `0018` |
 | E-mail | SMTP do Gmail, senha de app | validado ponta a ponta |
 | Deploy | GitHub Actions, OIDC | build → migração → apps |
-| Expurgo | job cron diário, 04:00 UTC | **nunca executou ainda** |
+| Expurgo | job cron diário, 04:00 UTC | **4 execuções, todas `Succeeded`** (26–29/08) |
 
 **Cadastro e login reais foram exercitados pelo fundador em 2026-08-26** — é o
 único teste que prova o cookie `SameSite=Lax` viajando entre `waveai.tec.br` e
@@ -40,9 +40,13 @@ quando o WaveAI passou a existir em produção. Guarda o que **está medido**, o
 **Sobre os 24 segundos:** a hipótese inicial era que o cold start "normal" seria
 menor que o do deploy, porque não incluiria puxar imagem nova. **A medição
 desmentiu isso** — com a imagem já conhecida, deu igual ou pior. **Onde esse
-tempo é gasto continua desconhecido**: pode ser pull de camada, boot do
-`uvicorn`, ou o Neon acordando (ele autossuspende após 5 min). Medir antes de
-mitigar.
+tempo é gasto continua desconhecido**: pode ser pull de camada ou boot da
+aplicação. Medir antes de mitigar.
+
+*Atualização 2026-08-29:* a terceira hipótese desta lista era "o Neon acordando"
+(ele autossuspende após 5 min). **Está descartada** — `/health` não abre conexão
+com o banco e a app não tem nenhum gancho de inicialização que o faça. Detalhe e
+varredura na fatia **D** da §4.
 
 **Divergência não explicada:** as imagens construídas na máquina do dev deram
 362 MB e 817 MB, contra 245 MB e 378 MB no CI. Hipótese é cache de camadas
@@ -206,26 +210,112 @@ runner é mais barato que travar a `main`.
 commit que tocou **código**, não ao HEAD da `main`. O `workflow_dispatch` do
 workflow é a saída para forçar um deploy do HEAD.
 
-### C. Conferir a primeira execução do expurgo — *barato*
+### C. Conferir as execuções do expurgo — *CONFERIDO em 2026-08-29*
 
-O cron nunca disparou. Depois da primeira madrugada:
+**Quatro execuções, todas `Succeeded`**, nas datas e no horário previstos:
 
-```bash
-az containerapp job execution list -n caj-waveai-purge -g rg-waveai-prod -o table
+| Execução | Início | Status |
+|---|---|---|
+| `caj-waveai-purge-29799600` | 2026-08-29 04:00 UTC | Succeeded |
+| `caj-waveai-purge-29798160` | 2026-08-28 04:00 UTC | Succeeded |
+| `caj-waveai-purge-29796720` | 2026-08-27 04:00 UTC | Succeeded |
+| `caj-waveai-purge-29795280` | 2026-08-26 04:00 UTC | Succeeded |
+
+São exatamente as quatro madrugadas desde que o `provision.sh` criou o job (a
+PR #186 foi mergeada em 26/08 00:50 UTC, antes das 04:00 daquele dia). O cron
+`0 4 * * *` dispara, e a frase "nunca executou de verdade" saiu do §1.
+
+**O `Succeeded` sozinho não provaria isso, e vale registrar por quê.** Com a
+retenção em 365 dias ([`config.py:175`](../services/api/app/config.py:175), e
+fixada no próprio job em
+[`provision.sh:393`](../infra/azure/provision.sh:393)), uma execução **correta**
+apaga zero registros — o produto tem dias de vida. E sair com código 0 sem
+apagar nada é o comportamento desejado, dito com todas as letras no
+[docstring do script](../services/api/scripts/purge_audit_trail.py). Um job que
+tivesse subido com a imagem provisória também sairia 0. Os dois casos produzem o
+mesmo `Succeeded`.
+
+**O que separou os dois casos** foi conferir o que o job está configurado para
+rodar:
+
+```
+imagem:  ghcr.io/waveai-company/waveai-api:31e93ff…   (não a provisória)
+comando: python
+args:    scripts/purge_audit_trail.py
 ```
 
-Fecha a última dívida da Política: hoje o texto público promete um prazo cuja
-rotina existe, foi testada, mas **nunca executou de verdade**.
+Com a imagem certa e o comando certo, `Succeeded` passa a significar algo: o
+processo **saiu com código 0**, e o único caminho para isso no script é chegar ao
+fim depois do `commit`. Falha de ambiente ou de conexão sairia diferente de 0, e
+a execução apareceria como `Failed`.
+
+**E a prova direta veio depois, pelo Log Analytics** — o que dispensa a
+inferência acima. Uma linha por execução, com a asserção que discrimina:
+
+```
+2026-08-29T04:00:17Z  expurgo da trilha pseudonimizada: 0 registros apagados (retenção 365 dias, corte em 2025-08-29T04:00:15…)
+2026-08-28T04:00:22Z  expurgo da trilha pseudonimizada: 0 registros apagados (retenção 365 dias, corte em 2025-08-28T04:00:20…)
+2026-08-27T04:00:21Z  expurgo da trilha pseudonimizada: 0 registros apagados (retenção 365 dias, corte em 2025-08-27T04:00:19…)
+2026-08-26T04:00:29Z  expurgo da trilha pseudonimizada: 0 registros apagados (retenção 365 dias, corte em 2025-08-26T04:00:27…)
+```
+
+O corte cai **exatamente 365 dias** antes de cada execução. A rotina roda, lê o
+prazo do ambiente e conclui. **A Política deixou de dever prazo:** o texto
+público promete apagar em até 12 meses, e agora existe execução com log.
+
+`az containerapp job logs show` não serviu para isso: ele lê a réplica **viva**,
+e réplica de execução encerrada é reciclada (`No replicas found for execution`).
+O log histórico está no Log Analytics — consulta em
+[`infra/README.md`](../infra/README.md).
+
+**O que continua sendo raciocínio, não medição:** a configuração conferida acima
+é a **de agora**. A execução de 29/08 rodou com a imagem anterior (`b60b236`),
+da mesma origem e do mesmo pipeline — mas isso não foi medido por execução.
+
+**Achado colateral, corrigido junto:** o mesmo comando à mão revelou que
+`job logs show` exige `--container`, e o bloco de diagnóstico do `deploy.yml`
+não passava esse argumento. Aquele bloco só roda quando a migração falha —
+nunca falhou desde que foi escrito — e o `|| true` do fim escondia o defeito por
+construção. Ou seja: no dia em que a migração quebrasse, o passo que existe para
+explicar a falha falharia junto, deixando um deploy abortado sem uma linha de
+log. Corrigido nesta mesma fatia.
 
 ### D. Diagnóstico do cold start — *medir antes de mitigar*
 
-24,5 segundos, causa desconhecida. Se a maior parte for o Neon acordando, a
-solução é barata e não toca a Azure. Manter uma réplica sempre viva **está fora
-do orçamento**: a cota gratuita cobre cerca de 100 horas de instância ativa por
-mês, e o mês tem 730.
+23–24,5 segundos. Manter uma réplica sempre viva **está fora do orçamento**: a
+cota gratuita cobre cerca de 100 horas de instância ativa por mês, e o mês tem
+730.
 
 Também é assunto de honestidade visual: uma tela girando por meio minuto sem
 dizer nada esconde o que está acontecendo (ADR-0027).
+
+**Uma das três hipóteses caiu, e sem precisar medir.** O texto acima dizia "pode
+ser pull de camada, boot do `uvicorn`, ou o Neon acordando". **O Neon está
+descartado:** [`/health`](../services/api/app/main.py:78) devolve um dicionário
+estático e não abre conexão, e não há `lifespan`, `on_startup` nem
+`@app.on_event` em lugar nenhum de `services/api/app/` (varrido em 2026-08-29) —
+nada toca o banco antes de a rota responder. Sobram o pull da imagem e o boot da
+aplicação. Foi inspeção de código, não medição, mas é conclusiva para esta
+pergunta.
+
+**Pista vinda do expurgo — pista, não medição.** O job do expurgo roda a **mesma
+imagem** da API e, do horário agendado até a linha do log, gastou **27,8 s
+(26/08), 19,3 s (27/08), 20,5 s (28/08) e 15,1 s (29/08)** — média ~20,7 s. Ele
+sobe o contêiner, importa a aplicação **e ainda conecta ao Neon**, tudo dentro de
+uma janela parecida com os 23–24,5 s que a API gasta para responder um endpoint
+que não toca banco. Isso reforça que o custo está no que os dois compartilham —
+subir o contêiner e importar a app — e não no `uvicorn` nem nas rotas.
+
+**O que impede isso de ser medição:** o `StartTime` das quatro execuções é
+`04:00:00` exato, o que sugere ser o horário **agendado** e não o instante em que
+a réplica começou a rodar; a janela inclui, então, latência de agendamento
+desconhecida. E o job roda com **0,25 CPU / 0,5 GiB** contra **0,5 / 1,0 GiB** da
+API ([`provision.sh`](../infra/azure/provision.sh:200)), o que muda o tempo de
+boot. Serve para **ordenar hipóteses**, não para dimensionar correção.
+
+O primeiro dia (27,8 s) é o mais lento dos quatro, o que é compatível com pull de
+imagem em nó frio — mas com N=4 e sem saber o que `StartTime` mede, é leitura de
+padrão, não resultado.
 
 ### E. E-mails estilizados — *pedido do fundador, 2026-08-26*
 
