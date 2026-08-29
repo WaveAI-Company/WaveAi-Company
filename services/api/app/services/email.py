@@ -30,9 +30,13 @@ class EmailSendError(Exception):
 
 
 class EmailSender(Protocol):
-    """Contrato mínimo de envio — permite substituir por um duplo nos testes."""
+    """Contrato mínimo de envio — permite substituir por um duplo nos testes.
 
-    def send(self, *, to: str, subject: str, body: str) -> None:
+    `html` é a alternativa estilizada (emenda à ADR-0044): opcional e sempre ao
+    lado do `body` em texto, que é o que viaja quando o cliente não renderiza.
+    """
+
+    def send(self, *, to: str, subject: str, body: str, html: str | None = None) -> None:
         ...
 
 
@@ -44,13 +48,17 @@ class ConsoleEmailSender:
     mesmo ele é recusado fora de `development` (ver `build_email_sender`).
     """
 
-    def send(self, *, to: str, subject: str, body: str) -> None:
+    def send(self, *, to: str, subject: str, body: str, html: str | None = None) -> None:
+        # Imprime o TEXTO — é onde o dev (e a regex dos testes de fluxo) leem o
+        # código. A alternativa HTML só é anotada; despejar o HTML aqui poluiria
+        # o stdout sem ajudar quem depura o fluxo.
+        nota_html = "  [+ alternativa HTML]" if html else ""
         print(
             "\n".join(
                 [
                     "",
                     "=" * 72,
-                    "[e-mail de desenvolvimento — NÃO enviado de verdade]",
+                    f"[e-mail de desenvolvimento — NÃO enviado de verdade]{nota_html}",
                     f"Para:     {to}",
                     f"Assunto:  {subject}",
                     "-" * 72,
@@ -71,7 +79,7 @@ class NullEmailSender:
     estado que engole a mensagem em silêncio.
     """
 
-    def send(self, *, to: str, subject: str, body: str) -> None:
+    def send(self, *, to: str, subject: str, body: str, html: str | None = None) -> None:
         raise EmailSendError("nenhum provedor de e-mail configurado")
 
 
@@ -111,7 +119,7 @@ class SmtpEmailSender:
         self._timeout = timeout
         self._sender = sender
 
-    def send(self, *, to: str, subject: str, body: str) -> None:
+    def send(self, *, to: str, subject: str, body: str, html: str | None = None) -> None:
         # EmailMessage cuida do cabeçalho e da codificação: assunto com acento
         # vira MIME encoded-word sozinho, e é isso que evita "AssÃ­" na caixa de
         # entrada de quem recebe.
@@ -119,7 +127,12 @@ class SmtpEmailSender:
         mensagem["From"] = self._sender
         mensagem["To"] = to
         mensagem["Subject"] = subject
+        # Texto primeiro: `set_content` é a parte que SEMPRE viaja. `add_alternative`
+        # empacota como multipart/alternative (emenda à ADR-0044) — o cliente
+        # escolhe, e quem não renderiza HTML fica com o texto e o código.
         mensagem.set_content(body)
+        if html:
+            mensagem.add_alternative(html, subtype="html")
 
         try:
             with smtplib.SMTP(self._host, self._port, timeout=self._timeout) as smtp:
