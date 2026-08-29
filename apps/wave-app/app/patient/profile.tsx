@@ -166,6 +166,7 @@ export default function PatientProfileScreen() {
                     <PersonRow
                       key={link.id}
                       name={link.counterpart_display_name}
+                      photoUserId={link.counterpart_user_id}
                       fallback="Profissional de bem-estar"
                       note={`profissional de bem-estar · acesso desde ${dataCurta(
                         link.consented_at ?? link.created_at,
