@@ -923,3 +923,18 @@ A decisão original (link com token opaco, 24 h / 30 min) foi tomada sobre esse 
 **Alternativas consideradas:** (a) **Azure Blob Storage** — **proibida** pela emenda à ADR-0049 (cria a amarra de fornecedor que a saída barata evita); (b) **objeto S3-compatível** (ex.: Cloudflare R2, já que a Cloudflare hospeda o site) — **portável e a resposta certa em escala comercial**, mas é serviço novo a provisionar e obriga apagar o objeto explicitamente na exclusão (a CASCADE não o alcança); preterida agora por over-engineering para a fase de demonstração; (c) **guardar sem re-codificar**, só validando tipo e tamanho — rejeitada: manteria GPS no EXIF e a superfície de polyglot/bomba; (d) **auditar a visualização** pela ADR-0037 — rejeitada por inconsistência com o `display_name` e por ruído de trilha (ponto de veto do item 6); (e) **foto privada do dono** — rejeitada pelo fundador: sem visibilidade mútua a função não tem propósito.
 
 **Consequências:** nova migration (`profile_photos`, com upgrade **e** downgrade exercitados); Pillow em `pyproject.toml`; rotas de upload/troca/remoção da própria foto e de leitura da foto do contraparte de vínculo ativo; edição do texto da Política (`apps/wave-app/src/legal/documents.ts`) e bump de `versao` e `TERMS_VERSION` (`services/api/app/legal.py`); testes 100% sintéticos (imagens geradas em memória). **O texto legal exige revisão jurídica**, que segue pendente (registrada). Relaciona ADR-0024 (o vínculo consentido gate a visão do contraparte), ADR-0037 (fronteira **não** estendida), ADR-0047 (CASCADE apaga), ADR-0048 (reaceite) e ADR-0049 (sem fornecedor novo; Postgres fica onde está).
+
+### Emenda à ADR-0050 (2026-08-29) — o cliente usa `expo-image-picker` (dependência nativa) para escolher a imagem no mobile; web usa `input file`
+**Status:** Proposta (2026-08-29) — vira Aceita no merge. Registra uma **dependência nativa** nova, como a regra exige.
+
+**Contexto:** a UI da foto precisa deixar a pessoa **escolher** uma imagem. No web isso é um `<input type="file">`, sem dependência. No iOS/Android exige um seletor nativo. Informado de que "web-first sem dependência nova" era possível (exibir em todo lugar, enviar só no web por ora), o fundador **decidiu ir cross-platform já** (2026-08-29) — a função de enviar deve funcionar no aparelho, não só no site.
+
+**Decisão:**
+1. **`expo-image-picker`** entra como dependência (via `expo install`, versão casada com o SDK 57), com o plugin em `app.json` e a permissão de **galeria** (`photosPermission`). Só leitura da galeria; sem câmera nesta fatia.
+2. **Nada de processamento no cliente.** O servidor já re-codifica, redimensiona e limpa EXIF (ADR-0050, item 2). O cliente **só escolhe e envia os bytes** — sem `expo-image-manipulator`, sem redimensionar duas vezes. Menos superfície, e a normalização mora num lugar só.
+3. **Exibir é livre de dependência**, em todas as plataformas: o app busca a foto autenticada e a mostra como `data URI` no `Avatar`. Isso não depende do picker.
+4. **Seleção por plataforma:** `.web` usa `input file`; `.native` usa o `expo-image-picker`. Mesmo contrato, dois arquivos — o padrão de *capability por plataforma* que a captura de EEG já segue.
+
+**O que se abre mão / não se verifica:** (a) o fluxo **mobile não é testável neste ambiente** — validação no aparelho é do fundador; o fluxo **web é verificável** aqui (typecheck, contraste, build, DOM); (b) a dependência nativa entra **antes** da fatia da Play Store (G), então o build nativo ainda não a exercita de ponta a ponta; (c) `expo-image-picker` traz permissão de galeria à ficha da loja — item a declarar na G.
+
+**Relaciona:** ADR-0050 (a foto em si), e o padrão de *capability por plataforma* da captura de EEG.
