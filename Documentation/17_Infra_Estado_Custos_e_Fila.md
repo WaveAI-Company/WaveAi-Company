@@ -19,7 +19,7 @@ quando o WaveAI passou a existir em produção. Guarda o que **está medido**, o
 | Banco | Neon (`sa-east-1`) | migrations até `0018` |
 | E-mail | SMTP do Gmail, senha de app | validado ponta a ponta |
 | Deploy | GitHub Actions, OIDC | build → migração → apps |
-| Expurgo | job cron diário, 04:00 UTC | **nunca executou ainda** |
+| Expurgo | job cron diário, 04:00 UTC | **4 execuções, todas `Succeeded`** (26–29/08) |
 
 **Cadastro e login reais foram exercitados pelo fundador em 2026-08-26** — é o
 único teste que prova o cookie `SameSite=Lax` viajando entre `waveai.tec.br` e
@@ -206,16 +206,63 @@ runner é mais barato que travar a `main`.
 commit que tocou **código**, não ao HEAD da `main`. O `workflow_dispatch` do
 workflow é a saída para forçar um deploy do HEAD.
 
-### C. Conferir a primeira execução do expurgo — *barato*
+### C. Conferir as execuções do expurgo — *CONFERIDO em 2026-08-29*
 
-O cron nunca disparou. Depois da primeira madrugada:
+**Quatro execuções, todas `Succeeded`**, nas datas e no horário previstos:
 
-```bash
-az containerapp job execution list -n caj-waveai-purge -g rg-waveai-prod -o table
+| Execução | Início | Status |
+|---|---|---|
+| `caj-waveai-purge-29799600` | 2026-08-29 04:00 UTC | Succeeded |
+| `caj-waveai-purge-29798160` | 2026-08-28 04:00 UTC | Succeeded |
+| `caj-waveai-purge-29796720` | 2026-08-27 04:00 UTC | Succeeded |
+| `caj-waveai-purge-29795280` | 2026-08-26 04:00 UTC | Succeeded |
+
+São exatamente as quatro madrugadas desde que o `provision.sh` criou o job (a
+PR #186 foi mergeada em 26/08 00:50 UTC, antes das 04:00 daquele dia). O cron
+`0 4 * * *` dispara, e a frase "nunca executou de verdade" saiu do §1.
+
+**O `Succeeded` sozinho não provaria isso, e vale registrar por quê.** Com a
+retenção em 365 dias ([`config.py:175`](../services/api/app/config.py:175), e
+fixada no próprio job em
+[`provision.sh:393`](../infra/azure/provision.sh:393)), uma execução **correta**
+apaga zero registros — o produto tem dias de vida. E sair com código 0 sem
+apagar nada é o comportamento desejado, dito com todas as letras no
+[docstring do script](../services/api/scripts/purge_audit_trail.py). Um job que
+tivesse subido com a imagem provisória também sairia 0. Os dois casos produzem o
+mesmo `Succeeded`.
+
+**O que separou os dois casos** foi conferir o que o job está configurado para
+rodar:
+
+```
+imagem:  ghcr.io/waveai-company/waveai-api:31e93ff…   (não a provisória)
+comando: python
+args:    scripts/purge_audit_trail.py
 ```
 
-Fecha a última dívida da Política: hoje o texto público promete um prazo cuja
-rotina existe, foi testada, mas **nunca executou de verdade**.
+Com a imagem certa e o comando certo, `Succeeded` passa a significar algo: o
+processo **saiu com código 0**, e o único caminho para isso no script é chegar ao
+fim depois do `commit`. Falha de ambiente ou de conexão sairia diferente de 0, e
+a execução apareceria como `Failed`.
+
+**O que NÃO foi verificado, e continua em aberto:** a linha do log
+(`expurgo da trilha pseudonimizada: 0 registros apagados (retenção 365 dias,
+corte em …)`), que seria a prova direta em vez de inferida. Ela não veio porque
+`az containerapp job logs show` lê a réplica **viva** e réplica de execução
+encerrada é reciclada — a resposta é `No replicas found for execution`. O
+caminho para o log histórico é o Log Analytics, e a consulta está registrada em
+[`infra/README.md`](../infra/README.md). Também vale lembrar que a configuração
+conferida acima é a **de agora**: a execução de 29/08 rodou com a imagem
+anterior (`b60b236`), da mesma origem e do mesmo pipeline, mas isso é raciocínio,
+não medição.
+
+**Achado colateral, corrigido junto:** o mesmo comando à mão revelou que
+`job logs show` exige `--container`, e o bloco de diagnóstico do `deploy.yml`
+não passava esse argumento. Aquele bloco só roda quando a migração falha —
+nunca falhou desde que foi escrito — e o `|| true` do fim escondia o defeito por
+construção. Ou seja: no dia em que a migração quebrasse, o passo que existe para
+explicar a falha falharia junto, deixando um deploy abortado sem uma linha de
+log. Corrigido nesta mesma fatia.
 
 ### D. Diagnóstico do cold start — *medir antes de mitigar*
 
