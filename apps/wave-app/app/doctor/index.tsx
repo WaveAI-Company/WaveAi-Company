@@ -11,6 +11,7 @@ import {
 import { ApiError } from "../../src/auth/api";
 import { useAuth } from "../../src/auth/AuthContext";
 import { Avatar } from "../../src/components/Avatar";
+import { PersonAvatar } from "../../src/components/profile/PersonAvatar";
 import { Button } from "../../src/components/Button";
 import { Chip } from "../../src/components/Chip";
 import { Disclaimer } from "../../src/components/Disclaimer";
@@ -477,7 +478,12 @@ function CartaoPessoa({
           os 2px e o contorno do `.pcard:hover` simplesmente não acontecia. */}
       <Panel grow style={estado.hovered ? { borderColor: accent } : undefined}>
         <View style={styles.cabeca}>
-          <Avatar name={link.counterpart_display_name} size={46} tone={accent} />
+          <PersonAvatar
+            name={link.counterpart_display_name}
+            size={46}
+            tone={accent}
+            userId={link.counterpart_user_id}
+          />
           <View style={styles.cabecaTextos}>
             <Text style={styles.nome}>{link.counterpart_display_name ?? "Paciente"}</Text>
             <Text style={styles.nota}>
