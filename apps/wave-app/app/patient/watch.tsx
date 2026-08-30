@@ -21,7 +21,7 @@ export default function PatientWatchScreen() {
     <ScreenContainer largura="app">
       <ScreenHeading
         title="Assistir ao vivo"
-        lead="Acompanhe, pelo navegador, a captação que está acontecendo no seu celular. As features são calculadas no servidor."
+        lead="Acompanhe, pelo navegador, a captação que está acontecendo no seu celular. As medidas são calculadas pelo WaveAI."
       />
       <LiveSpectator
         subscribe={watchMyLive}

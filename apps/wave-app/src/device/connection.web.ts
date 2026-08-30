@@ -16,6 +16,17 @@ export const deviceConnection: DeviceConnection = {
   supported: false,
   transport: "none",
 
+  // O web não capta (ADR-0038/P6-b): não há rádio a consultar nem a ligar.
+  // Responder `false` nos dois mantém a tela num caminho só — ela pergunta
+  // antes de oferecer o botão, e aqui a resposta é sempre "não dá".
+  async bluetoothLigado(): Promise<boolean> {
+    return false;
+  },
+
+  async pedirBluetooth(): Promise<boolean> {
+    return false;
+  },
+
   async listDevices(): Promise<DeviceInfo[]> {
     return [];
   },

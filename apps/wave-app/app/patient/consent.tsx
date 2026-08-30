@@ -57,7 +57,7 @@ const SECOES: Secao[] = [
     itens: [
       [
         { forte: "Resultados por sessão" },
-        ", calculados no servidor: composição por banda (delta, teta, alfa, beta, gama), data e duração.",
+        ": composição por banda (delta, teta, alfa, beta, gama), data e duração.",
       ],
       [
         { forte: "Qualidade do sinal" },
