@@ -185,14 +185,23 @@ export default function DoctorInviteScreen() {
         </Text>
         <View style={styles.enviadoAcoes}>
           <View style={styles.enviadoBotao}>
+            {/* `bloco`: os dois botões PREENCHEM o slot e ficam de largura
+                igual. Sem isto, o padrão largura-de-conteúdo deixa o rótulo mais
+                curto ("Voltar ao início") encostado à esquerda do slot, e a
+                dupla parece descentralizada (medido em 700 e 1200 px). */}
             <Button
               label="Enviar outro convite"
               onPress={() => setEnviadoPara(null)}
               variant="secondary"
+              largura="bloco"
             />
           </View>
           <View style={styles.enviadoBotao}>
-            <Button label="Voltar ao início" onPress={() => router.push("/doctor")} />
+            <Button
+              label="Voltar ao início"
+              onPress={() => router.push("/doctor")}
+              largura="bloco"
+            />
           </View>
         </View>
       </View>
