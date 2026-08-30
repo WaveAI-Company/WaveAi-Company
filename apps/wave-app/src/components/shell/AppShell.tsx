@@ -9,6 +9,7 @@ import {
   useWindowDimensions,
   View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useAuth } from "../../auth/AuthContext";
 import { activeHref, routeTitle } from "../../navigation/navItems";
@@ -248,6 +249,7 @@ function Header({
   const styles = useMemo(() => criarEstilos(t), [t]);
   const { user } = useAuth();
   const { accent } = useRoleAccent();
+  const insets = useSafeAreaInsets();
 
   // Os dois papéis têm perfil desde a B'; o avatar leva ao do papel de quem
   // está logado. Antes ele só aparecia para o paciente, porque o profissional
@@ -255,7 +257,19 @@ function Header({
   const perfil = user?.role === "doctor" ? "/doctor/profile" : "/patient/profile";
 
   return (
-    <View style={styles.header}>
+    /**
+     * O topo cresce pela área reservada do sistema — no celular, a faixa do
+     * relógio e dos ícones. `paddingTop` **e** `height` somados: só o padding
+     * empurraria o conteúdo para fora de uma altura fixa, e a barra ficaria
+     * espremida em vez de descer inteira. No web e em aparelhos sem recorte,
+     * `insets.top` é 0 e nada muda.
+     */
+    <View
+      style={[
+        styles.header,
+        { height: HEADER_H + insets.top, paddingTop: insets.top },
+      ]}
+    >
       {onBack ? (
         <BotaoIcone label="Voltar" icone="chevronLeft" onPress={onBack} styles={styles} />
       ) : null}

@@ -2,6 +2,7 @@ import { Slot, useRouter, useSegments } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
 import { ActivityIndicator, StyleSheet, View } from "react-native";
+import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { AuthProvider, homeForRole, useAuth } from "../src/auth/AuthContext";
 import { AppShell } from "../src/components/shell/AppShell";
@@ -94,13 +95,24 @@ function BarraDeStatus() {
 
 export default function RootLayout() {
   return (
-    <AuthProvider>
-      {/* ThemeProvider depende de useAuth (sotaque por papel), então fica dentro. */}
-      <ThemeProvider>
-        <BarraDeStatus />
-        <RouteGuard />
-      </ThemeProvider>
-    </AuthProvider>
+    /**
+     * `SafeAreaProvider` embrulha tudo porque quem precisa das medidas é o
+     * header, lá embaixo na árvore.
+     *
+     * A dependência já vinha instalada com o `expo-router`, mas **nunca havia
+     * sido usada**: o header do app subia até o topo físico da tela e ficava
+     * atrás do relógio e dos ícones do sistema no celular. No web isso não
+     * aparecia — lá os insets são zero, e por isso o problema passou.
+     */
+    <SafeAreaProvider>
+      <AuthProvider>
+        {/* ThemeProvider depende de useAuth (sotaque por papel), então fica dentro. */}
+        <ThemeProvider>
+          <BarraDeStatus />
+          <RouteGuard />
+        </ThemeProvider>
+      </AuthProvider>
+    </SafeAreaProvider>
   );
 }
 

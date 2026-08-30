@@ -73,4 +73,25 @@ export interface DeviceConnection {
   listDevices(): Promise<DeviceInfo[]>;
   connect(deviceId: string, handlers: DeviceHandlers): Promise<void>;
   disconnect(): Promise<void>;
+
+  /**
+   * O rádio Bluetooth está ligado?
+   *
+   * Existe para a tela **perguntar antes** em vez de descobrir pelo erro. Sem
+   * isto, quem tocasse "Procurar" com o Bluetooth desligado recebia
+   * `Bluetooth mAdapter is not enabled` — a mensagem crua da biblioteca, em
+   * inglês e com nome de variável dentro.
+   */
+  bluetoothLigado(): Promise<boolean>;
+
+  /**
+   * Pede para ligar o rádio. Devolve `true` se ficou ligado.
+   *
+   * **Não é simétrico entre as plataformas, e isso é do sistema, não nosso:**
+   * no Android dá para pedir e o próprio sistema mostra o diálogo; no iOS
+   * nenhum app liga o Bluetooth de fora — o máximo é levar a pessoa aos
+   * Ajustes. Por isso o retorno é `boolean` e não `void`: quem chama precisa
+   * saber se ainda tem de instruir a pessoa a fazer à mão.
+   */
+  pedirBluetooth(): Promise<boolean>;
 }
