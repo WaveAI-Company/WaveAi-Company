@@ -6,11 +6,10 @@ Uso (da raiz do repo):
 Existe para o path de ~2 KB da onda nao ser copiado a mao — e para que
 trocar o desenho seja rodar tres scripts, nao reeditar um componente.
 """
+import json
 import pathlib
 
 RAIZ = pathlib.Path(__file__).resolve().parents[2]
-
-import json
 
 GEO = str(RAIZ / "Design" / "logos_icones" / "geometria.json")
 DEST = str(RAIZ / "apps" / "wave-app" / "src" / "components" / "brand" / "Logo.tsx")

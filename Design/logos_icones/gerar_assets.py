@@ -5,15 +5,14 @@ Uso (da raiz do repo):
 
 Depende so de Pillow — a mesma que a API ja usa para a foto de perfil.
 """
-import pathlib
-
-RAIZ = pathlib.Path(__file__).resolve().parents[2]
-
 import json
 import math
 import os
+import pathlib
 
 from PIL import Image, ImageDraw
+
+RAIZ = pathlib.Path(__file__).resolve().parents[2]
 
 DEST = str(RAIZ / "apps" / "wave-app" / "assets")
 GEO = str(RAIZ / "Design" / "logos_icones" / "geometria.json")
@@ -95,7 +94,9 @@ def mascara(lado, completa, zona):
     d = ImageDraw.Draw(m)
     k = lado / VB * zona
     off = lado * (1 - zona) / 2
-    tr = lambda p: (p[0] * k + off, p[1] * k + off)
+    def tr(p):
+        return (p[0] * k + off, p[1] * k + off)
+
     if completa:
         for anel in G["anel"]["paths"]:
             d.polygon([tr(p) for p in amostrar_path(anel)], fill=255)
@@ -134,7 +135,7 @@ def ladrilho(lado, completa=False, zona=0.76):
 
 def recorte(lado, cor, completa=False, zona=0.58):
     L = lado * SS
-    out = Image.new("RGBA", (L, L), rgb(cor) + (255,))
+    out = Image.new("RGBA", (L, L), (*rgb(cor), 255))
     out.putalpha(mascara(L, completa, zona))
     return out.resize((lado, lado), Image.LANCZOS)
 
@@ -198,13 +199,16 @@ saidas = [
     ("android-icon-foreground.png", recorte(432, TINTA, zona=ZONA_ADAPT), "app.json:17 — frente"),
     ("android-icon-background.png",
      gradiente(432 * SS, A1, A2).resize((432, 432), Image.LANCZOS), "app.json:18 — fundo"),
-    ("android-icon-monochrome.png", recorte(432, "#FFFFFF", zona=ZONA_ADAPT), "app.json:19 — Material You"),
+    ("android-icon-monochrome.png", recorte(432, "#FFFFFF", zona=ZONA_ADAPT),
+     "app.json:19 — Material You"),
 ]
 for nome, img, nota in saidas:
     caminho = os.path.join(DEST, nome)
     antes = os.path.getsize(caminho) if os.path.exists(caminho) else 0
     img.save(caminho, optimize=True)
-    print(f"  {nome:<30} {img.size[0]}x{img.size[1]}  {antes / 1024:>6.1f} -> {os.path.getsize(caminho) / 1024:.1f} KB   {nota}")
+    depois = os.path.getsize(caminho) / 1024
+    print(f"  {nome:<30} {img.size[0]}x{img.size[1]}  "
+          f"{antes / 1024:>6.1f} -> {depois:.1f} KB   {nota}")
 
 print("\ncontraste da arte sobre as pontas do gradiente (WCAG 1.4.11: 3:1 para nao-texto):")
 print(f"  {TINTA} sobre {A1} (accentPatient): {razao(TINTA, A1)}:1")

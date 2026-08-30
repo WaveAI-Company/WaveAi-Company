@@ -5,15 +5,14 @@ Uso (da raiz do repo):
 
 Depende so de Pillow — a mesma que a API ja usa para a foto de perfil.
 """
-import pathlib
-
-RAIZ = pathlib.Path(__file__).resolve().parents[2]
-
 import json
 import math
+import pathlib
 from collections import Counter, deque
 
 from PIL import Image, ImageChops, ImageDraw, ImageFilter
+
+RAIZ = pathlib.Path(__file__).resolve().parents[2]
 
 CAMINHO = str(RAIZ / "Design" / "logos_icones" / "logo_escura.png")
 SAIDA = str(RAIZ / "Design" / "logos_icones")
@@ -25,7 +24,7 @@ PASSOS_RECONSTRUCAO = 16
 
 
 def dist2(a, b):
-    return sum((x - y) ** 2 for x, y in zip(a, b))
+    return sum((x - y) ** 2 for x, y in zip(a, b, strict=True))
 
 
 def mascara(im, fundo, limiar=LIMIAR):
@@ -55,7 +54,9 @@ def componentes(m, minimo=200):
                 i = q.popleft()
                 x, y = i % w, i // w
                 pix.append((x, y))
-                for j, ok in ((i - 1, x > 0), (i + 1, x < w - 1), (i - w, y > 0), (i + w, y < h - 1)):
+                vizinhos = ((i - 1, x > 0), (i + 1, x < w - 1),
+                            (i - w, y > 0), (i + w, y < h - 1))
+                for j, ok in vizinhos:
                     if ok and px[j % w, j // w] and not vis[j]:
                         vis[j] = 1
                         q.append(j)
@@ -85,9 +86,18 @@ def ajustar_circulo(pts):
     n = len(pts)
     sx = sy = sxx = syy = sxy = sxxx = syyy = sxyy = sxxy = 0.0
     for x, y in pts:
-        sx += x; sy += y; sxx += x * x; syy += y * y; sxy += x * y
-        sxxx += x * x * x; syyy += y * y * y; sxyy += x * y * y; sxxy += x * x * y
-    c11 = 2 * (sx * sx - n * sxx); c12 = 2 * (sx * sy - n * sxy); c22 = 2 * (sy * sy - n * syy)
+        sx += x
+        sy += y
+        sxx += x * x
+        syy += y * y
+        sxy += x * y
+        sxxx += x * x * x
+        syyy += y * y * y
+        sxyy += x * y * y
+        sxxy += x * x * y
+    c11 = 2 * (sx * sx - n * sxx)
+    c12 = 2 * (sx * sy - n * sxy)
+    c22 = 2 * (sy * sy - n * syy)
     r1 = sx * (sxx + syy) - n * (sxxx + sxyy)
     r2 = sy * (sxx + syy) - n * (sxxy + syyy)
     det = c11 * c22 - c12 * c12
@@ -107,12 +117,15 @@ def contorno(m):
     for y in range(h):
         for x in range(w):
             if px[x, y]:
-                inicio = (x, y); break
+                inicio = (x, y)
+                break
         if inicio:
             break
     if not inicio:
         return []
-    borda = [inicio]; atual = inicio; d = 0
+    borda = [inicio]
+    atual = inicio
+    d = 0
     for _ in range(8 * w * h):
         achou = False
         for k in range(8):
@@ -120,7 +133,11 @@ def contorno(m):
             dx, dy = VIZ[di]
             nx, ny = atual[0] + dx, atual[1] + dy
             if 0 <= nx < w and 0 <= ny < h and px[nx, ny]:
-                atual = (nx, ny); d = di; borda.append(atual); achou = True; break
+                atual = (nx, ny)
+                d = di
+                borda.append(atual)
+                achou = True
+                break
         if not achou:
             break
         if atual == inicio and len(borda) > 2:
@@ -136,7 +153,8 @@ def rdp(pts, eps):
     manter[0] = manter[-1] = True
     while pilha:
         i, j = pilha.pop()
-        ax, ay = pts[i]; bx, by = pts[j]
+        ax, ay = pts[i]
+        bx, by = pts[j]
         dx, dy = bx - ax, by - ay
         norm = math.hypot(dx, dy) or 1.0
         pior, idx = 0.0, -1
@@ -147,18 +165,24 @@ def rdp(pts, eps):
                 pior, idx = d, k
         if pior > eps and idx > 0:
             manter[idx] = True
-            pilha.append((i, idx)); pilha.append((idx, j))
-    return [p for p, mk in zip(pts, manter) if mk]
+            pilha.append((i, idx))
+            pilha.append((idx, j))
+    return [p for p, mk in zip(pts, manter, strict=True) if mk]
 
 
 def para_bezier(pts, T):
     n = len(pts)
     d = [f"M {T(*pts[0])[0]} {T(*pts[0])[1]}"]
     for i in range(n):
-        p0 = pts[(i - 1) % n]; p1 = pts[i]; p2 = pts[(i + 1) % n]; p3 = pts[(i + 2) % n]
+        p0 = pts[(i - 1) % n]
+        p1 = pts[i]
+        p2 = pts[(i + 1) % n]
+        p3 = pts[(i + 2) % n]
         c1 = (p1[0] + (p2[0] - p0[0]) / 6, p1[1] + (p2[1] - p0[1]) / 6)
         c2 = (p2[0] - (p3[0] - p1[0]) / 6, p2[1] - (p3[1] - p1[1]) / 6)
-        a = T(*c1); b = T(*c2); c = T(*p2)
+        a = T(*c1)
+        b = T(*c2)
+        c = T(*p2)
         d.append(f"C {a[0]} {a[1]} {b[0]} {b[1]} {c[0]} {c[1]}")
     d.append("Z")
     return " ".join(d)
@@ -229,8 +253,10 @@ VB, MARGEM = 512.0, 24.0
 
 
 def enquadrar(pix):
-    x0 = min(p[0] for p in pix); x1 = max(p[0] for p in pix)
-    y0 = min(p[1] for p in pix); y1 = max(p[1] for p in pix)
+    x0 = min(p[0] for p in pix)
+    x1 = max(p[0] for p in pix)
+    y0 = min(p[1] for p in pix)
+    y1 = max(p[1] for p in pix)
     lado = max(x1 - x0, y1 - y0)
     esc = (VB - 2 * MARGEM) / lado
     offx = MARGEM - x0 * esc + (lado - (x1 - x0)) * esc / 2
@@ -305,8 +331,8 @@ print(f"\nnormalizado: ponto r={geo['ponto']['r']} | onda {len(geo['onda'])} cha
 # ---------------- conferencia, peca por peca ----------------
 def iou(a, b_):
     da, db = list(a.getdata()), list(b_.getdata())
-    i = sum(1 for x, y in zip(da, db) if x and y)
-    u = sum(1 for x, y in zip(da, db) if x or y)
+    i = sum(1 for x, y in zip(da, db, strict=True) if x and y)
+    u = sum(1 for x, y in zip(da, db, strict=True) if x or y)
     return i / u if u else 0.0
 
 
@@ -328,7 +354,7 @@ cpar = Image.new("L", (W, H), 0)
 dp = ImageDraw.Draw(cpar)
 rr = R + espessura / 2
 for a, b_ in arcos_ang:
-    dp.arc([cx - rr, cy - rr, cx + rr, cy + rr], a, b_, fill=255, width=int(round(espessura)))
+    dp.arc([cx - rr, cy - rr, cx + rr, cy + rr], a, b_, fill=255, width=round(espessura))
 print(f"  anel  (arco parametrico, descartado):      IoU {iou(cpar, anel_m):.1%}")
 
 cp = Image.new("L", (W, H), 0)
