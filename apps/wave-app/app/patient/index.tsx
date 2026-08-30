@@ -13,7 +13,7 @@ import {
 } from "../../src/api/results";
 import { useAuth } from "../../src/auth/AuthContext";
 import { capturaDisponivel } from "../../src/capture/availability";
-import { Avatar } from "../../src/components/Avatar";
+import { PersonAvatar } from "../../src/components/profile/PersonAvatar";
 import { Button } from "../../src/components/Button";
 import { Chip } from "../../src/components/Chip";
 import { Disclaimer } from "../../src/components/Disclaimer";
@@ -366,6 +366,7 @@ export default function PatientHomeScreen() {
             <LinhaAcompanhante
               key={v.id}
               nome={v.counterpart_display_name}
+              userId={v.counterpart_user_id}
               onPress={() => router.push("/patient/profile")}
             />
           ))}
@@ -507,9 +508,12 @@ export default function PatientHomeScreen() {
  */
 function LinhaAcompanhante({
   nome,
+  userId,
   onPress,
 }: {
   nome: string | null | undefined;
+  /** Id do profissional para a foto (ADR-0050); vínculo ativo. */
+  userId: string;
   onPress: () => void;
 }) {
   const t = useTheme();
@@ -535,7 +539,7 @@ function LinhaAcompanhante({
           : null,
       ]}
     >
-      <Avatar name={nome} tone={t.colors.accentDoctorText} />
+      <PersonAvatar name={nome} tone={t.colors.accentDoctorText} userId={userId} />
       <View style={styles.acompanhanteTextos}>
         <Text style={styles.acompanhanteNome}>{nome ?? "Profissional de bem-estar"}</Text>
         <Text style={styles.acompanhanteNota}>
