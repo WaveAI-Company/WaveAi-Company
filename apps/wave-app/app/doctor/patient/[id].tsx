@@ -387,7 +387,7 @@ export default function PatientDetailScreen() {
             {tile(
               "Qualidade média do sinal",
               typeof qualidadeMedia === "number" ? formatNumber(qualidadeMedia, 2) : "—",
-              "índice 0–1 calculado no servidor",
+              "índice de 0 a 1, calculado pelo WaveAI",
             )}
             {tile("Última sessão", ultima ? formatDate(ultima.created_at) : "—")}
             {/* O quarto tile do mockup (`painel-profissional.html:419`): o
@@ -542,7 +542,7 @@ export default function PatientDetailScreen() {
               <Text style={styles.rastro}>
                 {[
                   ultima?.engine_version ? `motor ${ultima.engine_version}` : null,
-                  "medidas calculadas no servidor WaveAI",
+                  "medidas calculadas pelo WaveAI",
                   "cada leitura registrada em trilha de acesso",
                 ]
                   .filter(Boolean)

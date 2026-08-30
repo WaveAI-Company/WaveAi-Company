@@ -104,6 +104,20 @@ export const deviceConnection: DeviceConnection = {
   supported: true,
   transport: "ble",
 
+  async bluetoothLigado(): Promise<boolean> {
+    return (await obterGerenciador().state()) === State.PoweredOn;
+  },
+
+  /**
+   * Sempre `false`: **o iOS não deixa um app ligar o Bluetooth**. Não é
+   * limitação da biblioteca — é da plataforma, e nenhum app faz isso. O que
+   * resta é instruir a pessoa a ligar pela Central de Controle ou pelos
+   * Ajustes, e é o que a tela faz quando recebe este `false`.
+   */
+  async pedirBluetooth(): Promise<boolean> {
+    return false;
+  },
+
   async listDevices(): Promise<DeviceInfo[]> {
     const manager = obterGerenciador();
     await aguardarLigado(manager);

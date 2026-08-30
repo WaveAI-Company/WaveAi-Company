@@ -33,6 +33,7 @@ import { SIMULADOR_HABILITADO } from "../../src/capture/availability";
 import { describeContact } from "../../src/device/contactQuality";
 import { deviceConnection } from "../../src/device/connection";
 import type { DeviceInfo, Esense } from "../../src/device/DeviceConnection";
+import { mensagemBluetooth } from "../../src/device/mensagens";
 import { SignalSimulator } from "../../src/mocks/signalSimulator";
 import {
   larguras,
@@ -105,6 +106,19 @@ export default function PatientLiveScreen() {
   /** Histórico de composição por banda para o gráfico ao vivo (P1-c). */
   const [bandHistory, setBandHistory] = useState<Array<Record<string, number>>>([]);
   const [erro, setErro] = useState<string | null>(null);
+  /**
+   * Falha do aparelho, mostrada **junto do botão** que a causou.
+   *
+   * Separada de `erro` porque o lugar importa: a mensagem de Bluetooth nascia
+   * no topo da página, fora da dobra no celular, e quem tocava "Procurar" não
+   * a via. Aqui ela fica no painel "Aparelho", ao alcance do olho.
+   */
+  const [erroAparelho, setErroAparelho] = useState<string | null>(null);
+  /**
+   * `null` enquanto não se sabe — e "não sei" não é "desligado". Antes de
+   * responder, a tela não promete nem um botão nem o outro.
+   */
+  const [btLigado, setBtLigado] = useState<boolean | null>(null);
   const [sessionId, setSessionId] = useState<string | null>(null);
   /**
    * Compartilhamento ao vivo desta sessão (ADR-0045). Nasce DESLIGADO a cada
@@ -264,14 +278,76 @@ export default function PatientLiveScreen() {
     cronometro.current = setInterval(() => setDuracao((s) => s + 1), 1000);
   }
 
+  /**
+   * Nomes que aparecem mais de uma vez na lista.
+   *
+   * É o que decide se o endereço do aparelho precisa ser mostrado: com nomes
+   * distintos ele é só ruído; com nomes iguais ("MindWave Mobile" duas vezes)
+   * ele é a única forma de escolher o certo.
+   */
+  const nomesRepetidos = useMemo(() => {
+    const vistos = new Set<string>();
+    const repetidos = new Set<string>();
+    for (const d of aparelhos) {
+      if (vistos.has(d.name)) repetidos.add(d.name);
+      vistos.add(d.name);
+    }
+    return repetidos;
+  }, [aparelhos]);
+
+  /** Relê o estado do rádio. Chamada ao abrir e depois de cada tentativa. */
+  const conferirBluetooth = useCallback(async () => {
+    if (!deviceConnection.supported) return false;
+    try {
+      const ligado = await deviceConnection.bluetoothLigado();
+      setBtLigado(ligado);
+      return ligado;
+    } catch {
+      // Não saber o estado não é motivo para travar a tela: deixa `null` e a
+      // pessoa segue podendo tentar procurar.
+      setBtLigado(null);
+      return false;
+    }
+  }, []);
+
+  useEffect(() => {
+    void conferirBluetooth();
+  }, [conferirBluetooth]);
+
+  /**
+   * Pede para ligar o rádio. No Android o sistema mostra o diálogo; no iOS
+   * ninguém liga por fora, então a tela instrui em vez de fingir que tentou.
+   */
+  async function ligarBluetooth() {
+    setErroAparelho(null);
+    try {
+      const ligou = await deviceConnection.pedirBluetooth();
+      setBtLigado(ligou);
+      if (ligou) {
+        await procurarAparelhos();
+      } else {
+        setErroAparelho(
+          "Ligue o Bluetooth pelas configurações do aparelho e toque em procurar.",
+        );
+      }
+    } catch (e) {
+      setErroAparelho(mensagemBluetooth(e));
+    }
+  }
+
   async function procurarAparelhos() {
-    setErro(null);
+    setErroAparelho(null);
+    // Pergunta antes: com o rádio desligado, `listDevices` falharia com o
+    // texto cru da biblioteca, e a tela já sabe fazer melhor que isso.
+    if (deviceConnection.supported && !(await conferirBluetooth())) {
+      setErroAparelho("O Bluetooth está desligado. Ligue-o para procurar o aparelho.");
+      return;
+    }
     try {
       setAparelhos(await deviceConnection.listDevices());
     } catch (e) {
-      setErro(
-        e instanceof Error ? e.message : "não foi possível listar os aparelhos",
-      );
+      setErroAparelho(mensagemBluetooth(e));
+      void conferirBluetooth();
     }
   }
 
@@ -452,7 +528,11 @@ export default function PatientLiveScreen() {
           real rotularia dado verdadeiro como fictício — enganoso na direção
           oposta, e igualmente errado. */}
       {SIMULADOR_HABILITADO && !usandoAparelho ? <MockBadge /> : null}
-      {erro ? <Text style={styles.erro}>{erro}</Text> : null}
+      {/* O erro do aparelho saiu daqui: no celular esta linha fica acima da
+          dobra, e quem tocava "Procurar" não via a mensagem que o próprio
+          toque acabara de gerar. Agora ela mora ao lado do botão, no painel
+          "Aparelho". Este ponto só mostra o que não tem dono na tela. */}
+      {erro && !erroAparelho ? <Text style={styles.erro}>{erro}</Text> : null}
 
       {/* ===== herói + trilho lateral ===== */}
       <View style={[styles.grade, emColunas && styles.gradeLinha]}>
@@ -500,7 +580,7 @@ export default function PatientLiveScreen() {
               </View>
               <Text style={[styles.heroiNota, emColunas && styles.heroiNotaSobre]}>
                 A figura acima marca que a sessão está correndo; ela não desenha o seu
-                sinal. As medidas são calculadas no servidor e aparecem rotuladas abaixo.
+                sinal. As medidas são calculadas pelo WaveAI e aparecem rotuladas abaixo.
               </Text>
             </View>
 
@@ -569,20 +649,39 @@ export default function PatientLiveScreen() {
 
           {!ativo && deviceConnection.supported ? (
             <Panel title="Aparelho" eyebrow="bluetooth">
-              <Button
-                label="Procurar aparelhos pareados"
-                onPress={procurarAparelhos}
-                accent={aparelhoAccent.accent}
-              />
-              {aparelhos.map((d) => (
-                <ItemAparelho
-                  key={d.id}
-                  nome={d.name}
-                  id={d.id}
+              {/* Com o rádio desligado, o botão diz o que fazer AGORA. Antes
+                  ele oferecia procurar, a busca falhava, e a explicação
+                  aparecia fora da tela. `btLigado === false` e não `!btLigado`:
+                  enquanto a resposta não chega o estado é `null`, e aí o botão
+                  certo é o de procurar, não o de ligar. */}
+              {btLigado === false ? (
+                <Button
+                  label="Ligar Bluetooth"
+                  onPress={ligarBluetooth}
                   accent={aparelhoAccent.accent}
-                  onPress={() => void iniciarComAparelho(d)}
                 />
-              ))}
+              ) : (
+                <Button
+                  label="Procurar aparelhos pareados"
+                  onPress={procurarAparelhos}
+                  accent={aparelhoAccent.accent}
+                />
+              )}
+              {erroAparelho ? <Text style={styles.erro}>{erroAparelho}</Text> : null}
+              <View style={styles.listaAparelhos}>
+                {aparelhos.map((d) => (
+                  <ItemAparelho
+                    key={d.id}
+                    nome={d.name}
+                    // O endereço só aparece quando o nome NÃO basta para
+                    // distinguir: ele é ruído de hardware para quem lê, mas é
+                    // a única saída quando dois aparelhos se chamam igual.
+                    id={nomesRepetidos.has(d.name) ? d.id : undefined}
+                    accent={aparelhoAccent.accent}
+                    onPress={() => void iniciarComAparelho(d)}
+                  />
+                ))}
+              </View>
             </Panel>
           ) : null}
         </View>
@@ -800,7 +899,7 @@ export default function PatientLiveScreen() {
                 value={compartilhando}
                 onChange={alternarCompartilhamento}
                 label="Deixar quem me acompanha ver esta captação"
-                description="Somente as medidas calculadas no servidor — nunca o sinal bruto."
+                description="Somente as medidas calculadas pelo WaveAI — nunca o sinal bruto."
               />
               <Text style={styles.notaPainel}>
                 {compartilhando
@@ -871,7 +970,7 @@ export default function PatientLiveScreen() {
           encerrada?.report?.engine_version
             ? `motor ${encerrada.report.engine_version}`
             : "motor wave_eeg",
-          "métricas calculadas no servidor WaveAI",
+          "medidas calculadas pelo WaveAI",
           "janela de 2 s · 512 Hz · canal FP1",
           sessionId ? `sessão ${sessionId.slice(0, 8)}…` : null,
         ]
@@ -895,7 +994,8 @@ function ItemAparelho({
   onPress,
 }: {
   nome: string;
-  id: string;
+  /** Endereço do aparelho — só quando o nome não distingue (ver chamador). */
+  id?: string;
   accent: string;
   onPress: () => void;
 }) {
@@ -908,7 +1008,10 @@ function ItemAparelho({
       {...handlers}
       style={estado.pressed ? { opacity: 0.85 } : null}
     >
-      <Card title={nome} subtitle={id} accent={accent} />
+      {/* `contorno`: a lista é de itens escolhíveis, e sem borda fechada eles
+          se fundiam num bloco só — via-se apenas a faixa colorida da esquerda,
+          e não onde cada um começava. */}
+      <Card title={nome} subtitle={id} accent={accent} contorno />
     </Pressable>
   );
 }
@@ -1199,6 +1302,11 @@ const criarEstilos = (t: Theme) =>
       ...t.typography.body,
       color: t.colors.dangerText,
       fontSize: 14,
+    },
+    // Respiro entre os aparelhos da lista: encostados, os cartões liam como um
+    // bloco só. O `gap` do `Panel` cuida do espaço até o botão acima.
+    listaAparelhos: {
+      gap: t.spacing.sm,
     },
     rastro: {
       ...t.typography.caption,

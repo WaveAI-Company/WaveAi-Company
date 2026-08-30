@@ -85,6 +85,19 @@ export const deviceConnection: DeviceConnection = {
   supported: Platform.OS === "android",
   transport: "spp",
 
+  async bluetoothLigado(): Promise<boolean> {
+    if (Platform.OS !== "android") return false;
+    return RNBluetoothClassic.isBluetoothEnabled();
+  },
+
+  async pedirBluetooth(): Promise<boolean> {
+    if (Platform.OS !== "android") return false;
+    // O Android mostra o diálogo do sistema; a promessa resolve com o que a
+    // pessoa escolheu. Se ela recusar, devolve `false` e a tela continua
+    // pedindo — em vez de tentar procurar e falhar com erro de biblioteca.
+    return RNBluetoothClassic.requestBluetoothEnabled();
+  },
+
   async listDevices(): Promise<DeviceInfo[]> {
     if (Platform.OS !== "android") throw new DeviceUnsupportedError();
     await garantirPermissoes();
