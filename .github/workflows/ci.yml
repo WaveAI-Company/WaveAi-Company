@@ -14,7 +14,7 @@ jobs:
         working-directory: packages/wave-eeg
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.11"
       - name: Install
@@ -52,7 +52,7 @@ jobs:
       WAVEAI_API_RESULT_ENCRYPTION_KEY: sRzpGGMSAff35dzYCgpeXTyI2rMfVLkVtN_nu5bhwTE=
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.11"
       - name: Install
@@ -115,7 +115,7 @@ jobs:
         working-directory: services/analysis
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.11"
       - name: Install wave-eeg (dependência local do monorepo)
@@ -134,7 +134,7 @@ jobs:
         working-directory: packages/wave-corpus
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.11"
       - name: Install
@@ -150,7 +150,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.11"
       - name: Install
