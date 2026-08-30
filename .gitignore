@@ -33,6 +33,11 @@ captures/
 _corpus/
 *.parquet
 
+# --- Conferência da extração da marca: artefatos que `extrair_geometria.py`
+#     reescreve a cada execução. Servem para olhar, não para versionar. ---
+Design/logos_icones/confere.png
+Design/logos_icones/mascara.png
+
 # --- OS / IDE ---
 .DS_Store
 Thumbs.db

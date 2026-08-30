@@ -179,7 +179,7 @@ function PainelLateral({
     <View style={[styles.painel, rail && styles.painelRail]}>
       <View style={[styles.marca, rail && styles.marcaRail]}>
         {/* No rail cabe o ladrilho, não o letreiro. */}
-        <Logo size={rail ? 32 : 36} tint={accent} withWordmark={!rail} tagline={rail ? undefined : "análise de bem-estar"} />
+        <Logo size={rail ? 32 : 36} forma="completa" tint={accent} withWordmark={!rail} tagline={rail ? undefined : "análise de bem-estar"} />
       </View>
 
       {/* `role-chip` do mockup: pílula neutra com o ponto no tom do papel, logo
