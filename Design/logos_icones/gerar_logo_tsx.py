@@ -91,6 +91,12 @@ type Props = {{
   /**
    * `"reduzida"` (padrão) é a onda com o ponto. `"completa"` acrescenta o anel.
    *
+   * **Onde cada uma vive, por decisão tomada olhando as duas na tela:**
+   * autenticação (login, cadastro, recuperação, verificação) usa a reduzida;
+   * o app já logado — sidebar e rail — usa a completa. Não é inconsistência:
+   * a porta de entrada pede a marca mais limpa, e lá dentro o anel dá
+   * identidade a um elemento que a pessoa vê o tempo todo.
+   *
    * O traço do anel tem 3,5% do lado da grade, então ele afina junto com o
    * símbolo: 1,1px a 32px, 1,2px a 34px, 1,3px a 36px, 1,7px a 48px. Abaixo de
    * ~48px ele deixa de ser um traço e vira um fio cinza.

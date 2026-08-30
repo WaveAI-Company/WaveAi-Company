@@ -140,8 +140,22 @@ def recorte(lado, cor, completa=False, zona=0.58):
     return out.resize((lado, lado), Image.LANCZOS)
 
 
+def recorte_gradiente(lado, c1, c2, completa=False, zona=0.92):
+    """Arte com o gradiente e fundo TRANSPARENTE — o formato de uso livre.
+
+    E o que serve para redes sociais e material: a marca se apoia no fundo de
+    quem a usa, em vez de carregar um retangulo proprio.
+    """
+    L = lado * SS
+    out = gradiente(L, c1, c2).convert("RGBA")
+    out.putalpha(mascara(L, completa, zona))
+    return out.resize((lado, lado), Image.LANCZOS)
+
+
 # ---------------- SVG (a fonte) ----------------
-def svg(completa):
+def svg(completa, c1=None, c2=None):
+    c1 = c1 or A1
+    c2 = c2 or A2
     onda = G["onda"] if completa else G["reduzida"]["onda"]
     pt = G["ponto"] if completa else G["reduzida"]["ponto"]
     corpo = ""
@@ -168,8 +182,8 @@ def svg(completa):
         f"       produto sem escolher um lado. -->\n"
         f'  <defs>\n'
         f'    <linearGradient id="marca" x1="0" y1="0" x2="1" y2="1">\n'
-        f'      <stop offset="0" stop-color="{A1}"/>\n'
-        f'      <stop offset="1" stop-color="{A2}"/>\n'
+        f'      <stop offset="0" stop-color="{c1}"/>\n'
+        f'      <stop offset="1" stop-color="{c2}"/>\n'
         f"    </linearGradient>\n"
         f"  </defs>\n{corpo}</svg>\n"
     )
@@ -213,3 +227,43 @@ for nome, img, nota in saidas:
 print("\ncontraste da arte sobre as pontas do gradiente (WCAG 1.4.11: 3:1 para nao-texto):")
 print(f"  {TINTA} sobre {A1} (accentPatient): {razao(TINTA, A1)}:1")
 print(f"  {TINTA} sobre {A2} (accentDoctor):  {razao(TINTA, A2)}:1")
+
+# ---------------- kit para uso fora do app ----------------
+# Redes sociais, apresentacao, material impresso. Sai do MESMO vetor que o app
+# usa — nao ha uma segunda arte que possa divergir com o tempo.
+#
+# Dois pares de cor, porque o gradiente do projeto tem dois: o par CLARO
+# (accentPatient/accentDoctor do tema escuro) foi feito para pousar em fundo
+# escuro, e o par ESCURO (os do tema claro) para pousar em fundo claro. Usar o
+# errado e o que deixava a marca apagada no painel de autenticacao.
+KIT = str(RAIZ / "Design" / "logos_icones" / "kit")
+CLARO = ("#4FD1C5", "#7AA2F7")   # para FUNDO ESCURO
+ESCURO = ("#0F7A70", "#2A5BC7")  # para FUNDO CLARO
+os.makedirs(KIT, exist_ok=True)
+
+print("\n-- kit (Design/logos_icones/kit) --")
+kit_saidas = []
+for nome_forma, completa in (("completa", True), ("simbolo", False)):
+    for nome_par, (c1, c2) in (("p-fundo-escuro", CLARO), ("p-fundo-claro", ESCURO)):
+        base = f"waveai-{nome_forma}-{nome_par}"
+        for lado in (512, 1024, 2048):
+            img = recorte_gradiente(lado, c1, c2, completa=completa)
+            cam = os.path.join(KIT, f"{base}-{lado}.png")
+            img.save(cam, optimize=True)
+            kit_saidas.append((f"{base}-{lado}.png", os.path.getsize(cam)))
+        cam = os.path.join(KIT, f"{base}.svg")
+        open(cam, "w", encoding="utf8").write(svg(completa, c1, c2))
+        kit_saidas.append((f"{base}.svg", os.path.getsize(cam)))
+
+# Avatar de rede social: ladrilho cheio, porque um PNG transparente vira marca
+# invisivel quando a plataforma poe fundo branco por baixo.
+for nome_forma, completa, zona in (("completa", True, 0.80), ("simbolo", False, 0.72)):
+    for lado in (512, 1024):
+        img = ladrilho(lado, completa=completa, zona=zona)
+        cam = os.path.join(KIT, f"waveai-avatar-{nome_forma}-{lado}.png")
+        img.save(cam, optimize=True)
+        kit_saidas.append((f"waveai-avatar-{nome_forma}-{lado}.png", os.path.getsize(cam)))
+
+for nome, tam in kit_saidas:
+    print(f"  {nome:<42} {tam / 1024:>7.1f} KB")
+print(f"  ({len(kit_saidas)} arquivos)")

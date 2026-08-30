@@ -121,7 +121,7 @@ export function AuthStage({
               {/* Sem tagline: aqui embaixo de 640px a assinatura ocupava duas
                   linhas e o `resumo` logo abaixo já diz o que o produto é. Duas
                   frases empilhadas antes dele competiam, não somavam. */}
-              <Logo size={34} forma="completa" withWordmark />
+              <Logo size={34} withWordmark />
               <Text style={styles.marcaCompactaTexto}>{resumo}</Text>
               <WaveField height={48} opacity={0.4} amplitude={10} style={styles.ondaCompacta} />
             </View>
@@ -221,7 +221,7 @@ function PainelMarca({
           3,60:1 / 3,05:1 sobre ele — apagada. Com o par escuro são 10,04:1 e
           7,43:1, nos dois temas. */}
       <View style={styles.marcaTopo}>
-        <Logo size={34} forma="completa" gradiente={[P.accentPatient, P.accentDoctor]} />
+        <Logo size={34} gradiente={[P.accentPatient, P.accentDoctor]} />
         <View style={styles.marcaTextos}>
           <Text style={styles.marcaNome}>WaveAI</Text>
         </View>
