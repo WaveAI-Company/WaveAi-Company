@@ -7,7 +7,7 @@
  * então não há nada a redimensionar aqui.
  */
 
-import { useProfilePhoto } from "./useProfilePhoto";
+import { useMyPhoto } from "./MyPhotoContext";
 import { usePhotoEditor } from "./usePhotoEditor";
 import { AvatarEditorView } from "./AvatarEditorView";
 
@@ -20,7 +20,7 @@ export function PhotoField({
   name: string | null | undefined;
   size?: number;
 }) {
-  const { uri, loading, reload } = useProfilePhoto("me");
+  const { uri, loading, reload } = useMyPhoto();
   const { enviar, remover, busy, erro } = usePhotoEditor(reload);
 
   const escolher = () => {
