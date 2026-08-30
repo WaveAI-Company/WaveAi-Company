@@ -26,6 +26,7 @@ import {
   type Theme,
 } from "../../theme";
 import { Avatar } from "../Avatar";
+import { MyPhotoProvider, useMyPhoto } from "../profile/MyPhotoContext";
 import { Chip } from "../Chip";
 import { Disclaimer } from "../Disclaimer";
 import { Logo } from "../brand/Logo";
@@ -109,6 +110,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   // caminho até `children` (`raiz > principal > conteúdo`) é o mesmo dos dois
   // lados da quebra. Trocar de faixa passa a ser mudança de estilo e de props.
   return (
+    <MyPhotoProvider>
     <View style={styles.rootRow}>
       {lateral ? (
         <View style={[styles.sidebar, rail && styles.sidebarRail]}>{painel}</View>
@@ -149,6 +151,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         </Animated.View>
       ) : null}
     </View>
+    </MyPhotoProvider>
   );
 }
 
@@ -295,6 +298,7 @@ function AvatarPerfil({
 }) {
   const t = useTheme();
   const { estado, handlers } = useInteracao();
+  const { uri } = useMyPhoto();
 
   return (
     <Pressable
@@ -315,7 +319,7 @@ function AvatarPerfil({
           `.app-head .avatar{width:44px;height:44px}` na barra superior — o
           nosso usava o tamanho geral no header, e ficava menor que o botão de
           tema ao lado. */}
-      <Avatar name={nome} size={44} tone={accent} />
+      <Avatar name={nome} size={44} tone={accent} photoUri={uri} />
     </Pressable>
   );
 }
