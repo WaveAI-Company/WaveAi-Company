@@ -56,6 +56,21 @@ type Props = {{
   size?: number;
   /** Cor sólida no lugar do gradiente (a casca usa o tom do papel ativo). */
   tint?: string;
+  /**
+   * Pontas do gradiente, quando o fundo **não** acompanha o tema.
+   *
+   * O padrão é o par do tema ativo, que é o certo em qualquer superfície que
+   * também mude com o tema. O painel de marca da autenticação não muda: ele é
+   * escuro sempre (`const P = palettes.dark`). Ali, no tema claro, a marca saía
+   * pintada com o par feito para fundo claro **sobre fundo escuro**, e caía de
+   * 10,04:1 / 7,43:1 para 3,60:1 / 3,05:1 — o azul raspando o mínimo de 3:1 da
+   * WCAG 1.4.11. É o "apagado" que se via na tela.
+   *
+   * O `check-contrast.mjs` não pega esse caso: ele valida cada tema contra as
+   * superfícies **daquele** tema, e "cor do tema claro sobre fundo escuro fixo"
+   * só existe onde a superfície é fixa.
+   */
+  gradiente?: readonly [string, string];
   /** Mostra o wordmark "WaveAI" ao lado do símbolo. */
   withWordmark?: boolean;
   /**
@@ -80,6 +95,7 @@ type Props = {{
 export function Logo({{
   size = 36,
   tint,
+  gradiente,
   withWordmark = false,
   tagline,
   taglineEmLinha = false,
@@ -87,6 +103,7 @@ export function Logo({{
   const t = useTheme();
   const styles = useMemo(() => criarEstilos(t), [t]);
 
+  const [inicio, fim] = gradiente ?? [t.colors.accentPatient, t.colors.accentDoctor];
   const preenchimento = tint ?? "url(#marcaWave)";
 
   return (
@@ -94,8 +111,8 @@ export function Logo({{
       <Svg width={{size}} height={{size}} viewBox="0 0 512 512" aria-hidden>
         <Defs>
           <LinearGradient id="marcaWave" x1="0" y1="0" x2="1" y2="1">
-            <Stop offset="0" stopColor={{t.colors.accentPatient}} />
-            <Stop offset="1" stopColor={{t.colors.accentDoctor}} />
+            <Stop offset="0" stopColor={{inicio}} />
+            <Stop offset="1" stopColor={{fim}} />
           </LinearGradient>
         </Defs>
         <Path d={{ONDA}} fill={{preenchimento}} />
