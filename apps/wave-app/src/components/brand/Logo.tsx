@@ -38,15 +38,21 @@ type Props = {
   tint?: string;
   /** Mostra o wordmark "WaveAI" ao lado do símbolo. */
   withWordmark?: boolean;
-  /** Subtítulo sob o wordmark (ex.: "bem-estar exploratório"). */
+  /**
+   * Subtítulo sob o wordmark — a assinatura ("Sua mente em ondas. Seu
+   * bem-estar em movimento.") nas telas de autenticação, ou uma linha curta
+   * ("análise de bem-estar") na sidebar, onde só há 240px.
+   */
   tagline?: string;
   /**
    * Põe a tagline **na mesma linha** do wordmark, como o `.wordmark` do
-   * mockup: `WaveAI <small>bem-estar exploratório</small>`.
+   * mockup: `WaveAI <small>sobrancelha curta</small>`.
    *
-   * É prop e não o padrão porque a sidebar não tem largura para isso — nos
-   * 240px da coluna de navegação "WaveAI análise de bem-estar" em linha
-   * quebraria feio. Empilhado lá, em linha nas telas de autenticação.
+   * **Hoje nenhuma tela usa.** Servia para a sobrancelha de duas palavras que a
+   * assinatura substituiu: uma frase de duas orações em linha quebra em duas
+   * linhas já em 375px (medido: 285px de texto num slot de 285px). A prop fica
+   * porque continua sendo o tratamento certo para um subtítulo curto — não
+   * porque alguém a chame.
    */
   taglineEmLinha?: boolean;
 };

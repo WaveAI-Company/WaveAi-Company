@@ -118,7 +118,19 @@ export function AuthStage({
 
           {!marcaCheia ? (
             <View style={styles.marcaCompacta}>
-              <Logo size={34} withWordmark tagline="bem-estar exploratório" taglineEmLinha />
+              {/* Empilhado e não `taglineEmLinha`: a assinatura tem duas orações
+                  e em linha ao lado do wordmark ela não cabe (medido em 375px:
+                  285px de texto num slot de 285px).
+
+                  A quebra é **explícita**, entre as orações. Deixada por conta
+                  do layout, a linha cortava em "…Seu bem-estar em / movimento."
+                  — órfã de 67px pendurada sozinha. Aqui a frase quebra onde ela
+                  já tem uma pausa. */}
+              <Logo
+                size={34}
+                withWordmark
+                tagline={"Sua mente em ondas.\nSeu bem-estar em movimento."}
+              />
               <Text style={styles.marcaCompactaTexto}>{resumo}</Text>
               <WaveField height={48} opacity={0.4} amplitude={10} style={styles.ondaCompacta} />
             </View>
@@ -212,7 +224,7 @@ function PainelMarca({
         <Logo size={34} />
         <View style={styles.marcaTextos}>
           <Text style={styles.marcaNome}>WaveAI</Text>
-          <Text style={styles.marcaTagline}>BEM-ESTAR EXPLORATÓRIO</Text>
+          <Text style={styles.marcaTagline}>Sua mente em ondas. Seu bem-estar em movimento.</Text>
         </View>
       </View>
 
@@ -309,13 +321,17 @@ const criarEstilos = (t: Theme) =>
       fontWeight: "700",
       letterSpacing: -0.2,
     },
-    // `.wordmark small{font-size:12px; letter-spacing:.08em; font-weight:500}`.
+    // Era o `.wordmark small` do mockup — caixa alta com `letter-spacing:.08em`,
+    // que é o tratamento certo para uma sobrancelha curta ("BEM-ESTAR
+    // EXPLORATÓRIO"). A assinatura virou uma frase de duas orações, e caixa alta
+    // com tracking largo numa frase fica pesada e some de largura: por isso
+    // **caixa normal** e tracking quase neutro. O tamanho e o peso ficam.
     marcaTagline: {
       ...t.typography.caption,
       color: withAlpha(P.text, 0.55),
       fontSize: 12,
       fontWeight: "500",
-      letterSpacing: 0.96,
+      letterSpacing: 0.2,
     },
     marcaCentro: {
       alignItems: "center",
