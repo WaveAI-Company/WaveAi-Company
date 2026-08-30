@@ -9,6 +9,10 @@ dist/
 web-build/
 expo-env.d.ts
 
+# Wrangler (deploy do Cloudflare Pages): cache e estado locais do `wrangler
+# dev`/`pages`. É gerado por máquina, muda a cada execução e não é fonte.
+.wrangler/
+
 # Native
 .kotlin/
 *.orig.*
