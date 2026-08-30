@@ -8,7 +8,7 @@ import {
   listPendingInvites,
   type CareLink,
 } from "../../src/api/care";
-import { Avatar } from "../../src/components/Avatar";
+import { PersonAvatar } from "../../src/components/profile/PersonAvatar";
 import { Button } from "../../src/components/Button";
 import { Chip } from "../../src/components/Chip";
 import { EmptyState } from "../../src/components/EmptyState";
@@ -152,10 +152,12 @@ export default function PatientInvitesScreen() {
         return (
           <Panel key={convite.id}>
             <View style={styles.cabeca}>
-              <Avatar
+              <PersonAvatar
                 name={convite.counterpart_display_name}
                 size={48}
                 tone={profissional.accentText}
+                // Só o convite aceito tem vínculo ativo — e foto a mostrar.
+                userId={aceito ? convite.counterpart_user_id : null}
               />
               <View style={styles.cabecaTextos}>
                 <Text style={styles.nome}>

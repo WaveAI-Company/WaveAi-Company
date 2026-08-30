@@ -16,6 +16,7 @@ import {
   type SessionResult,
 } from "../../../src/api/results";
 import { Avatar } from "../../../src/components/Avatar";
+import { PersonAvatar } from "../../../src/components/profile/PersonAvatar";
 import { Button } from "../../../src/components/Button";
 import { Chip } from "../../../src/components/Chip";
 import { Disclaimer } from "../../../src/components/Disclaimer";
@@ -259,6 +260,7 @@ export default function PatientDetailScreen() {
         <LinhaPessoa
           key={v.id}
           nome={v.counterpart_display_name}
+          userId={v.counterpart_user_id}
           selecionado={v.counterpart_user_id === id}
           accent={accent}
           styles={styles}
@@ -321,7 +323,7 @@ export default function PatientDetailScreen() {
 
           {/* ===== cabeçalho da pessoa ===== */}
           <View style={styles.cabeca}>
-            <Avatar name={nome} size={56} tone={accent} />
+            <PersonAvatar name={nome} size={56} tone={accent} userId={id} />
             <View style={styles.cabecaTextos}>
               <Text style={styles.nome}>{nome}</Text>
               <Text style={styles.cabecaNota}>
@@ -563,12 +565,15 @@ export default function PatientDetailScreen() {
  */
 function LinhaPessoa({
   nome,
+  userId,
   selecionado,
   accent,
   onPress,
   styles,
 }: {
   nome: string | null | undefined;
+  /** Id do contraparte para a foto (ADR-0050); ativo, então há foto a mostrar. */
+  userId: string;
   selecionado: boolean;
   accent: string;
   onPress: () => void;
@@ -593,7 +598,7 @@ function LinhaPessoa({
         estado.focoVisivel ? { boxShadow: anelFoco(accent, t.colors.surface) } : null,
       ]}
     >
-      <Avatar name={nome} size={36} tone={accent} />
+      <PersonAvatar name={nome} size={36} tone={accent} userId={userId} />
       <View style={styles.pessoaTextos}>
         <Text style={styles.pessoaNome} numberOfLines={1}>
           {nome ?? "Paciente"}
