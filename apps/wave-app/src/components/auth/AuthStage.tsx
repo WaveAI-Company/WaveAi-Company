@@ -118,7 +118,10 @@ export function AuthStage({
 
           {!marcaCheia ? (
             <View style={styles.marcaCompacta}>
-              <Logo size={34} withWordmark tagline="bem-estar exploratório" taglineEmLinha />
+              {/* Sem tagline: aqui embaixo de 640px a assinatura ocupava duas
+                  linhas e o `resumo` logo abaixo já diz o que o produto é. Duas
+                  frases empilhadas antes dele competiam, não somavam. */}
+              <Logo size={34} withWordmark />
               <Text style={styles.marcaCompactaTexto}>{resumo}</Text>
               <WaveField height={48} opacity={0.4} amplitude={10} style={styles.ondaCompacta} />
             </View>
@@ -206,13 +209,21 @@ function PainelMarca({
         <Rect x="0" y="0" width="100%" height="100%" fill="url(#halo-b)" />
       </Svg>
 
-      {/* `.wordmark`: símbolo, nome e tagline **na mesma linha**. Estava
-          empilhado, o que engrossava o lockup e roubava altura da figura. */}
+      {/* `.wordmark`: símbolo e nome **na mesma linha**. Estava empilhado, o que
+          engrossava o lockup e roubava altura da figura.
+
+          Sem sobrancelha: a chamada logo abaixo ("A calma tem um ritmo…") já é
+          a voz da marca nesta tela, e uma frase acima dela só disputava a
+          atenção.
+
+          O `gradiente` vem de `P` e não do tema: este painel é escuro sempre
+          (`P = palettes.dark`), e com o par do tema claro a marca caía para
+          3,60:1 / 3,05:1 sobre ele — apagada. Com o par escuro são 10,04:1 e
+          7,43:1, nos dois temas. */}
       <View style={styles.marcaTopo}>
-        <Logo size={34} />
+        <Logo size={34} gradiente={[P.accentPatient, P.accentDoctor]} />
         <View style={styles.marcaTextos}>
           <Text style={styles.marcaNome}>WaveAI</Text>
-          <Text style={styles.marcaTagline}>BEM-ESTAR EXPLORATÓRIO</Text>
         </View>
       </View>
 
@@ -308,14 +319,6 @@ const criarEstilos = (t: Theme) =>
       fontSize: 20,
       fontWeight: "700",
       letterSpacing: -0.2,
-    },
-    // `.wordmark small{font-size:12px; letter-spacing:.08em; font-weight:500}`.
-    marcaTagline: {
-      ...t.typography.caption,
-      color: withAlpha(P.text, 0.55),
-      fontSize: 12,
-      fontWeight: "500",
-      letterSpacing: 0.96,
     },
     marcaCentro: {
       alignItems: "center",

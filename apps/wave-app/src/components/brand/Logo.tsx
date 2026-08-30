@@ -1,41 +1,99 @@
 import { useMemo } from "react";
 import { StyleSheet, Text, View } from "react-native";
-import Svg, { Defs, LinearGradient, Path, Rect, Stop } from "react-native-svg";
+import Svg, { Circle, Defs, LinearGradient, Path, Stop } from "react-native-svg";
 
 import { useTheme, type Theme } from "../../theme";
 
 /**
- * Marca do WaveAI — símbolo do design "Maré" (ADR-0042).
+ * Marca do WaveAI — **símbolo reduzido**: a onda com o ponto, sem o anel.
  *
- * O símbolo é uma **onda de traço contínuo** sobre um ladrilho de gradiente
- * que atravessa os dois tons de destaque (paciente → profissional): a mesma
- * marca cobre os dois papéis do produto, sem escolher um lado.
+ * O gradiente atravessa os dois tons de destaque (paciente → profissional): a
+ * mesma marca cobre os dois papéis do produto, sem escolher um lado. As duas
+ * pontas (`accentPatient` e `accentDoctor`) são pares obrigatórios do
+ * `scripts/check-contrast.mjs`, então o gradiente inteiro fica coberto pelo
+ * verificador — o que um PNG de marca não permitiria.
  *
- * Antes da `react-native-svg` (P6-c) isto eram `View`s empilhadas simulando um
- * waveform de barras — o que a onda de verdade agora substitui, na casca, no
- * login e na landing de uma vez só.
+ * **Por que sem o anel.** A marca tem duas formas. A completa (anel + onda +
+ * ponto) vive em `assets/logo.svg` e serve onde há espaço: hero do site, ficha
+ * da loja, material. O traço do anel tem 1,7% da largura da arte — a 36px da
+ * sidebar isso dá 1,3px e a 16px do favicon dá 0,6px, ou seja, some. Aqui, onde
+ * a marca aparece pequena, entra só a onda, que continua inteira.
  *
- * O traço usa `onAccent`, e as duas pontas do gradiente (`accentPatient` e
- * `accentDoctor`) são pares obrigatórios do `scripts/check-contrast.mjs` — o
- * gradiente inteiro fica coberto pelo verificador, não só as extremidades.
+ * A geometria vem do desenho aprovado (`Design/logos_icones/logo_escura.png`),
+ * extraída por traçado de contorno com fidelidade medida (IoU 98,0%); as cores
+ * foram trocadas pelos tokens. O `d` abaixo é gerado, não escrito à mão.
+ *
+ * Antes disto o símbolo era uma onda de traço fino sobre um ladrilho de
+ * gradiente, e os PNGs de ícone eram os do template do `create-expo-app`.
  */
 
+/** Contorno da onda, na grade 512 do `viewBox`. */
+const ONDA =
+  "M 164.82 134.81 C 169.24 134.61 183.48 134.23 190.21 134.81 C 196.94 135.38 199.25 136.15 205.21 138.27 C 211.18 140.38 220.03 144.23 225.99 147.5 C 231.95 150.77 235.22 153.08 241.0 157.89 C 246.77 162.7 255.23 170.78 260.62 176.36 C 266.0 181.94 263.31 177.51 273.31 191.36 C 283.32 205.21 310.06 245.42 320.64 259.46 C 331.22 273.51 331.99 271.77 336.8 275.62 C 341.61 279.47 344.68 281.2 349.49 282.55 C 354.3 283.89 361.61 283.89 365.65 283.7 C 369.69 283.51 370.46 282.93 373.73 281.39 C 377.0 279.85 379.89 279.28 385.27 274.47 C 390.66 269.66 397.78 263.31 406.05 252.54 C 414.32 241.76 425.86 216.95 434.91 209.83 C 443.95 202.71 458.18 204.44 460.3 209.83 C 462.41 215.22 451.83 229.65 447.6 242.15 C 443.37 254.65 440.48 267.93 434.91 284.86 C 429.33 301.78 419.9 329.29 414.13 343.72 C 408.36 358.15 404.7 363.73 400.28 371.42 C 395.85 379.12 392.97 383.73 387.58 389.89 C 382.2 396.05 372.77 404.32 367.96 408.36 C 363.15 412.4 362.38 412.4 358.73 414.13 C 355.07 415.86 351.8 417.78 346.03 418.75 C 340.26 419.71 329.68 420.09 324.1 419.9 C 318.52 419.71 317.37 419.13 312.56 417.59 C 307.75 416.05 300.44 413.36 295.24 410.67 C 290.05 407.97 287.74 407.01 281.39 401.43 C 275.04 395.85 267.93 390.85 257.15 377.19 C 246.38 363.54 228.11 334.87 216.76 319.48 C 205.41 304.09 197.52 293.9 189.05 284.86 C 180.59 275.81 173.67 270.04 165.97 265.23 C 158.28 260.42 149.81 257.54 142.89 256.0 C 135.96 254.46 129.03 255.62 124.42 256.0 C 119.8 256.38 119.61 256.58 115.18 258.31 C 110.76 260.04 105.18 261.39 97.87 266.39 C 90.56 271.39 79.02 280.43 71.32 288.32 C 63.63 296.21 59.59 309.48 51.7 313.71 C 43.81 317.94 23.23 325.64 24.0 313.71 C 24.77 301.78 48.24 259.27 56.32 242.15 C 64.4 225.03 66.51 221.18 72.48 210.99 C 78.44 200.79 85.17 189.82 92.1 180.98 C 99.02 172.13 107.87 163.47 114.03 157.89 C 120.19 152.31 124.23 150.39 129.03 147.5 C 133.84 144.62 138.08 142.5 142.89 140.58 C 147.69 138.65 154.43 136.73 157.89 135.96 C 161.35 135.19 162.51 136.15 163.66 135.96 C 164.82 135.77 160.39 135.0 164.82 134.81 Z";
+
+/**
+ * A mesma arte com o anel. Enquadramento próprio: como a peça inteira é maior,
+ * a onda e o ponto ficam em outra posição e escala — por isso são constantes
+ * separadas, e não a forma reduzida com um anel por cima.
+ */
+const ONDA_CHEIA =
+  "M 227.05 167.06 C 230.27 166.92 240.62 166.64 245.51 167.06 C 250.41 167.48 252.08 168.04 256.42 169.58 C 260.75 171.12 267.19 173.91 271.52 176.29 C 275.86 178.67 278.24 180.34 282.43 183.84 C 286.63 187.34 292.78 193.21 296.69 197.27 C 300.61 201.32 298.65 198.1 305.92 208.17 C 313.2 218.24 332.63 247.47 340.33 257.68 C 348.02 267.89 348.58 266.63 352.07 269.42 C 355.57 272.22 357.81 273.48 361.3 274.46 C 364.8 275.44 370.11 275.44 373.05 275.3 C 375.99 275.16 376.54 274.74 378.92 273.62 C 381.3 272.5 383.4 272.08 387.31 268.59 C 391.23 265.09 396.4 260.47 402.42 252.64 C 408.43 244.81 416.82 226.77 423.39 221.6 C 429.97 216.42 440.31 217.68 441.85 221.6 C 443.39 225.51 435.7 236.0 432.62 245.09 C 429.55 254.18 427.45 263.83 423.39 276.14 C 419.34 288.44 412.48 308.44 408.29 318.93 C 404.09 329.42 401.44 333.47 398.22 339.07 C 395.0 344.66 392.91 348.02 388.99 352.49 C 385.08 356.97 378.22 362.98 374.73 365.92 C 371.23 368.85 370.67 368.85 368.01 370.11 C 365.36 371.37 362.98 372.77 358.78 373.47 C 354.59 374.17 346.9 374.45 342.84 374.31 C 338.79 374.17 337.95 373.75 334.45 372.63 C 330.96 371.51 325.64 369.55 321.87 367.59 C 318.09 365.64 316.41 364.94 311.8 360.88 C 307.18 356.83 302.01 353.19 294.18 343.26 C 286.35 333.33 273.06 312.5 264.81 301.31 C 256.56 290.12 250.83 282.71 244.67 276.14 C 238.52 269.56 233.49 265.37 227.89 261.87 C 222.3 258.38 216.14 256.28 211.11 255.16 C 206.08 254.04 201.04 254.88 197.69 255.16 C 194.33 255.44 194.19 255.58 190.97 256.84 C 187.76 258.1 183.7 259.08 178.39 262.71 C 173.07 266.35 164.68 272.92 159.09 278.65 C 153.49 284.39 150.56 294.04 144.82 297.11 C 139.09 300.19 124.13 305.78 124.69 297.11 C 125.25 288.44 142.31 257.54 148.18 245.09 C 154.05 232.65 155.59 229.85 159.93 222.44 C 164.26 215.03 169.16 207.05 174.19 200.62 C 179.23 194.19 185.66 187.9 190.13 183.84 C 194.61 179.79 197.55 178.39 201.04 176.29 C 204.54 174.19 207.61 172.65 211.11 171.25 C 214.61 169.86 219.5 168.46 222.02 167.9 C 224.54 167.34 225.37 168.04 226.21 167.9 C 227.05 167.76 223.84 167.2 227.05 167.06 Z";
+const ANEL = [
+  "M 236.28 26.1 C 243.13 25.96 267.47 25.82 276.56 26.1 C 285.65 26.38 283.83 26.52 290.82 27.78 C 297.81 29.03 310.82 31.69 318.51 33.65 C 326.2 35.61 329.0 36.31 336.97 39.52 C 344.94 42.74 357.11 47.91 366.34 52.95 C 375.57 57.98 385.91 64.97 392.35 69.73 C 398.78 74.48 402.84 77.98 404.93 81.48 C 407.03 84.97 405.63 88.61 404.93 90.71 C 404.23 92.8 402.14 93.5 400.74 94.06 C 399.34 94.62 401.72 97.42 396.54 94.06 C 391.37 90.71 377.1 78.96 369.69 73.92 C 362.28 68.89 358.23 66.93 352.07 63.86 C 345.92 60.78 341.86 58.54 332.77 55.46 C 323.68 52.39 307.74 47.63 297.53 45.4 C 287.32 43.16 282.43 42.46 271.52 42.04 C 260.61 41.62 244.95 41.48 232.09 42.88 C 219.22 44.28 204.54 47.77 194.33 50.43 C 184.12 53.09 177.41 56.16 170.84 58.82 C 164.26 61.48 163.28 61.34 154.89 66.37 C 146.5 71.41 128.74 83.01 120.49 89.03 C 112.24 95.04 110.84 97.0 105.39 102.45 C 99.93 107.91 93.36 114.76 87.77 121.75 C 82.17 128.74 76.86 136.01 71.83 144.41 C 66.79 152.8 61.48 163.14 57.56 172.09 C 53.65 181.04 50.99 188.46 48.33 198.1 C 45.68 207.75 43.02 221.46 41.62 229.99 C 40.22 238.52 39.94 240.06 39.94 249.29 C 39.94 258.52 40.78 276.14 41.62 285.37 C 42.46 294.6 43.3 297.81 44.98 304.67 C 46.65 311.52 49.31 320.61 51.69 326.48 C 54.07 332.35 56.58 336.55 59.24 339.91 C 61.9 343.26 65.39 345.22 67.63 346.62 C 69.87 348.02 70.29 348.02 72.67 348.3 C 75.04 348.58 78.54 349.14 81.9 348.3 C 85.25 347.46 88.33 347.04 92.8 343.26 C 97.28 339.49 103.57 333.19 108.75 325.64 C 113.92 318.09 117.97 302.57 123.85 297.95 C 129.72 293.34 144.54 291.94 143.99 297.95 C 143.43 303.97 125.81 326.2 120.49 334.03 C 115.18 341.86 115.32 341.3 112.1 344.94 C 108.88 348.58 105.81 352.63 101.19 355.85 C 96.58 359.06 89.59 362.84 84.41 364.24 C 79.24 365.64 73.92 364.66 70.15 364.24 C 66.37 363.82 64.55 362.98 61.76 361.72 C 58.96 360.46 55.88 358.64 53.37 356.69 C 50.85 354.73 49.45 354.17 46.65 349.97 C 43.86 345.78 39.8 340.33 36.59 331.52 C 33.37 322.71 29.45 308.16 27.36 297.11 C 25.26 286.07 24.42 275.44 24.0 265.23 C 23.58 255.02 23.86 245.79 24.84 235.86 C 25.82 225.93 27.5 215.73 29.87 205.66 C 32.25 195.59 35.19 185.66 39.1 175.45 C 43.02 165.24 48.89 152.94 53.37 144.41 C 57.84 135.87 60.78 131.54 65.95 124.27 C 71.13 117.0 78.68 107.35 84.41 100.77 C 90.15 94.2 93.22 90.98 100.35 84.83 C 107.49 78.68 117.14 70.43 127.2 63.86 C 137.27 57.28 151.96 49.73 160.77 45.4 C 169.58 41.06 171.53 40.5 180.07 37.84 C 188.6 35.19 202.72 31.27 211.95 29.45 C 221.18 27.64 231.39 27.5 235.44 26.94 C 239.5 26.38 229.43 26.24 236.28 26.1 Z",
+  "M 476.25 214.05 C 477.51 214.19 481.29 214.33 482.97 215.73 C 484.64 217.12 485.48 218.52 486.32 222.44 C 487.16 226.35 487.86 231.11 488.0 239.22 C 488.14 247.33 488.7 258.8 487.16 271.1 C 485.62 283.41 481.85 301.45 478.77 313.06 C 475.69 324.66 472.2 332.49 468.7 340.75 C 465.21 349.0 463.25 353.47 457.79 362.56 C 452.34 371.65 442.97 386.05 435.98 395.28 C 428.99 404.51 424.23 409.97 415.84 417.94 C 407.45 425.91 393.47 437.1 385.63 443.11 C 377.8 449.12 375.43 450.24 368.85 454.02 C 362.28 457.79 355.85 461.71 346.2 465.76 C 336.55 469.82 322.71 475.13 310.96 478.35 C 299.21 481.57 289.0 483.8 275.72 485.06 C 262.43 486.32 243.55 486.46 231.25 485.9 C 218.94 485.34 210.97 483.53 201.88 481.71 C 192.79 479.89 183.56 477.09 176.71 474.99 C 169.86 472.9 167.48 472.06 160.77 469.12 C 154.05 466.18 142.59 460.59 136.43 457.37 C 130.28 454.16 130.42 454.44 123.85 449.82 C 117.28 445.21 104.55 436.12 97.0 429.69 C 89.45 423.25 82.31 415.56 78.54 411.23 C 74.76 406.89 74.9 405.77 74.34 403.67 C 73.78 401.58 74.48 400.04 75.18 398.64 C 75.88 397.24 76.72 395.7 78.54 395.28 C 80.36 394.86 80.36 391.65 86.09 396.12 C 91.82 400.6 105.81 415.84 112.94 422.13 C 120.07 428.43 123.15 430.1 128.88 433.88 C 134.62 437.66 139.93 441.01 147.34 444.79 C 154.75 448.56 163.0 452.9 173.35 456.54 C 183.7 460.17 198.94 464.37 209.43 466.6 C 219.92 468.84 225.79 469.54 236.28 469.96 C 246.77 470.38 261.03 470.24 272.36 469.12 C 283.69 468.0 295.3 465.35 304.25 463.25 C 313.2 461.15 320.05 458.63 326.06 456.54 C 332.07 454.44 333.33 454.16 340.33 450.66 C 347.32 447.17 358.78 441.57 368.01 435.56 C 377.24 429.55 386.47 422.97 395.7 414.58 C 404.93 406.19 415.56 394.86 423.39 385.22 C 431.22 375.57 436.68 367.46 442.69 356.69 C 448.7 345.92 455.28 331.52 459.47 320.61 C 463.67 309.7 465.76 301.45 467.86 291.24 C 469.96 281.03 471.64 271.1 472.06 259.36 C 472.48 247.61 470.52 227.61 470.38 220.76 C 470.24 213.91 470.38 219.22 471.22 218.24 C 472.06 217.26 474.58 215.59 475.41 214.89 C 476.25 214.19 474.99 213.91 476.25 214.05 Z",
+];
+
 type Props = {
-  /** Lado do ladrilho do símbolo. */
+  /** Lado do símbolo. */
   size?: number;
   /** Cor sólida no lugar do gradiente (a casca usa o tom do papel ativo). */
   tint?: string;
+  /**
+   * Pontas do gradiente, quando o fundo **não** acompanha o tema.
+   *
+   * O padrão é o par do tema ativo, que é o certo em qualquer superfície que
+   * também mude com o tema. O painel de marca da autenticação não muda: ele é
+   * escuro sempre (`const P = palettes.dark`). Ali, no tema claro, a marca saía
+   * pintada com o par feito para fundo claro **sobre fundo escuro**, e caía de
+   * 10,04:1 / 7,43:1 para 3,60:1 / 3,05:1 — o azul raspando o mínimo de 3:1 da
+   * WCAG 1.4.11. É o "apagado" que se via na tela.
+   *
+   * O `check-contrast.mjs` não pega esse caso: ele valida cada tema contra as
+   * superfícies **daquele** tema, e "cor do tema claro sobre fundo escuro fixo"
+   * só existe onde a superfície é fixa.
+   */
+  gradiente?: readonly [string, string];
+  /**
+   * `"reduzida"` (padrão) é a onda com o ponto. `"completa"` acrescenta o anel.
+   *
+   * **Onde cada uma vive, por decisão tomada olhando as duas na tela:**
+   * autenticação (login, cadastro, recuperação, verificação) usa a reduzida;
+   * o app já logado — sidebar e rail — usa a completa. Não é inconsistência:
+   * a porta de entrada pede a marca mais limpa, e lá dentro o anel dá
+   * identidade a um elemento que a pessoa vê o tempo todo.
+   *
+   * O traço do anel tem 3,5% do lado da grade, então ele afina junto com o
+   * símbolo: 1,1px a 32px, 1,2px a 34px, 1,3px a 36px, 1,7px a 48px. Abaixo de
+   * ~48px ele deixa de ser um traço e vira um fio cinza.
+   */
+  forma?: "reduzida" | "completa";
   /** Mostra o wordmark "WaveAI" ao lado do símbolo. */
   withWordmark?: boolean;
-  /** Subtítulo sob o wordmark (ex.: "bem-estar exploratório"). */
+  /**
+   * Subtítulo sob o wordmark — a assinatura ("Sua mente em ondas. Seu
+   * bem-estar em movimento.") nas telas de autenticação, ou uma linha curta
+   * ("análise de bem-estar") na sidebar, onde só há 240px.
+   */
   tagline?: string;
   /**
    * Põe a tagline **na mesma linha** do wordmark, como o `.wordmark` do
-   * mockup: `WaveAI <small>bem-estar exploratório</small>`.
+   * mockup: `WaveAI <small>sobrancelha curta</small>`.
    *
-   * É prop e não o padrão porque a sidebar não tem largura para isso — nos
-   * 240px da coluna de navegação "WaveAI análise de bem-estar" em linha
-   * quebraria feio. Empilhado lá, em linha nas telas de autenticação.
+   * **Hoje nenhuma tela usa.** Servia para a sobrancelha de duas palavras que a
+   * assinatura substituiu: uma frase de duas orações em linha quebra em duas
+   * linhas já em 375px (medido: 285px de texto num slot de 285px). A prop fica
+   * porque continua sendo o tratamento certo para um subtítulo curto — não
+   * porque alguém a chame.
    */
   taglineEmLinha?: boolean;
 };
@@ -43,6 +101,8 @@ type Props = {
 export function Logo({
   size = 36,
   tint,
+  gradiente,
+  forma = "reduzida",
   withWordmark = false,
   tagline,
   taglineEmLinha = false,
@@ -50,31 +110,28 @@ export function Logo({
   const t = useTheme();
   const styles = useMemo(() => criarEstilos(t), [t]);
 
-  const raio = Math.round(size * 0.29);
-  const preenchimento = tint ?? "url(#marca)";
+  const [inicio, fim] = gradiente ?? [t.colors.accentPatient, t.colors.accentDoctor];
+  const preenchimento = tint ?? "url(#marcaWave)";
+  const cheia = forma === "completa";
+  const onda = cheia ? ONDA_CHEIA : ONDA;
+  const ponto = cheia
+    ? { cx: 439.06, cy: 159.04, r: 23.66 }
+    : { cx: 456.46, cy: 123.77, r: 32.55 };
 
   return (
     <View style={styles.linha}>
-      <Svg width={size} height={size} viewBox="0 0 36 36" aria-hidden>
+      <Svg width={size} height={size} viewBox="0 0 512 512" aria-hidden>
         <Defs>
-          <LinearGradient id="marca" x1="0" y1="0" x2="1" y2="1">
-            <Stop offset="0" stopColor={t.colors.accentPatient} />
-            <Stop offset="1" stopColor={t.colors.accentDoctor} />
+          <LinearGradient id="marcaWave" x1="0" y1="0" x2="1" y2="1">
+            <Stop offset="0" stopColor={inicio} />
+            <Stop offset="1" stopColor={fim} />
           </LinearGradient>
         </Defs>
-        <Rect x={0} y={0} width={36} height={36} rx={(raio * 36) / size} fill={preenchimento} />
-        <Path
-          // A onda do mockup (grade 24) reescalada para a grade 36 do ladrilho.
-          d="M9.67 18c2.083 0 2.083-4.167 4.167-4.167s2.083 6.667 4.167 6.667 2.083-6.667 4.166-6.667 2.084 4.167 4.167 4.167"
-          // A tinta **neutra**, e não a de um papel: o ladrilho é um gradiente
-          // do turquesa do paciente ao azul do profissional, e a onda cruza os
-          // dois — nenhuma das duas tintas de papel serviria à travessia.
-          stroke={t.colors.onAccent}
-          strokeWidth={2}
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          fill="none"
-        />
+        {cheia
+          ? ANEL.map((d) => <Path key={d.length} d={d} fill={preenchimento} />)
+          : null}
+        <Path d={onda} fill={preenchimento} />
+        <Circle cx={ponto.cx} cy={ponto.cy} r={ponto.r} fill={preenchimento} />
       </Svg>
 
       {withWordmark ? (
