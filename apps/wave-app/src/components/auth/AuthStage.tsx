@@ -118,19 +118,10 @@ export function AuthStage({
 
           {!marcaCheia ? (
             <View style={styles.marcaCompacta}>
-              {/* Empilhado e não `taglineEmLinha`: a assinatura tem duas orações
-                  e em linha ao lado do wordmark ela não cabe (medido em 375px:
-                  285px de texto num slot de 285px).
-
-                  A quebra é **explícita**, entre as orações. Deixada por conta
-                  do layout, a linha cortava em "…Seu bem-estar em / movimento."
-                  — órfã de 67px pendurada sozinha. Aqui a frase quebra onde ela
-                  já tem uma pausa. */}
-              <Logo
-                size={34}
-                withWordmark
-                tagline={"Sua mente em ondas.\nSeu bem-estar em movimento."}
-              />
+              {/* Sem tagline: aqui embaixo de 640px a assinatura ocupava duas
+                  linhas e o `resumo` logo abaixo já diz o que o produto é. Duas
+                  frases empilhadas antes dele competiam, não somavam. */}
+              <Logo size={34} withWordmark />
               <Text style={styles.marcaCompactaTexto}>{resumo}</Text>
               <WaveField height={48} opacity={0.4} amplitude={10} style={styles.ondaCompacta} />
             </View>
@@ -218,13 +209,21 @@ function PainelMarca({
         <Rect x="0" y="0" width="100%" height="100%" fill="url(#halo-b)" />
       </Svg>
 
-      {/* `.wordmark`: símbolo, nome e tagline **na mesma linha**. Estava
-          empilhado, o que engrossava o lockup e roubava altura da figura. */}
+      {/* `.wordmark`: símbolo e nome **na mesma linha**. Estava empilhado, o que
+          engrossava o lockup e roubava altura da figura.
+
+          Sem sobrancelha: a chamada logo abaixo ("A calma tem um ritmo…") já é
+          a voz da marca nesta tela, e uma frase acima dela só disputava a
+          atenção.
+
+          O `gradiente` vem de `P` e não do tema: este painel é escuro sempre
+          (`P = palettes.dark`), e com o par do tema claro a marca caía para
+          3,60:1 / 3,05:1 sobre ele — apagada. Com o par escuro são 10,04:1 e
+          7,43:1, nos dois temas. */}
       <View style={styles.marcaTopo}>
-        <Logo size={34} />
+        <Logo size={34} gradiente={[P.accentPatient, P.accentDoctor]} />
         <View style={styles.marcaTextos}>
           <Text style={styles.marcaNome}>WaveAI</Text>
-          <Text style={styles.marcaTagline}>Sua mente em ondas. Seu bem-estar em movimento.</Text>
         </View>
       </View>
 
@@ -320,18 +319,6 @@ const criarEstilos = (t: Theme) =>
       fontSize: 20,
       fontWeight: "700",
       letterSpacing: -0.2,
-    },
-    // Era o `.wordmark small` do mockup — caixa alta com `letter-spacing:.08em`,
-    // que é o tratamento certo para uma sobrancelha curta ("BEM-ESTAR
-    // EXPLORATÓRIO"). A assinatura virou uma frase de duas orações, e caixa alta
-    // com tracking largo numa frase fica pesada e some de largura: por isso
-    // **caixa normal** e tracking quase neutro. O tamanho e o peso ficam.
-    marcaTagline: {
-      ...t.typography.caption,
-      color: withAlpha(P.text, 0.55),
-      fontSize: 12,
-      fontWeight: "500",
-      letterSpacing: 0.2,
     },
     marcaCentro: {
       alignItems: "center",
