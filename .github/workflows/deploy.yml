@@ -65,7 +65,7 @@ jobs:
       api: ${{ steps.nomes.outputs.api }}
       analysis: ${{ steps.nomes.outputs.analysis }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Nomes das imagens
         id: nomes
