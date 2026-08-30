@@ -9,7 +9,7 @@ import {
   revokeCareLink,
   type CareLink,
 } from "../../src/api/care";
-import { Avatar } from "../../src/components/Avatar";
+import { PersonAvatar } from "../../src/components/profile/PersonAvatar";
 import { Button } from "../../src/components/Button";
 import { Chip } from "../../src/components/Chip";
 import { Disclaimer } from "../../src/components/Disclaimer";
@@ -270,10 +270,13 @@ export default function DoctorInviteScreen() {
                 const aceito = v.status === "active";
                 return (
                   <View key={v.id} style={styles.linha}>
-                    <Avatar
+                    <PersonAvatar
                       name={v.counterpart_display_name}
                       size={40}
                       tone={aceito ? accent : t.colors.textMuted}
+                      // Só o aceito tem vínculo ativo — e só ele tem foto a
+                      // mostrar. No pendente, o servidor devolveria 404.
+                      userId={aceito ? v.counterpart_user_id : null}
                     />
                     <View style={styles.linhaTextos}>
                       <Text style={styles.linhaNome} numberOfLines={1}>

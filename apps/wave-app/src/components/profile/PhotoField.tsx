@@ -13,7 +13,7 @@
 import { useState } from "react";
 import * as ImagePicker from "expo-image-picker";
 
-import { useProfilePhoto } from "./useProfilePhoto";
+import { useMyPhoto } from "./MyPhotoContext";
 import { usePhotoEditor } from "./usePhotoEditor";
 import { AvatarEditorView } from "./AvatarEditorView";
 
@@ -24,7 +24,7 @@ export function PhotoField({
   name: string | null | undefined;
   size?: number;
 }) {
-  const { uri, loading, reload } = useProfilePhoto("me");
+  const { uri, loading, reload } = useMyPhoto();
   const { enviar, remover, busy, erro, limparErro } = usePhotoEditor(reload);
   const [erroPermissao, setErroPermissao] = useState<string | null>(null);
 
