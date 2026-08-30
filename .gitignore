@@ -33,6 +33,23 @@ captures/
 _corpus/
 *.parquet
 
+# --- Assinatura do Android (ADR-0051) ---
+#     A keystore é SEGREDO e nunca entra no repositório — a própria doc do EAS
+#     diz "under no circumstances should you check it into your repository".
+#     Vive nos servidores do EAS, com backup exportado por `eas credentials` e
+#     guardado no gerenciador de senhas do titular. Estes padrões existem para
+#     que um arquivo baixado por engano na raiz do projeto não seja commitado.
+credentials.json
+*.jks
+*.keystore
+
+# --- Projetos nativos gerados pelo `expo prebuild` (CNG) ---
+#     O app é "managed": `android/` e `ios/` são SAÍDA de `app.json` + config
+#     plugins, e se regeneram a cada build. Versioná-los cria duas fontes da
+#     verdade — e a que manda passa a ser a pasta, silenciosamente.
+apps/wave-app/android/
+apps/wave-app/ios/
+
 # --- Conferência da extração da marca: artefatos que `extrair_geometria.py`
 #     reescreve a cada execução. Servem para olhar, não para versionar. ---
 Design/logos_icones/confere.png
