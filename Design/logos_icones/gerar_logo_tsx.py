@@ -17,6 +17,11 @@ DEST = str(RAIZ / "apps" / "wave-app" / "src" / "components" / "brand" / "Logo.t
 G = json.load(open(GEO, encoding="utf8"))
 ONDA = G["reduzida"]["onda"]
 PT = G["reduzida"]["ponto"]
+# A forma completa tem enquadramento PROPRIO (a arte inclui o anel), entao ela
+# traz a sua onda e o seu ponto — nao da para reusar os da reduzida.
+ONDA_CHEIA = G["onda"]
+PT_CHEIO = G["ponto"]
+ANEL_A, ANEL_B = G["anel"]["paths"]
 
 TSX = f'''import {{ useMemo }} from "react";
 import {{ StyleSheet, Text, View }} from "react-native";
@@ -51,6 +56,18 @@ import {{ useTheme, type Theme }} from "../../theme";
 const ONDA =
   "{ONDA}";
 
+/**
+ * A mesma arte com o anel. Enquadramento próprio: como a peça inteira é maior,
+ * a onda e o ponto ficam em outra posição e escala — por isso são constantes
+ * separadas, e não a forma reduzida com um anel por cima.
+ */
+const ONDA_CHEIA =
+  "{ONDA_CHEIA}";
+const ANEL = [
+  "{ANEL_A}",
+  "{ANEL_B}",
+];
+
 type Props = {{
   /** Lado do símbolo. */
   size?: number;
@@ -71,6 +88,14 @@ type Props = {{
    * só existe onde a superfície é fixa.
    */
   gradiente?: readonly [string, string];
+  /**
+   * `"reduzida"` (padrão) é a onda com o ponto. `"completa"` acrescenta o anel.
+   *
+   * O traço do anel tem 3,5% do lado da grade, então ele afina junto com o
+   * símbolo: 1,1px a 32px, 1,2px a 34px, 1,3px a 36px, 1,7px a 48px. Abaixo de
+   * ~48px ele deixa de ser um traço e vira um fio cinza.
+   */
+  forma?: "reduzida" | "completa";
   /** Mostra o wordmark "WaveAI" ao lado do símbolo. */
   withWordmark?: boolean;
   /**
@@ -96,6 +121,7 @@ export function Logo({{
   size = 36,
   tint,
   gradiente,
+  forma = "reduzida",
   withWordmark = false,
   tagline,
   taglineEmLinha = false,
@@ -105,6 +131,11 @@ export function Logo({{
 
   const [inicio, fim] = gradiente ?? [t.colors.accentPatient, t.colors.accentDoctor];
   const preenchimento = tint ?? "url(#marcaWave)";
+  const cheia = forma === "completa";
+  const onda = cheia ? ONDA_CHEIA : ONDA;
+  const ponto = cheia
+    ? {{ cx: {PT_CHEIO["cx"]}, cy: {PT_CHEIO["cy"]}, r: {PT_CHEIO["r"]} }}
+    : {{ cx: {PT["cx"]}, cy: {PT["cy"]}, r: {PT["r"]} }};
 
   return (
     <View style={{styles.linha}}>
@@ -115,8 +146,11 @@ export function Logo({{
             <Stop offset="1" stopColor={{fim}} />
           </LinearGradient>
         </Defs>
-        <Path d={{ONDA}} fill={{preenchimento}} />
-        <Circle cx={{{PT["cx"]}}} cy={{{PT["cy"]}}} r={{{PT["r"]}}} fill={{preenchimento}} />
+        {{cheia
+          ? ANEL.map((d) => <Path key={{d.length}} d={{d}} fill={{preenchimento}} />)
+          : null}}
+        <Path d={{onda}} fill={{preenchimento}} />
+        <Circle cx={{ponto.cx}} cy={{ponto.cy}} r={{ponto.r}} fill={{preenchimento}} />
       </Svg>
 
       {{withWordmark ? (
