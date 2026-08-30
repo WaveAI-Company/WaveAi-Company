@@ -220,7 +220,7 @@ export default function DoctorProfileScreen() {
                 fica registrada — dizer o mesmo aqui é o que torna a promessa
                 verificável, em vez de um texto que só uma das partes vê. */}
             <Text style={styles.nota}>
-              Você lê medidas calculadas no servidor, resumos e o que a pessoa escreveu —
+              Você lê as medidas calculadas pelo WaveAI, resumos e o que a pessoa escreveu —
               nunca o sinal bruto da sessão, e nada é editável. Cada leitura fica
               registrada em trilha de acesso. Acompanhar uma sessão ao vivo depende de a
               pessoa ter ligado o compartilhamento naquela sessão, e ela pode desligar a

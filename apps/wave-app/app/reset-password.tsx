@@ -245,9 +245,9 @@ export default function ResetPasswordScreen() {
   return (
     <AuthStage
       chamada={{ antes: "A calma tem um ", destaque: "ritmo", depois: ". Acompanhe o seu." }}
-      texto="Tendências e estados mentais do seu EEG de consumo, analisados no servidor WaveAI — exploratório, transparente, seu."
+      texto="Tendências e estados mentais do seu EEG de consumo, analisados pelo WaveAI — exploratório, transparente, seu."
       chips={CHIPS}
-      resumo="Tendências do seu EEG, analisadas no servidor. Exploratório."
+      resumo="Tendências do seu EEG, analisadas pelo WaveAI. Exploratório."
     >
       {passo !== "pronto" ? (
         <AuthSteps atual={passoDoTrilho} accent={destaque.accent} />
