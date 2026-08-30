@@ -38,6 +38,10 @@ export function PhotoField({
     }
     const resultado = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ["images"],
+      // Recorte nativo quadrado — o "reajuste básico" no aparelho (ADR-0050).
+      // No web esse editor não existe e o recorte é o `CropModal`.
+      allowsEditing: true,
+      aspect: [1, 1],
       quality: 1,
     });
     if (resultado.canceled || resultado.assets.length === 0) return;

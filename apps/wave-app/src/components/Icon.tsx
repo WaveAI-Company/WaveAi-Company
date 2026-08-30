@@ -143,6 +143,19 @@ const ICONES = {
       />
     </>
   ),
+  /** Trocar/enviar foto — o selo de câmera sobre o avatar (ADR-0050). */
+  camera: (c: string, w: number) => (
+    <>
+      <Path
+        d="M4 8.5h3l1.4-2.2a1 1 0 0 1 .84-.46h5.52a1 1 0 0 1 .84.46L17 8.5h3a1.5 1.5 0 0 1 1.5 1.5v8A1.5 1.5 0 0 1 20 19.5H4A1.5 1.5 0 0 1 2.5 18v-8A1.5 1.5 0 0 1 4 8.5Z"
+        stroke={c}
+        strokeWidth={w}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <Circle cx={12} cy={13.5} r={3.4} stroke={c} strokeWidth={w} />
+    </>
+  ),
   /** O que é guardado — cilindro de dados. */
   database: (c: string, w: number) => (
     <>

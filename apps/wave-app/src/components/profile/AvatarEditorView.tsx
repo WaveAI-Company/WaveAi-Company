@@ -1,9 +1,10 @@
 /**
  * Parte visual do editor de foto — igual nos dois modos de escolher a imagem.
  *
- * Mostra o avatar (foto ou iniciais), o botão de enviar/trocar e, quando há
- * foto, o de remover. Enquanto envia, o avatar recebe um véu com indicador —
- * a tela não finge que já mudou (ADR-0027). Erro do servidor aparece em texto.
+ * O **avatar é clicável**, com um selo de câmera no canto (como o WhatsApp): é
+ * o alvo de "enviar/trocar". "Remover" fica como link discreto abaixo, só
+ * quando há foto. Enquanto envia, o disco recebe um véu com indicador — a tela
+ * não finge que já mudou (ADR-0027). Erro do servidor aparece em texto.
  */
 
 import { useMemo } from "react";
@@ -11,6 +12,7 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-nati
 
 import { useRoleAccent, useTheme, type Theme } from "../../theme";
 import { Avatar } from "../Avatar";
+import { Icon } from "../Icon";
 
 export function AvatarEditorView({
   name,
@@ -34,13 +36,21 @@ export function AvatarEditorView({
 }) {
   const t = useTheme();
   const papel = useRoleAccent();
-  const styles = useMemo(() => criarEstilos(t, papel.accentText), [t, papel.accentText]);
+  const styles = useMemo(() => criarEstilos(t), [t]);
   const ocupado = busy || loading;
+  const selo = Math.round(size * 0.42);
 
   return (
     <View style={styles.raiz}>
-      <View>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={uri ? "Trocar foto de perfil" : "Enviar foto de perfil"}
+        disabled={busy}
+        onPress={onPick}
+        style={({ pressed }) => [pressed && !busy ? styles.pressionado : null]}
+      >
         <Avatar name={name} size={size} photoUri={uri} />
+
         {ocupado ? (
           <View
             style={[styles.veu, { borderRadius: size / 2, height: size, width: size }]}
@@ -48,43 +58,53 @@ export function AvatarEditorView({
             <ActivityIndicator color="#FFFFFF" />
           </View>
         ) : null}
-      </View>
 
-      <View style={styles.acoes}>
+        {/* Selo de câmera — o `.avatar-cam` do padrão: círculo no tom do papel,
+            encostado no canto inferior direito, com uma borda da cor do fundo
+            para destacar do disco. */}
+        <View
+          style={[
+            styles.selo,
+            {
+              backgroundColor: papel.accent,
+              borderRadius: selo / 2,
+              height: selo,
+              width: selo,
+            },
+          ]}
+        >
+          <Icon name="camera" size={Math.round(selo * 0.62)} color={papel.onAccent} strokeWidth={1.9} />
+        </View>
+      </Pressable>
+
+      {uri && onRemove ? (
         <Pressable
           accessibilityRole="button"
           disabled={busy}
-          onPress={onPick}
-          style={styles.link}
+          onPress={onRemove}
+          style={styles.removerAlvo}
         >
-          <Text style={styles.linkTexto}>{uri ? "Trocar foto" : "Enviar foto"}</Text>
+          <Text style={styles.remover}>Remover</Text>
         </Pressable>
-        {uri && onRemove ? (
-          <Pressable
-            accessibilityRole="button"
-            disabled={busy}
-            onPress={onRemove}
-            style={styles.link}
-          >
-            <Text style={styles.linkRemover}>Remover</Text>
-          </Pressable>
-        ) : null}
-        {erro ? (
-          <Text accessibilityLiveRegion="polite" style={styles.erro}>
-            {erro}
-          </Text>
-        ) : null}
-      </View>
+      ) : null}
+
+      {erro ? (
+        <Text accessibilityLiveRegion="polite" style={styles.erro}>
+          {erro}
+        </Text>
+      ) : null}
     </View>
   );
 }
 
-const criarEstilos = (t: Theme, accentText: string) =>
+const criarEstilos = (t: Theme) =>
   StyleSheet.create({
     raiz: {
       alignItems: "center",
-      flexDirection: "row",
-      gap: t.spacing.md,
+      gap: 6,
+    },
+    pressionado: {
+      opacity: 0.85,
     },
     veu: {
       alignItems: "center",
@@ -94,24 +114,26 @@ const criarEstilos = (t: Theme, accentText: string) =>
       justifyContent: "center",
       position: "absolute",
     },
-    acoes: {
-      gap: 4,
+    selo: {
+      alignItems: "center",
+      borderColor: t.colors.surface,
+      borderWidth: 2,
+      bottom: -2,
+      justifyContent: "center",
+      position: "absolute",
+      right: -2,
     },
-    link: {
+    removerAlvo: {
       paddingVertical: 2,
     },
-    linkTexto: {
-      ...t.typography.label,
-      color: accentText,
-    },
-    linkRemover: {
-      ...t.typography.label,
+    remover: {
+      ...t.typography.caption,
       color: t.colors.textMuted,
-      fontWeight: "400",
     },
     erro: {
       ...t.typography.caption,
       color: t.colors.danger,
-      maxWidth: 220,
+      maxWidth: 200,
+      textAlign: "center",
     },
   });
