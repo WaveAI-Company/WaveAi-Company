@@ -1,0 +1,26 @@
+plugins {
+  id 'com.android.library'
+  id 'expo-module-gradle-plugin'
+}
+
+group = 'expo.modules.captacaoforeground'
+version = '0.1.0'
+
+android {
+  namespace "expo.modules.captacaoforeground"
+  defaultConfig {
+    versionCode 1
+    versionName "0.1.0"
+  }
+  lintOptions {
+    abortOnError false
+  }
+}
+
+dependencies {
+  // `NotificationCompat` e `stopForeground(STOP_FOREGROUND_REMOVE)` vêm daqui.
+  // Declarado em vez de herdado por transitividade: o módulo é uma library
+  // própria, e depender do que o app arrasta é o tipo de acoplamento que quebra
+  // silenciosamente quando outra dependência muda.
+  implementation "androidx.core:core-ktx:1.13.1"
+}
