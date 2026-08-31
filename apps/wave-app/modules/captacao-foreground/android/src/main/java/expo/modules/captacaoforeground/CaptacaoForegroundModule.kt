@@ -14,14 +14,20 @@ class CaptacaoForegroundModule : Module() {
   override fun definition() = ModuleDefinition {
     Name("CaptacaoForeground")
 
+    // `?.let` e não `?: return@Function`: o lambda de `Function` tem retorno
+    // `Any?`, e um `return@Function` SEM valor implica `Unit` — que não casa com
+    // a assinatura. Foi o erro que reprovou o primeiro build
+    // ("Return type mismatch: expected 'Any?', actual 'Unit'"). O `let` devolve
+    // `Unit?`, que é `Any?`, e ainda dispensa o early-return.
+
     /** Sobe o serviço. Idempotente: chamar duas vezes não cria dois serviços. */
     Function("iniciar") {
-      CaptacaoService.iniciar(appContext.reactContext ?: return@Function)
+      appContext.reactContext?.let { CaptacaoService.iniciar(it) }
     }
 
     /** Derruba o serviço e a notificação junto. */
     Function("parar") {
-      CaptacaoService.parar(appContext.reactContext ?: return@Function)
+      appContext.reactContext?.let { CaptacaoService.parar(it) }
     }
   }
 }
