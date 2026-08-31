@@ -24,6 +24,10 @@ import {
   type ReactNode,
 } from "react";
 
+import {
+  iniciarServicoCaptacao,
+  pararServicoCaptacao,
+} from "../../modules/captacao-foreground";
 import { setLiveSharing } from "../api/liveWatch";
 import {
   StreamSession,
@@ -119,6 +123,11 @@ export function CaptureSessionProvider({ children }: { children: ReactNode }) {
     timer.current = null;
     if (cronometro.current) clearInterval(cronometro.current);
     cronometro.current = null;
+    // O serviço cai junto com a captação, sempre — e por isso mora aqui, no
+    // ponto por onde os dois caminhos de encerramento passam. Deixá-lo de pé
+    // sem sessão seria uma notificação afirmando algo que não acontece mais
+    // (ADR-0027).
+    pararServicoCaptacao();
     if (usandoAparelhoRef.current) void deviceConnection.disconnect();
     pendentes.current = [];
     esensePendente.current = {};
@@ -232,6 +241,9 @@ export function CaptureSessionProvider({ children }: { children: ReactNode }) {
     sessao.current = stream;
     setAtivo(true);
     setAbrindoSessao(false);
+    // Só depois de a sessão existir: subir o serviço antes deixaria a
+    // notificação no ar mesmo se o `connect` acima tivesse falhado.
+    iniciarServicoCaptacao();
     iniciarCronometro();
 
     // O simulador emite eSense sintético para exercitar o caminho sem hardware
@@ -280,6 +292,7 @@ export function CaptureSessionProvider({ children }: { children: ReactNode }) {
       setAtivo(true);
       setUsandoAparelho(true);
       setConectandoA(null);
+      iniciarServicoCaptacao();
       iniciarCronometro();
 
       // Envia o que chegou do aparelho na cadência do stream. O eSense pendente
