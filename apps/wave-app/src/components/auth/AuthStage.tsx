@@ -7,6 +7,7 @@ import {
   useWindowDimensions,
   View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Svg, { Defs, RadialGradient, Rect, Stop } from "react-native-svg";
 
 import { Disclaimer } from "../Disclaimer";
@@ -72,12 +73,15 @@ export function AuthStage({
   const t = useTheme();
   const styles = useMemo(() => criarEstilos(t), [t]);
   const { width } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
 
   const duasColunas = width >= LARGURA_DUAS_COLUNAS;
   const marcaCheia = width >= LARGURA_MARCA_CHEIA;
 
   return (
-    <View style={styles.palco}>
+    // O palco desce a faixa do sistema inteira: no celular a marca e o
+    // formulário nasciam encostados no relógio. No web `insets.top` é 0.
+    <View style={[styles.palco, { paddingTop: insets.top }]}>
       {/**
        * **Uma rolagem só, para as duas colunas.** A marca era irmã do
        * `ScrollView`: entre 640 e 1099 ela virava uma faixa fixa no topo com
@@ -150,6 +154,11 @@ function AlternarTema() {
   const styles = useMemo(() => criarEstilos(t), [t]);
   const irPara = t.isDark ? "light" : "dark";
   const { estado, handlers } = useInteracao();
+  // As telas de autenticação não passam pelo `AppShell`: elas desenham o
+  // próprio topo, e por isso o ajuste de área segura feito lá não as alcançou.
+  // Este botão é `position: absolute` com `top: 20` — no celular, 20px a
+  // partir da borda física é debaixo do relógio.
+  const insets = useSafeAreaInsets();
 
   return (
     <Pressable
@@ -160,6 +169,7 @@ function AlternarTema() {
       // `.theme-toggle:hover` — só acende; o ícone já é o assunto do botão.
       style={[
         styles.botaoTema,
+        { top: 20 + insets.top },
         estado.hovered && { backgroundColor: t.colors.surfaceAlt },
         estado.pressed && { backgroundColor: t.colors.surfaceStrong },
         estado.focoVisivel

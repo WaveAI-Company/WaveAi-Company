@@ -38,6 +38,20 @@ let inscricao: { remove(): void } | null = null;
  * A partir do Android 12 (API 31) valem `BLUETOOTH_CONNECT`/`BLUETOOTH_SCAN`;
  * antes disso, o sistema exigia permissão de **localização** para varredura.
  */
+/**
+ * Nome de cada permissão do Android em português.
+ *
+ * O identificador cru (`android.permission.BLUETOOTH_CONNECT`) não ajuda quem
+ * precisa achá-la nos ajustes do celular — lá ela aparece como "Dispositivos
+ * por perto". O mapa existe para a mensagem falar a mesma língua da tela do
+ * sistema.
+ */
+const NOME_PERMISSAO: Record<string, string> = {
+  "android.permission.BLUETOOTH_CONNECT": "Dispositivos por perto (conectar)",
+  "android.permission.BLUETOOTH_SCAN": "Dispositivos por perto (procurar)",
+  "android.permission.ACCESS_FINE_LOCATION": "Localização precisa",
+};
+
 async function garantirPermissoes(): Promise<void> {
   if (Platform.OS !== "android") return;
 
@@ -51,11 +65,18 @@ async function garantirPermissoes(): Promise<void> {
       : [PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION];
 
   const resultado = await PermissionsAndroid.requestMultiple(pedidos);
-  const negada = Object.values(resultado).some(
-    (estado) => estado !== PermissionsAndroid.RESULTS.GRANTED,
-  );
-  if (negada) {
-    throw new Error("permissao de Bluetooth negada");
+  const negadas = Object.entries(resultado)
+    .filter(([, estado]) => estado !== PermissionsAndroid.RESULTS.GRANTED)
+    .map(([permissao]) => NOME_PERMISSAO[permissao] ?? permissao);
+
+  if (negadas.length > 0) {
+    // **Diz QUAIS** permissões faltam, em nome de gente. "permissão negada"
+    // sozinho não permite à pessoa agir: ela não sabe o que procurar nos
+    // ajustes do celular.
+    throw new Error(
+      `Permissão negada: ${negadas.join(" e ")}. ` +
+        "Autorize nos ajustes do celular, em Aplicativos › WaveAI › Permissões.",
+    );
   }
 }
 
@@ -87,11 +108,18 @@ export const deviceConnection: DeviceConnection = {
 
   async bluetoothLigado(): Promise<boolean> {
     if (Platform.OS !== "android") return false;
+    // Consultar o estado do rádio já exige BLUETOOTH_CONNECT no Android 12+.
+    await garantirPermissoes();
     return RNBluetoothClassic.isBluetoothEnabled();
   },
 
   async pedirBluetooth(): Promise<boolean> {
     if (Platform.OS !== "android") return false;
+    // **A permissão vem ANTES do pedido para ligar.** Sem isto, o primeiro
+    // toque em "Ligar Bluetooth" falhava com erro de permissão: a partir do
+    // Android 12 `requestBluetoothEnabled` também exige BLUETOOTH_CONNECT, e
+    // não era óbvio porque a permissão só era pedida ao listar aparelhos.
+    await garantirPermissoes();
     // O Android mostra o diálogo do sistema; a promessa resolve com o que a
     // pessoa escolheu. Se ela recusar, devolve `false` e a tela continua
     // pedindo — em vez de tentar procurar e falhar com erro de biblioteca.

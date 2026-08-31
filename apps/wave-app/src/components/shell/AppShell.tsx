@@ -170,6 +170,10 @@ function PainelLateral({
   const { accent } = useRoleAccent();
   const styles = useMemo(() => criarEstilos(t), [t]);
   const { user, signOut } = useAuth();
+  // No celular este painel é o drawer, e ele cobre a tela inteira do topo ao
+  // rodapé — inclusive a faixa do sistema. Sem o inset, a marca nascia debaixo
+  // do relógio, como acontecia no header. Na sidebar do web o valor é 0.
+  const insets = useSafeAreaInsets();
   if (!user) return null;
 
   // Duas formas do mesmo papel: a pílula do mockup traz o rótulo curto
@@ -177,7 +181,13 @@ function PainelLateral({
   const papelCurto = user.role === "doctor" ? "Profissional" : "Paciente";
 
   return (
-    <View style={[styles.painel, rail && styles.painelRail]}>
+    <View
+      style={[
+        styles.painel,
+        rail && styles.painelRail,
+        { paddingTop: t.spacing.md + insets.top, paddingBottom: t.spacing.md + insets.bottom },
+      ]}
+    >
       <View style={[styles.marca, rail && styles.marcaRail]}>
         {/* No rail cabe o ladrilho, não o letreiro. */}
         <Logo size={rail ? 32 : 36} forma="completa" tint={accent} withWordmark={!rail} tagline={rail ? undefined : "análise de bem-estar"} />

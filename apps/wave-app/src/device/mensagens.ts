@@ -26,9 +26,12 @@ const PADROES: ReadonlyArray<readonly [RegExp, string]> = [
     /already attempting connection|already connect/i,
     "Já estamos conectando a esse aparelho. Aguarde um instante.",
   ],
+  // "permiss" cobre permission / permissão / permissao — inclusive a nossa
+  // própria mensagem, que já vem em português e nomeia o que falta. Quando ela
+  // é a origem, o texto dela passa direto: ver `PASSA_DIRETO` abaixo.
   [
-    /unauthorized|permission|denied/i,
-    "O app precisa da sua permissão para usar o Bluetooth. Autorize nas configurações do aparelho.",
+    /unauthorized|permiss|denied|negad/i,
+    "O app precisa da sua permissão para usar o Bluetooth. Autorize nos ajustes do celular, em Aplicativos › WaveAI › Permissões.",
   ],
   [
     /unsupported|not supported/i,
@@ -55,9 +58,19 @@ const PADROES: ReadonlyArray<readonly [RegExp, string]> = [
 /** Frase para quando nada casa: diz o que houve sem inventar a causa. */
 const GENERICA = "Não foi possível falar com o aparelho. Tente de novo.";
 
+/**
+ * Mensagens que **já são nossas** e já estão em português.
+ *
+ * O `garantirPermissoes` nomeia exatamente quais permissões faltam ("Dispositivos
+ * por perto (conectar)") — informação que a frase genérica sobre permissão
+ * perderia. Quando o texto vem de lá, ele passa direto.
+ */
+const PASSA_DIRETO = /^Permissão negada:/;
+
 export function mensagemBluetooth(erro: unknown): string {
   const cru = erro instanceof Error ? erro.message : typeof erro === "string" ? erro : "";
   const limpo = cru.replace(MAC, "").trim();
+  if (PASSA_DIRETO.test(limpo)) return limpo;
   for (const [padrao, texto] of PADROES) {
     if (padrao.test(limpo)) return texto;
   }
