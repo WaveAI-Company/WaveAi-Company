@@ -5,6 +5,7 @@ import { ActivityIndicator, StyleSheet, View } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { AuthProvider, homeForRole, useAuth } from "../src/auth/AuthContext";
+import { CaptureSessionProvider } from "../src/capture/CaptureSession";
 import { AppShell } from "../src/components/shell/AppShell";
 import { ThemeProvider, useRoleAccent, useTheme } from "../src/theme";
 
@@ -108,8 +109,15 @@ export default function RootLayout() {
       <AuthProvider>
         {/* ThemeProvider depende de useAuth (sotaque por papel), então fica dentro. */}
         <ThemeProvider>
-          <BarraDeStatus />
-          <RouteGuard />
+          {/**
+           * A sessão de captação vive **acima das rotas** (ADR-0052, parte 1).
+           * Enquanto ela morava dentro da tela, trocar de aba a encerrava: o
+           * cleanup de desmontagem fechava socket, cronômetro e stream.
+           */}
+          <CaptureSessionProvider>
+            <BarraDeStatus />
+            <RouteGuard />
+          </CaptureSessionProvider>
         </ThemeProvider>
       </AuthProvider>
     </SafeAreaProvider>
