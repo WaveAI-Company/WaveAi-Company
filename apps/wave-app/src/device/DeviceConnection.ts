@@ -63,6 +63,20 @@ export class DeviceUnsupportedError extends Error {
   }
 }
 
+/**
+ * Já há uma conexão — estabelecida ou em curso.
+ *
+ * Vive no contrato porque as duas plataformas a lançam pelo mesmo motivo: o
+ * rádio é um recurso único, e a guarda tem de estar onde ele está. A tela
+ * também recusa o segundo toque, mas aquilo é conforto de interface; isto é o
+ * que impede duas conexões vindas de qualquer caminho.
+ */
+export class DeviceBusyError extends Error {
+  constructor() {
+    super("já existe uma conexão com um aparelho");
+  }
+}
+
 export interface DeviceConnection {
   /** `false` no web: a UI deve avisar em vez de oferecer a captação. */
   readonly supported: boolean;
