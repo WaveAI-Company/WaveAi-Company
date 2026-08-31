@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useMemo } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Linking, Pressable, StyleSheet, Text, View } from "react-native";
 
 import { formatPercent } from "../../src/api/results";
 import { Button } from "../../src/components/Button";
@@ -20,6 +20,7 @@ import { ScreenContainer } from "../../src/components/ScreenContainer";
 import { SensorPrepGuide } from "../../src/components/SensorPrepGuide";
 import { SessionAnnotation } from "../../src/components/SessionAnnotation";
 import { Switch } from "../../src/components/Switch";
+import { TextLink } from "../../src/components/TextLink";
 import { Disclaimer } from "../../src/components/Disclaimer";
 import { GuidedProtocol, type ProtocolPhase } from "../../src/components/GuidedProtocol";
 import { SIMULADOR_HABILITADO } from "../../src/capture/availability";
@@ -109,6 +110,7 @@ export default function PatientLiveScreen() {
     erro,
     conectandoA,
     abrindoSessao,
+    avisoVisivel,
     iniciar,
     iniciarComAparelho,
     parar,
@@ -281,6 +283,25 @@ export default function PatientLiveScreen() {
           toque acabara de gerar. Agora ela mora ao lado do botão, no painel
           "Aparelho". Este ponto só mostra o que não tem dono na tela. */}
       {erro && !erroScan ? <Text style={styles.erro}>{erro}</Text> : null}
+
+      {/* A captação corre sem aviso na barra quando a permissão de notificação
+          é recusada. A ADR-0052 escolheu a notificação como o preço VISÍVEL de
+          captar fora da tela; se ela não vai aparecer, o silêncio seria a tela
+          deixando no ar uma promessa que o sistema não vai cumprir (ADR-0027).
+          Não bloqueia nada: quem prefere assim capta do mesmo jeito. */}
+      {avisoVisivel === false ? (
+        <View style={styles.semAviso}>
+          <Text style={styles.semAvisoTexto}>
+            A captação continua com a tela apagada, mas sem aviso na barra de
+            notificações — o WaveAI não tem permissão para mostrá-lo neste aparelho.
+          </Text>
+          <TextLink
+            label="Abrir as configurações do app"
+            onPress={() => void Linking.openSettings()}
+            compacto
+          />
+        </View>
+      ) : null}
 
       {/* ===== herói + trilho lateral ===== */}
       <View style={[styles.grade, emColunas && styles.gradeLinha]}>
@@ -1079,6 +1100,18 @@ const criarEstilos = (t: Theme) =>
       ...t.typography.body,
       color: t.colors.dangerText,
       fontSize: 14,
+    },
+    // Não é erro nem alerta: é uma limitação do aparelho, dita sem alarme. Por
+    // isso `textMuted` e não `dangerText` — colorir de perigo faria a pessoa
+    // achar que a captação está comprometida, e ela não está.
+    semAviso: {
+      gap: t.spacing.xs,
+    },
+    semAvisoTexto: {
+      ...t.typography.body,
+      color: t.colors.textMuted,
+      fontSize: 14,
+      lineHeight: 20,
     },
     // Respiro entre os aparelhos da lista: encostados, os cartões liam como um
     // bloco só. O `gap` do `Panel` cuida do espaço até o botão acima.
