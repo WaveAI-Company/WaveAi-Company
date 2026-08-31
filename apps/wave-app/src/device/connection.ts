@@ -19,6 +19,7 @@ import RNBluetoothClassic, {
 } from "react-native-bluetooth-classic";
 
 import {
+  DeviceBusyError,
   DeviceUnsupportedError,
   type DeviceConnection,
   type DeviceHandlers,
@@ -33,11 +34,20 @@ let dispositivo: BluetoothDevice | null = null;
 let inscricao: { remove(): void } | null = null;
 
 /**
- * Permissões de Bluetooth no Android.
+ * Trava de conexão — **o recurso é único e a guarda mora com ele**.
  *
- * A partir do Android 12 (API 31) valem `BLUETOOTH_CONNECT`/`BLUETOOTH_SCAN`;
- * antes disso, o sistema exigia permissão de **localização** para varredura.
+ * A tela já recusa o segundo toque, mas isso é guarda de interface: qualquer
+ * outro caminho (uma reconexão automática, um retry, código futuro) passaria
+ * direto. Aqui a recusa vale para todo mundo.
+ *
+ * É um booleano marcado **de forma síncrona**, e não um teste sobre
+ * `dispositivo`: entre o `if (dispositivo)` e a atribuição há um `await`, e
+ * duas chamadas concorrentes passariam as duas pelo teste antes de qualquer
+ * uma atribuir. O socket da primeira ficaria órfão — aberto, sem ninguém para
+ * fechá-lo.
  */
+let conectando = false;
+
 /**
  * Nome de cada permissão do Android em português.
  *
@@ -52,6 +62,12 @@ const NOME_PERMISSAO: Record<string, string> = {
   "android.permission.ACCESS_FINE_LOCATION": "Localização precisa",
 };
 
+/**
+ * Pede as permissões de Bluetooth do Android, e falha nomeando o que faltou.
+ *
+ * A partir do Android 12 (API 31) valem `BLUETOOTH_CONNECT`/`BLUETOOTH_SCAN`;
+ * antes disso, o sistema exigia permissão de **localização** para varredura.
+ */
 async function garantirPermissoes(): Promise<void> {
   if (Platform.OS !== "android") return;
 
@@ -139,7 +155,18 @@ export const deviceConnection: DeviceConnection = {
 
   async connect(deviceId: string, handlers: DeviceHandlers): Promise<void> {
     if (Platform.OS !== "android") throw new DeviceUnsupportedError();
-    await garantirPermissoes();
+    // Recusa ANTES de qualquer `await`, para que duas chamadas concorrentes não
+    // passem as duas. Recusar e não "trocar de aparelho" é deliberado: trocar
+    // silenciosamente esconderia um erro de quem chamou.
+    if (conectando || dispositivo) throw new DeviceBusyError();
+    conectando = true;
+
+    try {
+      await garantirPermissoes();
+    } catch (erro) {
+      conectando = false;
+      throw erro;
+    }
 
     handlers.onStatus?.("connecting");
     try {
@@ -150,9 +177,14 @@ export const deviceConnection: DeviceConnection = {
         connectionType: "binary",
       });
     } catch (erro) {
+      // Solta a trava: sem isto, uma falha de conexão deixaria o app achando
+      // para sempre que há uma tentativa em curso, e nenhuma nova seria aceita.
+      conectando = false;
+      dispositivo = null;
       handlers.onStatus?.("error", String(erro));
       throw erro;
     }
+    conectando = false;
 
     const parser = new ThinkGearParser();
     inscricao = dispositivo.onDataReceived((evento) => {
@@ -185,5 +217,8 @@ export const deviceConnection: DeviceConnection = {
       await dispositivo.disconnect().catch(() => undefined);
       dispositivo = null;
     }
+    // A trava cai aqui também: um `disconnect()` durante uma tentativa em curso
+    // é o cancelamento dela, e depois disso conectar de novo tem de ser aceito.
+    conectando = false;
   },
 };
