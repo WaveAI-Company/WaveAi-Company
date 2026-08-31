@@ -8,7 +8,17 @@
  *
  * Aqui a sessão vive acima das rotas. A tela passa a **ler e comandar** — não a
  * possuir. Isso resolve navegar dentro do app; sobreviver à **tela apagada** é a
- * parte 2 da mesma ADR e exige serviço em primeiro plano no Android.
+ * parte 2 da mesma ADR.
+ *
+ * O serviço em primeiro plano (Android) é **necessário e não suficiente** para a
+ * parte 2, e isso custou uma medição para descobrir: com o serviço de pé, o
+ * processo, o rádio e o socket sobreviveram à tela apagada — mas o **envio**
+ * parou, porque dependia de `setInterval`, e timer de RN no Android não dispara
+ * com a activity pausada. O buffer enchia sem ninguém drenar e, ao voltar, ia
+ * inteiro num frame só; passados 8 s (4096 amostras ÷ 512 Hz) o servidor
+ * recusava com "bloco grande demais" e derrubava a sessão. Daí as duas regras
+ * abaixo: **quem dispara o envio é a chegada da amostra, não o relógio**, e
+ * **nenhum frame passa de `BLOCO` amostras**.
  *
  * O que **não** mudou de propósito: nenhuma conta é feita aqui. As medidas
  * continuam vindo do servidor (ADR-0025) e o eSense continua repassado como veio
@@ -41,8 +51,17 @@ import { mensagemBluetooth } from "../device/mensagens";
 import { SignalSimulator } from "../mocks/signalSimulator";
 
 export const SAMPLE_RATE = 512;
-/** Cadência de envio: blocos de 256 amostras a cada 500 ms (≈ tempo real). */
+/**
+ * Tamanho do bloco enviado ao servidor — e **teto de um frame**.
+ *
+ * A 512 Hz, 256 amostras fecham a cada 500 ms, que é a cadência de sempre. O
+ * papel novo é ser limite: o gateway recusa blocos acima de
+ * `stream_max_block_samples` (4096) fechando a conexão, então fatiar sempre em
+ * 256 deixa 16× de folga. Deliberadamente **não** replicamos o 4096 aqui — duas
+ * constantes em serviços diferentes saem de sincronia sem ninguém notar.
+ */
 const BLOCO = 256;
+/** Rede de arrasto: leva o resto (< `BLOCO`) que o envio por volume não fecha. */
 const INTERVALO_MS = 500;
 /** Janelas mantidas no gráfico ao vivo (janela ~2 s → ~80 s de histórico). */
 const MAX_PONTOS = 40;
@@ -109,6 +128,15 @@ export function CaptureSessionProvider({ children }: { children: ReactNode }) {
   const simuladorRef = useRef<SignalSimulator | null>(null);
   const pendentes = useRef<number[]>([]);
   const esensePendente = useRef<Esense>({});
+  /**
+   * Instante de início, em ms. O cronômetro **lê o relógio** em vez de contar
+   * tiques: um `setDuracao(s => s + 1)` só avança quando o timer dispara, e com
+   * a tela apagada ele não dispara — a duração exibida viraria "segundos com a
+   * tela acesa", que não é o que a tela diz estar mostrando (ADR-0027). Ref, e
+   * não o estado `inicio`, porque o callback do intervalo prenderia o valor da
+   * renderização em que foi criado.
+   */
+  const comecoMs = useRef(0);
   const compartilhamentoEmVoo = useRef(false);
   const intencaoCompartilhar = useRef<boolean | null>(null);
   /**
@@ -203,11 +231,38 @@ export function CaptureSessionProvider({ children }: { children: ReactNode }) {
     setEncerrada(null);
     setDuracao(0);
     setInicio(new Date());
+    comecoMs.current = Date.now();
   }, []);
 
   const iniciarCronometro = useCallback(() => {
-    cronometro.current = setInterval(() => setDuracao((s) => s + 1), 1000);
+    // Ao voltar do segundo plano o intervalo volta a disparar e o número se
+    // corrige sozinho no primeiro tique, porque vem de uma subtração de datas.
+    cronometro.current = setInterval(() => {
+      setDuracao(Math.floor((Date.now() - comecoMs.current) / 1000));
+    }, 1000);
   }, []);
+
+  /**
+   * Drena o buffer em frames de no máximo `BLOCO` amostras.
+   *
+   * `parcial` distingue os dois gatilhos: a **chegada de amostra** só fecha
+   * bloco cheio (é o caminho que funciona com a tela apagada), e o **intervalo**
+   * varre o resto para o fim da captação não ficar preso no buffer. O eSense
+   * pega carona no primeiro frame e é limpo, para não repetir valor velho nos
+   * seguintes (ADR-0034).
+   */
+  const drenarPendentes = useCallback(
+    (stream: StreamSession, parcial: boolean) => {
+      const minimo = parcial ? 1 : BLOCO;
+      while (pendentes.current.length >= minimo) {
+        const bloco = pendentes.current.splice(0, BLOCO);
+        const esenseAgora = esensePendente.current;
+        esensePendente.current = {};
+        stream.sendSamples(bloco, esenseAgora);
+      }
+    },
+    [],
+  );
 
   const novoStream = useCallback(
     () =>
@@ -269,7 +324,13 @@ export function CaptureSessionProvider({ children }: { children: ReactNode }) {
       try {
         await stream.connect(device.name || "mindwave", SAMPLE_RATE);
         await deviceConnection.connect(device.id, {
-          onRawSample: ({ amplitude }) => pendentes.current.push(amplitude),
+          // **O envio nasce aqui, não no relógio.** Este callback vem de evento
+          // do módulo nativo, que segue sendo entregue com a activity pausada —
+          // ao contrário do `setInterval`, que para. Fechou 256 amostras, vai.
+          onRawSample: ({ amplitude }) => {
+            pendentes.current.push(amplitude);
+            drenarPendentes(stream, false);
+          },
           onSignalQuality: ({ poorSignal: p }) => setPoorSignal(p),
           // eSense do aparelho: guarda o último para enviar junto do próximo
           // bloco. O que a UI exibe é o valor relayado de volta pelo gateway.
@@ -295,16 +356,23 @@ export function CaptureSessionProvider({ children }: { children: ReactNode }) {
       iniciarServicoCaptacao();
       iniciarCronometro();
 
-      // Envia o que chegou do aparelho na cadência do stream. O eSense pendente
-      // pega carona e é consumido (limpo) para não reenviar valor velho.
+      // Só o resto: o bloco cheio já saiu no `onRawSample`. Este intervalo
+      // existe para o pedaço final (< 256) não ficar parado no buffer quando o
+      // aparelho para de emitir — e, por ser timer, é o único trecho daqui que
+      // não roda com a tela apagada. Tudo bem: em background não sobra resto,
+      // porque o rádio segue enchendo até fechar bloco.
       timer.current = setInterval(() => {
-        if (pendentes.current.length === 0) return;
-        const esenseAgora = esensePendente.current;
-        esensePendente.current = {};
-        stream.sendSamples(pendentes.current.splice(0), esenseAgora);
+        drenarPendentes(stream, true);
       }, INTERVALO_MS);
     },
-    [conectandoA, ativo, limparParaNovaSessao, novoStream, iniciarCronometro],
+    [
+      conectandoA,
+      ativo,
+      limparParaNovaSessao,
+      novoStream,
+      iniciarCronometro,
+      drenarPendentes,
+    ],
   );
 
   /**
