@@ -125,6 +125,8 @@ export default function PatientLiveScreen() {
    * "Conectando…", e os outros ficam inertes enquanto isso.
    */
   const [conectandoA, setConectandoA] = useState<string | null>(null);
+  /** Sessão simulada sendo aberta — impede dois toques abrirem duas. */
+  const [abrindoSessao, setAbrindoSessao] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
   /**
    * Compartilhamento ao vivo desta sessão (ADR-0045). Nasce DESLIGADO a cada
@@ -144,20 +146,54 @@ export default function PatientLiveScreen() {
     setErroCompartilhar(null);
   }, []);
 
+  /**
+   * Requisição de compartilhamento em voo, e a intenção mais recente.
+   *
+   * **Sem isto, tocar rápido no interruptor disparava N requisições
+   * concorrentes, e vencia a última a RESPONDER — que não é a última tocada.**
+   * A tela podia acabar dizendo "compartilhando" com o servidor desligado, ou
+   * o contrário. Num controle que decide quem vê os dados ao vivo, isso é
+   * grave.
+   *
+   * Não é `disabled` no interruptor de propósito: desligar é o caso urgente
+   * (ADR-0045, "corta na hora") e travar o gesto enquanto a rede responde seria
+   * pior. Em vez disso, o toque sempre registra a intenção, e ao terminar a
+   * requisição em voo o efeito **converge** para a última — que é o que a
+   * pessoa quis.
+   */
+  const compartilhamentoEmVoo = useRef(false);
+  const intencaoCompartilhar = useRef<boolean | null>(null);
+
   const alternarCompartilhamento = useCallback(
     async (proximo: boolean) => {
       if (!sessionId) return;
-      // Otimista: o gesto responde na hora e volta atrás se o servidor recusar
-      // — desligar é o caso urgente, e esperar a rede para ele seria pior.
+      // Otimista: o gesto responde na hora e volta atrás se o servidor recusar.
       setCompartilhando(proximo);
       setErroCompartilhar(null);
+
+      intencaoCompartilhar.current = proximo;
+      if (compartilhamentoEmVoo.current) return;
+      compartilhamentoEmVoo.current = true;
+
       try {
-        setCompartilhando(await setLiveSharing(sessionId, proximo));
+        // Drena as intenções: se a pessoa tocou de novo durante a requisição,
+        // manda a última — em vez de deixar o servidor no estado do meio.
+        while (intencaoCompartilhar.current !== null) {
+          const alvo = intencaoCompartilhar.current;
+          intencaoCompartilhar.current = null;
+          const confirmado = await setLiveSharing(sessionId, alvo);
+          // Só reflete se nada novo chegou enquanto esperávamos: senão a UI
+          // pularia para um estado que a pessoa já abandonou.
+          if (intencaoCompartilhar.current === null) setCompartilhando(confirmado);
+        }
       } catch {
         setCompartilhando(!proximo);
         setErroCompartilhar(
           "Não foi possível mudar o compartilhamento agora. Tente de novo.",
         );
+      } finally {
+        compartilhamentoEmVoo.current = false;
+        intencaoCompartilhar.current = null;
       }
     },
     [sessionId],
@@ -432,6 +468,10 @@ export default function PatientLiveScreen() {
   useEffect(() => () => descartarRef.current(), []);
 
   async function iniciar() {
+    // Mesma trava do conectar: entre o toque e a sessão aberta há rede, e sem
+    // guarda dois toques abririam duas sessões simuladas.
+    if (abrindoSessao) return;
+    setAbrindoSessao(true);
     limparParaNovaSessao();
 
     const stream = new StreamSession({
@@ -449,11 +489,13 @@ export default function PatientLiveScreen() {
       await stream.connect("simulador", SAMPLE_RATE);
     } catch {
       setErro("Não foi possível iniciar a captação simulada.");
+      setAbrindoSessao(false);
       return;
     }
 
     sessao.current = stream;
     setAtivo(true);
+    setAbrindoSessao(false);
     iniciarCronometro();
 
     // O simulador emite eSense sintético para exercitar o caminho sem hardware
@@ -635,6 +677,10 @@ export default function PatientLiveScreen() {
                           : "Iniciar captação simulada"
                     }
                     onPress={ativo ? parar : iniciar}
+                    // Enquanto a sessão abre, o botão não aceita novo toque: a
+                    // guarda de `iniciar` já recusaria, mas deixar o controle
+                    // aparentemente ativo convida ao toque repetido.
+                    disabled={abrindoSessao}
                     accent={ativo ? t.colors.warningText : papel.accent}
                   />
                 </View>

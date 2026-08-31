@@ -28,6 +28,7 @@ import {
 } from "react-native-ble-plx";
 
 import {
+  DeviceBusyError,
   type DeviceConnection,
   type DeviceHandlers,
   type DeviceInfo,
@@ -44,6 +45,8 @@ let gerenciador: BleManager | null = null;
 let assinaturas = new Map<string, Subscription>();
 let assinaturaDesconexao: Subscription | null = null;
 let dispositivoId: string | null = null;
+/** Trava de conexão — ver o comentário extenso em `connection.ts`. */
+let conectando = false;
 
 /** Cria o gerenciador só quando usado — construir exige o módulo nativo. */
 function obterGerenciador(): BleManager {
@@ -155,6 +158,13 @@ export const deviceConnection: DeviceConnection = {
   },
 
   async connect(deviceId: string, handlers: DeviceHandlers): Promise<void> {
+    // Mesma trava do transporte Android, pelo mesmo motivo: o rádio é um só, e
+    // a guarda tem de estar onde o recurso está — não só na tela. Marcada
+    // antes de qualquer `await`, senão duas chamadas concorrentes passam as
+    // duas e a primeira conexão fica órfã.
+    if (conectando || dispositivoId) throw new DeviceBusyError();
+    conectando = true;
+
     const manager = obterGerenciador();
     handlers.onStatus?.("connecting");
 
@@ -165,9 +175,13 @@ export const deviceConnection: DeviceConnection = {
       dispositivo = await manager.connectToDevice(deviceId);
       await dispositivo.discoverAllServicesAndCharacteristics();
     } catch (erro) {
+      // Solta a trava: sem isto uma falha deixaria o app achando para sempre
+      // que há tentativa em curso, e nenhuma nova seria aceita.
+      conectando = false;
       handlers.onStatus?.("error", String(erro));
       throw erro;
     }
+    conectando = false;
 
     dispositivoId = deviceId;
     limparAssinaturas();
@@ -246,5 +260,7 @@ export const deviceConnection: DeviceConnection = {
       await gerenciador.cancelDeviceConnection(dispositivoId).catch(() => undefined);
     }
     dispositivoId = null;
+    // Desconectar durante uma tentativa é o cancelamento dela.
+    conectando = false;
   },
 };
