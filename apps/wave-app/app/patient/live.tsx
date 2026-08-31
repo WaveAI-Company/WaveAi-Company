@@ -3,12 +3,6 @@ import { useMemo } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { formatPercent } from "../../src/api/results";
-import {
-  StreamSession,
-  type LiveEsense,
-  type LiveFeatures,
-  type SessionClosed,
-} from "../../src/api/stream";
 import { Button } from "../../src/components/Button";
 import { Card } from "../../src/components/Card";
 import { Chip } from "../../src/components/Chip";
@@ -26,15 +20,14 @@ import { ScreenContainer } from "../../src/components/ScreenContainer";
 import { SensorPrepGuide } from "../../src/components/SensorPrepGuide";
 import { SessionAnnotation } from "../../src/components/SessionAnnotation";
 import { Switch } from "../../src/components/Switch";
-import { setLiveSharing } from "../../src/api/liveWatch";
 import { Disclaimer } from "../../src/components/Disclaimer";
 import { GuidedProtocol, type ProtocolPhase } from "../../src/components/GuidedProtocol";
 import { SIMULADOR_HABILITADO } from "../../src/capture/availability";
+import { useCaptureSession } from "../../src/capture/CaptureSession";
 import { describeContact } from "../../src/device/contactQuality";
 import { deviceConnection } from "../../src/device/connection";
-import type { DeviceInfo, Esense } from "../../src/device/DeviceConnection";
+import type { DeviceInfo } from "../../src/device/DeviceConnection";
 import { mensagemBluetooth } from "../../src/device/mensagens";
-import { SignalSimulator } from "../../src/mocks/signalSimulator";
 import {
   larguras,
   useAccentFor,
@@ -56,12 +49,6 @@ const MOTIVO_NAO_GUARDADO: Record<string, string> = {
   indisponivel: "O registro de resultados não está disponível.",
 };
 
-const SAMPLE_RATE = 512;
-/** Cadência de envio: blocos de 256 amostras a cada 500 ms (≈ tempo real). */
-const BLOCO = 256;
-const INTERVALO_MS = 500;
-/** Janelas mantidas no gráfico ao vivo (janela ~2 s → ~80 s de histórico). */
-const MAX_PONTOS = 40;
 /** Pior contato possível relatado pelo aparelho (0 = bom, 200 = solto). */
 const POOR_SIGNAL_MAX = 200;
 /** A partir daqui a tela se organiza em colunas. */
@@ -98,227 +85,47 @@ export default function PatientLiveScreen() {
   /** Tablet: o trilho vira linha e o trio vira duas colunas (`≤1199` do mockup). */
   const emMeio = faixa === "medio";
 
-  const [ativo, setAtivo] = useState(false);
-  const [features, setFeatures] = useState<LiveFeatures | null>(null);
-  /** eSense ao vivo relayado pelo gateway (ADR-0034), à parte das features. */
-  const [esense, setEsense] = useState<LiveEsense | null>(null);
-  const [janelas, setJanelas] = useState(0);
-  /** Histórico de composição por banda para o gráfico ao vivo (P1-c). */
-  const [bandHistory, setBandHistory] = useState<Array<Record<string, number>>>([]);
-  const [erro, setErro] = useState<string | null>(null);
   /**
-   * Falha do aparelho, mostrada **junto do botão** que a causou.
-   *
-   * Separada de `erro` porque o lugar importa: a mensagem de Bluetooth nascia
-   * no topo da página, fora da dobra no celular, e quem tocava "Procurar" não
-   * a via. Aqui ela fica no painel "Aparelho", ao alcance do olho.
+   * A sessão vive **acima das rotas** (ADR-0052, parte 1): esta tela lê e
+   * comanda, mas não possui. Antes ela era dona do stream, da conexão e do
+   * cronômetro, e o cleanup de desmontagem encerrava a captação — sair da aba
+   * matava a sessão.
    */
-  const [erroAparelho, setErroAparelho] = useState<string | null>(null);
+  const {
+    ativo,
+    usandoAparelho,
+    sessionId,
+    features,
+    esense,
+    janelas,
+    bandHistory,
+    poorSignal,
+    duracao,
+    inicio,
+    encerrada,
+    encerrando,
+    compartilhando,
+    erroCompartilhar,
+    erro,
+    conectandoA,
+    abrindoSessao,
+    iniciar,
+    iniciarComAparelho,
+    parar,
+    alternarCompartilhamento,
+    aoMudarFaseProtocolo,
+  } = useCaptureSession();
+
+  /** Aparelhos encontrados no scan — some ao sair da tela, e tudo bem: a
+   *  lista envelhece, e refazer a busca é o comportamento correto. */
+  const [aparelhos, setAparelhos] = useState<DeviceInfo[]>([]);
+  /** Falha da BUSCA/rádio, separada do erro da sessão: mora junto do botão. */
+  const [erroScan, setErroScan] = useState<string | null>(null);
   /**
    * `null` enquanto não se sabe — e "não sei" não é "desligado". Antes de
    * responder, a tela não promete nem um botão nem o outro.
    */
   const [btLigado, setBtLigado] = useState<boolean | null>(null);
-  /**
-   * Id do aparelho em conexão, ou `null`. Guarda o **id** e não um booleano
-   * porque a lista precisa saber *qual* item está ocupado: só ele mostra
-   * "Conectando…", e os outros ficam inertes enquanto isso.
-   */
-  const [conectandoA, setConectandoA] = useState<string | null>(null);
-  /** Sessão simulada sendo aberta — impede dois toques abrirem duas. */
-  const [abrindoSessao, setAbrindoSessao] = useState(false);
-  const [sessionId, setSessionId] = useState<string | null>(null);
-  /**
-   * Compartilhamento ao vivo desta sessão (ADR-0045). Nasce DESLIGADO a cada
-   * sessão — é o "aceite separado, sessão a sessão" que o produto promete.
-   */
-  const [compartilhando, setCompartilhando] = useState(false);
-  const [erroCompartilhar, setErroCompartilhar] = useState<string | null>(null);
-
-  /**
-   * Sessão nova: o compartilhamento **volta a nascer desligado** (ADR-0045).
-   * Sem este reset, a escolha de uma captação vazaria para a seguinte — e
-   * "sessão a sessão" deixaria de ser verdade.
-   */
-  const aoAbrirSessao = useCallback((id: string) => {
-    setSessionId(id);
-    setCompartilhando(false);
-    setErroCompartilhar(null);
-  }, []);
-
-  /**
-   * Requisição de compartilhamento em voo, e a intenção mais recente.
-   *
-   * **Sem isto, tocar rápido no interruptor disparava N requisições
-   * concorrentes, e vencia a última a RESPONDER — que não é a última tocada.**
-   * A tela podia acabar dizendo "compartilhando" com o servidor desligado, ou
-   * o contrário. Num controle que decide quem vê os dados ao vivo, isso é
-   * grave.
-   *
-   * Não é `disabled` no interruptor de propósito: desligar é o caso urgente
-   * (ADR-0045, "corta na hora") e travar o gesto enquanto a rede responde seria
-   * pior. Em vez disso, o toque sempre registra a intenção, e ao terminar a
-   * requisição em voo o efeito **converge** para a última — que é o que a
-   * pessoa quis.
-   */
-  const compartilhamentoEmVoo = useRef(false);
-  const intencaoCompartilhar = useRef<boolean | null>(null);
-
-  const alternarCompartilhamento = useCallback(
-    async (proximo: boolean) => {
-      if (!sessionId) return;
-      // Otimista: o gesto responde na hora e volta atrás se o servidor recusar.
-      setCompartilhando(proximo);
-      setErroCompartilhar(null);
-
-      intencaoCompartilhar.current = proximo;
-      if (compartilhamentoEmVoo.current) return;
-      compartilhamentoEmVoo.current = true;
-
-      try {
-        // Drena as intenções: se a pessoa tocou de novo durante a requisição,
-        // manda a última — em vez de deixar o servidor no estado do meio.
-        while (intencaoCompartilhar.current !== null) {
-          const alvo = intencaoCompartilhar.current;
-          intencaoCompartilhar.current = null;
-          const confirmado = await setLiveSharing(sessionId, alvo);
-          // Só reflete se nada novo chegou enquanto esperávamos: senão a UI
-          // pularia para um estado que a pessoa já abandonou.
-          if (intencaoCompartilhar.current === null) setCompartilhando(confirmado);
-        }
-      } catch {
-        setCompartilhando(!proximo);
-        setErroCompartilhar(
-          "Não foi possível mudar o compartilhamento agora. Tente de novo.",
-        );
-      } finally {
-        compartilhamentoEmVoo.current = false;
-        intencaoCompartilhar.current = null;
-      }
-    },
-    [sessionId],
-  );
-
-  const [aparelhos, setAparelhos] = useState<DeviceInfo[]>([]);
-  const [poorSignal, setPoorSignal] = useState<number | null>(null);
-  const [usandoAparelho, setUsandoAparelho] = useState(false);
-  /** Relatório da sessão encerrada (#17) — fecha a jornada na própria tela. */
-  const [encerrada, setEncerrada] = useState<SessionClosed | null>(null);
-  /** `true` entre o "stop" e a chegada do relatório. */
-  const [encerrando, setEncerrando] = useState(false);
-  /** Cronômetro da sessão, em segundos, e a hora em que ela começou. */
-  const [duracao, setDuracao] = useState(0);
-  const [inicio, setInicio] = useState<Date | null>(null);
-
-  const sessao = useRef<StreamSession | null>(null);
-  const timer = useRef<ReturnType<typeof setInterval> | null>(null);
-  const cronometro = useRef<ReturnType<typeof setInterval> | null>(null);
-  /** Simulador ativo (só no caminho web/simulado) — o protocolo guiado o usa
-   *  para tornar visível o contraste olhos abertos/fechados. */
-  const simuladorRef = useRef<SignalSimulator | null>(null);
-  /** Amostras do aparelho acumuladas entre envios ao servidor. */
-  const pendentes = useRef<number[]>([]);
-  /** Último eSense do aparelho, aguardando pegar carona no próximo bloco. */
-  const esensePendente = useRef<Esense>({});
-
-  /** Encerra a captação local (timer + aparelho), sem tocar no socket. */
-  const encerrarCaptacao = useCallback(() => {
-    if (timer.current) clearInterval(timer.current);
-    timer.current = null;
-    if (cronometro.current) clearInterval(cronometro.current);
-    cronometro.current = null;
-    if (usandoAparelho) void deviceConnection.disconnect();
-    pendentes.current = [];
-    esensePendente.current = {};
-    simuladorRef.current = null;
-    setAtivo(false);
-    setUsandoAparelho(false);
-  }, [usandoAparelho]);
-
-  /**
-   * Para a captação e **aguarda** o relatório da sessão.
-   *
-   * O socket NÃO é fechado aqui: fechá-lo logo após o `stop` descartaria a
-   * resposta `closed`, que é justamente onde vem o relatório (#17). Quem fecha
-   * é o handler `onClosed`.
-   */
-  const parar = useCallback(() => {
-    encerrarCaptacao();
-    if (sessao.current) {
-      setEncerrando(true);
-      sessao.current.stop();
-    }
-  }, [encerrarCaptacao]);
-
-  /** Abandona a sessão sem esperar nada (usado ao sair da tela). */
-  const descartar = useCallback(() => {
-    encerrarCaptacao();
-    sessao.current?.close();
-    sessao.current = null;
-  }, [encerrarCaptacao]);
-
-  /** Handler comum: chega o relatório, aí sim o socket pode fechar. */
-  const aoEncerrar = useCallback((fim: SessionClosed) => {
-    setEncerrada(fim);
-    setEncerrando(false);
-    sessao.current?.close();
-    sessao.current = null;
-  }, []);
-
-  /**
-   * Fase do protocolo guiado (P4-c). No simulador, eleva o alfa de "olhos
-   * fechados" para o contraste ficar visível; em aparelho real é só a guia
-   * (não há simulador, então isto não toca no sinal).
-   */
-  const aoMudarFaseProtocolo = useCallback((fase: ProtocolPhase | null) => {
-    simuladorRef.current?.setAlphaAmplitude(fase === "fechado" ? 45 : 20);
-  }, []);
-
-  /** Features de uma janela: atualiza o destaque e alimenta o gráfico ao vivo. */
-  const aoReceberFeatures = useCallback((f: LiveFeatures) => {
-    setFeatures(f);
-    setJanelas((n) => n + 1);
-    const rbp = f.relative_band_powers;
-    if (rbp) setBandHistory((h) => [...h, rbp].slice(-MAX_PONTOS));
-  }, []);
-
-  /**
-   * Zera o painel para uma sessão nova (os dois caminhos usam isto).
-   *
-   * **Descarta a sessão anterior antes de tudo.** `parar()` deixa o socket
-   * aberto de propósito — é por ele que chega o relatório —, e só o handler
-   * `onClosed` fecha. Entre um e outro existe uma janela em que a sessão velha
-   * ainda está viva: quem clicasse em iniciar ali ganhava um `sessao.current`
-   * novo por cima do antigo, e o `closed` atrasado da sessão velha caía no
-   * `aoEncerrar`, que fecha **a sessão corrente** — ou seja, matava a captação
-   * recém-iniciada e mostrava o relatório da anterior no lugar dela, sem saída
-   * a não ser recarregar a página. O `encerrando` também precisa voltar: preso
-   * em `true`, o painel "Encerrando a sessão…" acompanharia a sessão nova.
-   *
-   * Não reproduzi o erro em quatro caminhos (ciclo normal, reinício em 2s,
-   * reinício com o protocolo guiado rodando e um terceiro ciclo seguido); o
-   * mecanismo veio da leitura, e a guarda é barata o bastante para valer sem a
-   * reprodução.
-   */
-  function limparParaNovaSessao() {
-    sessao.current?.close();
-    sessao.current = null;
-    setEncerrando(false);
-    setErro(null);
-    setFeatures(null);
-    setEsense(null);
-    setJanelas(0);
-    setBandHistory([]);
-    setPoorSignal(null);
-    setEncerrada(null);
-    setDuracao(0);
-    setInicio(new Date());
-  }
-
-  /** Começa a contar o tempo de sessão (parado junto da captação). */
-  function iniciarCronometro() {
-    cronometro.current = setInterval(() => setDuracao((s) => s + 1), 1000);
-  }
 
   /**
    * Nomes que aparecem mais de uma vez na lista.
@@ -361,154 +168,39 @@ export default function PatientLiveScreen() {
    * ninguém liga por fora, então a tela instrui em vez de fingir que tentou.
    */
   async function ligarBluetooth() {
-    setErroAparelho(null);
+    setErroScan(null);
     try {
       const ligou = await deviceConnection.pedirBluetooth();
       setBtLigado(ligou);
       if (ligou) {
         await procurarAparelhos();
       } else {
-        setErroAparelho(
+        setErroScan(
           "Ligue o Bluetooth pelas configurações do aparelho e toque em procurar.",
         );
       }
     } catch (e) {
-      setErroAparelho(mensagemBluetooth(e));
+      setErroScan(mensagemBluetooth(e));
     }
   }
 
   async function procurarAparelhos() {
-    setErroAparelho(null);
+    setErroScan(null);
     // Pergunta antes: com o rádio desligado, `listDevices` falharia com o
     // texto cru da biblioteca, e a tela já sabe fazer melhor que isso.
     if (deviceConnection.supported && !(await conferirBluetooth())) {
-      setErroAparelho("O Bluetooth está desligado. Ligue-o para procurar o aparelho.");
+      setErroScan("O Bluetooth está desligado. Ligue-o para procurar o aparelho.");
       return;
     }
     try {
       setAparelhos(await deviceConnection.listDevices());
     } catch (e) {
-      setErroAparelho(mensagemBluetooth(e));
+      setErroScan(mensagemBluetooth(e));
       void conferirBluetooth();
     }
   }
 
   /** Captação real: o aparelho alimenta o mesmo stream do simulador. */
-  async function iniciarComAparelho(device: DeviceInfo) {
-    // **Um toque por vez.** Entre o toque e a primeira medida passam alguns
-    // segundos em que a tela não mudava nada — e, sem sinal de que algo estava
-    // acontecendo, o caminho natural era tocar de novo. Cada toque abriria
-    // outra sessão e outra conexão com o mesmo aparelho.
-    if (conectandoA) return;
-    setConectandoA(device.id);
-    limparParaNovaSessao();
-    esensePendente.current = {};
-
-    const stream = new StreamSession({
-      onSession: aoAbrirSessao,
-      onFeatures: aoReceberFeatures,
-      onEsense: setEsense,
-      onClosed: aoEncerrar,
-      onError: (detalhe) => {
-        setErro(detalhe);
-        parar();
-      },
-    });
-
-    try {
-      await stream.connect(device.name || "mindwave", SAMPLE_RATE);
-      await deviceConnection.connect(device.id, {
-        onRawSample: ({ amplitude }) => pendentes.current.push(amplitude),
-        onSignalQuality: ({ poorSignal: p }) => setPoorSignal(p),
-        // eSense do aparelho: guarda o último para enviar junto do próximo
-        // bloco. O que a UI exibe é o valor relayado de volta pelo gateway.
-        onEsense: (e) => {
-          esensePendente.current = e;
-        },
-        onStatus: (status, detalhe) => {
-          if (status === "error") setErroAparelho(mensagemBluetooth(detalhe));
-        },
-      });
-    } catch (e) {
-      setErroAparelho(mensagemBluetooth(e));
-      stream.close();
-      setConectandoA(null);
-      return;
-    }
-
-    sessao.current = stream;
-    setAtivo(true);
-    setUsandoAparelho(true);
-    setConectandoA(null);
-    iniciarCronometro();
-
-    // Envia o que chegou do aparelho na cadência do stream. O eSense pendente
-    // pega carona e é consumido (limpo) para não reenviar valor velho.
-    timer.current = setInterval(() => {
-      if (pendentes.current.length === 0) return;
-      const esenseAgora = esensePendente.current;
-      esensePendente.current = {};
-      stream.sendSamples(
-        pendentes.current.splice(0, pendentes.current.length),
-        esenseAgora,
-      );
-    }, INTERVALO_MS);
-  }
-
-  // Encerra o stream **apenas ao sair da tela** — e aí descarta sem esperar
-  // relatório, porque não há mais tela para exibi-lo.
-  //
-  // Via ref de propósito: com `useEffect(() => descartar, [descartar])`,
-  // qualquer mudança de identidade de `descartar` (depende de `usandoAparelho`)
-  // faria o React rodar a limpeza do efeito anterior — desconectando o aparelho
-  // no instante seguinte ao connect. O simulador não sofria disso porque não
-  // alterava a dependência.
-  const descartarRef = useRef(descartar);
-  descartarRef.current = descartar;
-  useEffect(() => () => descartarRef.current(), []);
-
-  async function iniciar() {
-    // Mesma trava do conectar: entre o toque e a sessão aberta há rede, e sem
-    // guarda dois toques abririam duas sessões simuladas.
-    if (abrindoSessao) return;
-    setAbrindoSessao(true);
-    limparParaNovaSessao();
-
-    const stream = new StreamSession({
-      onSession: aoAbrirSessao,
-      onFeatures: aoReceberFeatures,
-      onEsense: setEsense,
-      onClosed: aoEncerrar,
-      onError: (detalhe) => {
-        setErro(detalhe);
-        parar();
-      },
-    });
-
-    try {
-      await stream.connect("simulador", SAMPLE_RATE);
-    } catch {
-      setErro("Não foi possível iniciar a captação simulada.");
-      setAbrindoSessao(false);
-      return;
-    }
-
-    sessao.current = stream;
-    setAtivo(true);
-    setAbrindoSessao(false);
-    iniciarCronometro();
-
-    // O simulador emite eSense sintético para exercitar o caminho sem hardware
-    // (o selo "simulado" da tela já avisa que nada aqui é medição de ninguém).
-    const simulador = new SignalSimulator(SAMPLE_RATE);
-    simuladorRef.current = simulador;
-    timer.current = setInterval(() => {
-      stream.sendSamples(simulador.nextBlock(BLOCO), simulador.nextEsense());
-      // Contato simulado: exercita a leitura de bom contato (P4-a) sem aparelho.
-      setPoorSignal(simulador.nextPoorSignal());
-    }, INTERVALO_MS);
-  }
-
   const alfa = features?.rel_alpha;
   const contato = poorSignal !== null ? describeContact(poorSignal) : null;
   const corContato =
@@ -588,7 +280,7 @@ export default function PatientLiveScreen() {
           dobra, e quem tocava "Procurar" não via a mensagem que o próprio
           toque acabara de gerar. Agora ela mora ao lado do botão, no painel
           "Aparelho". Este ponto só mostra o que não tem dono na tela. */}
-      {erro && !erroAparelho ? <Text style={styles.erro}>{erro}</Text> : null}
+      {erro && !erroScan ? <Text style={styles.erro}>{erro}</Text> : null}
 
       {/* ===== herói + trilho lateral ===== */}
       <View style={[styles.grade, emColunas && styles.gradeLinha]}>
@@ -727,7 +419,7 @@ export default function PatientLiveScreen() {
                   accent={aparelhoAccent.accent}
                 />
               )}
-              {erroAparelho ? <Text style={styles.erro}>{erroAparelho}</Text> : null}
+              {erroScan ? <Text style={styles.erro}>{erroScan}</Text> : null}
               <View style={styles.listaAparelhos}>
                 {aparelhos.map((d) => (
                   <ItemAparelho
