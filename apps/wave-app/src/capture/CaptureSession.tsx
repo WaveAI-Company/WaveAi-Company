@@ -37,6 +37,7 @@ import {
 import {
   iniciarServicoCaptacao,
   pararServicoCaptacao,
+  pedirPermissaoDeAviso,
 } from "../../modules/captacao-foreground";
 import { setLiveSharing } from "../api/liveWatch";
 import {
@@ -86,6 +87,16 @@ type Sessao = {
   conectandoA: string | null;
   /** Sessão simulada abrindo: impede dois toques abrirem duas. */
   abrindoSessao: boolean;
+  /**
+   * O aviso de captação **vai aparecer** na barra do sistema?
+   *
+   * `null` = não se aplica (plataforma sem serviço em primeiro plano), e aí a
+   * tela não fala do assunto. `false` só acontece quando a pessoa recusou a
+   * permissão: a captação corre igual, mas em silêncio — e dizer isso é
+   * obrigação, porque a ADR-0052 escolheu a notificação como o preço visível de
+   * captar fora da tela (ADR-0027).
+   */
+  avisoVisivel: boolean | null;
 
   iniciar: () => Promise<void>;
   iniciarComAparelho: (device: DeviceInfo) => Promise<void>;
@@ -121,6 +132,7 @@ export function CaptureSessionProvider({ children }: { children: ReactNode }) {
   const [erro, setErro] = useState<string | null>(null);
   const [conectandoA, setConectandoA] = useState<string | null>(null);
   const [abrindoSessao, setAbrindoSessao] = useState(false);
+  const [avisoVisivel, setAvisoVisivel] = useState<boolean | null>(null);
 
   const sessao = useRef<StreamSession | null>(null);
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -164,6 +176,30 @@ export function CaptureSessionProvider({ children }: { children: ReactNode }) {
     setAtivo(false);
     setUsandoAparelho(false);
     setConectandoA(null);
+    // Sem captação não há aviso a prometer nem a desmentir.
+    setAvisoVisivel(null);
+  }, []);
+
+  /**
+   * Sobe o serviço e resolve, em paralelo, a permissão do aviso.
+   *
+   * **O serviço sobe primeiro e sem esperar.** Ele é o que protege a captação;
+   * segurá-lo pelo tempo de um diálogo do sistema deixaria a sessão exposta
+   * justo no instante em que a pessoa sai da tela — que é quando ela toca no
+   * diálogo. A permissão é sobre *ver* a captação, não sobre mantê-la.
+   *
+   * Concedida depois, o serviço é reiniciado para repostar a notificação.
+   * `iniciar()` é idempotente (não cria um segundo serviço), e isto é
+   * conservador de propósito: **não medi** se o Android passa a exibir
+   * retroativamente uma notificação que já estava postada sob
+   * `importance=NONE`.
+   */
+  const subirServico = useCallback(() => {
+    iniciarServicoCaptacao();
+    void pedirPermissaoDeAviso().then((visivel) => {
+      setAvisoVisivel(visivel);
+      if (visivel) iniciarServicoCaptacao();
+    });
   }, []);
 
   /**
@@ -298,7 +334,7 @@ export function CaptureSessionProvider({ children }: { children: ReactNode }) {
     setAbrindoSessao(false);
     // Só depois de a sessão existir: subir o serviço antes deixaria a
     // notificação no ar mesmo se o `connect` acima tivesse falhado.
-    iniciarServicoCaptacao();
+    subirServico();
     iniciarCronometro();
 
     // O simulador emite eSense sintético para exercitar o caminho sem hardware
@@ -309,7 +345,14 @@ export function CaptureSessionProvider({ children }: { children: ReactNode }) {
       stream.sendSamples(simulador.nextBlock(BLOCO), simulador.nextEsense());
       setPoorSignal(simulador.nextPoorSignal());
     }, INTERVALO_MS);
-  }, [abrindoSessao, ativo, limparParaNovaSessao, novoStream, iniciarCronometro]);
+  }, [
+    abrindoSessao,
+    ativo,
+    limparParaNovaSessao,
+    novoStream,
+    iniciarCronometro,
+    subirServico,
+  ]);
 
   const iniciarComAparelho = useCallback(
     async (device: DeviceInfo) => {
@@ -353,7 +396,7 @@ export function CaptureSessionProvider({ children }: { children: ReactNode }) {
       setAtivo(true);
       setUsandoAparelho(true);
       setConectandoA(null);
-      iniciarServicoCaptacao();
+      subirServico();
       iniciarCronometro();
 
       // Só o resto: o bloco cheio já saiu no `onRawSample`. Este intervalo
@@ -372,6 +415,7 @@ export function CaptureSessionProvider({ children }: { children: ReactNode }) {
       novoStream,
       iniciarCronometro,
       drenarPendentes,
+      subirServico,
     ],
   );
 
@@ -440,6 +484,7 @@ export function CaptureSessionProvider({ children }: { children: ReactNode }) {
       erro,
       conectandoA,
       abrindoSessao,
+      avisoVisivel,
       iniciar,
       iniciarComAparelho,
       parar,
@@ -464,6 +509,7 @@ export function CaptureSessionProvider({ children }: { children: ReactNode }) {
       erro,
       conectandoA,
       abrindoSessao,
+      avisoVisivel,
       iniciar,
       iniciarComAparelho,
       parar,
