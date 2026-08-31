@@ -119,6 +119,12 @@ export default function PatientLiveScreen() {
    * responder, a tela não promete nem um botão nem o outro.
    */
   const [btLigado, setBtLigado] = useState<boolean | null>(null);
+  /**
+   * Id do aparelho em conexão, ou `null`. Guarda o **id** e não um booleano
+   * porque a lista precisa saber *qual* item está ocupado: só ele mostra
+   * "Conectando…", e os outros ficam inertes enquanto isso.
+   */
+  const [conectandoA, setConectandoA] = useState<string | null>(null);
   const [sessionId, setSessionId] = useState<string | null>(null);
   /**
    * Compartilhamento ao vivo desta sessão (ADR-0045). Nasce DESLIGADO a cada
@@ -353,6 +359,12 @@ export default function PatientLiveScreen() {
 
   /** Captação real: o aparelho alimenta o mesmo stream do simulador. */
   async function iniciarComAparelho(device: DeviceInfo) {
+    // **Um toque por vez.** Entre o toque e a primeira medida passam alguns
+    // segundos em que a tela não mudava nada — e, sem sinal de que algo estava
+    // acontecendo, o caminho natural era tocar de novo. Cada toque abriria
+    // outra sessão e outra conexão com o mesmo aparelho.
+    if (conectandoA) return;
+    setConectandoA(device.id);
     limparParaNovaSessao();
     esensePendente.current = {};
 
@@ -378,18 +390,20 @@ export default function PatientLiveScreen() {
           esensePendente.current = e;
         },
         onStatus: (status, detalhe) => {
-          if (status === "error") setErro(detalhe ?? "falha no aparelho");
+          if (status === "error") setErroAparelho(mensagemBluetooth(detalhe));
         },
       });
     } catch (e) {
-      setErro(e instanceof Error ? e.message : "não foi possível conectar");
+      setErroAparelho(mensagemBluetooth(e));
       stream.close();
+      setConectandoA(null);
       return;
     }
 
     sessao.current = stream;
     setAtivo(true);
     setUsandoAparelho(true);
+    setConectandoA(null);
     iniciarCronometro();
 
     // Envia o que chegou do aparelho na cadência do stream. O eSense pendente
@@ -678,6 +692,10 @@ export default function PatientLiveScreen() {
                     // a única saída quando dois aparelhos se chamam igual.
                     id={nomesRepetidos.has(d.name) ? d.id : undefined}
                     accent={aparelhoAccent.accent}
+                    conectando={conectandoA === d.id}
+                    // Enquanto um conecta, os outros não aceitam toque: duas
+                    // conexões simultâneas abririam duas sessões.
+                    desabilitado={conectandoA !== null && conectandoA !== d.id}
                     onPress={() => void iniciarComAparelho(d)}
                   />
                 ))}
@@ -991,27 +1009,48 @@ function ItemAparelho({
   nome,
   id,
   accent,
+  conectando,
+  desabilitado,
   onPress,
 }: {
   nome: string;
   /** Endereço do aparelho — só quando o nome não distingue (ver chamador). */
   id?: string;
   accent: string;
+  /** Este é o aparelho em conexão: mostra o progresso no lugar do endereço. */
+  conectando?: boolean;
+  /** Outro aparelho está conectando: este não aceita toque enquanto isso. */
+  desabilitado?: boolean;
   onPress: () => void;
 }) {
   const { estado, handlers } = useInteracao();
+  const inerte = conectando || desabilitado;
 
   return (
     <Pressable
       accessibilityRole="button"
+      accessibilityState={{ disabled: inerte, busy: conectando }}
+      disabled={inerte}
       onPress={onPress}
       {...handlers}
-      style={estado.pressed ? { opacity: 0.85 } : null}
+      style={[
+        estado.pressed && !inerte ? { opacity: 0.85 } : null,
+        // Quem não é o alvo esmaece: diz que a lista está ocupada sem precisar
+        // de texto em cada linha.
+        desabilitado ? { opacity: 0.45 } : null,
+      ]}
     >
       {/* `contorno`: a lista é de itens escolhíveis, e sem borda fechada eles
           se fundiam num bloco só — via-se apenas a faixa colorida da esquerda,
           e não onde cada um começava. */}
-      <Card title={nome} subtitle={id} accent={accent} contorno />
+      <Card
+        title={nome}
+        // O progresso ocupa a linha do subtítulo: é a resposta ao toque, e o
+        // endereço (quando aparece) pode esperar a conexão terminar.
+        subtitle={conectando ? "Conectando…" : id}
+        accent={accent}
+        contorno
+      />
     </Pressable>
   );
 }
