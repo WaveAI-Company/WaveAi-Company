@@ -1,0 +1,28 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+  <!-- Serviço em primeiro plano para captar com a tela apagada (ADR-0052).
+
+       As duas permissões são exigidas pelo Android: a geral e a do TIPO. A do
+       tipo (`CONNECTED_DEVICE`) vale a partir do Android 14, quando declarar o
+       tipo passou a ser obrigatório. Como pré-requisito de runtime o sistema
+       aceita BLUETOOTH_CONNECT ou BLUETOOTH_SCAN — as duas que o app já pede
+       antes de qualquer varredura, então não há permissão nova a pedir à
+       pessoa. -->
+  <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+  <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE" />
+
+  <!-- POST_NOTIFICATIONS é do Android 13+: sem ela a notificação do serviço
+       não aparece. O serviço continua rodando, mas a pessoa deixa de ver que a
+       captação está em curso — e uma captação invisível é o oposto do que esta
+       decisão promete. -->
+  <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+  <application>
+    <!-- `exported="false"`: ninguém de fora inicia a captação. -->
+    <service
+      android:name=".CaptacaoService"
+      android:enabled="true"
+      android:exported="false"
+      android:foregroundServiceType="connectedDevice" />
+  </application>
+</manifest>
