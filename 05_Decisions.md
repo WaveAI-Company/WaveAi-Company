@@ -993,3 +993,57 @@ A decisão original (link com token opaco, 24 h / 30 min) foi tomada sobre esse 
 **Alternativas consideradas:** (a) **Só a parte 1** — resolveria a queixa do dia a dia (navegar) e nada mais; preterida porque o pedido explícito é a tela apagada. (b) **Trocar o Android para BLE**, para herdar o `isBackgroundEnabled` da `ble-plx` — rejeitada: reabriria a ADR-0040, trocaria um transporte que **funciona e foi validado no aparelho** por um que não foi, e o ganho seria acidental. (c) **`expo-background-task`/`background-fetch`** — não servem: são para trabalho periódico curto, não para manter uma conexão contínua.
 
 **Consequências:** dependência nativa nova (config plugin próprio com um serviço em Kotlin) e duas permissões novas no `app.json`; **rebuild obrigatório** para testar, o que consome cota do EAS (ADR-0051). O `live.tsx` encolhe bastante ao deixar de ser dono do estado, e as telas passam a poder mostrar "captação em curso" em qualquer lugar do app. **Não** toca API, banco, modelo de dados nem o `AnalysisEngine` — o que sobe ao servidor continua igual. Relaciona ADR-0040 (transporte e o precedente de "código-no-escuro"), ADR-0027 (a tela não promete o que não faz), ADR-0045 (o compartilhamento segue por sessão), ADR-0051 (builds) e a fatia G (declaração na loja).
+
+---
+
+### Emenda à ADR-0052 (2026-08-31) — o serviço em primeiro plano era **necessário e não suficiente**; e declarar permissão no manifesto **não concede**
+**Status:** Proposta (2026-08-31) — vira Aceita no merge. Corrige três afirmações da ADR-0052 que a validação no aparelho mostrou serem falsas. O resto da decisão segue valendo, e a parte 2 está **fechada e medida**.
+
+**1. "Só então a captação sobrevive à tela apagada" estava errado.** O serviço subiu certo desde o primeiro build bom, e a captação morria assim mesmo. O defeito estava no JavaScript: o envio dependia de `setInterval`, e timer de RN no Android **não dispara com a activity pausada**. O buffer enchia sem ninguém drenar e ia inteiro num frame ao voltar; passados **8,0 s** (`stream_max_block_samples` 4096 ÷ 512 Hz) o gateway recusava com "bloco grande demais" e derrubava a sessão. Corrigido na PR #224: **quem dispara o envio é a chegada da amostra** (`onRawSample`, evento nativo, que roda em background), e nenhum frame passa de `BLOCO` (256) amostras. O cronômetro tinha o mesmo defeito e passou a ler o relógio.
+
+> **[FATO — medido no aparelho em 2026-08-31]** Motorola Edge 50 Fusion, Android 16 (SDK 36), por `adb`, com baseline `(nothing)` tirado antes: `isForeground=true`, `foregroundId=1042`, `types=0x00000010` (= `FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE`), `ActivityManager: Background started FGS: Allowed`. Ao encerrar a captação o `dumpsys` volta a `(nothing)`, **sem `NotificationRecord` órfão** — o `stopForeground(STOP_FOREGROUND_REMOVE)` cumpre. Completude do sinal numa sessão de **167,2 s**: **97,9%** das amostras esperadas (`sample_count` ÷ duração × 512), contra **71,2%** e status `aborted` na sessão anterior à correção.
+
+**2. "Duas permissões novas no `app.json`" estava errado nos dois termos.** São **três** — `FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_CONNECTED_DEVICE` e `POST_NOTIFICATIONS` — e **nenhuma está no `app.json`**: todas vivem no `AndroidManifest.xml` do módulo local `modules/captacao-foreground`. O `app.json` lista apenas `BLUETOOTH_CONNECT`, `BLUETOOTH_SCAN` e `ACCESS_FINE_LOCATION`. Isto **não é detalhe de arrumação**: a fatia G tem de justificar o foreground service na ficha da Play Store, e quem for preencher o formulário lendo o `app.json` não enxerga as três.
+
+**3. Declarar `POST_NOTIFICATIONS` no manifesto não a concede.** No Android 13+ ela é permissão de **runtime**, e o app nasce com as notificações em `importance=NONE`. O efeito medido foi uma **captação invisível**: o serviço postava a notificação (`numEnqueuedByApp=7`, `numPostedByApp=1`) e o sistema a suprimia. O `dumpsys` mostrava `granted=false` **sem a flag `USER_SET`** — as permissões de Bluetooth têm essa flag, esta não —, o que discrimina "ninguém foi perguntado" de "a pessoa negou". Corrigido na PR #225: a permissão passa a ser pedida ao subir o serviço.
+
+**A decisão nova que isto obriga — o que fazer quando a pessoa recusa.** O serviço continua rodando (o Android não exige a permissão para o FGS), mas a captação corre sem aviso na barra. **Escolhido pelo fundador em 2026-08-31: pedir e, se recusada, a tela diz com todas as letras** que não haverá aviso, com atalho para as configurações do app. Ficar calado deixaria no ar uma promessa que o sistema não vai cumprir, e a ADR-0052 elegeu a notificação como o **preço visível** de captar fora da tela (ADR-0027). Não bloqueia ninguém: quem prefere assim capta igual. A alternativa preterida era pedir e seguir em silêncio — rejeitada porque obrigaria a remover da ADR a promessa da notificação.
+
+> **[FATO — medido em 2026-08-31, antes e depois]** `POST_NOTIFICATIONS`: `granted=false` sem `USER_SET` → **`granted=true` com `USER_SET`**; notificações do app: `importance=NONE userSet=false` → **`importance=DEFAULT userSet=true`**. Os dois caminhos (permitir e recusar) foram exercitados pelo fundador no aparelho.
+
+**Consequência para a ordem das coisas:** a parte 2 da ADR-0052 só ficou de pé com **três** peças, não uma — serviço nativo, envio independente do relógio, e permissão de notificação pedida. Quem repetir isto noutro contexto (iOS, outro transporte) deve conferir as três.
+
+---
+
+## ADR-0053 — Protocolo guiado: a **fase viaja ao servidor** e o contraste vira **verificação do instrumento**, não interpretação do sinal
+**Status:** Proposta (2026-08-31) — vira Aceita no merge. Caminho escolhido pelo fundador entre os dois apresentados.
+
+**Contexto:** o protocolo guiado (P4-c) roda duas fases de 60 s — olhos abertos, depois fechados — com guia por voz, e **não devolve conclusão nenhuma**. O fundador esclareceu o propósito, e ele muda o enquadramento: o roteiro serve para **a pessoa saber se o aparelho dela está captando bem**. É teste de instrumento, não leitura do cérebro.
+
+**[FATO — verificado em 2026-08-31]**
+1. **A fase nunca sai do cliente.** `apps/wave-app/src/api/stream.ts`, `services/api/app/api/stream.py` e `services/api/app/services/streaming.py`: **zero** ocorrências de "fase"/"phase" (contadas, não amostradas). O próprio `GuidedProtocol.tsx` declara que não persiste marcação.
+2. **A tela já promete o que não entrega.** Ao concluir, [`GuidedProtocol.tsx`](apps/wave-app/src/components/GuidedProtocol.tsx) diz *"Compare as fases no relatório"* — e o relatório não separa fase alguma. É ADR-0027 no sentido estrito, e é **anterior** à conclusão que falta.
+3. **O cálculo já existe, e dentro do lugar certo.** [`compare_eyes_closed_open`](packages/wave-eeg/src/wave_eeg/analysis.py) (Exp. B) pré-processa (detrend + passa-banda + notch 60 Hz), tira alfa **relativa** por época de 4 s, roda t-test de Welch e devolve `AlphaComparison` com `ratio`, `p_value` e um veredito de **três** estados: `PASSOU`, `INCONCLUSIVO` e `NÃO passou (direção invertida)`. Não há nada a inventar — há o que **expor**.
+4. **O raw das duas fases existe no fecho, sem violar a ADR-0025.** O gateway já mantém a sessão inteira em memória (`streaming.py`, `session_samples`) para o relatório em batch e **zera no `stop`**. Fatiar por fase no fecho não persiste raw nenhum.
+5. **O protocolo congela se a tela apagar.** A contagem regressiva usa `setTimeout` em [`GuidedProtocol.tsx`](apps/wave-app/src/components/GuidedProtocol.tsx) — o mesmo defeito que a emenda à ADR-0052 corrigiu no envio. Na fase de **olhos fechados** a pessoa está, por definição, sem olhar a tela: se o sistema a apagar por inatividade, a contagem para e a voz nunca anuncia o fim.
+
+**Decisão:**
+1. **A fase viaja no frame `samples`, como campo opcional** — o mesmo precedente que o eSense abriu na ADR-0034 (opção A do protocolo): retrocompatível, e um frame sem o campo continua válido.
+2. **O gateway guarda os intervalos de amostras por fase**, não o sinal marcado. Índices, não raw.
+3. **O contraste é calculado no servidor, pelo `AnalysisEngine`**, no fecho da sessão, reusando `compare_eyes_closed_open`. Vale a regra rígida de sempre: o app **só consome**.
+4. **O resultado entra no `Result`, com `engine_version`** — rastreável e reproduzível como qualquer outra medida.
+5. **A saída fala do instrumento, nunca da pessoa.** Os três estados viram texto sobre o sinal e o contato do sensor. É proibido derivar daí qualquer afirmação sobre o cérebro, o estado ou a saúde de quem captou (Medical/71 §6).
+6. **A ausência do padrão não acusa ninguém — nem o aparelho.** O veredito negativo diz que **não deu para constatar** e sugere conferir o contato do sensor; não afirma defeito no equipamento nem particularidade da pessoa.
+7. **A promessa falsa do item 2 dos fatos sai junto**, na mesma fatia que entrega a conclusão. E o `setTimeout` do item 5 passa a ler o relógio.
+
+**O que se abre mão, explicitamente:**
+(a) **Dado novo no protocolo.** A fase é informação sobre o comportamento do titular durante a captação, e passa a existir no servidor. É o motivo de esta ADR existir antes do código.
+(b) **O veredito tem falso-negativo conhecido.** *[Conhecimento de domínio, não medição nossa — a bibliografia é do fundador e entra na revisão:]* parte da população tem alfa de repouso baixo, e nessas pessoas o contraste pode não aparecer com o aparelho perfeito. Por isso o item 6, e por isso o estado `INCONCLUSIVO` não pode ser apresentado como falha.
+(c) **Canal único, FP1, eletrodo seco.** O contraste é mais fraco em FP1 do que em derivações occipitais, onde o alfa é maior. O teste serve para dizer "está captando", não para medir o alfa de alguém.
+
+**Alternativas consideradas:**
+- **Calcular no cliente**, comparando as `relative_band_powers` que o servidor já manda por janela. Não seria DSP no cliente, e por isso foi levada a sério. **Rejeitada:** ficaria fora do `AnalysisEngine`, sem `engine_version`, sem persistência e sem auditoria — e duas versões do app dariam respostas diferentes para a mesma sessão. Se a conclusão existe para a pessoa **confiar no aparelho**, ela precisa ser reproduzível.
+- **Manter tudo no cliente e só arrumar o texto** ("registre o contexto na anotação"). Honesto e barato, mas devolve o problema ao usuário: continua sem responder a única pergunta que o roteiro existe para responder.
+- **Marcar segmentos no banco** (a "v2" que o `GuidedProtocol` já previa). Mais poderoso e bem mais caro: modelo de dados novo, migração, exclusão em cascata. Preterida por tamanho, não por mérito — os intervalos em memória bastam para o fecho.
+
+**Consequências:** mexe no protocolo do WebSocket (campo novo), na API (intervalos por fase) e na Analysis (expor o Exp. B), além da tela. **Não** cria tabela nem migração. O `Result` ganha um campo, e o relatório passa a poder mostrar o contraste — o que finalmente torna verdadeira a frase que a tela já dizia. Relaciona ADR-0025 (raw não persistido), ADR-0026, ADR-0027 (a tela não promete o que não faz), ADR-0032, ADR-0034 (o precedente do campo opcional no frame), ADR-0052 (o defeito de timer que se repete aqui) e Medical/71 §6.
