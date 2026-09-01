@@ -26,6 +26,7 @@ import { Disclaimer } from "../../src/components/Disclaimer";
 import { GuidedProtocol, type ProtocolPhase } from "../../src/components/GuidedProtocol";
 import { SIMULADOR_HABILITADO } from "../../src/capture/availability";
 import { useCaptureSession } from "../../src/capture/CaptureSession";
+import { vereditoDoProtocolo } from "../../src/capture/veredito";
 import { describeContact } from "../../src/device/contactQuality";
 import { deviceConnection } from "../../src/device/connection";
 import type { DeviceInfo } from "../../src/device/DeviceConnection";
@@ -112,6 +113,9 @@ export default function PatientLiveScreen() {
     conectandoA,
     abrindoSessao,
     avisoVisivel,
+    concluirProtocolo,
+    contraste,
+    roteiroIncompleto,
     iniciar,
     iniciarComAparelho,
     parar,
@@ -251,11 +255,19 @@ export default function PatientLiveScreen() {
 
       {/* Só aparece quando o protocolo guiado rodou as DUAS fases — sem elas o
           servidor não manda `comparison`, e a tela não inventa a pergunta. */}
-      {encerrada.report?.comparison ? (
+      {/* Aparece quando houve roteiro nesta sessão — seja porque o servidor
+          calculou o contraste, seja porque o roteiro foi interrompido e é
+          justamente isso que precisa ser dito. Uma captação sem roteiro nenhum
+          continua sem este bloco. */}
+      {encerrada.report?.comparison || roteiroIncompleto ? (
         <>
           <Text style={styles.subsecao}>Verificação do aparelho</Text>
           <ProtocolCheck
-            comparison={encerrada.report.comparison}
+            comparison={encerrada.report?.comparison ?? null}
+            veredito={vereditoDoProtocolo(
+              encerrada.report?.comparison,
+              roteiroIncompleto,
+            )}
             accent={papel.accent}
           />
         </>
@@ -663,15 +675,25 @@ export default function PatientLiveScreen() {
           </View>
         ) : null}
 
-        {/* Protocolo guiado olhos abertos/fechados (P4-c): contraste de estado
-            na mesma captação. Client-only — não persiste fase; contexto vai na
-            anotação (P2). Some ao encerrar (desmonta e limpa o timer). */}
+        {/* Protocolo guiado olhos abertos/fechados: verificação do aparelho
+            (ADR-0053). A fase VIAJA ao servidor e o contraste é calculado lá;
+            aqui só se guia o roteiro e se anuncia o resultado. Some ao encerrar
+            (desmonta e limpa o timer). */}
         {ativo ? (
           <View style={emColunas ? styles.trioEstreito : emMeio ? styles.trioMetade : undefined}>
             <Panel title="Sessão guiada" eyebrow="opcional" grow>
               <GuidedProtocol
                 accent={papel.accent}
                 onPhaseChange={aoMudarFaseProtocolo}
+                onFinish={concluirProtocolo}
+                // Só há veredito depois que o roteiro termina: enquanto o
+                // contraste não chega e nada foi interrompido, não há o que
+                // anunciar — e `null` mantém a voz calada.
+                veredito={
+                  contraste || roteiroIncompleto
+                    ? vereditoDoProtocolo(contraste, roteiroIncompleto)
+                    : null
+                }
                 embedded
               />
             </Panel>

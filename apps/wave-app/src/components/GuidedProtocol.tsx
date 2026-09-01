@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { protocolCues } from "../audio/protocolCues";
+import { falaDoVeredito, type VeredictoProtocolo } from "../capture/veredito";
 import {
   anelFoco,
   motion,
@@ -75,9 +76,27 @@ function mmss(segundos: number): string {
   return `${m}:${String(s).padStart(2, "0")}`;
 }
 
+/**
+ * Folga para não rotular de "incompleta" uma fase praticamente inteira.
+ *
+ * Quem toca "Próxima fase" faltando um segundo cumpriu o roteiro; quem pula aos
+ * 10 s de 60, não. Sem esta folga, um toque no último instante invalidaria uma
+ * verificação boa — e o preço de errar para esse lado é dizer "não dá para
+ * verificar" a quem fez tudo certo.
+ */
+const FOLGA_DE_ANTECIPACAO_MS = 3000;
+
 type Props = {
   accent: string;
   onPhaseChange?: (fase: ProtocolPhase | null) => void;
+  /**
+   * O roteiro terminou. `incompleto` é `true` quando ele foi **pulado** (avanço
+   * manual com tempo sobrando) ou **interrompido** — e aí o resultado não vale
+   * como verificação, por mais que o número diga o contrário (emenda à ADR-0053).
+   */
+  onFinish?: (incompleto: boolean) => void;
+  /** Veredito já resolvido, para a voz anunciar. `null` enquanto não chega. */
+  veredito?: VeredictoProtocolo | null;
   /**
    * Já está dentro de um `Panel` — sem cartão próprio e sem repetir o título.
    *
@@ -87,7 +106,13 @@ type Props = {
   embedded?: boolean;
 };
 
-export function GuidedProtocol({ accent, onPhaseChange, embedded }: Props) {
+export function GuidedProtocol({
+  accent,
+  onPhaseChange,
+  onFinish,
+  veredito,
+  embedded,
+}: Props) {
   const t = useTheme();
   const styles = useMemo(() => criarEstilos(t), [t]);
   // Fora do celular a dupla de ações cabe em uma linha só.
@@ -100,6 +125,10 @@ export function GuidedProtocol({ accent, onPhaseChange, embedded }: Props) {
   const fimDaFaseMs = useRef(0);
   /** Último segundo em que a batida final tocou — o intervalo é sub-segundo. */
   const ultimoTick = useRef(0);
+  /** Alguma fase foi cortada antes da hora nesta passagem pelo roteiro? */
+  const abreviado = useRef(false);
+  /** Veredito já falado, para não repetir a cada renderização. */
+  const jaAnunciado = useRef<VeredictoProtocolo | null>(null);
   /** Guia por voz/vibração ligada (P4-d). É o ponto do protocolo, mas dá p/ calar. */
   const [somLigado, setSomLigado] = useState(true);
 
@@ -116,8 +145,22 @@ export function GuidedProtocol({ accent, onPhaseChange, embedded }: Props) {
 
   function iniciar() {
     fimDaFaseMs.current = Date.now() + FASES[0].segundos * 1000;
+    abreviado.current = false;
     setIndice(0);
     setRestante(FASES[0].segundos);
+  }
+
+  /**
+   * Avanço **pelo botão**, que é o que distingue pular de cumprir.
+   *
+   * O `proxima()` cru também é chamado pelo relógio quando a fase termina
+   * sozinha; só o toque com tempo sobrando marca o roteiro como abreviado.
+   */
+  function proximaManual() {
+    if (fimDaFaseMs.current - Date.now() > FOLGA_DE_ANTECIPACAO_MS) {
+      abreviado.current = true;
+    }
+    proxima();
   }
   function proxima() {
     const prox = indice + 1;
@@ -125,11 +168,20 @@ export function GuidedProtocol({ accent, onPhaseChange, embedded }: Props) {
     fimDaFaseMs.current = Date.now() + segundos * 1000;
     setIndice(prox);
     setRestante(segundos);
+    // Acabou o roteiro: é aqui que o veredito é pedido ao servidor.
+    if (prox >= FASES.length) onFinish?.(abreviado.current);
   }
+
+  /**
+   * Encerrar no meio é sempre roteiro incompleto — não há discussão de folga:
+   * uma das fases não aconteceu.
+   */
   function encerrar() {
+    const estavaRodando = rodando;
     fimDaFaseMs.current = 0;
     setIndice(OCIOSO);
     setRestante(0);
+    if (estavaRodando) onFinish?.(true);
   }
 
   // Avisa o pai da fase atual (null quando ocioso/concluído) e dá a pista de
@@ -153,6 +205,23 @@ export function GuidedProtocol({ accent, onPhaseChange, embedded }: Props) {
     // Ao desmontar (fim da captação), volta o sinal ao normal e cala a voz.
     return () => onPhaseChange?.(null);
   }, [indice]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  /**
+   * Anuncia o veredito **quando ele chega** (emenda à ADR-0053).
+   *
+   * É um segundo anúncio, depois de "pode abrir os olhos": o resultado vem do
+   * servidor e leva um instante, então não dá para dizê-lo junto do fim da fase.
+   * O `jaAnunciado` impede repetir se o componente renderizar de novo com o
+   * mesmo veredito.
+   *
+   * A frase vem de `falaDoVeredito`, a mesma fonte que decide o texto do cartão
+   * — voz e tela não podem divergir sobre a mesma captação.
+   */
+  useEffect(() => {
+    if (!veredito || !somLigado || jaAnunciado.current === veredito) return;
+    jaAnunciado.current = veredito;
+    protocolCues.announce(falaDoVeredito(veredito));
+  }, [veredito, somLigado]);
 
   // Contagem regressiva **pelo relógio**, não por contagem de tiques. Um
   // `setRestante(r => r - 1)` só anda quando o timer dispara, e timer de RN no
@@ -279,7 +348,7 @@ export function GuidedProtocol({ accent, onPhaseChange, embedded }: Props) {
             <View style={emLinha ? styles.acaoMeia : undefined}>
               <Button
                 label={indice + 1 < FASES.length ? "Próxima fase" : "Concluir"}
-                onPress={proxima}
+                onPress={proximaManual}
                 accent={accent}
                 largura={emLinha ? "bloco" : "conteudo"}
                 compacto={emLinha}
@@ -304,14 +373,19 @@ export function GuidedProtocol({ accent, onPhaseChange, embedded }: Props) {
 
       {concluido ? (
         <>
-          {/* A frase anterior mandava "comparar as fases no relatório" — e o
-              relatório não separava fase nenhuma, porque a marcação nunca saía
-              do cliente (ADR-0027). Agora sai (ADR-0053), e o que a tela promete
-              é o que de fato acontece: a verificação aparece ao ENCERRAR, não
-              aqui, porque é calculada sobre a sessão inteira. */}
+          {/* O veredito também em TEXTO, e não só por voz: quem silenciou a
+              guia — ou não pode ouvi-la — ficaria sem resposta nenhuma até
+              encerrar a captação. Mesma frase da voz, da mesma fonte
+              (`falaDoVeredito`), para as duas não divergirem. */}
+          {veredito ? (
+            <Text style={[styles.faseTitulo, { color: accent, fontSize: 15 }]}>
+              {falaDoVeredito(veredito)}
+            </Text>
+          ) : null}
           <Text style={styles.corpo}>
-            Protocolo concluído. Encerre a captação para ver se o padrão esperado
-            apareceu — e, se quiser, registre o contexto na anotação da sessão.
+            {veredito
+              ? "Encerre a captação para ver os detalhes e, se quiser, registrar o contexto na anotação da sessão."
+              : "Protocolo concluído. Encerre a captação para ver o resultado e, se quiser, registrar o contexto na anotação da sessão."}
           </Text>
           <Button label="Refazer protocolo" onPress={iniciar} accent={accent} />
         </>
