@@ -38,7 +38,23 @@ export type ResultMetrics = {
   relative_band_powers?: Partial<Record<BandKey, number>>;
   rel_alpha?: number;
   quality?: SignalQuality;
-  comparison?: unknown | null;
+  comparison?: PhaseComparison | null;
+};
+
+/**
+ * Contraste olhos abertos/fechados do protocolo guiado (ADR-0053).
+ *
+ * Vem calculado pelo `AnalysisEngine` — o app **só consome**. O `verdict` do
+ * `wave_eeg` é texto interno em português; a tela **não** o exibe e decide por
+ * `passed`, que é estrutural e não muda de redação.
+ */
+export type PhaseComparison = {
+  eyes_closed_rel_alpha?: number;
+  eyes_open_rel_alpha?: number;
+  ratio?: number;
+  p_value?: number;
+  /** O padrão esperado apareceu de forma estatisticamente detectável. */
+  passed?: boolean;
 };
 
 export type SessionResult = {
