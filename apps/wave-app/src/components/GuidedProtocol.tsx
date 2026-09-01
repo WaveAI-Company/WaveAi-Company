@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { protocolCues } from "../audio/protocolCues";
@@ -87,6 +87,10 @@ export function GuidedProtocol({ accent, onPhaseChange, embedded }: Props) {
   const som = useInteracao();
   const [indice, setIndice] = useState(OCIOSO);
   const [restante, setRestante] = useState(0);
+  /** Instante em que a fase corrente termina, em ms. A contagem sai daqui. */
+  const fimDaFaseMs = useRef(0);
+  /** Último segundo em que a batida final tocou — o intervalo é sub-segundo. */
+  const ultimoTick = useRef(0);
   /** Guia por voz/vibração ligada (P4-d). É o ponto do protocolo, mas dá p/ calar. */
   const [somLigado, setSomLigado] = useState(true);
 
@@ -102,15 +106,19 @@ export function GuidedProtocol({ accent, onPhaseChange, embedded }: Props) {
   }
 
   function iniciar() {
+    fimDaFaseMs.current = Date.now() + FASES[0].segundos * 1000;
     setIndice(0);
     setRestante(FASES[0].segundos);
   }
   function proxima() {
     const prox = indice + 1;
+    const segundos = prox < FASES.length ? FASES[prox].segundos : 0;
+    fimDaFaseMs.current = Date.now() + segundos * 1000;
     setIndice(prox);
-    setRestante(prox < FASES.length ? FASES[prox].segundos : 0);
+    setRestante(segundos);
   }
   function encerrar() {
+    fimDaFaseMs.current = 0;
     setIndice(OCIOSO);
     setRestante(0);
   }
@@ -137,18 +145,36 @@ export function GuidedProtocol({ accent, onPhaseChange, embedded }: Props) {
     return () => onPhaseChange?.(null);
   }, [indice]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Contagem regressiva: cada segundo agenda o próximo; ao zerar, avança. Nos
-  // 3 s finais, uma batida por segundo (beep/vibra) marca o fim da fase.
+  // Contagem regressiva **pelo relógio**, não por contagem de tiques. Um
+  // `setRestante(r => r - 1)` só anda quando o timer dispara, e timer de RN no
+  // Android não dispara com a activity pausada — o mesmo defeito que a emenda à
+  // ADR-0052 corrigiu no envio do sinal. Aqui ele era pior: se a tela apagasse
+  // durante o "olhos fechados", a contagem parava e a pessoa ficava de olhos
+  // fechados esperando uma voz que nunca vinha. Derivando de uma subtração de
+  // datas, ao voltar o número se corrige e a fase avança para onde deveria estar.
+  //
+  // O que isto **não** resolve: com a tela apagada a voz não toca na hora certa,
+  // porque nada roda para tocá-la. Manter a tela acesa exigiria `expo-keep-awake`
+  // — dependência nativa, logo ADR antes. Enquanto isso, a tela avisa.
+  //
+  // Nos 3 s finais, uma batida por segundo marca o fim da fase; `ultimoTick`
+  // evita repetir a batida do mesmo segundo agora que o intervalo é mais fino.
   useEffect(() => {
     if (!rodando) return;
-    if (restante <= 0) {
-      proxima();
-      return;
-    }
-    if (somLigado && restante <= 3) protocolCues.tick();
-    const id = setTimeout(() => setRestante((r) => r - 1), 1000);
-    return () => clearTimeout(id);
-  }, [indice, restante]); // eslint-disable-line react-hooks/exhaustive-deps
+    const id = setInterval(() => {
+      const faltam = Math.max(
+        0,
+        Math.ceil((fimDaFaseMs.current - Date.now()) / 1000),
+      );
+      setRestante(faltam);
+      if (somLigado && faltam > 0 && faltam <= 3 && ultimoTick.current !== faltam) {
+        ultimoTick.current = faltam;
+        protocolCues.tick();
+      }
+      if (faltam <= 0) proxima();
+    }, 250);
+    return () => clearInterval(id);
+  }, [indice, somLigado]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Cala qualquer fala pendente ao desmontar.
   useEffect(() => () => protocolCues.stop(), []);
@@ -186,8 +212,13 @@ export function GuidedProtocol({ accent, onPhaseChange, embedded }: Props) {
       {!rodando && !concluido ? (
         <>
           <Text style={styles.corpo}>
-            Duas fases — olhos abertos e depois fechados — para dar um contraste de
-            estado na mesma captação. Ao final, você pode anotar o contexto.
+            Duas fases — olhos abertos e depois fechados — para verificar se o seu
+            aparelho está captando bem. Ao encerrar a captação, o WaveAI compara as
+            duas e diz se o padrão esperado apareceu.
+          </Text>
+          <Text style={styles.aviso}>
+            Mantenha a tela ligada durante o roteiro: a guia por voz depende dela
+            para avisar a troca de fase.
           </Text>
           <Button label="Iniciar protocolo guiado" onPress={iniciar} accent={accent} />
         </>
@@ -237,9 +268,14 @@ export function GuidedProtocol({ accent, onPhaseChange, embedded }: Props) {
 
       {concluido ? (
         <>
+          {/* A frase anterior mandava "comparar as fases no relatório" — e o
+              relatório não separava fase nenhuma, porque a marcação nunca saía
+              do cliente (ADR-0027). Agora sai (ADR-0053), e o que a tela promete
+              é o que de fato acontece: a verificação aparece ao ENCERRAR, não
+              aqui, porque é calculada sobre a sessão inteira. */}
           <Text style={styles.corpo}>
-            Protocolo concluído. Compare as fases no relatório e, se quiser, registre
-            o contexto na anotação da sessão.
+            Protocolo concluído. Encerre a captação para ver se o padrão esperado
+            apareceu — e, se quiser, registre o contexto na anotação da sessão.
           </Text>
           <Button label="Refazer protocolo" onPress={iniciar} accent={accent} />
         </>
@@ -328,5 +364,10 @@ const criarEstilos = (t: Theme) =>
       color: t.colors.textMuted,
       fontSize: 14,
       lineHeight: 20,
+    },
+    // Limitação declarada, não alarme: `textSubtle` e sem cor de perigo.
+    aviso: {
+      ...t.typography.caption,
+      color: t.colors.textSubtle,
     },
   });

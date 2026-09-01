@@ -11,6 +11,7 @@ import { InfoButton } from "../../src/components/InfoButton";
 import { LiveReadingConfidence } from "../../src/components/LiveReadingConfidence";
 import { Meter } from "../../src/components/Meter";
 import { Panel } from "../../src/components/Panel";
+import { ProtocolCheck } from "../../src/components/ProtocolCheck";
 import { BandBars } from "../../src/components/charts/BandBars";
 import { LiveBandTrend } from "../../src/components/charts/LiveBandTrend";
 import { SignalQuality } from "../../src/components/charts/SignalQuality";
@@ -245,6 +246,18 @@ export default function PatientLiveScreen() {
         <>
           <Text style={styles.subsecao}>Qualidade do sinal</Text>
           <SignalQuality quality={encerrada.report.quality} />
+        </>
+      ) : null}
+
+      {/* Só aparece quando o protocolo guiado rodou as DUAS fases — sem elas o
+          servidor não manda `comparison`, e a tela não inventa a pergunta. */}
+      {encerrada.report?.comparison ? (
+        <>
+          <Text style={styles.subsecao}>Verificação do aparelho</Text>
+          <ProtocolCheck
+            comparison={encerrada.report.comparison}
+            accent={papel.accent}
+          />
         </>
       ) : null}
     </Panel>
