@@ -878,3 +878,167 @@ def test_contraste_da_analysis_chega_ao_app_no_closed(
 
     assert fim["report"]["comparison"]["ratio"] == 1.74
     assert fim["report"]["comparison"]["passed"] is True
+
+
+# -- contraste no fim do roteiro (emenda à ADR-0053) --------------------------
+
+
+def _rodar_protocolo(ws, *, com_as_duas_fases: bool = True) -> None:
+    """Manda sinal marcado das duas fases (ou só de uma) e avisa o fim."""
+    ws.send_json(
+        {"type": "samples", "seq": 1, "data": [1.0] * 300, "phase": "eyes_open"}
+    )
+    ws.receive_json()
+    if com_as_duas_fases:
+        ws.send_json(
+            {"type": "samples", "seq": 2, "data": [2.0] * 300, "phase": "eyes_closed"}
+        )
+        ws.receive_json()
+    ws.send_json({"type": "protocol_done"})
+
+
+def test_protocol_done_devolve_o_contraste_sem_encerrar(
+    client_com_analysis: TestClient, analysis: AnalysisFake, db_session: Session
+):
+    """O veredito sai no fim do roteiro, com a captação ainda correndo.
+
+    Antes, o contraste só existia no `stop` — o roteiro terminava e não havia o
+    que anunciar. A asserção que **discrimina** é a captação continuar viva
+    depois: um `ack` aceito prova que a sessão não foi encerrada de lambuja.
+    """
+    analysis.comparison = {"ratio": 1.74, "passed": True}
+    token = _token(client_com_analysis)
+    with client_com_analysis.websocket_connect("/stream") as ws:
+        session_id = _abrir_sessao(ws, token)
+        _rodar_protocolo(ws)
+        resposta = ws.receive_json()
+
+        assert resposta["type"] == "contrast"
+        assert resposta["comparison"]["ratio"] == 1.74
+
+        # A captação segue: manda mais sinal e continua sendo aceito.
+        ws.send_json({"type": "samples", "seq": 9, "data": [1.0] * 100})
+        depois = ws.receive_json()
+        assert depois["type"] == "ack"
+
+        ws.send_json({"type": "stop"})
+        ws.receive_json()
+
+    sessao = db_session.get(CaptureSession, uuid.UUID(session_id))
+    assert sessao.status is SessionStatus.COMPLETED
+
+
+def test_protocol_done_nao_persiste_result(
+    client_com_analysis: TestClient, analysis: AnalysisFake, db_session: Session
+):
+    """É leitura, não registro: o `Result` continua nascendo uma vez, no fecho."""
+    from app.models import Result
+    from sqlalchemy import select
+
+    analysis.comparison = {"ratio": 1.5, "passed": True}
+    token = _token(client_com_analysis)
+    assert client_com_analysis.post(
+        "/me/consent", headers={"Authorization": f"Bearer {token}"}
+    ).status_code == 204
+
+    with client_com_analysis.websocket_connect("/stream") as ws:
+        _abrir_sessao(ws, token)
+        _rodar_protocolo(ws)
+        ws.receive_json()
+        # Com consentimento dado, se este caminho persistisse já haveria linha.
+        assert db_session.scalars(select(Result)).all() == []
+
+        ws.send_json({"type": "stop"})
+        ws.receive_json()
+
+    assert len(db_session.scalars(select(Result)).all()) == 1
+
+
+def test_protocol_done_sem_as_duas_fases_nao_inventa_contraste(
+    client_com_analysis: TestClient, analysis: AnalysisFake
+):
+    """Roteiro interrompido no meio: a resposta vem sem contraste, não com um
+    contraste fabricado. É o que deixa a tela dizer "roteiro incompleto"."""
+    analysis.comparison = {"ratio": 1.74, "passed": True}
+    token = _token(client_com_analysis)
+    with client_com_analysis.websocket_connect("/stream") as ws:
+        _abrir_sessao(ws, token)
+        _rodar_protocolo(ws, com_as_duas_fases=False)
+        resposta = ws.receive_json()
+
+    assert resposta["type"] == "contrast"
+    assert resposta["comparison"] is None
+
+
+def test_analysis_fora_do_ar_no_protocol_done_nao_derruba_a_captacao(
+    client_com_analysis: TestClient, analysis: AnalysisFake
+):
+    """Perder a verificação custa a verificação, nunca a sessão do paciente.
+
+    Irmão do teste homônimo lá de cima, que cobre a análise **ao vivo**: este
+    cobre o caminho do `protocol_done`. Os dois precisam de nomes distintos —
+    dois `def` iguais no mesmo módulo não colidem em erro, o segundo apaga o
+    primeiro em silêncio, e foi o que aconteceu aqui até a contagem de testes
+    denunciar (445 onde deviam ser 446).
+    """
+    token = _token(client_com_analysis)
+    with client_com_analysis.websocket_connect("/stream") as ws:
+        _abrir_sessao(ws, token)
+        analysis.falha = True
+        _rodar_protocolo(ws)
+        resposta = ws.receive_json()
+
+        assert resposta["type"] == "contrast"
+        assert resposta["comparison"] is None
+
+        # E a captação continua de pé.
+        analysis.falha = False
+        ws.send_json({"type": "samples", "seq": 9, "data": [1.0] * 100})
+        assert ws.receive_json()["type"] == "ack"
+
+
+def test_protocol_done_antes_do_start_e_recusado(client: TestClient):
+    token = _token(client)
+    with client.websocket_connect("/stream") as ws:
+        ws.send_json({"type": "auth", "token": token})
+        ws.receive_json()
+        ws.send_json({"type": "protocol_done"})
+        assert ws.receive_json()["type"] == "error"
+        with pytest.raises(WebSocketDisconnect) as exc:
+            ws.receive_json()
+    assert exc.value.code == CloseCode.PROTOCOLO_INVALIDO.value
+
+
+def test_contraste_nao_vaza_para_os_espectadores():
+    """A resposta do `protocol_done` **não** vira evento ao vivo.
+
+    Mostrar o contraste ao profissional durante a captação não foi decidido em
+    ADR nenhuma — e o que não foi decidido não pode passar a acontecer por
+    efeito colateral. Hoje `publicar_janela` só reage a `features`, `esense` e
+    `closed`; este teste é o que impede alguém de acrescentar `contrast` à lista
+    sem uma decisão antes.
+    """
+    import asyncio
+
+    from app.services.live_bus import LiveBus, publicar_janela
+
+    async def cenario():
+        bus = LiveBus()
+        pid = uuid.uuid4()
+        async with bus.subscribe(pid, espectador=True) as fila:
+            publicar_janela(
+                bus,
+                pid,
+                uuid.uuid4(),
+                {"type": "contrast", "comparison": {"ratio": 1.74, "passed": True}},
+                # Compartilhamento LIGADO de propósito: mesmo autorizado a ver a
+                # sessão, o espectador não recebe isto.
+                compartilhado=True,
+            )
+            try:
+                await asyncio.wait_for(fila.get(), timeout=0.05)
+                return "recebeu"
+            except TimeoutError:
+                return "vazio"
+
+    assert asyncio.run(cenario()) == "vazio"

@@ -144,6 +144,8 @@ class StreamProtocol:
             return self._start(message)
         if tipo == "samples":
             return self._samples(message)
+        if tipo == "protocol_done":
+            return self._protocol_done()
         if tipo == "stop":
             return self._stop()
         if tipo == "auth":
@@ -338,6 +340,48 @@ class StreamProtocol:
             # Perder o "ao vivo" é aceitável; perder a sessão do paciente não.
             # A captação segue e o cliente fica sabendo que não há features.
             return {"unavailable": True}
+
+    def _protocol_done(self) -> dict[str, Any]:
+        """Contraste do roteiro guiado **sem encerrar a sessão** (emenda à ADR-0053).
+
+        Existe porque o veredito era calculado só no `stop`: quando o roteiro
+        terminava, a captação seguia e não havia o que anunciar. Aqui o cálculo é
+        pedido no momento em que a pergunta é feita.
+
+        **Não persiste e não encerra nada.** O `Result` continua nascendo uma vez
+        só, no fecho, com o histórico e a proveniência — este caminho é uma
+        leitura, não um registro.
+
+        **Nada aqui pode derrubar a captação.** Sem as duas fases, sem Analysis
+        no ar ou sem sinal acumulado, a resposta vem com `comparison: null` e a
+        sessão segue: perder a verificação custa a verificação; recusar a
+        mensagem custaria a sessão do paciente.
+        """
+        sessao = self.state.session
+        if sessao is None:
+            raise StreamError(CloseCode.PROTOCOLO_INVALIDO, "sessao nao iniciada")
+
+        resposta: dict[str, Any] = {"type": "contrast", "comparison": None}
+        labels = self._labels_das_fases()
+        if self._analysis is None or labels is None or not self.state.session_samples:
+            return resposta
+
+        try:
+            # Sem `history`: o contraste não usa baseline pessoal, e buscá-lo
+            # custaria uma consulta ao banco no meio da captação para nada.
+            metrics = self._analysis.analyze_session(
+                self.state.session_samples,
+                float(sessao.sample_rate),
+                labels=labels,
+                device=sessao.device,
+            )
+        except AnalysisUnavailableError:
+            return resposta
+
+        comparacao = metrics.get("comparison")
+        if isinstance(comparacao, dict):
+            resposta["comparison"] = comparacao
+        return resposta
 
     def _stop(self) -> dict[str, Any]:
         sessao = self.state.session
