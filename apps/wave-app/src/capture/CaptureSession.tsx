@@ -40,6 +40,7 @@ import {
   pedirPermissaoDeAviso,
 } from "../../modules/captacao-foreground";
 import { setLiveSharing } from "../api/liveWatch";
+import type { PhaseComparison } from "../api/results";
 import {
   StreamSession,
   type LiveEsense,
@@ -105,6 +106,16 @@ type Sessao = {
   alternarCompartilhamento: (proximo: boolean) => Promise<void>;
   /** Fase do protocolo guiado — só o simulador reage (ver abaixo). */
   aoMudarFaseProtocolo: (fase: "aberto" | "fechado" | null) => void;
+  /**
+   * O roteiro terminou: pede o contraste ao servidor **sem encerrar a sessão**
+   * (emenda à ADR-0053). `incompleto` diz se ele foi pulado ou interrompido —
+   * isso o cliente sabe sozinho, e o servidor não tem como saber.
+   */
+  concluirProtocolo: (incompleto: boolean) => void;
+  /** Contraste devolvido pelo servidor ao fim do roteiro, ou `null`. */
+  contraste: PhaseComparison | null;
+  /** O roteiro foi pulado ou interrompido nesta sessão? */
+  roteiroIncompleto: boolean;
 };
 
 const Contexto = createContext<Sessao | null>(null);
@@ -134,6 +145,8 @@ export function CaptureSessionProvider({ children }: { children: ReactNode }) {
   const [conectandoA, setConectandoA] = useState<string | null>(null);
   const [abrindoSessao, setAbrindoSessao] = useState(false);
   const [avisoVisivel, setAvisoVisivel] = useState<boolean | null>(null);
+  const [contraste, setContraste] = useState<PhaseComparison | null>(null);
+  const [roteiroIncompleto, setRoteiroIncompleto] = useState(false);
 
   const sessao = useRef<StreamSession | null>(null);
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -274,6 +287,10 @@ export function CaptureSessionProvider({ children }: { children: ReactNode }) {
     setDuracao(0);
     setInicio(new Date());
     comecoMs.current = Date.now();
+    // Veredito é por sessão: sem isto, o resultado de uma captação apareceria
+    // no relatório da seguinte, que nem rodou o roteiro.
+    setContraste(null);
+    setRoteiroIncompleto(false);
   }, []);
 
   const iniciarCronometro = useCallback(() => {
@@ -316,6 +333,7 @@ export function CaptureSessionProvider({ children }: { children: ReactNode }) {
         onSession: aoAbrirSessao,
         onFeatures: aoReceberFeatures,
         onEsense: setEsense,
+        onContrast: setContraste,
         onClosed: aoEncerrar,
         onError: (detalhe) => {
           setErro(detalhe);
@@ -481,6 +499,18 @@ export function CaptureSessionProvider({ children }: { children: ReactNode }) {
    * O efeito no simulador continua: elevar o alfa de "olhos fechados" é o que
    * torna o contraste visível sem aparelho.
    */
+  /**
+   * O roteiro acabou. Pede o contraste e guarda se ele foi abreviado.
+   *
+   * A marca de "incompleto" mora aqui, e não na tela do protocolo, porque
+   * precisa **sobreviver ao fim do roteiro**: o cartão do encerramento aparece
+   * bem depois, e é ele que tem de continuar dizendo que a verificação não vale.
+   */
+  const concluirProtocolo = useCallback((incompleto: boolean) => {
+    setRoteiroIncompleto(incompleto);
+    sessao.current?.protocolDone();
+  }, []);
+
   const aoMudarFaseProtocolo = useCallback((fase: "aberto" | "fechado" | null) => {
     faseAtual.current =
       fase === "fechado" ? "eyes_closed" : fase === "aberto" ? "eyes_open" : null;
@@ -512,6 +542,9 @@ export function CaptureSessionProvider({ children }: { children: ReactNode }) {
       parar,
       alternarCompartilhamento,
       aoMudarFaseProtocolo,
+      concluirProtocolo,
+      contraste,
+      roteiroIncompleto,
     }),
     [
       ativo,
@@ -537,6 +570,9 @@ export function CaptureSessionProvider({ children }: { children: ReactNode }) {
       parar,
       alternarCompartilhamento,
       aoMudarFaseProtocolo,
+      concluirProtocolo,
+      contraste,
+      roteiroIncompleto,
     ],
   );
 

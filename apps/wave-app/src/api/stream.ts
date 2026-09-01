@@ -6,7 +6,7 @@
  */
 
 import { API_URL, getAccessToken } from "../auth/api";
-import type { ResultMetrics } from "./results";
+import type { PhaseComparison, ResultMetrics } from "./results";
 
 export type LiveFeatures = {
   rel_alpha?: number;
@@ -63,6 +63,12 @@ export type StreamHandlers = {
   onEsense?(esense: LiveEsense): void;
   onError?(detail: string): void;
   onClosed?(closed: SessionClosed): void;
+  /**
+   * Contraste do roteiro guiado, pedido por `protocolDone` (emenda à ADR-0053).
+   * `null` quando faltou alguma das duas fases ou a análise não respondeu — e aí
+   * a tela fala de **roteiro incompleto**, não de padrão ausente.
+   */
+  onContrast?(comparison: PhaseComparison | null): void;
 };
 
 function wsUrl(): string {
@@ -110,6 +116,11 @@ export class StreamSession {
             // independente do fechamento da janela das features.
             if (msg.esense) this.handlers.onEsense?.(msg.esense);
             break;
+          case "contrast":
+            // `comparison` pode vir `null` de propósito: o gateway não fabrica
+            // contraste quando falta uma das fases.
+            this.handlers.onContrast?.(msg.comparison ?? null);
+            break;
           case "closed":
             this.handlers.onClosed?.({
               sampleCount: msg.sample_count,
@@ -145,6 +156,18 @@ export class StreamSession {
     if (typeof esense?.meditation === "number") frame.meditation = esense.meditation;
     if (phase) frame.phase = phase;
     this.ws.send(JSON.stringify(frame));
+  }
+
+  /**
+   * Avisa que o roteiro guiado terminou e pede o contraste (emenda à ADR-0053).
+   *
+   * **Não encerra a sessão**: a captação continua, e é justamente por isso que
+   * este pedido existe — o veredito era calculado só no `stop`, e a pergunta é
+   * feita antes.
+   */
+  protocolDone(): void {
+    if (this.ws?.readyState !== WebSocket.OPEN) return;
+    this.ws.send(JSON.stringify({ type: "protocol_done" }));
   }
 
   stop(): void {
