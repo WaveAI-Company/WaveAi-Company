@@ -304,6 +304,12 @@ class AnalysisFake:
         #: Histórico recebido (ADR-0032): prova que o baseline pessoal é
         #: alimentado pelos Result já persistidos do titular.
         self.session_histories: list[list | None] = []
+        #: Labels recebidas (ADR-0053): prova que a marcação de fase do
+        #: protocolo guiado chega até a Analysis, e com que forma.
+        self.session_labels: list[list[str] | None] = []
+        #: Contraste devolvido, quando o teste quiser encená-lo. `None` espelha
+        #: a Analysis real sem as duas fases: a chave simplesmente não aparece.
+        self.comparison: dict | None = None
 
     def analyze_window(self, samples, fs, device=None):
         if self.falha:
@@ -317,10 +323,11 @@ class AnalysisFake:
         self.sessoes.append((len(samples), fs))
         self.session_devices.append(device)
         self.session_histories.append(history)
+        self.session_labels.append(labels)
         # A Analysis real carimba device+montagem e devolve as features do
         # Catálogo; o duplo espelha o mínimo para exercitar persistência da
         # proveniência (em claro) e a alimentação do baseline pessoal.
-        return {
+        corpo = {
             "rel_alpha": 0.33,
             "engine_version": "fake/1.0",
             "relative_band_powers": {},
@@ -328,6 +335,15 @@ class AnalysisFake:
             "device": device,
             "montage": ["FP1"] if device else [],
         }
+        # Espelha a regra da Analysis real: o engine só compara quando os DOIS
+        # grupos têm amostras, então sem as duas fases a chave nem aparece. Sem
+        # esta condição o duplo devolveria `comparison` mesmo com `labels=None`,
+        # e o teste do `closed` passaria com a marcação desligada — um teste que
+        # não discrimina.
+        tem_as_duas = labels is not None and {"eyes_open", "eyes_closed"} <= set(labels)
+        if self.comparison is not None and tem_as_duas:
+            corpo["comparison"] = self.comparison
+        return corpo
 
 
 @pytest.fixture
@@ -662,3 +678,203 @@ def test_erro_nao_detalha_o_motivo_da_recusa(client: TestClient):
 
     assert "invalido" in detalhe
     assert "expir" not in detalhe.lower()
+
+
+# -- fase do protocolo guiado (ADR-0053) --------------------------------------
+
+
+def test_fase_do_protocolo_vira_labels_para_a_analysis(
+    client_com_analysis: TestClient, analysis: AnalysisFake
+):
+    """As duas fases marcadas chegam à Analysis como vetor paralelo ao sinal.
+
+    É o elo que faltava: cliente e Analysis já falavam de `labels`, e a chamada
+    do gateway não passava nada. A asserção que **discrimina** é a contagem por
+    rótulo — um `labels` não-nulo, sozinho, passaria mesmo com a marcação
+    embaralhada.
+    """
+    token = _token(client_com_analysis)
+    with client_com_analysis.websocket_connect("/stream") as ws:
+        _abrir_sessao(ws, token)
+        ws.send_json(
+            {"type": "samples", "seq": 1, "data": [1.0] * 600, "phase": "eyes_open"}
+        )
+        ws.receive_json()
+        ws.send_json(
+            {"type": "samples", "seq": 2, "data": [2.0] * 400, "phase": "eyes_closed"}
+        )
+        ws.receive_json()
+        ws.send_json({"type": "stop"})
+        ws.receive_json()
+
+    labels = analysis.session_labels[0]
+    assert labels is not None
+    assert len(labels) == 1000, "o vetor tem de ser paralelo às amostras"
+    assert labels.count("eyes_open") == 600
+    assert labels.count("eyes_closed") == 400
+    # E na ordem em que o sinal chegou, não só na quantidade certa.
+    assert labels[599] == "eyes_open"
+    assert labels[600] == "eyes_closed"
+
+
+def test_sinal_fora_do_protocolo_fica_de_fora_do_contraste(
+    client_com_analysis: TestClient, analysis: AnalysisFake
+):
+    """O que foi captado antes/depois do protocolo não entra na comparação.
+
+    O engine só agrupa os rótulos que conhece; `unlabeled` não casa com nenhum
+    dos dois conjuntos, então essas amostras existem no sinal e ficam fora do
+    contraste — que é o desejado: comparam-se as duas fases, não a sessão toda.
+    """
+    token = _token(client_com_analysis)
+    with client_com_analysis.websocket_connect("/stream") as ws:
+        _abrir_sessao(ws, token)
+        ws.send_json({"type": "samples", "seq": 1, "data": [1.0] * 100})
+        ws.receive_json()
+        ws.send_json(
+            {"type": "samples", "seq": 2, "data": [1.0] * 200, "phase": "eyes_open"}
+        )
+        ws.receive_json()
+        ws.send_json(
+            {"type": "samples", "seq": 3, "data": [1.0] * 200, "phase": "eyes_closed"}
+        )
+        ws.receive_json()
+        ws.send_json({"type": "stop"})
+        ws.receive_json()
+
+    labels = analysis.session_labels[0]
+    assert labels is not None
+    assert labels.count("unlabeled") == 100
+    assert labels.count("eyes_open") == 200
+    assert labels.count("eyes_closed") == 200
+    assert labels[:100] == ["unlabeled"] * 100
+
+
+def test_sessao_sem_protocolo_nao_manda_labels(
+    client_com_analysis: TestClient, analysis: AnalysisFake
+):
+    """Captação comum não paga por uma marcação que ninguém pediu."""
+    token = _token(client_com_analysis)
+    with client_com_analysis.websocket_connect("/stream") as ws:
+        _abrir_sessao(ws, token)
+        ws.send_json({"type": "samples", "seq": 1, "data": [1.0] * 512})
+        ws.receive_json()
+        ws.send_json({"type": "stop"})
+        ws.receive_json()
+
+    assert analysis.session_labels[0] is None
+
+
+def test_protocolo_pela_metade_nao_manda_labels(
+    client_com_analysis: TestClient, analysis: AnalysisFake
+):
+    """Uma fase só não é contraste.
+
+    Sem as duas o engine não compararia nada, e expandir o vetor gastaria
+    memória proporcional ao sinal para ser descartado do outro lado.
+    """
+    token = _token(client_com_analysis)
+    with client_com_analysis.websocket_connect("/stream") as ws:
+        _abrir_sessao(ws, token)
+        ws.send_json(
+            {"type": "samples", "seq": 1, "data": [1.0] * 512, "phase": "eyes_open"}
+        )
+        ws.receive_json()
+        ws.send_json({"type": "stop"})
+        ws.receive_json()
+
+    assert analysis.session_labels[0] is None
+
+
+@pytest.mark.parametrize(
+    "fase", ["olhos_fechados", "", "EYES_OPEN", 42, None, ["eyes_open"]]
+)
+def test_fase_invalida_e_ignorada_sem_derrubar_a_captacao(
+    client_com_analysis: TestClient, analysis: AnalysisFake, fase
+):
+    """Precedente do eSense (ADR-0034): valor malformado não mata a sessão.
+
+    Perder a marcação custa o contraste de uma captação; recusar o frame
+    custaria a captação inteira. O frame segue valendo e as amostras entram.
+    """
+    token = _token(client_com_analysis)
+    with client_com_analysis.websocket_connect("/stream") as ws:
+        _abrir_sessao(ws, token)
+        ws.send_json(
+            {"type": "samples", "seq": 1, "data": [1.0] * 300, "phase": fase}
+        )
+        resposta = ws.receive_json()
+        assert resposta["type"] == "ack", "fase inválida não pode derrubar o frame"
+        assert resposta["received"] == 300
+        ws.send_json(
+            {"type": "samples", "seq": 2, "data": [1.0] * 300, "phase": "eyes_closed"}
+        )
+        ws.receive_json()
+        ws.send_json({"type": "stop"})
+        fim = ws.receive_json()
+
+    assert fim["type"] == "closed"
+    # Só uma fase válida sobrou, então não há contraste a pedir.
+    assert analysis.session_labels[0] is None
+
+
+def test_intervalos_se_agrupam_em_vez_de_um_por_frame(
+    client_com_analysis: TestClient, analysis: AnalysisFake
+):
+    """Frames seguidos da mesma fase estendem o intervalo corrente.
+
+    Isto é o que torna a estrutura barata: uma sessão de 60 s manda ~120 frames
+    por fase e guarda **dois** intervalos, não 240. A prova é indireta — o vetor
+    expandido tem de sair idêntico ao de um único frame por fase.
+    """
+    token = _token(client_com_analysis)
+    with client_com_analysis.websocket_connect("/stream") as ws:
+        _abrir_sessao(ws, token)
+        for seq in range(1, 5):
+            ws.send_json(
+                {"type": "samples", "seq": seq, "data": [1.0] * 50, "phase": "eyes_open"}
+            )
+            ws.receive_json()
+        ws.send_json(
+            {"type": "samples", "seq": 5, "data": [1.0] * 50, "phase": "eyes_closed"}
+        )
+        ws.receive_json()
+        ws.send_json({"type": "stop"})
+        ws.receive_json()
+
+    labels = analysis.session_labels[0]
+    assert labels == ["eyes_open"] * 200 + ["eyes_closed"] * 50
+
+
+def test_contraste_da_analysis_chega_ao_app_no_closed(
+    client_com_analysis: TestClient, analysis: AnalysisFake
+):
+    """O `comparison` viaja de graça: o `closed` já devolve o relatório inteiro.
+
+    Fecha a jornada da ADR-0053 do lado do servidor — o que a tela mostra é a
+    fatia seguinte.
+    """
+    analysis.comparison = {
+        "eyes_closed_rel_alpha": 0.29,
+        "eyes_open_rel_alpha": 0.17,
+        "ratio": 1.74,
+        "p_value": 2.2e-11,
+        "verdict": "PASSOU (OF > OA, significativo)",
+        "passed": True,
+    }
+    token = _token(client_com_analysis)
+    with client_com_analysis.websocket_connect("/stream") as ws:
+        _abrir_sessao(ws, token)
+        ws.send_json(
+            {"type": "samples", "seq": 1, "data": [1.0] * 300, "phase": "eyes_open"}
+        )
+        ws.receive_json()
+        ws.send_json(
+            {"type": "samples", "seq": 2, "data": [1.0] * 300, "phase": "eyes_closed"}
+        )
+        ws.receive_json()
+        ws.send_json({"type": "stop"})
+        fim = ws.receive_json()
+
+    assert fim["report"]["comparison"]["ratio"] == 1.74
+    assert fim["report"]["comparison"]["passed"] is True
