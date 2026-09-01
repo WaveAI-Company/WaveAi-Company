@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
 import { formatPercent, type PhaseComparison } from "../api/results";
+import type { VeredictoProtocolo } from "../capture/veredito";
 import { useTheme, type Theme } from "../theme";
 
 /**
@@ -32,19 +33,43 @@ import { useTheme, type Theme } from "../theme";
  */
 
 type Props = {
-  comparison: PhaseComparison;
+  comparison: PhaseComparison | null;
+  /** Veredito já resolvido — inclui o caso do roteiro pulado ou interrompido. */
+  veredito: VeredictoProtocolo;
   /** Cor de destaque do papel (paciente). */
   accent: string;
 };
 
-export function ProtocolCheck({ comparison, accent }: Props) {
+export function ProtocolCheck({ comparison, veredito, accent }: Props) {
   const t = useTheme();
   const styles = useMemo(() => criarEstilos(t), [t]);
 
-  const apareceu = comparison.passed === true;
-  const fechados = comparison.eyes_closed_rel_alpha;
-  const abertos = comparison.eyes_open_rel_alpha;
-  const temNumeros = typeof fechados === "number" && typeof abertos === "number";
+  const apareceu = veredito === "apareceu";
+  const incompleto = veredito === "incompleto";
+  const fechados = comparison?.eyes_closed_rel_alpha;
+  const abertos = comparison?.eyes_open_rel_alpha;
+  // Roteiro incompleto **não mostra número**: exibir a comparação ao lado de
+  // "não dá para verificar" convidaria a lê-la assim mesmo, e ela não vale.
+  const temNumeros =
+    !incompleto && typeof fechados === "number" && typeof abertos === "number";
+
+  if (incompleto) {
+    return (
+      <View style={[styles.faixa, { borderLeftColor: accent }]}>
+        <Text style={[styles.titulo, { color: accent }]}>
+          Não dá para verificar
+        </Text>
+        <Text style={styles.corpo}>
+          O roteiro não foi até o fim — uma fase foi pulada ou a captação parou
+          antes. A comparação só vale com os dois trechos inteiros, então esta
+          sessão não serve como verificação do aparelho.
+        </Text>
+        <Text style={styles.corpo}>
+          Refaça o roteiro deixando cada fase terminar sozinha.
+        </Text>
+      </View>
+    );
+  }
 
   return (
     <View style={[styles.faixa, { borderLeftColor: accent }]}>
