@@ -1097,3 +1097,39 @@ Ou seja: o custo que motivou adiar a decisão — dependência nativa, permissã
 - **Notificação com som na troca de fase.** A permissão agora existe (emenda à ADR-0052), mas uma notificação sonora durante "olhos fechados e relaxe" é intrusiva, e o canal do serviço é `IMPORTANCE_LOW`/silencioso de propósito. Rejeitada.
 
 **Consequências:** uma linha no `package.json` e um hook no componente do protocolo. **Nenhuma permissão, nenhum Kotlin, nenhuma mudança na ficha da loja.** Se o módulo nativo já linkado bastar, **nem build novo é preciso** — o dev client atual responde essa pergunta, e é assim que se deve verificar antes de gastar cota do EAS (ADR-0051). Relaciona ADR-0051 (builds), ADR-0052 (a tela apagada e o defeito de timer que originou isto), ADR-0053 (o roteiro) e ADR-0027 (o aviso que sai por deixar de ser verdade).
+
+---
+
+### Emenda à ADR-0053 (2026-09-01) — o veredito sai **ao fim do roteiro**, e roteiro interrompido tem estado próprio
+**Status:** Proposta (2026-09-01) — vira Aceita no merge. Acrescenta à ADR-0053; nada do que ela decidiu é revogado.
+
+**Contexto:** com o contraste implementado, o fundador testou e pediu duas coisas: que o resultado seja **anunciado por voz assim que o roteiro termina** (não só ao encerrar a captação), e que **pular fase ou encerrar antes da hora** produza um resultado de "inconclusivo" que **diga o porquê**.
+
+**[FATO] O primeiro pedido esbarra em como o cálculo acontece hoje.** `_gerar_e_persistir_result` é chamado **apenas** de `_stop` ([`streaming.py`](services/api/app/services/streaming.py)): quando o roteiro acaba, a sessão continua correndo e **não existe veredito algum** para anunciar. E o app não pode calcular por conta própria — a regra rígida do `AnalysisEngine` e a ADR-0025 valem aqui como em todo o resto.
+
+**Decisão 1 — o cliente pede o contraste quando o roteiro termina.**
+- Tipo novo no protocolo do WebSocket: `{"type": "protocol_done"}`, respondido com o contraste calculado sobre o que foi captado até ali. **Um evento merece uma mensagem**, e não um atributo pendurado no frame de amostras — o `samples` descreve um bloco de sinal, não um pedido de análise.
+- O cálculo continua **inteiramente no servidor**, pelo mesmo `AnalysisEngine`, sobre o mesmo `session_samples`. Nada de novo entra em memória e **nenhum dado novo** viaja: a fase já vai desde a ADR-0053.
+- Quando faltar alguma das duas fases, a resposta vem **sem contraste** — e não com um contraste inventado.
+- **Custo aceito:** a Analysis passa a ser chamada **duas vezes** por sessão que use o roteiro (uma no fim do roteiro, outra no fecho), em vez de uma. É o preço de responder antes de encerrar.
+
+**Decisão 2 — "roteiro incompleto" é um estado próprio, e não um veredito negativo.**
+
+Duas frases que **não** são a mesma coisa, e confundi-las seria mentir por atalho:
+- *"O padrão esperado não apareceu"* — foi medido, e não deu.
+- *"Não dá para verificar: o roteiro foi interrompido"* — **não foi medido direito.**
+
+O pedido do fundador é o segundo caso. Usar o texto do primeiro faria a pessoa procurar defeito no aparelho quando ela apenas pulou uma fase. Então:
+- Roteiro **abreviado ou interrompido** produz o estado **"roteiro incompleto"**, com a **razão explícita** (avançou antes do tempo / encerrou antes do fim) e o convite a refazer.
+- Esse estado **prevalece sobre o número**, inclusive quando o servidor calcula `passed = true`. Um protocolo não seguido não é verificação válida, e apresentá-lo como aprovação daria à pessoa uma confiança que o teste não sustenta. **Isto não é esconder resultado:** a tela diz que o roteiro foi interrompido, que é exatamente o que aconteceu.
+- **Quem sabe disso é o cliente**, e é dele a decisão de apresentação: só ele conhece o toque em "Próxima fase" antes da hora e o encerramento precoce. **Não é cálculo, é contexto de interação** — não passa perto da regra do `AnalysisEngine`, e por isso não vira dado novo no protocolo.
+
+**Decisão 3 — a voz anuncia, e o encerramento detalha.** Ao fim do roteiro, uma frase curta por voz com o estado (apareceu / não apareceu / roteiro incompleto). Os números e as causas continuam onde já estão, no relatório da sessão encerrada — voz é para avisar, não para recitar estatística a quem está de olhos fechados.
+
+**Alternativas consideradas:**
+- **Encerrar a sessão junto com o roteiro**, aproveitando o cálculo que já existe no `stop`. Grátis de implementar e **rejeitada por produto**: tira da pessoa a escolha de continuar captando depois da verificação.
+- **Anúncio genérico** ("protocolo concluído, encerre para ver"). Grátis e honesto, mas não responde a pergunta que o roteiro existe para responder, justamente no momento em que ela é feita.
+- **Calcular no cliente** para ter a resposta na hora. Rejeitada pela regra rígida — e já rejeitada na ADR-0053 pelos mesmos motivos (sem `engine_version`, sem persistência, sem auditoria).
+- **Deduzir no servidor que o roteiro foi abreviado**, pela duração de cada intervalo. Tentador porque o gateway já tem os intervalos, mas o servidor **não sabe qual era a duração planejada** — teria de adivinhar um limiar. O cliente sabe sem adivinhar.
+
+**Consequências:** um tipo novo no protocolo do WebSocket (com teste que discrimina), uma chamada a mais à Analysis por sessão com roteiro, e três estados na tela em vez de dois. **Não** cria dado novo, tabela nem migração. O tempo dessa chamada extra **precisa ser medido** antes de fechar a fatia: ela roda no meio da captação, e uma análise lenta ali seguraria o gateway. Relaciona ADR-0025, ADR-0027 (a distinção entre "não deu" e "não foi medido"), ADR-0034 (o protocolo que cresce por acréscimo) e ADR-0053.
