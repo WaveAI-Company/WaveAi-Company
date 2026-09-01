@@ -1133,3 +1133,41 @@ O pedido do fundador é o segundo caso. Usar o texto do primeiro faria a pessoa 
 - **Deduzir no servidor que o roteiro foi abreviado**, pela duração de cada intervalo. Tentador porque o gateway já tem os intervalos, mas o servidor **não sabe qual era a duração planejada** — teria de adivinhar um limiar. O cliente sabe sem adivinhar.
 
 **Consequências:** um tipo novo no protocolo do WebSocket (com teste que discrimina), uma chamada a mais à Analysis por sessão com roteiro, e três estados na tela em vez de dois. **Não** cria dado novo, tabela nem migração. O tempo dessa chamada extra **precisa ser medido** antes de fechar a fatia: ela roda no meio da captação, e uma análise lenta ali seguraria o gateway. Relaciona ADR-0025, ADR-0027 (a distinção entre "não deu" e "não foi medido"), ADR-0034 (o protocolo que cresce por acréscimo) e ADR-0053.
+
+---
+
+## ADR-0055 — Queda de conexão durante a captação: **reconectar se for curta, encerrar se não for, e nunca descartar o que já foi captado**
+**Status:** Proposta (2026-09-01) — vira Aceita no merge. Números confirmados pelo fundador.
+
+**Contexto:** o fundador perguntou o que acontece quando o Bluetooth cai no meio de uma captação sem que ele encerre. A varredura mostrou três defeitos encadeados, e nenhum deles estava registrado.
+
+**[FATO — verificado em 2026-09-01]**
+1. **No Android o app não percebe a queda.** [`connection.ts`](apps/wave-app/src/device/connection.ts) assina apenas `onDataReceived`. A biblioteca **oferece** `onDeviceDisconnected` (está no `BluetoothModule.d.ts`) e nós não assinamos: as amostras simplesmente param de chegar, em silêncio. No iOS há detecção — [`connection.ios.ts`](apps/wave-app/src/device/connection.ios.ts) assina `onDisconnected` —, e o comentário de lá diz que isso "espelha o comportamento do Android". **Não espelha:** no Android não há detecção nenhuma.
+2. **Detectar não encerra nada.** O `CaptureSession` só faz `setErro(...)`. A sessão segue `ativa`, **o cronômetro continua contando** e **o serviço em primeiro plano continua com a notificação "Captação em andamento"** — duas afirmações falsas, na tela e na barra do sistema (ADR-0027).
+3. **O sinal captado é descartado.** O gateway não derruba conexão silenciosa (é decisão registrada no próprio código: o cliente pode ficar quieto entre blocos), então a sessão fica `ACTIVE` até o WebSocket cair. Aí `abortar()` marca **`ABORTED` e nada mais** — `_gerar_e_persistir_result` só é chamado de `_stop`. **Uma captação de dez minutos que perde o Bluetooth no fim não vira relatório nenhum.**
+
+**Decisão 1 — reconectar só quando a queda for curta: teto de 10 segundos.**
+- O app passa a assinar a desconexão no Android e, com sessão ativa, tenta reconectar ao **mesmo** aparelho.
+- **Por que um teto, e não reconectar sempre:** reconectar **costura um buraco invisível no sinal**. As amostras de antes e depois são concatenadas como se fossem contínuas, e o servidor não tem como saber — uma janela de análise pode ficar metade de cada lado. Um tropeço de 2–3 s (a pessoa virou a cabeça, o rádio oscilou) não deve custar uma sessão de dez minutos; um buraco de 40 s não pode ser costurado em silêncio.
+- Passado o teto, encerra pelo caminho normal (`stop`), **com o relatório do que foi captado** e dizendo que a conexão caiu.
+
+**Decisão 2 — queda durante o roteiro guiado marca o roteiro como incompleto.**
+Reusa o estado que a emenda à ADR-0053 criou. Se houve buraco dentro de uma fase, aquilo **não foi medido direito** — e a regra para dizer isso já existe, com a redação que separa "não apareceu" de "não dá para verificar".
+
+**Decisão 3 — `abortar()` passa a gerar e persistir o `Result`.**
+- Vale para **toda** queda, e não só para o processo morto: `StreamError`, timeout e `WebSocketDisconnect`. O dado é do titular e já foi captado; descartá-lo por causa de um cabo é perda gratuita.
+- **Mínimo de sinal: uma janela de análise** (`stream_window_seconds`, hoje 2,0 s — 1024 amostras a 512 Hz). Abaixo disso não há o que analisar, e o histórico não deve encher de sessões de três segundos.
+- **O gate de consentimento (ADR-0026) continua exatamente como está**: sem consentimento, nada é gravado. Esta decisão muda *quando* o `Result` nasce, não *se* ele pode nascer.
+
+**O que se abre mão, explicitamente:**
+(a) **O buraco fica sem marcação no dado.** Registrar um `gap` no protocolo seria dado novo e mais escopo. Fica como **dívida escrita**: sabe-se que sessões com reconexão têm descontinuidade que o `Result` não declara. A completude (`sample_count` ÷ duração × taxa) a denuncia para quem for procurar, mas nada na tela a mostra.
+(b) **Sessão encerrada por queda é sessão mais curta**, não uma sessão "incompleta" com aviso permanente. O relatório é do que foi captado, e a tela diz o motivo do fim.
+(c) **Um `Result` a mais por queda** onde antes não havia nenhum — o que é o ponto, mas também significa que sessões abortadas passam a aparecer no histórico.
+
+**Alternativas consideradas:**
+- **Só encerrar, sem reconectar** (a opção "i" apresentada ao fundador). Mais simples e **mais honesta com o dado**, porque não cria buraco algum. Preterida com o teto de 10 s: sem ele, esta seria a recomendação — é o teto que torna a reconexão defensável.
+- **Reconectar sem limite de tempo.** Rejeitada: costuraria buracos arbitrariamente longos sem que ninguém soubesse.
+- **Abrir uma sessão nova ao reconectar**, para não haver buraco. Elegante quanto ao dado e ruim para todo o resto: fragmenta o histórico e quebraria o protocolo guiado no meio.
+- **Derrubar a conexão silenciosa no servidor** (timeout de inatividade). Resolveria a sessão pendurada, mas não a perda do dado, e brigaria com a decisão já registrada de deixar o cliente ficar quieto entre blocos.
+
+**Consequências:** o app ganha detecção de desconexão no Android (paridade com o iOS) e um estado de "reconectando"; o gateway passa a gerar `Result` no `abortar()`, com o mínimo de uma janela. **Não** cria dado novo, tabela nem migração. A reentrância é a parte perigosa — a mesma área da ADR-0052/PR #219 —, e a reconexão precisa cancelar-se quando a pessoa encerra no meio. Relaciona ADR-0025, ADR-0026 (o gate que não muda), ADR-0027 (a tela e a notificação que hoje mentem), ADR-0040 (transporte), ADR-0052 (serviço em primeiro plano; e o limite do processo morto) e a emenda à ADR-0053 (o estado de roteiro incompleto que esta decisão reusa).
