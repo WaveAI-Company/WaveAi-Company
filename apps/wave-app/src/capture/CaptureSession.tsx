@@ -45,6 +45,7 @@ import {
   type LiveEsense,
   type LiveFeatures,
   type SessionClosed,
+  type StreamPhase,
 } from "../api/stream";
 import { deviceConnection } from "../device/connection";
 import type { DeviceInfo, Esense } from "../device/DeviceConnection";
@@ -149,6 +150,8 @@ export function CaptureSessionProvider({ children }: { children: ReactNode }) {
    * renderização em que foi criado.
    */
   const comecoMs = useRef(0);
+  /** Fase vigente do protocolo guiado, ou `null` fora dele (ADR-0053). */
+  const faseAtual = useRef<StreamPhase | null>(null);
   const compartilhamentoEmVoo = useRef(false);
   const intencaoCompartilhar = useRef<boolean | null>(null);
   /**
@@ -171,6 +174,9 @@ export function CaptureSessionProvider({ children }: { children: ReactNode }) {
     if (usandoAparelhoRef.current) void deviceConnection.disconnect();
     pendentes.current = [];
     esensePendente.current = {};
+    // Sem isto, uma sessão nova nasceria marcada com a fase em que a anterior
+    // parou — e o contraste seria calculado sobre sinal que ninguém rotulou.
+    faseAtual.current = null;
     simuladorRef.current = null;
     usandoAparelhoRef.current = false;
     setAtivo(false);
@@ -294,7 +300,11 @@ export function CaptureSessionProvider({ children }: { children: ReactNode }) {
         const bloco = pendentes.current.splice(0, BLOCO);
         const esenseAgora = esensePendente.current;
         esensePendente.current = {};
-        stream.sendSamples(bloco, esenseAgora);
+        // A fase é lida AGORA, no envio, e não guardada junto da amostra: o
+        // bloco tem 500 ms e a fase dura 60 s, então o pior erro possível é meio
+        // segundo de sinal na fronteira entre as duas — irrelevante para épocas
+        // de 4 s, e muito mais barato que marcar amostra a amostra.
+        stream.sendSamples(bloco, esenseAgora, faseAtual.current ?? undefined);
       }
     },
     [],
@@ -342,7 +352,11 @@ export function CaptureSessionProvider({ children }: { children: ReactNode }) {
     const simulador = new SignalSimulator(SAMPLE_RATE);
     simuladorRef.current = simulador;
     timer.current = setInterval(() => {
-      stream.sendSamples(simulador.nextBlock(BLOCO), simulador.nextEsense());
+      stream.sendSamples(
+        simulador.nextBlock(BLOCO),
+        simulador.nextEsense(),
+        faseAtual.current ?? undefined,
+      );
       setPoorSignal(simulador.nextPoorSignal());
     }, INTERVALO_MS);
   }, [
@@ -457,11 +471,19 @@ export function CaptureSessionProvider({ children }: { children: ReactNode }) {
   );
 
   /**
-   * Fase do protocolo guiado. No simulador, eleva o alfa de "olhos fechados"
-   * para o contraste ficar visível; em aparelho real é só a guia — a fase não
-   * chega ao servidor (ver a fatia C da ADR-0052, ainda por decidir).
+   * Fase do protocolo guiado. **Agora ela chega ao servidor** (ADR-0053): fica
+   * num ref, e cada bloco enviado leva a fase vigente no instante do envio.
+   *
+   * Ref, e não estado: quem lê é o envio, que roda dentro de `onRawSample` e de
+   * um intervalo — os dois prenderiam o valor da renderização em que foram
+   * criados. E a marcação precisa acompanhar o sinal, não o ciclo de render.
+   *
+   * O efeito no simulador continua: elevar o alfa de "olhos fechados" é o que
+   * torna o contraste visível sem aparelho.
    */
   const aoMudarFaseProtocolo = useCallback((fase: "aberto" | "fechado" | null) => {
+    faseAtual.current =
+      fase === "fechado" ? "eyes_closed" : fase === "aberto" ? "eyes_open" : null;
     simuladorRef.current?.setAlphaAmplitude(fase === "fechado" ? 45 : 20);
   }, []);
 

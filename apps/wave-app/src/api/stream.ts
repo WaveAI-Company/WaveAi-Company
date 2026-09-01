@@ -25,6 +25,15 @@ export type LiveFeatures = {
  * `proprietary` é o marcador vindo do servidor; o rótulo textual obrigatório
  * é responsabilidade da UI.
  */
+/**
+ * Fase do protocolo guiado, como ela viaja no protocolo (ADR-0053).
+ *
+ * Os valores são os rótulos canônicos que o `wave_eeg` já reconhece — a
+ * tradução do vocabulário da tela ("aberto"/"fechado") acontece **uma vez**, na
+ * borda, para o gateway não precisar traduzir nada no meio do caminho.
+ */
+export type StreamPhase = "eyes_open" | "eyes_closed";
+
 export type LiveEsense = {
   attention?: number;
   meditation?: number;
@@ -123,16 +132,18 @@ export class StreamSession {
   }
 
   /**
-   * Envia um bloco de raw. O eSense (ADR-0034), quando houver, **pega carona**
-   * neste frame (opção A do protocolo): campos opcionais, retrocompatível. O
-   * gateway relaya só o que estiver bem-formado; valor ausente é omitido.
+   * Envia um bloco de raw. O eSense (ADR-0034) e a fase do protocolo guiado
+   * (ADR-0053), quando houver, **pegam carona** neste frame (opção A do
+   * protocolo): campos opcionais, retrocompatível. O gateway relaya só o que
+   * estiver bem-formado; valor ausente é omitido.
    */
-  sendSamples(data: number[], esense?: LiveEsense): void {
+  sendSamples(data: number[], esense?: LiveEsense, phase?: StreamPhase): void {
     if (this.ws?.readyState !== WebSocket.OPEN) return;
     this.seq += 1;
     const frame: Record<string, unknown> = { type: "samples", seq: this.seq, data };
     if (typeof esense?.attention === "number") frame.attention = esense.attention;
     if (typeof esense?.meditation === "number") frame.meditation = esense.meditation;
+    if (phase) frame.phase = phase;
     this.ws.send(JSON.stringify(frame));
   }
 

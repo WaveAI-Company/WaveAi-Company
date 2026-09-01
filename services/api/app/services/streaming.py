@@ -89,6 +89,21 @@ class StreamState:
     #: memória** durante a captação — nunca é gravado em disco (ADR-0025). É
     #: descartado ao encerrar; o que persiste é o Result derivado.
     session_samples: list[float] = field(default_factory=list)
+    #: Fases do protocolo guiado como **intervalos** `[fase, quantidade]`, e não
+    #: uma marcação por amostra (ADR-0053). Um vetor de strings do tamanho do
+    #: sinal ficaria de pé durante a sessão inteira para ser lido uma única vez,
+    #: no fecho. `fase` é `None` no trecho fora do protocolo.
+    phase_runs: list[list[Any]] = field(default_factory=list)
+
+
+#: Fases aceitas no frame `samples` (ADR-0053). Os valores são os rótulos
+#: canônicos do `wave_eeg` (`EYES_CLOSED_LABELS`/`EYES_OPEN_LABELS`), para o
+#: gateway não ter de traduzir nada no meio do caminho.
+FASES_VALIDAS = frozenset({"eyes_open", "eyes_closed"})
+#: Rótulo do sinal captado fora do protocolo. Não casa com nenhum dos dois
+#: conjuntos do engine, então essas amostras ficam de fora do contraste — que é
+#: exatamente o que se quer: comparar as duas fases, não a sessão toda.
+FORA_DO_PROTOCOLO = "unlabeled"
 
 
 class StreamProtocol:
@@ -211,6 +226,10 @@ class StreamProtocol:
         # O teto já foi validado acima (sessão longa demais é recusada).
         if self._results is not None:
             self.state.session_samples.extend(float(v) for v in data)
+            # No MESMO ramo, de propósito: os intervalos são um índice sobre
+            # `session_samples`, e registrá-los quando o sinal não é guardado os
+            # deixaria apontando para um vetor que não existe.
+            self._registrar_fase(self._fase_do_frame(message), len(data))
 
         resposta: dict[str, Any] = {
             "type": "ack",
@@ -258,6 +277,42 @@ class StreamProtocol:
         corpo["proprietary"] = True
         return corpo
 
+    def _fase_do_frame(self, message: dict[str, Any]) -> str | None:
+        """Fase do protocolo guiado (ADR-0053), **opcional** no frame `samples`.
+
+        Segue o precedente que o eSense abriu (ADR-0034): campo opcional que
+        pega carona no frame, e **valor desconhecido é ignorado em silêncio, sem
+        derrubar a captação**. A conta é a mesma de lá — perder a marcação custa
+        o contraste de uma sessão; recusar o frame custaria a sessão inteira.
+        """
+        fase = message.get("phase")
+        if isinstance(fase, str) and fase in FASES_VALIDAS:
+            return fase
+        return None
+
+    def _registrar_fase(self, fase: str | None, quantidade: int) -> None:
+        """Estende o intervalo corrente, ou abre um novo quando a fase muda."""
+        if self.state.phase_runs and self.state.phase_runs[-1][0] == fase:
+            self.state.phase_runs[-1][1] += quantidade
+        else:
+            self.state.phase_runs.append([fase, quantidade])
+
+    def _labels_das_fases(self) -> list[str] | None:
+        """Expande os intervalos num vetor paralelo a `session_samples`.
+
+        **Devolve `None` quando falta alguma das duas fases.** Sem as duas não há
+        contraste a calcular — o engine só compara quando os dois grupos têm
+        amostras —, e expandir o vetor à toa gastaria memória proporcional ao
+        sinal para nada.
+        """
+        presentes = {fase for fase, _ in self.state.phase_runs if fase is not None}
+        if not FASES_VALIDAS.issubset(presentes):
+            return None
+        labels: list[str] = []
+        for fase, quantidade in self.state.phase_runs:
+            labels.extend([fase or FORA_DO_PROTOCOLO] * quantidade)
+        return labels
+
     def _analisar_se_completou_janela(
         self, data: list[float], sample_rate: int
     ) -> dict[str, Any] | None:
@@ -296,6 +351,9 @@ class StreamProtocol:
         self.state.encerrada = True
         # Descarta o raw da memória assim que o Result (derivado) foi tratado.
         self.state.session_samples = []
+        # Os intervalos indexam esse raw: mantê-los seria guardar um mapa de um
+        # território que não existe mais.
+        self.state.phase_runs = []
 
         resposta = {
             "type": "closed",
@@ -333,6 +391,10 @@ class StreamProtocol:
             metrics = self._analysis.analyze_session(
                 self.state.session_samples,
                 float(sessao.sample_rate),
+                # Contraste do protocolo guiado (ADR-0053). O cliente e a
+                # Analysis já sabiam falar de `labels`; era esta chamada que não
+                # passava nada — o único elo rompido da corrente.
+                labels=self._labels_das_fases(),
                 device=sessao.device,
                 history=history or None,
             )
