@@ -1,3 +1,4 @@
+import { activateKeepAwakeAsync, deactivateKeepAwake } from "expo-keep-awake";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
@@ -59,6 +60,14 @@ const FASES: readonly Fase[] = [
 
 /** Índices fora de [0, FASES.length) são estados especiais. */
 const OCIOSO = -1;
+
+/**
+ * Etiqueta própria da trava de tela (ADR-0054).
+ *
+ * O `expo-keep-awake` conta travas **por etiqueta**: com uma nossa, ninguém mais
+ * no app desliga a do roteiro por engano, nem nós desligamos a de outro.
+ */
+const TRAVA_DE_TELA = "waveai.protocolo-guiado";
 
 function mmss(segundos: number): string {
   const m = Math.floor(segundos / 60);
@@ -153,9 +162,11 @@ export function GuidedProtocol({ accent, onPhaseChange, embedded }: Props) {
   // fechados esperando uma voz que nunca vinha. Derivando de uma subtração de
   // datas, ao voltar o número se corrige e a fase avança para onde deveria estar.
   //
-  // O que isto **não** resolve: com a tela apagada a voz não toca na hora certa,
-  // porque nada roda para tocá-la. Manter a tela acesa exigiria `expo-keep-awake`
-  // — dependência nativa, logo ADR antes. Enquanto isso, a tela avisa.
+  // Isto sozinho **não** faria a voz tocar com a tela apagada — nada roda para
+  // tocá-la. Quem cuida disso é a trava de tela mais abaixo (ADR-0054); as duas
+  // se complementam e nenhuma substitui a outra: a trava evita a tela apagar
+  // durante o roteiro, e o relógio conserta a contagem se ela apagar assim mesmo
+  // (a pessoa pode apagá-la no botão, e o roteiro não pode travar por isso).
   //
   // Nos 3 s finais, uma batida por segundo marca o fim da fase; `ultimoTick`
   // evita repetir a batida do mesmo segundo agora que o intervalo é mais fino.
@@ -178,6 +189,31 @@ export function GuidedProtocol({ accent, onPhaseChange, embedded }: Props) {
 
   // Cala qualquer fala pendente ao desmontar.
   useEffect(() => () => protocolCues.stop(), []);
+
+  /**
+   * Tela acesa **enquanto o roteiro roda** (ADR-0054).
+   *
+   * Sem isto, o sistema apaga a tela por inatividade justamente na fase de olhos
+   * fechados — e aí nada roda para tocar a voz que anuncia a troca. A contagem
+   * já vem do relógio e não trava, mas o aviso não sairia, e a pessoa ficaria de
+   * olhos fechados esperando.
+   *
+   * **A liberação é o ponto delicado**, e por isso mora na limpeza do efeito:
+   * ela roda ao encerrar no meio, ao concluir e ao desmontar a tela. Trava de
+   * tela esquecida é o modo de falha clássico deste recurso — seria pior que o
+   * problema que veio resolver.
+   *
+   * `catch` silencioso dos dois lados: falhar em segurar a tela **não pode**
+   * derrubar o roteiro. Sem a trava o protocolo ainda funciona, só volta a
+   * depender de a pessoa manter a tela ligada.
+   */
+  useEffect(() => {
+    if (!rodando) return;
+    activateKeepAwakeAsync(TRAVA_DE_TELA).catch(() => {});
+    return () => {
+      deactivateKeepAwake(TRAVA_DE_TELA).catch(() => {});
+    };
+  }, [rodando]);
 
   return (
     <View style={embedded ? styles.solto : [styles.card, { borderLeftColor: accent }]}>
@@ -216,10 +252,10 @@ export function GuidedProtocol({ accent, onPhaseChange, embedded }: Props) {
             aparelho está captando bem. Ao encerrar a captação, o WaveAI compara as
             duas e diz se o padrão esperado apareceu.
           </Text>
-          <Text style={styles.aviso}>
-            Mantenha a tela ligada durante o roteiro: a guia por voz depende dela
-            para avisar a troca de fase.
-          </Text>
+          {/* O pedido "mantenha a tela ligada" saiu daqui: o app passou a
+              segurar a tela sozinho durante o roteiro (ADR-0054), e um aviso
+              sobre algo que já está resolvido vira ruído — além de deixar de ser
+              verdade (ADR-0027). */}
           <Button label="Iniciar protocolo guiado" onPress={iniciar} accent={accent} />
         </>
       ) : null}
@@ -364,10 +400,5 @@ const criarEstilos = (t: Theme) =>
       color: t.colors.textMuted,
       fontSize: 14,
       lineHeight: 20,
-    },
-    // Limitação declarada, não alarme: `textSubtle` e sem cor de perigo.
-    aviso: {
-      ...t.typography.caption,
-      color: t.colors.textSubtle,
     },
   });
