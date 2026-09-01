@@ -1064,3 +1064,36 @@ A decisão original (link com token opaco, 24 h / 30 min) foi tomada sobre esse 
 **3. "Expor o Exp. B" descrevia trabalho que já está feito.** Verificado em 2026-08-31: [`/analyze/session`](services/analysis/app/main.py) **já aceita `labels`** e **já devolve `comparison`** (`eyes_closed_rel_alpha`, `eyes_open_rel_alpha`, `ratio`, `p_value`, `verdict`, `passed`); e o [`analysis_client`](services/api/app/services/analysis_client.py) da API **já envia `labels`** no corpo. A corrente do servidor está inteira do endpoint até o `AnalysisEngine`. **O único elo rompido** é a chamada em [`streaming.py`](services/api/app/services/streaming.py), que invoca `analyze_session` **sem** `labels`.
 
 **Consequência para o tamanho da fatia:** a Analysis **não muda**. Sobra (a) o cliente mandar a fase no frame `samples`, (b) o gateway montar o vetor de `labels` junto de `session_samples` e passá-lo na chamada, (c) o `comparison` seguir para o `Result` e para o `closed`, e (d) a tela. O `verdict` do `wave_eeg` já vem com os três estados que o item 5 da ADR-0053 exige — não há veredito a inventar, só a traduzir para linguagem de instrumento.
+
+---
+
+## ADR-0054 — Guia por voz do protocolo: **manter a tela acesa** com `expo-keep-awake`, e só durante o roteiro
+**Status:** Proposta (2026-09-01) — vira Aceita no merge.
+
+**Contexto:** o protocolo guiado (ADR-0053) anuncia por voz a troca de fase e o fim de cada etapa. A contagem passou a sair do relógio, o que impede o roteiro de **travar** quando a tela apaga — mas **não faz a voz tocar**: com a activity pausada, nada roda para tocá-la. O caso é o pior possível para a pessoa: na fase de **olhos fechados** ela está, por definição, sem olhar a tela, e o sistema apaga o visor por inatividade justamente aí. Fica de olhos fechados esperando um aviso que não vem. A tela hoje pede "mantenha a tela ligada" — um pedido que transfere ao usuário um problema que é nosso.
+
+**[FATO — verificado em 2026-09-01, e ele desmonta a premissa com que esta ADR foi pedida]**
+1. **`expo-keep-awake` não é dependência nova.** A versão **57.0.1** já vem dentro do pacote `expo`, aninhada em `node_modules/expo/node_modules/expo-keep-awake`.
+2. **O código nativo já está nos APKs de hoje.** O `expo-modules-autolinking` já resolve `expo.modules.keepawake.KeepAwakeModule` e o inclui no build Android — mesmo aninhado. Não há Kotlin novo a compilar.
+3. **Não pede permissão nenhuma.** O `AndroidManifest.xml` do módulo está **vazio**: ele usa `FLAG_KEEP_SCREEN_ON` na janela da Activity, e não um `PowerManager.WakeLock` — que é o que exigiria `WAKE_LOCK`. **Nada muda na ficha da Play Store.**
+4. **O que falta é só declarar.** O import não resolve hoje porque o pacote não está no `package.json` e o npm não o içou para a raiz; o `expo` também **não** o reexporta (só o usa internamente em `withDevTools`). `npx expo install expo-keep-awake` resolve isso.
+
+Ou seja: o custo que motivou adiar a decisão — dependência nativa, permissão nova, build novo — **não existe**. O que sobra é uma decisão de produto.
+
+**Decisão:**
+1. **Declarar `expo-keep-awake`** no `package.json`, na versão que o SDK já traz.
+2. **Manter a tela acesa apenas enquanto o roteiro está rodando** — não durante a captação inteira. O `useKeepAwake` do próprio pacote é ligado ao ciclo de vida do componente do protocolo, que é onde ele começa e termina.
+3. **Liberar sempre ao sair**, inclusive quando o roteiro é encerrado no meio ou a tela é desmontada. Uma tela que fica acesa para sempre é o modo de falha clássico deste recurso, e seria pior que o problema original.
+4. **O aviso "mantenha a tela ligada" sai da tela** na mesma fatia: com a decisão em pé ele passa a ser falso, e um pedido que o app já cumpre sozinho é ruído (ADR-0027).
+
+**O que se abre mão, explicitamente:**
+(a) **Bateria e tela acesa por ~2 minutos**, com o brilho que o sistema tiver. É pequeno e é limitado ao roteiro.
+(b) **Uma ironia que vale dizer em voz alta:** acende-se a tela para alguém que está de olhos fechados. O visor não serve a essa pessoa — serve ao relógio do JavaScript. É uma solução de conveniência, não de elegância, e está registrada como tal.
+(c) **Não muda nada para quem não usa o protocolo.** A captação comum segue como a ADR-0052 decidiu, sobrevivendo à tela apagada — e é bom deixar claro que **não há contradição** entre as duas: uma fala de captar com a tela apagada, a outra de um roteiro curto e opcional que precisa falar com a pessoa.
+
+**Alternativas consideradas:**
+- **Deixar como está** (o aviso na tela, já no ar). Custo zero, e foi o que se fez na fatia anterior por prudência. **Preterida** agora que o custo real é conhecido: o aviso empurra ao usuário um trabalho que o app pode fazer, e um roteiro de verificação que falha por descuido do sistema não verifica nada.
+- **Timer e áudio no Kotlin**, estendendo o módulo `captacao-foreground`. Resolveria sem acender a tela, e é a solução tecnicamente correta. **Rejeitada por custo/benefício:** o módulo é "ligar e desligar" por decisão explícita (ADR-0052), o Gradle não roda neste ambiente (todo Kotlin vai ao EAS sem compilação local) e a cota de build é escassa — muito preço por dois minutos de tela acesa.
+- **Notificação com som na troca de fase.** A permissão agora existe (emenda à ADR-0052), mas uma notificação sonora durante "olhos fechados e relaxe" é intrusiva, e o canal do serviço é `IMPORTANCE_LOW`/silencioso de propósito. Rejeitada.
+
+**Consequências:** uma linha no `package.json` e um hook no componente do protocolo. **Nenhuma permissão, nenhum Kotlin, nenhuma mudança na ficha da loja.** Se o módulo nativo já linkado bastar, **nem build novo é preciso** — o dev client atual responde essa pergunta, e é assim que se deve verificar antes de gastar cota do EAS (ADR-0051). Relaciona ADR-0051 (builds), ADR-0052 (a tela apagada e o defeito de timer que originou isto), ADR-0053 (o roteiro) e ADR-0027 (o aviso que sai por deixar de ser verdade).
