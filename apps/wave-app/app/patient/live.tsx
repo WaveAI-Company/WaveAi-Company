@@ -110,6 +110,8 @@ export default function PatientLiveScreen() {
     compartilhando,
     erroCompartilhar,
     erro,
+    reconectando,
+    motivoDoFim,
     conectandoA,
     abrindoSessao,
     avisoVisivel,
@@ -284,10 +286,22 @@ export default function PatientLiveScreen() {
             {relogio(duracao)}
           </Text>
         ) : null}
+        {/* "AO VIVO" durante uma queda seria a tela afirmando o que não está
+            acontecendo (ADR-0027): a sessão existe, mas não está entrando sinal.
+            `estado` com a cor de atenção — e não `cautela`, que é reservada ao
+            que é proprietário/não validado (ADR-0034). */}
         <Chip
-          label={ativo ? "AO VIVO" : encerrada ? "Sessão encerrada" : "Sem captação"}
+          label={
+            reconectando
+              ? "Reconectando"
+              : ativo
+                ? "AO VIVO"
+                : encerrada
+                  ? "Sessão encerrada"
+                  : "Sem captação"
+          }
           variant={ativo ? "estado" : "neutro"}
-          accent={papel.accent}
+          accent={reconectando ? t.colors.warningText : papel.accent}
           dot
         />
         <View style={styles.espacador} />
@@ -308,6 +322,23 @@ export default function PatientLiveScreen() {
           toque acabara de gerar. Agora ela mora ao lado do botão, no painel
           "Aparelho". Este ponto só mostra o que não tem dono na tela. */}
       {erro && !erroScan ? <Text style={styles.erro}>{erro}</Text> : null}
+
+      {/* Queda em curso (ADR-0055). O texto diz o que está acontecendo E o que
+          vai acontecer se não voltar — um "reconectando…" sozinho deixaria a
+          pessoa sem saber se deve esperar ou tirar o aparelho da cabeça. Prazo
+          sem executor é mentira: quem conta os 10 s é o app, não ela. */}
+      {reconectando ? (
+        <Text style={styles.reconectando}>
+          A conexão com o aparelho caiu e o WaveAI está tentando retomá-la. Se não
+          voltar em alguns segundos, a sessão é encerrada com o que já foi captado.
+        </Text>
+      ) : null}
+
+      {/* Por que a sessão acabou, quando não foi a pessoa que encerrou. Sem
+          isto, uma captação que termina sozinha vira relatório sem explicação. */}
+      {motivoDoFim && encerrada ? (
+        <Text style={styles.reconectando}>{motivoDoFim}</Text>
+      ) : null}
 
       {/* A captação corre sem aviso na barra quando a permissão de notificação
           é recusada. A ADR-0052 escolheu a notificação como o preço VISÍVEL de
@@ -357,7 +388,10 @@ export default function PatientLiveScreen() {
             <View style={[styles.heroiInterno, emColunas && styles.heroiInternoLargo]}>
               <LiveWave
                 accent={papel.accent}
-                paused={!ativo}
+                // Parada durante a queda: a figura "marca que a sessão está
+                // correndo" (é o que a nota abaixo dela diz), e durante uma
+                // reconexão não está entrando nada.
+                paused={!ativo || reconectando}
                 scale={ativo ? 1 : 0.35}
                 // `.hero-inner{min-height:320px}`, e 260 abaixo de 1200 — a onda
                 // era o que cedia altura para o vazio que sobrava sob o botão.
@@ -365,9 +399,15 @@ export default function PatientLiveScreen() {
               />
               <View style={[styles.heroiChips, emColunas && styles.heroiChipsSobre]}>
                 <Chip
-                  label={ativo ? "ritmo ao vivo" : "em repouso"}
+                  label={
+                    reconectando
+                      ? "sem sinal do aparelho"
+                      : ativo
+                        ? "ritmo ao vivo"
+                        : "em repouso"
+                  }
                   variant={ativo ? "estado" : "neutro"}
-                  accent={papel.accent}
+                  accent={reconectando ? t.colors.warningText : papel.accent}
                   dot
                 />
                 <Chip label="visualização estilizada — não é exame" variant="cautela" />
@@ -1135,6 +1175,16 @@ const criarEstilos = (t: Theme) =>
       ...t.typography.body,
       color: t.colors.dangerText,
       fontSize: 14,
+    },
+    // Queda de conexão (ADR-0055): `warningText`, não `dangerText`. A sessão
+    // está em risco e ainda pode voltar — pintar de perigo diria que já se
+    // perdeu, e nada se perdeu: o sinal captado até aqui vira relatório de um
+    // jeito ou de outro.
+    reconectando: {
+      ...t.typography.body,
+      color: t.colors.warningText,
+      fontSize: 14,
+      lineHeight: 20,
     },
     // Não é erro nem alerta: é uma limitação do aparelho, dita sem alarme. Por
     // isso `textMuted` e não `dangerText` — colorir de perigo faria a pessoa

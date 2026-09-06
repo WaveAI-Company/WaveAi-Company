@@ -49,7 +49,7 @@ import {
   type StreamPhase,
 } from "../api/stream";
 import { deviceConnection } from "../device/connection";
-import type { DeviceInfo, Esense } from "../device/DeviceConnection";
+import type { DeviceHandlers, DeviceInfo, Esense } from "../device/DeviceConnection";
 import { mensagemBluetooth } from "../device/mensagens";
 import { SignalSimulator } from "../mocks/signalSimulator";
 
@@ -69,6 +69,38 @@ const INTERVALO_MS = 500;
 /** Janelas mantidas no gráfico ao vivo (janela ~2 s → ~80 s de histórico). */
 const MAX_PONTOS = 40;
 
+/**
+ * Teto da reconexão automática (ADR-0055, decisão 1).
+ *
+ * **Por que existe um teto, e não reconexão sem limite:** reconectar costura um
+ * buraco invisível no sinal. As amostras de antes e depois são concatenadas como
+ * se fossem contínuas, e o servidor não tem como saber. Um tropeço de 2–3 s (a
+ * pessoa virou a cabeça, o rádio oscilou) não deve custar uma sessão de dez
+ * minutos; um buraco de 40 s não pode ser costurado em silêncio.
+ */
+const TETO_RECONEXAO_MS = 10_000;
+/**
+ * Espera entre tentativas dentro do teto. **Calibragem, não decisão de ADR** — a
+ * ADR-0055 fixou só o teto. Dá ~5 tentativas, e a primeira sai na hora.
+ */
+const INTERVALO_RECONEXAO_MS = 2_000;
+
+/**
+ * O que a tela diz quando a queda venceu o teto.
+ *
+ * Fala do que aconteceu **e** do que foi feito com o sinal: encerrar sem dizer
+ * que o captado foi aproveitado deixaria a pessoa supondo que perdeu tudo
+ * (ADR-0027 — a tela não afirma o que não é verdade, e omitir o desfecho é
+ * deixá-la adivinhar).
+ */
+const MOTIVO_QUEDA =
+  "A conexão com o aparelho caiu e não voltou. A sessão foi encerrada com o sinal que já havia sido captado.";
+
+/** `setTimeout` como promessa, para a reconexão ser um laço e não uma recursão. */
+function esperar(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 type Sessao = {
   ativo: boolean;
   usandoAparelho: boolean;
@@ -85,6 +117,17 @@ type Sessao = {
   compartilhando: boolean;
   erroCompartilhar: string | null;
   erro: string | null;
+  /**
+   * A conexão com o aparelho caiu e o app está tentando trazê-la de volta
+   * (ADR-0055). Enquanto isto for `true`, **não está entrando sinal** — e a tela
+   * não pode continuar dizendo "AO VIVO".
+   */
+  reconectando: boolean;
+  /**
+   * Por que a sessão terminou, quando não foi a pessoa que encerrou. `null` no
+   * encerramento comum: aí o motivo é óbvio e a tela não precisa explicar nada.
+   */
+  motivoDoFim: string | null;
   /** Id do aparelho em conexão, ou `null` — a lista mostra o progresso nele. */
   conectandoA: string | null;
   /** Sessão simulada abrindo: impede dois toques abrirem duas. */
@@ -147,6 +190,8 @@ export function CaptureSessionProvider({ children }: { children: ReactNode }) {
   const [avisoVisivel, setAvisoVisivel] = useState<boolean | null>(null);
   const [contraste, setContraste] = useState<PhaseComparison | null>(null);
   const [roteiroIncompleto, setRoteiroIncompleto] = useState(false);
+  const [reconectando, setReconectando] = useState(false);
+  const [motivoDoFim, setMotivoDoFim] = useState<string | null>(null);
 
   const sessao = useRef<StreamSession | null>(null);
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -174,7 +219,44 @@ export function CaptureSessionProvider({ children }: { children: ReactNode }) {
    */
   const usandoAparelhoRef = useRef(false);
 
+  /**
+   * Aparelho e handlers da captação em curso — o que a reconexão precisa para
+   * refazer exatamente a mesma ligação (ADR-0055).
+   *
+   * Os handlers guardam a closure sobre o `stream` desta sessão, e é isso que se
+   * quer: reconectar **continua a sessão**, não abre outra. Abrir uma sessão
+   * nova ao reconectar foi considerado e recusado na ADR — fragmentaria o
+   * histórico e quebraria o roteiro guiado no meio.
+   */
+  const aparelhoAtual = useRef<DeviceInfo | null>(null);
+  const handlersAparelho = useRef<DeviceHandlers | null>(null);
+  /**
+   * Token de geração da captação — a guarda de reentrância desta fatia.
+   *
+   * É a mesma classe de problema da PR #219: a reconexão é assíncrona e leva
+   * segundos, e nesse meio-tempo a pessoa pode encerrar, ou começar outra
+   * sessão. O laço confere o token depois de **cada** `await`; encerrar
+   * incrementa o número e, com isso, invalida toda tentativa em voo — inclusive
+   * uma que tenha acabado de conectar com sucesso (essa é desfeita na hora).
+   */
+  const geracao = useRef(0);
+  /**
+   * Espelho de `reconectando` em ref: o evento de queda chega por callback do
+   * módulo nativo, que leria o estado da renderização em que foi criado. Sem
+   * isto, dois eventos seguidos abririam dois laços de reconexão.
+   */
+  const reconectandoRef = useRef(false);
+
+  const pararDeReconectar = useCallback(() => {
+    reconectandoRef.current = false;
+    setReconectando(false);
+  }, []);
+
   const encerrarCaptacao = useCallback(() => {
+    // Primeiro de tudo, e de forma SÍNCRONA: invalida qualquer reconexão em voo
+    // antes que ela tenha chance de ressuscitar a captação que está acabando.
+    geracao.current += 1;
+    pararDeReconectar();
     if (timer.current) clearInterval(timer.current);
     timer.current = null;
     if (cronometro.current) clearInterval(cronometro.current);
@@ -197,7 +279,7 @@ export function CaptureSessionProvider({ children }: { children: ReactNode }) {
     setConectandoA(null);
     // Sem captação não há aviso a prometer nem a desmentir.
     setAvisoVisivel(null);
-  }, []);
+  }, [pararDeReconectar]);
 
   /**
    * Sobe o serviço e resolve, em paralelo, a permissão do aviso.
@@ -235,6 +317,99 @@ export function CaptureSessionProvider({ children }: { children: ReactNode }) {
       sessao.current.stop();
     }
   }, [encerrarCaptacao]);
+
+  /**
+   * A queda venceu o teto: encerra **pelo caminho normal** (ADR-0055).
+   *
+   * `parar()` e não algo especial, de propósito: é o `stop` que traz o relatório
+   * do que foi captado até a queda. O caminho do `abortar()` no servidor (que
+   * também gera `Result` desde a ADR-0055) é a rede de segurança para quando nem
+   * o WebSocket sobreviveu — aqui, com o socket de pé, dá para encerrar direito
+   * e mostrar o relatório na tela.
+   */
+  const encerrarPorQueda = useCallback(() => {
+    setMotivoDoFim(MOTIVO_QUEDA);
+    parar();
+  }, [parar]);
+
+  /**
+   * Tenta trazer a conexão de volta até o teto de 10 s (ADR-0055, decisão 1).
+   *
+   * Laço, e não recursão em `setTimeout`, para o cancelamento ser uma conferência
+   * de token depois de cada `await` — e não uma coleção de temporizadores para
+   * limpar. `minhaGeracao` é o token: se ele mudou, esta tentativa pertence a uma
+   * captação que já acabou e tudo o que ela conseguir tem de ser desfeito.
+   *
+   * ⚠️ **Com a tela apagada só a primeira tentativa acontece.** Ela é disparada
+   * pelo evento de queda, que o módulo nativo entrega mesmo com a activity
+   * pausada — mas a espera entre as tentativas seguintes é `setTimeout`, e timer
+   * de RN no Android não dispara nesse estado (é a mesma medição da ADR-0052 que
+   * fez o envio deixar de depender do relógio). Na prática: falhou a primeira, a
+   * sessão fica parada até a tela voltar, e aí o teto já venceu e ela encerra com
+   * a explicação. Corrigir isso exigiria a contagem dentro do serviço em primeiro
+   * plano, em Kotlin — fora do escopo desta fatia.
+   */
+  const reconectar = useCallback(
+    async (minhaGeracao: number) => {
+      const device = aparelhoAtual.current;
+      const handlers = handlersAparelho.current;
+      if (!device || !handlers) return;
+      const inicio = Date.now();
+
+      while (geracao.current === minhaGeracao) {
+        // Solta o rádio antes de cada tentativa: a trava de `connect`
+        // (`DeviceBusyError`) recusa enquanto houver conexão de pé, e uma
+        // tentativa que falhou pela metade pode ter deixado uma.
+        await deviceConnection.disconnect().catch(() => undefined);
+        if (geracao.current !== minhaGeracao) return;
+
+        let conectou = false;
+        try {
+          await deviceConnection.connect(device.id, handlers);
+          conectou = true;
+        } catch {
+          // Falhar é o caso esperado enquanto o rádio não volta; quem decide o
+          // desfecho é o teto, logo abaixo.
+        }
+
+        if (geracao.current !== minhaGeracao) {
+          // A pessoa encerrou enquanto esta tentativa estava em voo. Se ela
+          // chegou a conectar, a conexão é órfã — ninguém mais a fecharia.
+          if (conectou) void deviceConnection.disconnect();
+          return;
+        }
+        if (conectou) {
+          pararDeReconectar();
+          setErro(null);
+          return;
+        }
+        if (Date.now() - inicio >= TETO_RECONEXAO_MS) {
+          pararDeReconectar();
+          encerrarPorQueda();
+          return;
+        }
+        await esperar(INTERVALO_RECONEXAO_MS);
+      }
+    },
+    [pararDeReconectar, encerrarPorQueda],
+  );
+
+  /**
+   * O aparelho caiu. Antes da ADR-0055 isto era um `setErro(...)` e nada mais: a
+   * sessão seguia ativa, o cronômetro contava e a notificação dizia "Captação em
+   * andamento" — duas afirmações falsas ao mesmo tempo (ADR-0027).
+   */
+  const aoCairAConexao = useCallback(() => {
+    if (!usandoAparelhoRef.current || reconectandoRef.current) return;
+    // Queda **dentro** do roteiro invalida a verificação (ADR-0055, decisão 2):
+    // houve buraco dentro de uma fase, e isso não é medição válida. Vale mesmo
+    // que a reconexão dê certo em dois segundos — o buraco existiu, e "não foi
+    // medido direito" não é a mesma frase que "foi medido e não deu".
+    if (faseAtual.current !== null) setRoteiroIncompleto(true);
+    reconectandoRef.current = true;
+    setReconectando(true);
+    void reconectar(geracao.current);
+  }, [reconectar]);
 
   /** Handler comum: chega o relatório, aí sim o socket pode fechar. */
   const aoEncerrar = useCallback((fim: SessionClosed) => {
@@ -291,6 +466,9 @@ export function CaptureSessionProvider({ children }: { children: ReactNode }) {
     // no relatório da seguinte, que nem rodou o roteiro.
     setContraste(null);
     setRoteiroIncompleto(false);
+    // O motivo é da sessão que acabou; deixá-lo de pé faria a captação nova
+    // nascer explicando o fim da anterior.
+    setMotivoDoFim(null);
   }, []);
 
   const iniciarCronometro = useCallback(() => {
@@ -396,26 +574,37 @@ export function CaptureSessionProvider({ children }: { children: ReactNode }) {
       esensePendente.current = {};
 
       const stream = novoStream();
+      // Guardados num ref porque a **reconexão** refaz esta mesma ligação
+      // (ADR-0055): os handlers guardam a closure sobre este `stream`, e é assim
+      // que reconectar continua a sessão em vez de abrir outra.
+      const handlers: DeviceHandlers = {
+        // **O envio nasce aqui, não no relógio.** Este callback vem de evento
+        // do módulo nativo, que segue sendo entregue com a activity pausada —
+        // ao contrário do `setInterval`, que para. Fechou 256 amostras, vai.
+        onRawSample: ({ amplitude }) => {
+          pendentes.current.push(amplitude);
+          drenarPendentes(stream, false);
+        },
+        onSignalQuality: ({ poorSignal: p }) => setPoorSignal(p),
+        // eSense do aparelho: guarda o último para enviar junto do próximo
+        // bloco. O que a UI exibe é o valor relayado de volta pelo gateway.
+        onEsense: (e) => {
+          esensePendente.current = e;
+        },
+        onStatus: (status, detalhe) => {
+          // `disconnected` é a queda em si e tem tratamento próprio; `error` é o
+          // resto (recusa, permissão, característica ausente) e continua sendo
+          // uma mensagem na tela.
+          if (status === "disconnected") aoCairAConexao();
+          else if (status === "error") setErro(mensagemBluetooth(detalhe));
+        },
+      };
+      aparelhoAtual.current = device;
+      handlersAparelho.current = handlers;
+
       try {
         await stream.connect(device.name || "mindwave", SAMPLE_RATE);
-        await deviceConnection.connect(device.id, {
-          // **O envio nasce aqui, não no relógio.** Este callback vem de evento
-          // do módulo nativo, que segue sendo entregue com a activity pausada —
-          // ao contrário do `setInterval`, que para. Fechou 256 amostras, vai.
-          onRawSample: ({ amplitude }) => {
-            pendentes.current.push(amplitude);
-            drenarPendentes(stream, false);
-          },
-          onSignalQuality: ({ poorSignal: p }) => setPoorSignal(p),
-          // eSense do aparelho: guarda o último para enviar junto do próximo
-          // bloco. O que a UI exibe é o valor relayado de volta pelo gateway.
-          onEsense: (e) => {
-            esensePendente.current = e;
-          },
-          onStatus: (status, detalhe) => {
-            if (status === "error") setErro(mensagemBluetooth(detalhe));
-          },
-        });
+        await deviceConnection.connect(device.id, handlers);
       } catch (e) {
         setErro(mensagemBluetooth(e));
         stream.close();
@@ -448,6 +637,7 @@ export function CaptureSessionProvider({ children }: { children: ReactNode }) {
       iniciarCronometro,
       drenarPendentes,
       subirServico,
+      aoCairAConexao,
     ],
   );
 
@@ -534,6 +724,8 @@ export function CaptureSessionProvider({ children }: { children: ReactNode }) {
       compartilhando,
       erroCompartilhar,
       erro,
+      reconectando,
+      motivoDoFim,
       conectandoA,
       abrindoSessao,
       avisoVisivel,
@@ -562,6 +754,8 @@ export function CaptureSessionProvider({ children }: { children: ReactNode }) {
       compartilhando,
       erroCompartilhar,
       erro,
+      reconectando,
+      motivoDoFim,
       conectandoA,
       abrindoSessao,
       avisoVisivel,
