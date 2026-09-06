@@ -460,10 +460,58 @@ class StreamProtocol:
 
     # -- desconexão ------------------------------------------------------
 
+    def _minimo_para_relatorio(self, sessao: CaptureSession) -> int:
+        """Piso de sinal para uma queda virar `Result`: **uma janela de análise**.
+
+        Mesma janela do ao vivo (`stream_window_seconds`, hoje 2,0 s → 1024
+        amostras a 512 Hz). Abaixo disso não há o que analisar, e o histórico do
+        titular não deve encher de sessões de três segundos (ADR-0055).
+        """
+        return int(sessao.sample_rate * self._settings.stream_window_seconds)
+
     def abortar(self) -> None:
-        """Conexão caiu sem `stop`: a sessão não pode ficar eternamente ativa."""
+        """Conexão caiu sem `stop`: encerra a sessão **e salva o que foi captado**.
+
+        A sessão não pode ficar eternamente ativa — este sempre foi o papel deste
+        método. O que a ADR-0055 acrescentou é o resto: antes, `abortar()` marcava
+        `ABORTED` e nada mais, e **uma captação de dez minutos que perdesse a
+        conexão no fim não virava relatório nenhum**. O dado é do titular e já
+        tinha sido captado; descartá-lo por causa de um cabo é perda gratuita.
+
+        Vale para os três caminhos que chegam aqui (`StreamError`, timeout de
+        autenticação e `WebSocketDisconnect`), com duas ressalvas:
+
+        - **piso de uma janela** (ver `_minimo_para_relatorio`);
+        - **o gate de consentimento (ADR-0026) não muda.** Esta decisão altera
+          *quando* o `Result` nasce, não *se* ele pode nascer — quem trata o gate
+          é `_gerar_e_persistir_result`, o mesmo caminho do `stop`.
+
+        Diferente do `stop`, **ninguém recebe o relatório na hora**: a conexão que
+        o levaria já caiu. Ele aparece no histórico do titular.
+        """
         sessao = self.state.session
         if sessao is None or self.state.encerrada:
             return
+
+        # Antes de `encerrar`, como no `_stop`: o Result nasce com a sessão ainda
+        # ACTIVE, e nenhum dos dois caminhos vê a sessão em estado intermediário.
+        if len(self.state.session_samples) >= self._minimo_para_relatorio(sessao):
+            try:
+                self._gerar_e_persistir_result(sessao)
+            except Exception:
+                # Guarda larga **de propósito**, e só aqui. Este método é a última
+                # linha de defesa contra a sessão pendurada em ACTIVE, e passou a
+                # fazer trabalho que pode falhar por conta própria (cifra,
+                # serialização, banco). Falhar no relatório não pode ressuscitar o
+                # defeito que o método existe para impedir. O rollback é necessário:
+                # uma exceção no meio do flush deixa a sessão do SQLAlchemy inativa,
+                # e o `commit` abaixo falharia também.
+                self._db.rollback()
+
         self._sessions.encerrar(sessao, status=SessionStatus.ABORTED)
         self._db.commit()
+        self.state.encerrada = True
+        # Mesmo descarte do `stop`: o raw sai da memória assim que o derivado foi
+        # tratado, e os intervalos de fase indexam um raw que não existe mais.
+        self.state.session_samples = []
+        self.state.phase_runs = []
