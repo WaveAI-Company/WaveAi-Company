@@ -186,11 +186,21 @@ export const deviceConnection: DeviceConnection = {
     dispositivoId = deviceId;
     limparAssinaturas();
 
-    // Sensor caiu no meio da sessão (bateria/alcance): sinaliza como erro em vez
-    // de silenciar — espelha o comportamento do Android (falha na leitura).
+    // Sensor caiu no meio da sessão (bateria/alcance). Sai como `disconnected`,
+    // e não como `error` genérico: a ADR-0055 deu a esse estado um tratamento
+    // próprio (reconectar se a queda for curta, encerrar com explicação se não
+    // for), e ele precisa ser distinguível de "o aparelho recusou a conexão".
+    //
+    // O comentário que estava aqui dizia que isto espelhava o comportamento do
+    // Android. **Não espelhava**: até a ADR-0055 o Android não detectava queda
+    // nenhuma. Agora os dois emitem o mesmo estado, e aí sim espelha.
     assinaturaDesconexao?.remove();
     assinaturaDesconexao = dispositivo.onDisconnected(() => {
-      handlers.onStatus?.("error", "conexão com o aparelho perdida");
+      // Solta o id local antes de avisar: a trava de `connect` recusaria a
+      // reconexão enquanto ele estivesse de pé.
+      dispositivoId = null;
+      conectando = false;
+      handlers.onStatus?.("disconnected", "conexão com o aparelho perdida");
     });
 
     // Auto-descoberta: assina TODA característica `notify` e deixa o parser
