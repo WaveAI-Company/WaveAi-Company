@@ -9,7 +9,7 @@ contornos, então nenhum deles pode envelhecer sozinho.
 | Para quê | Onde |
 |---|---|
 | **Redes sociais, apresentação, material** | `kit/` (esta pasta) |
-| Ícone do app, favicon (usados pelo `app.json`) | `apps/wave-app/assets/` |
+| Ícone do app, favicon, **splash** (usados pelo `app.json`) | `apps/wave-app/assets/` |
 | Marca dentro da interface | desenhada em código, `src/components/brand/Logo.tsx` |
 
 ## Como escolher o arquivo do `kit/`
@@ -57,7 +57,8 @@ services/api/.venv/Scripts/python.exe Design/logos_icones/gerar_logo_tsx.py
    `geometria.json`. Reporta a fidelidade contra a máscara do PNG: hoje **IoU
    98,0%** no total (onda 99,5%, anel 96,2%, ponto 96,5%).
 2. **`gerar_assets.py`** — escreve os SVG e PNG de `apps/wave-app/assets/` e o
-   `kit/` desta pasta. Mede o vazamento da zona segura do ícone adaptativo.
+   `kit/` desta pasta. Mede o vazamento da zona segura do ícone adaptativo e o
+   contraste da splash sobre o fundo de cada tema.
 3. **`gerar_logo_tsx.py`** — escreve o componente `Logo.tsx` do app.
 
 Para mudar **as cores**, edite os tokens e rode do passo 2. Para mudar **o
@@ -71,6 +72,13 @@ extração e estão no `.gitignore`.
 Autenticação (login, cadastro, recuperação, verificação) usa o **símbolo**; o app
 já logado — sidebar e rail — usa a **completa**. Decidido olhando as duas na
 tela, não no papel.
+
+A **splash** (ADR-0056) também usa o símbolo, e aí não é gosto: o Android 12+
+recorta a arte da tela de abertura num círculo, igual ao do ícone adaptativo, e
+o anel da completa ficaria cortado. Por isso ela sai na **mesma zona segura** que
+o passo 1 mede — o ícone do lançador vira a splash sem trocar de desenho. O fundo
+é o token `background` de cada tema (`#0B1220` / `#F5F7FA`), o mesmo que a tela
+de carregamento pinta em seguida, para a passagem não piscar.
 
 ## O que não fazer
 
