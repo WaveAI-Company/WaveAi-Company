@@ -32,6 +32,19 @@ const NOME_PROVAVEL = /mindwave/i;
 
 let dispositivo: BluetoothDevice | null = null;
 let inscricao: { remove(): void } | null = null;
+/**
+ * Assinatura da **queda** da conexão (ADR-0055).
+ *
+ * Antes desta ADR o Android não assinava nada disto: as amostras simplesmente
+ * paravam de chegar, em silêncio, e a sessão seguia "ao vivo" com o cronômetro
+ * correndo. O iOS já detectava, e o comentário de lá dizia espelhar o Android —
+ * não espelhava.
+ *
+ * O evento é do **módulo**, não do dispositivo: dispara para qualquer aparelho
+ * que se desconecte, inclusive o fone de ouvido de quem está captando. Por isso
+ * o handler filtra pelo endereço antes de fazer qualquer coisa.
+ */
+let inscricaoQueda: { remove(): void } | null = null;
 
 /**
  * Trava de conexão — **o recurso é único e a guarda mora com ele**.
@@ -186,6 +199,22 @@ export const deviceConnection: DeviceConnection = {
     }
     conectando = false;
 
+    // Queda da conexão (ADR-0055) — assinada ANTES de qualquer dado chegar, e
+    // filtrada pelo endereço: `onDeviceDisconnected` é do módulo e dispara para
+    // todo aparelho que cai, não só para o nosso.
+    inscricaoQueda?.remove();
+    inscricaoQueda = RNBluetoothClassic.onDeviceDisconnected((evento) => {
+      const caiu = evento?.device?.address ?? evento?.device?.id;
+      if (caiu !== deviceId) return;
+      // Solta o estado local ANTES de avisar: quem ouvir vai tentar reconectar,
+      // e a trava de `connect` recusaria enquanto `dispositivo` estiver de pé.
+      inscricao?.remove();
+      inscricao = null;
+      dispositivo = null;
+      conectando = false;
+      handlers.onStatus?.("disconnected", "conexão com o aparelho perdida");
+    });
+
     const parser = new ThinkGearParser();
     inscricao = dispositivo.onDataReceived((evento) => {
       for (const pacote of parser.feed(paraBytes(evento.data))) {
@@ -213,6 +242,10 @@ export const deviceConnection: DeviceConnection = {
   async disconnect(): Promise<void> {
     inscricao?.remove();
     inscricao = null;
+    // Sai junto: sem isto, desconectar de propósito dispararia o aviso de queda
+    // e a sessão tentaria reconectar a um aparelho que ninguém quer mais.
+    inscricaoQueda?.remove();
+    inscricaoQueda = null;
     if (dispositivo) {
       await dispositivo.disconnect().catch(() => undefined);
       dispositivo = null;
