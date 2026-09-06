@@ -69,6 +69,17 @@ export type StreamHandlers = {
    * a tela fala de **roteiro incompleto**, não de padrão ausente.
    */
   onContrast?(comparison: PhaseComparison | null): void;
+  /**
+   * O socket fechou **sem ninguém ter pedido** — queda de rede, processo do
+   * servidor caindo, ou o próprio gateway fechando depois de um `error`.
+   *
+   * Existia um buraco aqui: esta classe não assinava `onclose`, então o
+   * fechamento não avisava ninguém. Como `stop()` não faz nada com o socket
+   * fechado, quem tivesse acabado de chamar `parar()` ficava esperando um
+   * `closed` que nunca viria — e a tela seguia dizendo "Calculando o relatório
+   * sobre a sessão inteira" para sempre (ADR-0027).
+   */
+  onDisconnected?(): void;
 };
 
 function wsUrl(): string {
@@ -83,6 +94,11 @@ function wsUrl(): string {
 export class StreamSession {
   private ws: WebSocket | null = null;
   private seq = 0;
+  /**
+   * Fomos nós que mandamos fechar? Distingue o `close()` deliberado — que
+   * acontece depois do relatório e não é notícia para ninguém — da queda, que é.
+   */
+  private fechandoDeProposito = false;
 
   constructor(private readonly handlers: StreamHandlers) {}
 
@@ -93,6 +109,7 @@ export class StreamSession {
     }
 
     return new Promise((resolve, reject) => {
+      this.fechandoDeProposito = false;
       const ws = new WebSocket(wsUrl());
       this.ws = ws;
 
@@ -139,6 +156,18 @@ export class StreamSession {
         this.handlers.onError?.("falha de conexao");
         reject(new Error("falha de conexao"));
       };
+
+      // Fim do canal. Vem depois do `closed` no caminho feliz (e aí não há o
+      // que avisar), e **sozinho** quando a conexão cai ou o gateway fecha por
+      // erro — que é o caso em que alguém precisa saber. Também resolve a
+      // promessa do `connect` com rejeição se ela ainda estiver pendente: sem
+      // isto, um socket que fecha antes do `session` deixaria quem chamou
+      // esperando para sempre.
+      ws.onclose = () => {
+        reject(new Error("conexao encerrada"));
+        if (this.fechandoDeProposito) return;
+        this.handlers.onDisconnected?.();
+      };
     });
   }
 
@@ -177,6 +206,9 @@ export class StreamSession {
   }
 
   close(): void {
+    // Antes do `close()`, senão o `onclose` que ele dispara seria lido como
+    // queda e a tela anunciaria uma falha que não houve.
+    this.fechandoDeProposito = true;
     this.ws?.close();
     this.ws = null;
   }
