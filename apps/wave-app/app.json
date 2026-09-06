@@ -48,6 +48,19 @@
         {
           "photosPermission": "O WaveAI usa suas fotos para você escolher uma imagem de perfil."
         }
+      ],
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-p-fundo-claro.png",
+          "backgroundColor": "#F5F7FA",
+          "dark": {
+            "image": "./assets/splash-p-fundo-escuro.png",
+            "backgroundColor": "#0B1220"
+          },
+          "imageWidth": 240,
+          "resizeMode": "contain"
+        }
       ]
     ],
     "extra": {
