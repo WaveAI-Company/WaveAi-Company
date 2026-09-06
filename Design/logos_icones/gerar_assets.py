@@ -22,6 +22,20 @@ TINTA = "#0B1220"               # onAccent (dark)
 SS = 4
 RAIO_SEGURO = 0.33              # metade dos 66% da zona segura do adaptive icon
 
+# Fundos da splash (ADR-0056). Sao os tokens `background` de cada tema
+# (src/theme/tokens.ts), e nao uma cor escolhida a parte: e o MESMO fundo que o
+# `RouteGuard` pinta logo em seguida, entao a passagem da splash para o
+# indicador de carregamento nao pisca.
+FUNDO_ESCURO = "#0B1220"
+FUNDO_CLARO = "#F5F7FA"
+
+# Os dois pares do gradiente. O nome diz onde a arte POUSA, nao a cor dela — e
+# essa e a unica leitura que evita o erro: o par errado rende 1,8:1 e 3,05:1,
+# contra os 10,04:1 do certo. Definidos aqui em cima porque agora servem a dois
+# consumidores (a splash e o kit); duas copias divergiriam na primeira correcao.
+PAR_P_FUNDO_ESCURO = (A1, A2)              # accentPatient/Doctor do tema escuro
+PAR_P_FUNDO_CLARO = ("#0F7A70", "#2A5BC7")  # os mesmos, do tema claro
+
 G = json.load(open(GEO, encoding="utf8"))
 VB = G["viewBox"]
 
@@ -215,6 +229,18 @@ saidas = [
      gradiente(432 * SS, A1, A2).resize((432, 432), Image.LANCZOS), "app.json:18 — fundo"),
     ("android-icon-monochrome.png", recorte(432, "#FFFFFF", zona=ZONA_ADAPT),
      "app.json:19 — Material You"),
+    # Splash (ADR-0056). MESMA zona do icone adaptativo, de proposito: o Android
+    # 12+ recorta a arte da splash num circulo igual ao do lancador, entao o que
+    # vaza ali vaza aqui. Fundo TRANSPARENTE — quem pinta o fundo e o
+    # `backgroundColor` do plugin, e um retangulo proprio apareceria por cima
+    # dele. Dois pares de cor: cada um pousa no seu fundo.
+    # Nome pela regra da casa (README): diz onde a arte POUSA, nao a cor dela.
+    ("splash-p-fundo-escuro.png",
+     recorte_gradiente(1024, *PAR_P_FUNDO_ESCURO, zona=ZONA_ADAPT),
+     "app.json — splash, tema escuro"),
+    ("splash-p-fundo-claro.png",
+     recorte_gradiente(1024, *PAR_P_FUNDO_CLARO, zona=ZONA_ADAPT),
+     "app.json — splash, tema claro"),
 ]
 for nome, img, nota in saidas:
     caminho = os.path.join(DEST, nome)
@@ -228,6 +254,19 @@ print("\ncontraste da arte sobre as pontas do gradiente (WCAG 1.4.11: 3:1 para n
 print(f"  {TINTA} sobre {A1} (accentPatient): {razao(TINTA, A1)}:1")
 print(f"  {TINTA} sobre {A2} (accentDoctor):  {razao(TINTA, A2)}:1")
 
+# Splash (ADR-0056): a arte pousa num fundo SOLIDO, e o `check-contrast.mjs` do
+# app nao alcanca isto — ele valida os tokens do tema, nao um PNG contra uma cor
+# do `app.json`. Foi exatamente esse tipo de par fora do verificador que deixou a
+# marca em 3,05:1 no painel de autenticacao. Aqui a conta sai junto do arquivo.
+print("\ncontraste da splash — cada ponta do gradiente sobre o seu fundo:")
+for nome, (c1, c2), fundo in (
+    ("escuro", PAR_P_FUNDO_ESCURO, FUNDO_ESCURO),
+    ("claro", PAR_P_FUNDO_CLARO, FUNDO_CLARO),
+):
+    r1, r2 = razao(c1, fundo), razao(c2, fundo)
+    alerta = "" if min(r1, r2) >= 3 else "   <- ABAIXO DE 3:1"
+    print(f"  tema {nome:<7} arte sobre {fundo}: {r1}:1 e {r2}:1{alerta}")
+
 # ---------------- kit para uso fora do app ----------------
 # Redes sociais, apresentacao, material impresso. Sai do MESMO vetor que o app
 # usa — nao ha uma segunda arte que possa divergir com o tempo.
@@ -237,8 +276,8 @@ print(f"  {TINTA} sobre {A2} (accentDoctor):  {razao(TINTA, A2)}:1")
 # escuro, e o par ESCURO (os do tema claro) para pousar em fundo claro. Usar o
 # errado e o que deixava a marca apagada no painel de autenticacao.
 KIT = str(RAIZ / "Design" / "logos_icones" / "kit")
-CLARO = ("#4FD1C5", "#7AA2F7")   # para FUNDO ESCURO
-ESCURO = ("#0F7A70", "#2A5BC7")  # para FUNDO CLARO
+CLARO = PAR_P_FUNDO_ESCURO   # para FUNDO ESCURO
+ESCURO = PAR_P_FUNDO_CLARO   # para FUNDO CLARO
 os.makedirs(KIT, exist_ok=True)
 
 print("\n-- kit (Design/logos_icones/kit) --")
