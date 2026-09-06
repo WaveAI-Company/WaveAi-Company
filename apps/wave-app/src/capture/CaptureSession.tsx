@@ -96,6 +96,19 @@ const INTERVALO_RECONEXAO_MS = 2_000;
 const MOTIVO_QUEDA =
   "A conexão com o aparelho caiu e não voltou. A sessão foi encerrada com o sinal que já havia sido captado.";
 
+/**
+ * Quanto se espera pelo relatório depois do `stop`, antes de a tela desistir.
+ *
+ * **30 s e não 15** porque o servidor de análise pode estar escalado a zero em
+ * produção: o cold start medido é de ~21–26 s, e um teto curto acusaria de
+ * silêncio uma resposta que estava a caminho. Aqui errar para o lado da espera
+ * é barato — errar para o outro faz a tela chamar de falha o funcionamento
+ * normal.
+ *
+ * Desistir é só da **espera**: o `closed` atrasado ainda é aceito e mostrado.
+ */
+const TETO_RELATORIO_MS = 30_000;
+
 /** `setTimeout` como promessa, para a reconexão ser um laço e não uma recursão. */
 function esperar(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -128,6 +141,15 @@ type Sessao = {
    * encerramento comum: aí o motivo é óbvio e a tela não precisa explicar nada.
    */
   motivoDoFim: string | null;
+  /**
+   * O `stop` foi enviado (ou a sessão acabou) e o relatório **não chegou**: o
+   * canal caiu, ou a resposta demorou mais que o teto.
+   *
+   * Existe porque a tela dizia "Calculando o relatório sobre a sessão inteira"
+   * enquanto isso — uma afirmação sobre trabalho que ninguém está fazendo
+   * (ADR-0027). Volta a `false` se o `closed` chegar atrasado.
+   */
+  relatorioNaoChegou: boolean;
   /** Id do aparelho em conexão, ou `null` — a lista mostra o progresso nele. */
   conectandoA: string | null;
   /** Sessão simulada abrindo: impede dois toques abrirem duas. */
@@ -192,6 +214,7 @@ export function CaptureSessionProvider({ children }: { children: ReactNode }) {
   const [roteiroIncompleto, setRoteiroIncompleto] = useState(false);
   const [reconectando, setReconectando] = useState(false);
   const [motivoDoFim, setMotivoDoFim] = useState<string | null>(null);
+  const [relatorioNaoChegou, setRelatorioNaoChegou] = useState(false);
 
   const sessao = useRef<StreamSession | null>(null);
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -246,6 +269,15 @@ export function CaptureSessionProvider({ children }: { children: ReactNode }) {
    * isto, dois eventos seguidos abririam dois laços de reconexão.
    */
   const reconectandoRef = useRef(false);
+  /**
+   * Espelhos de `encerrando` e `ativo` em ref. Quem os lê são handlers do
+   * socket e um `setTimeout`, que prenderiam o valor da renderização em que
+   * foram criados — o mesmo motivo de `usandoAparelhoRef`.
+   */
+  const encerrandoRef = useRef(false);
+  const ativoRef = useRef(false);
+  /** Teto da espera pelo relatório; cancelado quando o `closed` chega. */
+  const esperaDoRelatorio = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const pararDeReconectar = useCallback(() => {
     reconectandoRef.current = false;
@@ -274,6 +306,7 @@ export function CaptureSessionProvider({ children }: { children: ReactNode }) {
     faseAtual.current = null;
     simuladorRef.current = null;
     usandoAparelhoRef.current = false;
+    ativoRef.current = false;
     setAtivo(false);
     setUsandoAparelho(false);
     setConectandoA(null);
@@ -304,18 +337,70 @@ export function CaptureSessionProvider({ children }: { children: ReactNode }) {
   }, []);
 
   /**
+   * Desiste de esperar o relatório — sem desistir de recebê-lo.
+   *
+   * Só mexe no que a tela mostra: se o `closed` chegar atrasado, `aoEncerrar`
+   * roda normalmente e o relatório aparece. O que isto impede é a tela ficar
+   * afirmando que está calculando algo que ninguém está calculando.
+   */
+  const desistirDeEsperarRelatorio = useCallback(() => {
+    if (esperaDoRelatorio.current) clearTimeout(esperaDoRelatorio.current);
+    esperaDoRelatorio.current = null;
+    if (!encerrandoRef.current) return;
+    encerrandoRef.current = false;
+    setEncerrando(false);
+    setRelatorioNaoChegou(true);
+  }, []);
+
+  /**
    * Para a captação e **aguarda** o relatório da sessão.
    *
    * O socket NÃO é fechado aqui: fechá-lo logo após o `stop` descartaria a
    * resposta `closed`, que é justamente onde vem o relatório. Quem fecha é o
    * handler `onClosed`.
+   *
+   * A espera é **limitada**. `stop()` não faz nada quando o socket já morreu (e
+   * morrer sem avisar era o caso comum: o gateway manda `error` e fecha), então
+   * sem teto o "Encerrando a sessão…" ficava na tela para sempre.
    */
   const parar = useCallback(() => {
     encerrarCaptacao();
     if (sessao.current) {
+      encerrandoRef.current = true;
       setEncerrando(true);
       sessao.current.stop();
+      if (esperaDoRelatorio.current) clearTimeout(esperaDoRelatorio.current);
+      esperaDoRelatorio.current = setTimeout(
+        desistirDeEsperarRelatorio,
+        TETO_RELATORIO_MS,
+      );
     }
+  }, [encerrarCaptacao, desistirDeEsperarRelatorio]);
+
+  /**
+   * O canal caiu sem `closed` (novo `onDisconnected` do `StreamSession`).
+   *
+   * Não espera o teto: já se sabe que a resposta não vem, e fingir que ainda
+   * pode vir é mentir por mais 30 s. Se havia captação em curso, ela também
+   * acaba aqui — o socket era o único caminho do sinal.
+   */
+  const aoCairOCanal = useCallback((qual: StreamSession) => {
+    // **Só o socket da sessão corrente fala por ela.** Um stream abandonado (um
+    // `connect` que falhou, por exemplo) fecha depois, e sem esta conferência o
+    // `onclose` atrasado dele mataria a captação que acabou de começar — a mesma
+    // armadilha descrita em `limparParaNovaSessao`.
+    if (sessao.current !== qual) return;
+    sessao.current = null;
+    // Nada em curso: um socket fechando sem sessão não é notícia para a tela.
+    if (!encerrandoRef.current && !ativoRef.current) return;
+    encerrarCaptacao();
+    if (esperaDoRelatorio.current) clearTimeout(esperaDoRelatorio.current);
+    esperaDoRelatorio.current = null;
+    // Vale igual para quem ainda estava captando: ali a espera nem chegou a
+    // começar, e o desfecho é o mesmo — sessão acabada, relatório sem chegar.
+    encerrandoRef.current = false;
+    setEncerrando(false);
+    setRelatorioNaoChegou(true);
   }, [encerrarCaptacao]);
 
   /**
@@ -413,8 +498,14 @@ export function CaptureSessionProvider({ children }: { children: ReactNode }) {
 
   /** Handler comum: chega o relatório, aí sim o socket pode fechar. */
   const aoEncerrar = useCallback((fim: SessionClosed) => {
+    if (esperaDoRelatorio.current) clearTimeout(esperaDoRelatorio.current);
+    esperaDoRelatorio.current = null;
+    encerrandoRef.current = false;
     setEncerrada(fim);
     setEncerrando(false);
+    // Chegou atrasado, depois de a tela ter desistido: o aviso sai, porque
+    // agora há relatório de verdade para mostrar.
+    setRelatorioNaoChegou(false);
     sessao.current?.close();
     sessao.current = null;
   }, []);
@@ -451,7 +542,11 @@ export function CaptureSessionProvider({ children }: { children: ReactNode }) {
   const limparParaNovaSessao = useCallback(() => {
     sessao.current?.close();
     sessao.current = null;
+    if (esperaDoRelatorio.current) clearTimeout(esperaDoRelatorio.current);
+    esperaDoRelatorio.current = null;
+    encerrandoRef.current = false;
     setEncerrando(false);
+    setRelatorioNaoChegou(false);
     setErro(null);
     setFeatures(null);
     setEsense(null);
@@ -505,21 +600,24 @@ export function CaptureSessionProvider({ children }: { children: ReactNode }) {
     [],
   );
 
-  const novoStream = useCallback(
-    () =>
-      new StreamSession({
-        onSession: aoAbrirSessao,
-        onFeatures: aoReceberFeatures,
-        onEsense: setEsense,
-        onContrast: setContraste,
-        onClosed: aoEncerrar,
-        onError: (detalhe) => {
-          setErro(detalhe);
-          parar();
-        },
-      }),
-    [aoAbrirSessao, aoReceberFeatures, aoEncerrar, parar],
-  );
+  const novoStream = useCallback(() => {
+    const stream: StreamSession = new StreamSession({
+      onSession: aoAbrirSessao,
+      onFeatures: aoReceberFeatures,
+      onEsense: setEsense,
+      onContrast: setContraste,
+      onClosed: aoEncerrar,
+      onError: (detalhe) => {
+        setErro(detalhe);
+        parar();
+      },
+      // O gateway manda `error` e **fecha** logo em seguida: sem isto, o
+      // `parar()` acima ficava esperando um `closed` que o socket já não podia
+      // trazer. Passa a si mesmo para o handler saber se ainda é a sessão da vez.
+      onDisconnected: () => aoCairOCanal(stream),
+    });
+    return stream;
+  }, [aoAbrirSessao, aoReceberFeatures, aoEncerrar, parar, aoCairOCanal]);
 
   const iniciar = useCallback(async () => {
     if (abrindoSessao || ativo) return;
@@ -530,12 +628,17 @@ export function CaptureSessionProvider({ children }: { children: ReactNode }) {
     try {
       await stream.connect("simulador", SAMPLE_RATE);
     } catch {
+      // Fecha o socket que não vingou, como o caminho do aparelho já fazia:
+      // deixá-lo aberto é conexão órfã, e o `onclose` atrasado dela chegaria
+      // fora de hora.
+      stream.close();
       setErro("Não foi possível iniciar a captação simulada.");
       setAbrindoSessao(false);
       return;
     }
 
     sessao.current = stream;
+    ativoRef.current = true;
     setAtivo(true);
     setAbrindoSessao(false);
     // Só depois de a sessão existir: subir o serviço antes deixaria a
@@ -614,6 +717,7 @@ export function CaptureSessionProvider({ children }: { children: ReactNode }) {
 
       sessao.current = stream;
       usandoAparelhoRef.current = true;
+      ativoRef.current = true;
       setAtivo(true);
       setUsandoAparelho(true);
       setConectandoA(null);
@@ -726,6 +830,7 @@ export function CaptureSessionProvider({ children }: { children: ReactNode }) {
       erro,
       reconectando,
       motivoDoFim,
+      relatorioNaoChegou,
       conectandoA,
       abrindoSessao,
       avisoVisivel,
@@ -756,6 +861,7 @@ export function CaptureSessionProvider({ children }: { children: ReactNode }) {
       erro,
       reconectando,
       motivoDoFim,
+      relatorioNaoChegou,
       conectandoA,
       abrindoSessao,
       avisoVisivel,
