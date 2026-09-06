@@ -112,6 +112,7 @@ export default function PatientLiveScreen() {
     erro,
     reconectando,
     motivoDoFim,
+    relatorioNaoChegou,
     conectandoA,
     abrindoSessao,
     avisoVisivel,
@@ -779,6 +780,25 @@ export default function PatientLiveScreen() {
         <Panel title="Encerrando a sessão…">
           <Text style={styles.notaPainel}>
             Calculando o relatório sobre a sessão inteira.
+          </Text>
+        </Panel>
+      ) : null}
+
+      {/* O painel acima ficava eternamente no ar quando a resposta não vinha —
+          a tela afirmando que calculava algo que ninguém estava calculando
+          (ADR-0027). Este é o desfecho honesto: diz o que se sabe (não chegou),
+          o que não se sabe (se foi guardado) e o que fazer.
+
+          "Confira o seu histórico" e não "está no seu histórico": desde a
+          ADR-0055 o servidor gera o Result mesmo quando a conexão cai, mas com
+          piso de uma janela e sob o gate de consentimento (ADR-0026) — prometer
+          que está lá seria prometer o que depende dessas duas condições. */}
+      {relatorioNaoChegou ? (
+        <Panel title="Sessão encerrada sem relatório">
+          <Text style={styles.notaPainel}>
+            A conexão terminou antes de o relatório chegar, então não há o que
+            mostrar aqui. O que foi captado até esse ponto pode ter sido guardado
+            mesmo assim — confira o seu histórico de sessões.
           </Text>
         </Panel>
       ) : null}
