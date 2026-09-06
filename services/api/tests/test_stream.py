@@ -562,6 +562,155 @@ def test_analysis_fora_do_ar_nao_derruba_a_captacao(
     assert sessao.sample_count == 1024
 
 
+# -- queda de conexão (ADR-0055) ----------------------------------------
+#
+# O que estes testes protegem: **o sinal já captado não é descartado porque a
+# conexão caiu**, e o que impede a enxurrada de sessões de três segundos é o
+# piso de uma janela — não o acaso.
+#
+# `test_desconexao_sem_stop_marca_sessao_como_abortada` (acima) NÃO discrimina:
+# passa igual com e sem esta mudança, porque só olha o status da sessão.
+
+
+def _consentir(client: TestClient, token: str) -> None:
+    assert client.post(
+        "/me/consent", headers={"Authorization": f"Bearer {token}"}
+    ).status_code == 204
+
+
+def test_queda_sem_stop_gera_result_do_que_foi_captado(
+    client_com_analysis: TestClient, analysis: AnalysisFake, db_session: Session
+):
+    """ADR-0055: dez minutos de captação não podem virar nada por causa de um cabo."""
+    from app.models import Result
+    from sqlalchemy import select
+
+    token = _token(client_com_analysis)
+    _consentir(client_com_analysis, token)
+
+    with client_com_analysis.websocket_connect("/stream") as ws:
+        session_id = _abrir_sessao(ws, token)
+        ws.send_json({"type": "samples", "seq": 1, "data": [1.0] * 1024})
+        ws.receive_json()
+        # Sai sem `stop`: é a queda.
+
+    db_session.expire_all()
+    # A sessão inteira foi à Analysis, e o Result nasceu.
+    assert analysis.sessoes == [(1024, 512.0)]
+    results = db_session.scalars(select(Result)).all()
+    assert len(results) == 1
+    assert str(results[0].session_id) == session_id
+    # E a sessão continua encerrada como ABORTED — o relatório é um extra, não
+    # uma troca: queda não vira "sessão completa".
+    sessao = db_session.get(CaptureSession, uuid.UUID(session_id))
+    assert sessao.status is SessionStatus.ABORTED
+    assert sessao.ended_at is not None
+
+
+def test_queda_com_menos_de_uma_janela_nao_gera_result(
+    client_com_analysis: TestClient, analysis: AnalysisFake, db_session: Session
+):
+    """Piso de uma janela (1024 a 512 Hz): abaixo disso não há o que analisar."""
+    from app.models import Result
+    from sqlalchemy import select
+
+    token = _token(client_com_analysis)
+    _consentir(client_com_analysis, token)
+
+    with client_com_analysis.websocket_connect("/stream") as ws:
+        session_id = _abrir_sessao(ws, token)
+        # Uma amostra abaixo do piso — o teste é sobre a fronteira, não sobre
+        # "pouquinho".
+        ws.send_json({"type": "samples", "seq": 1, "data": [1.0] * 1023})
+        ws.receive_json()
+
+    db_session.expire_all()
+    # Precondição medida: a Analysis nem foi chamada (não é o Result que sumiu
+    # depois — é a análise que não aconteceu).
+    assert analysis.sessoes == []
+    assert db_session.scalars(select(Result)).all() == []
+    sessao = db_session.get(CaptureSession, uuid.UUID(session_id))
+    assert sessao.status is SessionStatus.ABORTED
+
+
+def test_queda_sem_consentimento_nao_grava_mas_encerra(
+    client_com_analysis: TestClient, analysis: AnalysisFake, db_session: Session
+):
+    """O gate da ADR-0026 não muda: a ADR-0055 mexe em QUANDO o Result nasce."""
+    from app.models import Result
+    from sqlalchemy import select
+
+    token = _token(client_com_analysis)  # sem /me/consent
+
+    with client_com_analysis.websocket_connect("/stream") as ws:
+        session_id = _abrir_sessao(ws, token)
+        ws.send_json({"type": "samples", "seq": 1, "data": [1.0] * 1024})
+        ws.receive_json()
+
+    db_session.expire_all()
+    # Discrimina: a análise **rodou** (o caminho novo foi percorrido) e mesmo
+    # assim nada foi gravado. Sem esta primeira asserção, o teste passaria
+    # também numa versão que simplesmente não gera relatório em queda nenhuma.
+    assert analysis.sessoes == [(1024, 512.0)]
+    assert db_session.scalars(select(Result)).all() == []
+    sessao = db_session.get(CaptureSession, uuid.UUID(session_id))
+    assert sessao.status is SessionStatus.ABORTED
+
+
+def test_erro_de_protocolo_tambem_gera_result(
+    client_com_analysis: TestClient, analysis: AnalysisFake, db_session: Session
+):
+    """Não é só o socket que cai: `StreamError` chega ao mesmo `abortar()`.
+
+    Encena o caminho do erro com um bloco acima do teto, DEPOIS de já haver uma
+    janela de sinal legítimo acumulado.
+    """
+    from app.models import Result
+    from sqlalchemy import select
+
+    token = _token(client_com_analysis)
+    _consentir(client_com_analysis, token)
+
+    with client_com_analysis.websocket_connect("/stream") as ws:
+        session_id = _abrir_sessao(ws, token)
+        ws.send_json({"type": "samples", "seq": 1, "data": [1.0] * 1024})
+        ws.receive_json()
+        ws.send_json({"type": "samples", "seq": 2, "data": [0] * 5000})
+        assert ws.receive_json()["type"] == "error"
+        with pytest.raises(WebSocketDisconnect) as exc:
+            ws.receive_json()
+    assert exc.value.code == CloseCode.LIMITE_EXCEDIDO.value
+
+    db_session.expire_all()
+    # O bloco recusado não entrou; o que já estava acumulado virou relatório.
+    assert analysis.sessoes == [(1024, 512.0)]
+    assert len(db_session.scalars(select(Result)).all()) == 1
+    sessao = db_session.get(CaptureSession, uuid.UUID(session_id))
+    assert sessao.status is SessionStatus.ABORTED
+
+
+def test_queda_no_meio_do_roteiro_leva_as_fases_a_analysis(
+    client_com_analysis: TestClient, analysis: AnalysisFake, db_session: Session
+):
+    """A marcação de fase (ADR-0053) sobrevive à queda: o caminho é o mesmo do `stop`."""
+    token = _token(client_com_analysis)
+    _consentir(client_com_analysis, token)
+    analysis.comparison = {"ratio": 1.74, "passed": True}
+
+    with client_com_analysis.websocket_connect("/stream") as ws:
+        _abrir_sessao(ws, token)
+        for seq, fase in enumerate(("eyes_open", "eyes_closed"), start=1):
+            ws.send_json(
+                {"type": "samples", "seq": seq, "data": [1.0] * 1024, "phase": fase}
+            )
+            ws.receive_json()
+
+    db_session.expire_all()
+    labels = analysis.session_labels[0]
+    assert labels is not None
+    assert {"eyes_open", "eyes_closed"} <= set(labels)
+
+
 # -- eSense ao vivo (N6-c, ADR-0034) ------------------------------------
 
 
