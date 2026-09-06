@@ -1171,3 +1171,43 @@ Reusa o estado que a emenda à ADR-0053 criou. Se houve buraco dentro de uma fas
 - **Derrubar a conexão silenciosa no servidor** (timeout de inatividade). Resolveria a sessão pendurada, mas não a perda do dado, e brigaria com a decisão já registrada de deixar o cliente ficar quieto entre blocos.
 
 **Consequências:** o app ganha detecção de desconexão no Android (paridade com o iOS) e um estado de "reconectando"; o gateway passa a gerar `Result` no `abortar()`, com o mínimo de uma janela. **Não** cria dado novo, tabela nem migração. A reentrância é a parte perigosa — a mesma área da ADR-0052/PR #219 —, e a reconexão precisa cancelar-se quando a pessoa encerra no meio. Relaciona ADR-0025, ADR-0026 (o gate que não muda), ADR-0027 (a tela e a notificação que hoje mentem), ADR-0040 (transporte), ADR-0052 (serviço em primeiro plano; e o limite do processo morto) e a emenda à ADR-0053 (o estado de roteiro incompleto que esta decisão reusa).
+
+
+## ADR-0056 — Tela de abertura: **`expo-splash-screen`, com a arte saindo do mesmo vetor de sempre**
+**Status:** Proposta (2026-09-06) — vira Aceita no merge.
+
+**Contexto:** a fatia G (Play Store) listava "splash" como pendência, e a varredura mostrou que o problema não é o que a frase sugeria.
+
+**[FATO — verificado em 2026-09-06]**
+1. **`expo-splash-screen` não está instalado.** `find` na árvore inteira de `node_modules` (não `ls` da raiz — foi assim que erramos com o `expo-keep-awake`) não acha o pacote, `expo-modules-autolinking resolve --platform android` não o lista, e ele não está no `package.json`.
+2. **Não há nada no `app.json`** — nenhuma chave `splash`, nenhum plugin — **nem asset nenhum** em `apps/wave-app/assets/`, que hoje tem exatamente sete arquivos (os cinco ícones gerados mais os dois SVG da marca).
+3. **O que se vê hoje ao abrir no Android é a splash automática do Android 12+**, montada pelo sistema a partir do ícone adaptativo. Ela *é* derivada da nossa arte — o engano seria dizer que é arte alheia. O que **não** é nosso é o **fundo**: o sistema usa o `windowBackground` do tema, que ninguém definiu.
+4. **No iOS não há splash nenhuma** — a janela abre em branco até o JS montar.
+5. **O destino já é coerente**: enquanto a sessão é restaurada, `app/_layout.tsx` (`RouteGuard`) mostra uma tela cheia com `t.colors.background` e um `ActivityIndicator`. **Não existe flash da tela de login** — o encadeamento é splash → fundo com indicador → destino.
+
+**Decisão 1 — adotar `expo-splash-screen`, pelo plugin de configuração, sem código de app.**
+Dependência nativa nova, e por isso esta ADR (mesma régua da ADR-0054, `expo-keep-awake`). É um pacote do próprio SDK do Expo, instalado por `npx expo install`, e configurado inteiramente por `app.json`: **nenhuma linha de JS**.
+
+**Decisão 2 — o fundo da splash é o `background` do tema, e nos dois temas.**
+`#0B1220` no escuro e `#F5F7FA` no claro, com `dark` declarado à parte, porque o app é `userInterfaceStyle: "automatic"`. A razão é mecânica, não estética: **é o mesmo token do fundo que o `RouteGuard` pinta em seguida**, então a passagem da splash para o indicador de carregamento não tem costura. Um fundo escolhido "porque fica bonito" faria a primeira coisa que a pessoa vê piscar para outra cor.
+
+**Decisão 3 — a arte é o SÍMBOLO, na zona segura medida, gerada por `gerar_assets.py`.**
+- **Símbolo e não marca completa** porque o Android 12+ **recorta a arte da splash num círculo**, do mesmo jeito que faz com o ícone adaptativo. O anel da marca completa tem 3,5% do lado da arte e ficaria cortado ou reduzido a um fio. O `gerar_assets.py` já mede esse vazamento (`vazamento()` contra `RAIO_SEGURO`) e já escolhe a zona para o ícone adaptativo — a splash reusa a **mesma medida**, e o resultado é que o ícone do lançador vira a splash sem trocar de desenho, que é exatamente para isso que a API de splash do Android 12 existe.
+- **Gerada pelo script, não desenhada à parte.** É a regra do `Design/logos_icones/README.md`: "tudo o que a marca é sai de um vetor só". Uma arte de splash feita à mão seria a segunda arte que o README proíbe, e envelheceria sozinha na primeira mudança de cor.
+- **Duas cores, um par para cada fundo**, pelo mesmo motivo já medido na P17: o par `#4FD1C5`/`#7AA2F7` pousa em fundo escuro, o par `#0F7A70`/`#2A5BC7` em fundo claro. Trocar os pares é o que rende 1,8:1 e 3,05:1 em vez dos 10,04:1 do par certo.
+
+**Decisão 4 — a splash NÃO segura o app esperando a sessão.**
+`expo-splash-screen` permite adiar o desaparecimento (`preventAutoHideAsync`) até o app decidir. **Não faremos isso agora**, e a razão é o custo do erro: uma promessa que não resolve deixa o app **parado na splash para sempre**, sem tela, sem erro e sem saída a não ser desinstalar. O ganho seria cosmético — evitar ~1 s de indicador —, e o indicador já está sobre o fundo certo (decisão 2). Se um dia entrar, entra com teto de tempo e com o `hideAsync` num `finally`.
+
+**O que se abre mão, explicitamente:**
+(a) **Um pacote nativo a mais no build.** Não dá para pré-medir o peso aqui — o Gradle não roda neste ambiente —, e o número só sai de um build do EAS.
+(b) **A splash não é verificável no web nem em teste automatizado.** O `build:web` não a exercita e o Expo web não a mostra; a confirmação é olhar o app abrindo no aparelho.
+(c) **Nada muda para quem já tem o app aberto.** Isto é só o primeiro instante.
+
+**Alternativas consideradas:**
+- **Não fazer nada e viver com a splash automática do Android 12+.** Grátis, e no Android o resultado é razoável. Rejeitada por duas razões: o **fundo** não é nosso nem previsível, e **o iOS continua abrindo em branco** — e o iOS está no caminho, mesmo bloqueado hoje pelos US$ 99/ano.
+- **Uma "splash" desenhada em React, mostrada enquanto o app carrega.** Não resolve nada: o buraco é justamente a janela **antes de o JS existir**. É o que o `RouteGuard` já faz, e ele já faz bem.
+- **Marca completa na splash.** Preterida pela decisão 3: o recorte circular do Android 12+ decide isso, não o gosto.
+- **Definir só o `windowBackground` do tema nativo, sem pacote novo.** Consertaria o fundo no Android sem dependência alguma — mas exigiria mexer no tema nativo gerado pelo prebuild (que está no `.gitignore`) ou num plugin próprio, e continuaria sem fazer nada pelo iOS. Trocar uma dependência do próprio SDK por um plugin caseiro é pior negócio.
+
+**Consequências:** `app.json` ganha o plugin e duas variantes de cor; `apps/wave-app/assets/` ganha dois PNG novos, **gerados** e não desenhados; `gerar_assets.py` passa a escrevê-los e o `README.md` da marca a listá-los. Não cria dado, tabela, migração nem código de aplicação. Relaciona ADR-0027 (a primeira tela também não pode afirmar o que não é), ADR-0042 (design "Maré" e os tokens), ADR-0051 (build por EAS, onde isto será compilado) e ADR-0054 (o precedente de dependência nativa pequena entrando por ADR).
