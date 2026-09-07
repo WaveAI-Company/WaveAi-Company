@@ -107,6 +107,12 @@ jobs:
       # quebrar a legibilidade, o CI reprova em vez de depender de revisão visual.
       - name: Contraste (WCAG AA)
         run: npm run check:contrast
+      # O guia de estilo é GERADO dos tokens e fica versionado, porque a quem
+      # desenha não se pede que rode um build. Versionar um arquivo derivado só
+      # é honesto com uma guarda: sem esta, mudar uma cor e esquecer de regerar
+      # deixaria o guia dizendo uma coisa e o produto fazendo outra.
+      - name: Guia de estilo em dia com os tokens
+        run: npm run check:guia
 
   test-analysis:
     runs-on: ubuntu-latest
