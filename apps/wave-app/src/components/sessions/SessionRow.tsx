@@ -5,6 +5,7 @@ import {
   formatDuration,
   formatPercent,
   sessionDurationSeconds,
+  signalGapSeconds,
   type SessionResult,
 } from "../../api/results";
 import { mesCurto } from "../../format/date";
@@ -29,6 +30,12 @@ import { Icon } from "../Icon";
  * O que o mockup mostrava e **não** foi portado: o rótulo "Sessão guiada" e o
  * resumo das fases, porque o protocolo guiado é client-only e não persiste
  * fase nenhuma (decisão da P4-c).
+ *
+ * A pílula **"sem sinal"** (emenda à ADR-0055) segue as mesmas regras: diz o
+ * fato — quanto tempo de sinal faltou em relação ao relógio da sessão —, nunca
+ * a causa nem a posição, que ninguém mede. Usa a pílula neutra do autorrelato
+ * e **não** ganha cor de erro: menos sinal é pior para a análise, não é falha
+ * de quem captou (ADR-0027).
  */
 
 type Props = {
@@ -42,6 +49,10 @@ export function SessionRow({ result }: Props) {
 
   const data = new Date(result.created_at);
   const duracao = formatDuration(sessionDurationSeconds(result.metrics));
+  // Só vem preenchido quando o buraco passa do piso (emenda à ADR-0055) — ou
+  // seja, na esmagadora minoria das sessões. Numa sessão sem queda esta linha
+  // é `null` e nada abaixo muda.
+  const buraco = formatDuration(signalGapSeconds(result));
   const relativas = result.metrics?.relative_band_powers;
   const alfa = result.metrics?.rel_alpha;
   const hora = data.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
@@ -55,7 +66,21 @@ export function SessionRow({ result }: Props) {
 
       <View style={styles.meta}>
         <Text style={styles.metaTitulo}>Sessão · {hora}</Text>
-        <Text style={styles.metaNota}>{duracao ?? "duração não registrada"}</Text>
+        {/* "de sinal" só entra quando há buraco a declarar. Sem ele a frase
+            seria ruído em toda sessão normal; com ele, o número deixa de se
+            passar pela duração da sessão inteira (ADR-0027). */}
+        <Text style={styles.metaNota}>
+          {duracao ? (buraco ? `${duracao} de sinal` : duracao) : "duração não registrada"}
+        </Text>
+        {buraco ? (
+          <View style={styles.tagNota}>
+            <Icon name="info" size={11} color={t.colors.textSubtle} />
+            {/* O fato, não a causa: sabemos *quanto* faltou, não por quê nem
+                onde. Dizer "a conexão caiu" seria afirmar o que não medimos —
+                e o buraco também não tem posição no tempo (emenda ADR-0055). */}
+            <Text style={styles.tagNotaTexto}>{buraco} sem sinal</Text>
+          </View>
+        ) : null}
         {result.has_annotation ? (
           <View style={styles.tagNota}>
             <Icon name="fileText" size={11} color={t.colors.textSubtle} />
