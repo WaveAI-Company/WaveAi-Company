@@ -40,6 +40,8 @@
     "web": "expo start --web",
     "build:web": "node scripts/gerar-legal-estatico.mjs && expo export --platform web",
     "gerar:legal-estatico": "node scripts/gerar-legal-estatico.mjs",
+    "gerar:guia": "node scripts/gerar-guia-de-estilo.mjs",
+    "check:guia": "node scripts/gerar-guia-de-estilo.mjs --check",
     "typecheck": "tsc --noEmit",
     "check:contrast": "node scripts/check-contrast.mjs"
   },
