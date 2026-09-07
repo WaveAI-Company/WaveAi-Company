@@ -1282,3 +1282,29 @@ Dependência nativa nova, e por isso esta ADR (mesma régua da ADR-0054, `expo-k
 - **Desativar o preview do Cloudflare em toda branch.** Preterida por excluir apenas `dependabot/*`, que é onde está o volume — e isso se configura no painel do Cloudflare, não no repositório.
 
 **Consequências:** `.github/dependabot.yml` ganha `groups`, limite e `ignore`; nada no código de aplicação muda por causa desta ADR. O `Documentation/17` passa a registrar, ao lado da fila, que a exclusão de `dependabot/*` no Cloudflare é ajuste de painel. Relaciona ADR-0049 (topologia e o Cloudflare Pages) e ADR-0051 (build por EAS, que é por onde os pacotes nativos são de fato validados).
+
+
+### Emenda à ADR-0057 (2026-09-07) — o `ignore` tinha duas brechas, e o agrupamento as tornou **mais** perigosas
+**Status:** Proposta (2026-09-07) — vira Aceita no merge. Corrige a **Decisão 3** da ADR-0057; as Decisões 1 e 2 (`groups` e limite) seguem valendo e funcionaram.
+
+**Contexto:** a configuração da ADR-0057 entrou em `main` e o efeito pretendido apareceu no mesmo dia — **12 PRs individuais viraram 2 agrupadas** (#248 e #249). Mas a #249 revelou que a lista de `ignore` estava incompleta em dois pontos, e que **agrupar aumenta o custo de errar a lista**: uma atualização perigosa deixa de vir sozinha e passa a viajar escondida no meio de dezessete legítimas.
+
+**[FATO — verificado em 2026-09-07, na branch da #249]**
+1. **`typescript` não estava no `ignore`, e voltou.** A #249 sobe `typescript` para `~7.0.2` — exatamente a mudança recusada na #213. Confirmado rodando: `npm run build:web` **falha** com `TypeError: Cannot read properties of undefined (reading 'ESNext')`. É o comando que o Cloudflare Pages executa (`npm ci && npm run build:web`): mergeada, **derruba o deploy do site**. A ADR-0057 diagnosticou o problema e não fechou a porta.
+2. **Para o que o Expo pina EXATO, o patch também desalinha.** O raciocínio "patch é o que o SDK quer" vale para os `expo-*`, escritos com `~` — e ali acertou em cheio (`expo` → 57.0.20, `expo-router` → 57.0.19, todos os dez batendo com o esperado). Mas `react`, `react-dom`, `react-native-reanimated`, `react-native-svg` e `react-native-worklets` estão pinados **sem `~` e sem `^`**, que é como o Expo diz "é esta versão". Depois da #249, `npx expo install --check` reclama de cinco pacotes que **passaram do ponto**: `react-dom@19.2.8` quando o esperado é `19.2.3`, `react-native-reanimated@4.5.5` contra `4.5.1`, `react-native-svg@15.15.5` contra `15.15.4`, `react-native-worklets@0.10.4` contra `0.10.1`.
+
+**Decisão 1 — `typescript` entra no `ignore`, só para `semver-major`.** Enquanto os dois geradores (`gerar-guia-de-estilo.mjs` e `gerar-legal-estatico.mjs`) lerem a API do compilador, TS 7 é uma quebra de build, não uma atualização. Minor e patch do TS 6 continuam vindo. **A porta reabre sozinha** no dia em que os geradores forem portados para a API nova — e é por isso que a condição está escrita aqui, e não só no YAML.
+
+**Decisão 2 — os pacotes que o Expo pina exato passam a ignorar também `semver-patch`.** Vale para `react`, `react-dom`, `react-native` e `react-native-*`. Coerência com a regra que a ADR-0057 instituiu: se pacote do SDK sobe por `npx expo install`, então sobe **por lá em qualquer nível**, e não em dois canais que discordam entre si.
+
+**O que se abre mão, explicitamente:**
+(a) **O patch que o SDK QUERIA também deixa de vir sozinho.** A #249 acertava `react-native@0.86.0 → 0.86.3`, que é exatamente o esperado. Depois desta emenda, ninguém mais propõe esse patch: quem o traz é `npx expo install`. É o preço de ter um canal só, e o canal certo.
+(b) **`react-native-*` alcança `react-native-web`, `react-native-safe-area-context`, `react-native-ble-plx` e `react-native-bluetooth-classic`, que não são do SDK.** Já declarado na ADR-0057 para major/minor; agora vale também para patch. Para os dois de Bluetooth isto é desejável (são nativos, e nenhum módulo nativo é validado por este CI); para `react-native-web` é conservadorismo assumido.
+(c) **Nada disso afeta segurança.** Os três são `version-update:*`, que só valem para version updates — e PRs de segurança nem contam para o limite.
+
+**Alternativas consideradas:**
+- **Listar os pinados-exatos um a um** em vez de usar `react-native-*`. Mais preciso e pior de manter: a lista silenciosamente envelhece quando o SDK acrescenta um pacote, e o modo de falhar é o perigoso (deixar passar).
+- **Mergear a #249 removendo só o `typescript`.** Rejeitada: sobrariam os cinco pacotes que passam do ponto, e a PR deixaria o app **mais** desalinhado com o SDK do que está.
+- **Portar os geradores para a API do TS 7 agora**, para poder aceitar o major. É a correção de raiz e continua desejável — mas é fatia própria, não um ajuste de configuração.
+
+**Consequências:** `.github/dependabot.yml` ganha `typescript` e o `semver-patch` nos pacotes pinados exatos. O alinhamento do app com o SDK 57 (hoje atrás em treze pacotes) vira **trabalho manual e explícito**, por `npx expo install`, com validação no EAS — e não uma PR automática que o CI não sabe verificar. Relaciona ADR-0051 (EAS) e ADR-0057.
