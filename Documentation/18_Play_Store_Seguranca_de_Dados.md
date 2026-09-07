@@ -4,8 +4,9 @@
 resposta proposta e **a razão de cada uma**. Não é um documento de leitura: é para ficar
 aberto ao lado do Console na hora de preencher.
 
-**Estado:** rascunho. Três respostas dependem de decisão do fundador (§4) e quatro
-lacunas podem travar a publicação (§5).
+**Estado:** rascunho. Três respostas dependem de decisão do fundador (§4). Das quatro
+lacunas do §5, **A, B e C estão resolvidas** (PRs #241, #243 e #242); resta a **D**, que
+é de preenchimento, não de código.
 
 **Data do levantamento:** 2026-09-06, contra o código em `main`.
 
@@ -65,7 +66,7 @@ aparelho para o servidor pelo WebSocket, vive **só em memória** durante a capt
 | Pergunta do Console | Resposta | Por quê |
 |---|---|---|
 | Todos os dados são **cifrados em trânsito**? | **Sim** | Tudo é HTTPS; o stream é `wss://`. Sem TLS o token da primeira mensagem viajaria em claro, e é por isso que a ADR-0025 exige o transporte cifrado. |
-| Você oferece um jeito de o usuário **pedir a exclusão**? | **Sim** | Exclusão **imediata** pelo próprio app (`DeleteAccount.tsx`, ADR-0047): apaga perfil, sessões, medidas, anotações, vínculos e a trilha de acessos aos dados dele. Não há carência nem conta desativada. **Mas falta a URL pública — ver §5.A.** |
+| Você oferece um jeito de o usuário **pedir a exclusão**? | **Sim** | Exclusão **imediata** pelo próprio app (`DeleteAccount.tsx`, ADR-0047): apaga perfil, sessões, medidas, anotações, vínculos e a trilha de acessos aos dados dele. Não há carência nem conta desativada. **URL pública para o Console:** `https://waveai.tec.br/documentos/excluir-conta.html` (§5.A e §5.B). |
 | Há **coleta de dados de crianças**? | **Não** | A Política diz que o produto não se destina a menores de 18 anos. |
 
 ### 3.2 Tipos de dado — o que marcar
@@ -163,36 +164,59 @@ formulário é o rabo abanando o cachorro. Mas é decisão de alcance, não téc
 
 ## 5. Quatro lacunas que podem travar a publicação
 
-### A. Não existe URL pública de pedido de exclusão — **provavelmente bloqueante**
+### A. URL pública de pedido de exclusão — **RESOLVIDA** (PR #241)
 
 O Google exige, de todo app que permite **criar conta**, um endereço **acessível sem
 instalar o app** onde se peça a exclusão da conta e dos dados, explicando o que é
 apagado. Nosso cadastro é aberto, então a exigência se aplica.
 
-Temos a exclusão **dentro** do app e a explicação dentro da Política. Não temos uma
-**página dedicada**. O menor caminho honesto é uma rota pública nova
-(`/legal/excluir-conta`, ao lado das duas que já existem e já são rotas neutras no
-`RouteGuard`) que diga o que é apagado, o que sobrevive pseudonimizado e por quê
-(ADR-0047), e aponte para o caminho no app e para o e-mail do encarregado.
+A exclusão sempre existiu **dentro** do app (imediata, com senha, ADR-0047); faltava o
+endereço. Agora existe a rota `/legal/excluir-conta`, neutra como as outras duas, dizendo
+o que é apagado, o que sobrevive pseudonimizado e por quê, e como pedir por e-mail quem
+não consegue entrar na conta.
 
-### B. A Política de Privacidade **não é servida como texto** — risco real, medido
+**Verificado em produção, deslogado:** a página renderiza com 2.638 caracteres, sem
+nenhuma casca de sessão. Para o Console, porém, use a versão estática do §5.B —
+`https://waveai.tec.br/documentos/excluir-conta.html` —, que não depende de JavaScript.
 
-`https://waveai.tec.br/legal/privacidade` responde **200**, mas o que chega são
-**1.425 bytes** de casca do SPA, com **zero** ocorrências de "privacidade", "coletamos"
-ou "encerramento" no HTML. O texto é montado no navegador.
+### B. A Política de Privacidade não era servida como texto — **RESOLVIDA**
 
-Um revisor humano abre no navegador e vê tudo. Uma verificação automática que busque a
-URL sem executar JavaScript vê uma página vazia. Como o `app.json` já usa
-`web.output: "single"`, a saída é ou pré-renderizar essas duas rotas, ou publicar uma
-versão estática dos dois documentos. **Custa pouco e evita uma rejeição difícil de
-diagnosticar.**
+O defeito, medido: `https://waveai.tec.br/legal/privacidade` responde **200**, mas o que
+chega são **1.425 bytes** de casca do SPA, com **zero** ocorrências de "privacidade",
+"coletamos" ou "encerramento" no HTML — o texto é montado no navegador. Um revisor humano
+abre e vê tudo; uma verificação automática sem JavaScript vê uma página vazia.
 
-### C. A Política não nomeia os operadores de infraestrutura
+**As três rotas do app continuam como estão.** Ao lado delas passou a existir uma cópia
+**estática**, gerada do mesmo `documents.ts` a cada build:
+
+| URL para a loja | conteúdo |
+|---|---|
+| `https://waveai.tec.br/documentos/privacidade.html` | Política de Privacidade |
+| `https://waveai.tec.br/documentos/termos.html` | Termos de Uso |
+| `https://waveai.tec.br/documentos/excluir-conta.html` | Exclusão de conta |
+
+**Use estes endereços no Play Console.** Eles têm o texto no HTML (13,0 KB contra os
+1,4 KB da casca), **zero `<script>`** e nenhum recurso externo — nem CSS, nem fonte.
+
+Não podem ficar desatualizados: quem os gera é o `npm run build:web`, que é o comando que
+o próprio Cloudflare Pages roda ao publicar. A cópia nasce a cada deploy, do mesmo arquivo
+que o app renderiza, e por isso não é versionada no git.
+
+Preterida a alternativa de **pré-renderizar o app inteiro** (`web.output` estático):
+mudaria a forma do build e o roteamento em produção, com efeito em toda rota, para
+resolver três páginas.
+
+### C. A Política não nomeava os operadores — **RESOLVIDA** (PR #242)
 
 A seção "Com quem compartilhamos" diz "com ninguém, por padrão" — verdade quanto a
-terceiros, e é a resposta certa no formulário. Mas Neon, Azure, Cloudflare e o SMTP do
-Gmail tratam dado por nossa conta, e a LGPD espera transparência sobre operadores.
-Não é lacuna do formulário; é lacuna da Política, e quem revisa compara os dois.
+terceiros, e continua sendo a resposta certa no formulário. Mas Neon, Azure, Cloudflare e
+o SMTP do Gmail tratam dado por nossa conta, e a LGPD espera transparência sobre
+operadores. Não era lacuna do formulário; era da Política, e quem revisa compara os dois.
+
+A Política **1.4** ganhou as seções "Quem opera a infraestrutura" e "Onde seus dados
+ficam", nomeando os quatro e dizendo a região de cada um. Na mesma PR, os dois documentos
+pararam de prometer aviso no aplicativo quando o texto muda — **esse aviso nunca
+existiu**, e prometê-lo num documento legal é o tipo de afirmação que a ADR-0027 proíbe.
 
 ### D. As permissões do serviço em primeiro plano são invisíveis no `app.json`
 
