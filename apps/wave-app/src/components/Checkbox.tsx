@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, type ReactNode } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { Icon } from "./Icon";
@@ -26,11 +26,22 @@ import {
 type Props = {
   checked: boolean;
   onChange: (checked: boolean) => void;
+  /**
+   * Texto do rótulo. **Continua obrigatório mesmo com `rotulo`**: é ele que vai
+   * para o `accessibilityLabel`, que precisa ser uma string simples — quem lê
+   * ouvindo recebe a frase inteira, não um nó com links dentro.
+   */
   label: string;
+  /**
+   * Rótulo desenhado, quando a frase precisa de mais que texto puro (links, por
+   * exemplo). **Prop nova, opcional**: sem ela nada muda para quem já usa o
+   * componente — `patient/consent.tsx` segue exatamente como estava.
+   */
+  rotulo?: ReactNode;
   disabled?: boolean;
 };
 
-export function Checkbox({ checked, onChange, label, disabled }: Props) {
+export function Checkbox({ checked, onChange, label, rotulo, disabled }: Props) {
   const t = useTheme();
   const { accent, onAccent } = useRoleAccent();
   const styles = useMemo(() => criarEstilos(t), [t]);
@@ -65,7 +76,11 @@ export function Checkbox({ checked, onChange, label, disabled }: Props) {
       >
         {checked ? <Icon name="check" size={13} color={onAccent} strokeWidth={3} /> : null}
       </View>
-      <Text style={styles.rotulo}>{label}</Text>
+      {/* `rotulo` embrulhado no MESMO `Text` do caso simples, e não no lugar
+          dele: é isso que faz os pedaços quebrarem como texto corrido, com a
+          tipografia e o `flexShrink` de sempre. Trocar por um `View` faria cada
+          pedaço virar uma caixa, e a frase quebraria torta no celular. */}
+      <Text style={styles.rotulo}>{rotulo ?? label}</Text>
     </Pressable>
   );
 }
