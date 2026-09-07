@@ -8,7 +8,9 @@ import uuid
 from datetime import datetime
 from typing import Any
 
+from sqlalchemy import inspect
 from sqlalchemy.orm import Session
+from sqlalchemy.orm.base import NO_VALUE
 
 from ..config import Settings
 from ..models.result import Result, ResultAccessAction
@@ -191,6 +193,7 @@ class ResultService:
             apenas_com_nota=apenas_com_nota,
             limit=limit,
             offset=offset,
+            com_sessao=True,
         )
         if results:
             self._repo.auditar(
@@ -210,7 +213,7 @@ class ResultService:
         *tudo* (Medical/72). Uma janela aqui devolveria uma cópia parcial com
         cara de completa — o oposto do que o direito garante.
         """
-        results = self._repo.listar_do_paciente(titular.id)
+        results = self._repo.listar_do_paciente(titular.id, com_sessao=True)
         self._repo.auditar(
             patient_user_id=titular.id,
             actor_user_id=titular.id,
@@ -269,4 +272,43 @@ class ResultService:
             "montage": result.montage,
             "created_at": result.created_at.isoformat(),
             "metrics": self._cipher.decrypt(result.metrics_encrypted),
+            **self._metadados_da_sessao(result),
+        }
+
+    @staticmethod
+    def _metadados_da_sessao(result: Result) -> dict[str, Any]:
+        """Relógio e desfecho da captação, ao lado do derivado (emenda ADR-0055).
+
+        **Por que sai daqui:** o `Result` diz quanto sinal existe (`n_samples`
+        ÷ `fs`); só a sessão diz quanto tempo a pessoa passou captando. A
+        diferença entre os dois é o buraco que uma reconexão costura em
+        silêncio, e sem estes três campos ela é incalculável fora do banco.
+
+        **Não audita, e não é exceção nenhuma:** são metadados de captação —
+        quando começou, quando terminou, como terminou —, não sinal nem valor
+        derivado dele. Mesma fronteira que a emenda à ADR-0037 traçou para
+        existência e contagem de notas, e a ADR-0050 para a identidade no
+        vínculo. Além disso viajam dentro de uma leitura de `Result` que já
+        gravou seu evento; contar de novo inflaria a trilha sem acesso novo.
+
+        Só é preenchido quando a sessão veio no mesmo SELECT (`com_sessao`).
+        Sem ela os campos saem **nulos, não zerados**: "não sabemos" e "durou
+        zero" são coisas diferentes (ADR-0027), e é o que acontece se um
+        `Result` sobreviver à sessão que o gerou.
+        """
+        sessao = inspect(result).attrs.session.loaded_value
+        if sessao is NO_VALUE or sessao is None:
+            return {
+                "session_status": None,
+                "session_started_at": None,
+                "session_ended_at": None,
+            }
+        return {
+            "session_status": sessao.status.value,
+            "session_started_at": sessao.started_at.isoformat(),
+            #: Nulo enquanto a sessão está ACTIVE — e uma sessão pendurada em
+            #: ACTIVE não tem relógio fechado para comparar com o sinal.
+            "session_ended_at": (
+                sessao.ended_at.isoformat() if sessao.ended_at else None
+            ),
         }

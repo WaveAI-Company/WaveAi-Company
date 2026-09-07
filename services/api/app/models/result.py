@@ -15,7 +15,7 @@ import uuid
 from datetime import datetime
 
 from sqlalchemy import DateTime, Enum, ForeignKey, LargeBinary, String, Uuid, func
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from ..db.base import Base
 
@@ -47,6 +47,16 @@ class Result(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
+
+    #: A sessão que produziu este Result. Existe para os **metadados de
+    #: captação** (relógio e status) viajarem junto do derivado, sem uma
+    #: segunda consulta por linha — é o que permite a tela declarar o buraco
+    #: de sinal de uma sessão que caiu e reconectou (emenda à ADR-0055).
+    #: `lazy="raise"` de propósito: quem quer a sessão pede o `joinedload`
+    #: explicitamente. Sem isso, um acesso distraído a `result.session` dentro
+    #: de um laço vira N+1 silencioso — e este laço decifra blob, então a
+    #: consulta extra passaria despercebida no meio do custo da cifra.
+    session: Mapped[CaptureSession] = relationship(lazy="raise")  # noqa: F821
 
     def __repr__(self) -> str:  # pragma: no cover - conveniência de debug
         # Nunca inclui as métricas.

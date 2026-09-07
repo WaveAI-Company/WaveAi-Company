@@ -6,7 +6,7 @@ import uuid
 from datetime import datetime
 
 from sqlalchemy import delete, func, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from ..models.annotation import SessionAnnotation
 from ..models.result import Result, ResultAccessAction, ResultAccessEvent
@@ -76,6 +76,7 @@ class ResultRepository:
         apenas_com_nota: bool = False,
         limit: int | None = None,
         offset: int = 0,
+        com_sessao: bool = False,
     ) -> list[Result]:
         """Result do titular, do mais recente ao mais antigo.
 
@@ -85,12 +86,19 @@ class ResultRepository:
         `limit`/`offset` paginam. **Ausentes = a janela inteira**, como antes
         desta fatia — o mesmo princípio do `?days=N`: o parâmetro novo só
         estreita, e a rota sem ele se comporta como sempre se comportou.
+
+        `com_sessao` traz a `CaptureSession` no mesmo SELECT (emenda à
+        ADR-0055). Opcional e não padrão porque só quem serializa para fora
+        precisa dos metadados de captação: o baseline pessoal e a série
+        longitudinal leem só as features, e pagariam um join por nada.
         """
         stmt = select(Result).where(
             *self._condicoes(
                 patient_user_id, desde=desde, apenas_com_nota=apenas_com_nota
             )
         )
+        if com_sessao:
+            stmt = stmt.options(joinedload(Result.session))
         # Desempate por `id`: o `now()` do Postgres é **por transação**, então
         # Result gravados na mesma transação compartilham `created_at` ao
         # microssegundo. Sem uma ordem total o banco pode devolver essas linhas
