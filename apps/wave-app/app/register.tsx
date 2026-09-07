@@ -242,42 +242,57 @@ export default function RegisterScreen() {
         </View>
       </View>
 
-      {/* Ordem importa: os links para ler, a caixa para aceitar, e só então o
-          botão. Aceite depois da ação seria enfeite. */}
-      {/* Um `Text` só, com os links **aninhados** — e não quatro caixas num
-          contêiner em linha, que era o que estava aqui. Em `flexWrap` cada
-          pedaço vira uma caixa: no celular a primeira linha ia até a borda e a
-          segunda ficava centrada, com o bloco visivelmente torto. Aninhado, o
-          RN quebra como texto corrido e o `textAlign` volta a valer. */}
-      <Text style={styles.legal}>
-        Leia os{" "}
-        <Text
-          role="link"
-          accessibilityLabel="Termos de Uso"
-          style={[styles.legalLink, { color: destaque.accentText }]}
-          onPress={() => router.push("/legal/termos")}
-        >
-          Termos de Uso
-        </Text>{" "}
-        e a{" "}
-        <Text
-          role="link"
-          accessibilityLabel="Política de Privacidade"
-          style={[styles.legalLink, { color: destaque.accentText }]}
-          onPress={() => router.push("/legal/privacidade")}
-        >
-          Política de Privacidade
-        </Text>
-        .
-      </Text>
+      {/* Antes havia DUAS frases aqui: "Leia os Termos de Uso e a Política de
+          Privacidade." e, logo abaixo, a caixa "Li e aceito os Termos de Uso e
+          a Política de Privacidade.". Os mesmos dois nomes, duas vezes, a dois
+          centímetros de distância — e só a de cima levava aos documentos. A
+          frase de cima saiu e os links passaram para dentro do rótulo da caixa,
+          que é onde a pessoa já está lendo os nomes.
 
-      {/* A caixa é que aceita; a linha abaixo só convida a ler. Antes a frase
-          dizia "ao criar a conta você concorda", o que era aceite implícito —
-          e a tela não podia afirmar um aceite que não registrava (ADR-0027). */}
+          A caixa é que aceita. Antes de tudo isso a frase dizia "ao criar a
+          conta você concorda", o que era aceite implícito — e a tela não podia
+          afirmar um aceite que não registrava (ADR-0027). */}
       <Checkbox
         checked={aceitou}
         onChange={setAceitou}
+        // Continua sendo a frase inteira, em texto puro: é ela que quem lê
+        // ouvindo recebe, e um rótulo com links dentro não se lê em voz alta.
         label="Li e aceito os Termos de Uso e a Política de Privacidade."
+        rotulo={
+          <>
+            Li e aceito os{" "}
+            <Text
+              role="link"
+              accessibilityLabel="Termos de Uso"
+              style={[styles.legalLink, { color: destaque.accentText }]}
+              // Cinto, não o suspensório. O risco é real — o rótulo inteiro é
+              // alvo do `Pressable` do Checkbox, e tocar o link não pode marcar
+              // um aceite que a pessoa não deu. **Medido no web:** o `Text`
+              // aninhado com `onPress` próprio já basta; sem esta linha a caixa
+              // também não marca. Ela fica porque o **nativo não foi testado**
+              // (não há aparelho aqui) e porque custa nada.
+              onPress={(e) => {
+                e?.stopPropagation?.();
+                router.push("/legal/termos");
+              }}
+            >
+              Termos de Uso
+            </Text>{" "}
+            e a{" "}
+            <Text
+              role="link"
+              accessibilityLabel="Política de Privacidade"
+              style={[styles.legalLink, { color: destaque.accentText }]}
+              onPress={(e) => {
+                e?.stopPropagation?.();
+                router.push("/legal/privacidade");
+              }}
+            >
+              Política de Privacidade
+            </Text>
+            .
+          </>
+        }
       />
       <StateView error={erros.termos} />
 
@@ -427,8 +442,15 @@ const criarEstilos = (t: Theme) =>
       lineHeight: 17,
     },
     /** Herda tamanho e altura de linha do texto que o cerca — é a mesma frase. */
+    // Estilo LOCAL desta tela, de propósito: o `TextLink` (componente global,
+    // usado em muitas telas já validadas) segue como está. Aqui os links vivem
+    // **dentro** de uma frase de rótulo, e precisam de duas marcas para se
+    // distinguirem dela — cor e sublinhado. Só a cor não bastava: o rótulo do
+    // Checkbox é `textMuted`, e a diferença entre ele e o acento some para quem
+    // não distingue bem as duas cores.
     legalLink: {
       fontWeight: "600",
+      textDecorationLine: "underline",
     },
     legal: {
       ...t.typography.caption,
