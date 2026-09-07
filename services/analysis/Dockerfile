@@ -1,7 +1,7 @@
 # WaveAI Analysis — imagem de execução (MVP).
 # Contexto de build = RAIZ do monorepo (precisa de packages/wave-eeg):
 #   docker build -f services/analysis/Dockerfile -t waveai-analysis .
-FROM python:3.11-slim
+FROM python:3.14-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1

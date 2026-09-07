@@ -65,7 +65,7 @@ jobs:
       api: ${{ steps.nomes.outputs.api }}
       analysis: ${{ steps.nomes.outputs.analysis }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Nomes das imagens
         id: nomes
@@ -76,7 +76,7 @@ jobs:
           echo "api=${{ env.REGISTRO }}/${dono}/waveai-api:${{ github.sha }}" >> "$GITHUB_OUTPUT"
           echo "analysis=${{ env.REGISTRO }}/${dono}/waveai-analysis:${{ github.sha }}" >> "$GITHUB_OUTPUT"
 
-      - uses: docker/login-action@v3
+      - uses: docker/login-action@v4
         with:
           registry: ${{ env.REGISTRO }}
           username: ${{ github.actor }}
@@ -87,7 +87,7 @@ jobs:
       - uses: docker/setup-buildx-action@v3
 
       - name: API
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: services/api
           push: true
@@ -96,7 +96,7 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Analysis
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           # Contexto na RAIZ, e não em `services/analysis`: a imagem precisa de
           # `packages/wave-eeg`, que está fora daquela pasta. O `docker-compose`

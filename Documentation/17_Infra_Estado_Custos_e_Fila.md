@@ -16,7 +16,7 @@ quando o WaveAI passou a existir em produção. Guarda o que **está medido**, o
 | Site e documentos legais | Cloudflare Pages, `waveai.tec.br` | 200 em 584 ms |
 | API | Azure Container Apps, `api.waveai.tec.br` | 200 em 317 ms |
 | Analysis | Container Apps, ingress **interno** | alcançável só pela API |
-| Banco | Neon (`sa-east-1`) | migrations até `0018` |
+| Banco | Neon (`sa-east-1`) | migrations até `0019` |
 | E-mail | SMTP do Gmail, senha de app | validado ponta a ponta |
 | Deploy | GitHub Actions, OIDC | build → migração → apps |
 | Expurgo | job cron diário, 04:00 UTC | **4 execuções, todas `Succeeded`** (26–29/08) |
@@ -171,6 +171,26 @@ continuarem existentes na Cloudflare.
 
 Ordem acordada com o fundador em 2026-08-26. O critério é **proteger quem chegar
 primeiro** antes de ampliar alcance.
+
+> **O que segura a fila do CI é o Cloudflare Pages, não o Actions.** O repositório
+> é público, então GitHub Actions é gratuito e ilimitado: os checks levam ~2 min.
+> O Pages é **plano free, concorrência 1** — com 12 PRs do Dependabot abertas, o
+> preview de uma delas passou de **14 minutos** esperando. A ADR-0057 atacou o
+> volume pelo lado do repositório (`groups`, `open-pull-requests-limit: 3` e o
+> `ignore` dos pacotes do SDK em `.github/dependabot.yml`).
+>
+> **O que falta é ajuste de PAINEL, não de repositório.** Excluir as branches
+> `dependabot/*` dos previews se configura no dashboard do Cloudflare Pages, em
+> *Settings → Builds & deployments → Branch control*. Varri o repositório em
+> 2026-09-07: não há `wrangler.toml` nem equivalente — **não existe como fazer
+> isso por commit**. Preferido a desativar o preview de toda branch, que também
+> tiraria o preview das PRs de trabalho, onde ele é útil.
+>
+> **E o verde de uma PR do Dependabot envelhece.** As 12 de 2026-08-30 foram
+> avaliadas por um CI que ainda não tinha o `check:guia` (entrou em 06/09) nem o
+> gerador dos documentos legais dentro do `build:web`. Uma delas aparecia verde
+> **quebrando os dois geradores**. Antes de mergear PR automática parada há dias,
+> rebase — ou aplique a mudança numa PR própria, que é o que foi feito.
 
 > **Ordem de execução, revista em 2026-08-29: começar pela B, não pela A.** A
 > lista continua em ordem de prioridade *conceitual* — a A é segurança e por

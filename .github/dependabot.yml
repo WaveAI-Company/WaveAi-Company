@@ -1,3 +1,19 @@
+# Atualização automática de dependências (ADR-0057).
+#
+# Três coisas, e cada uma tem motivo escrito na ADR:
+#
+#   - `groups`: uma PR por ecossistema, não uma por pacote. O gargalo do nosso
+#     CI não é computação (Actions é gratuito e ilimitado em repo público) — é
+#     a fila do Cloudflare Pages, plano free com CONCORRÊNCIA 1. Doze PRs
+#     abertas fizeram o preview de uma delas esperar mais de 14 minutos, contra
+#     ~2 minutos dos checks do Actions.
+#
+#   - `open-pull-requests-limit: 3`: o default é 5 POR ecossistema, e com oito
+#     ecossistemas isso é um teto de 40 PRs simultâneas. PRs de SEGURANÇA não
+#     contam para este limite, então apertá-lo não atrasa correção de
+#     vulnerabilidade.
+#
+#   - `ignore` no npm: ver o bloco do apps/wave-app.
 version: 2
 updates:
   # GitHub Actions (workflows em .github/workflows)
@@ -5,6 +21,10 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+    open-pull-requests-limit: 3
+    groups:
+      github-actions:
+        patterns: ["*"]
     commit-message:
       prefix: "chore(ci)"
     labels:
@@ -16,6 +36,10 @@ updates:
     directory: "/packages/wave-eeg"
     schedule:
       interval: "weekly"
+    open-pull-requests-limit: 3
+    groups:
+      wave-eeg:
+        patterns: ["*"]
     commit-message:
       prefix: "chore(deps)"
     labels:
@@ -26,6 +50,10 @@ updates:
     directory: "/packages/wave-corpus"
     schedule:
       interval: "weekly"
+    open-pull-requests-limit: 3
+    groups:
+      wave-corpus:
+        patterns: ["*"]
     commit-message:
       prefix: "chore(deps)"
     labels:
@@ -36,6 +64,10 @@ updates:
     directory: "/services/api"
     schedule:
       interval: "weekly"
+    open-pull-requests-limit: 3
+    groups:
+      api:
+        patterns: ["*"]
     commit-message:
       prefix: "chore(deps)"
     labels:
@@ -46,16 +78,64 @@ updates:
     directory: "/services/analysis"
     schedule:
       interval: "weekly"
+    open-pull-requests-limit: 3
+    groups:
+      analysis:
+        patterns: ["*"]
     commit-message:
       prefix: "chore(deps)"
     labels:
       - "dependencies"
 
   # Node — apps/wave-app
+  #
+  # O `ignore` daqui é a REGRA da ADR-0057: pacote gerenciado pelo SDK do Expo
+  # sobe por `npx expo install`, que consulta a matriz de compatibilidade do
+  # SDK, e NUNCA por PR automática, que consulta só o registro do npm. Medido
+  # em 2026-09-07 com `npx expo install --check`: o SDK 57 espera
+  # `react-native@0.86.3` e o Dependabot propôs `0.87.1`; espera
+  # `react-native-screens@~4.26.0` e ele propôs `4.27.0`. E o CI não pegaria:
+  # o job do app roda `npm ci`, `typecheck`, `check:contrast` e `check:guia` —
+  # sem `build:web` e sem build nativo, então um bump de `react-native` fica
+  # verde sem que uma linha de React Native tenha rodado.
+  #
+  # Restrito a `semver-major` e `semver-minor` DE PROPÓSITO, por dois motivos:
+  #   1. os PATCHES continuam vindo, e patch é exatamente o que o SDK quer
+  #      (0.86.0 -> 0.86.3);
+  #   2. `version-update:*` afeta SOMENTE version updates — alerta de
+  #      segurança continua virando PR. Ignorar o pacote inteiro cortaria o
+  #      canal de segurança junto, e aí a cura seria pior que a doença.
+  #
+  # O padrão `react-native-*` pega TAMBÉM o que não é do SDK — hoje
+  # `react-native-ble-plx` e `react-native-bluetooth-classic`. Isso é
+  # intencional e vale dizer em voz alta: são módulos NATIVOS, e nenhum módulo
+  # nativo é validado por este CI. Subi-los às cegas é o mesmo risco por outro
+  # caminho; quem os sobe tem de fazer um build no EAS para saber.
+  #
+  # Quando o projeto subir de SDK, esta lista precisa ser revista.
   - package-ecosystem: "npm"
     directory: "/apps/wave-app"
     schedule:
       interval: "weekly"
+    open-pull-requests-limit: 3
+    groups:
+      wave-app:
+        patterns: ["*"]
+    ignore:
+      - dependency-name: "expo"
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
+      - dependency-name: "expo-*"
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
+      - dependency-name: "@expo/*"
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
+      - dependency-name: "react"
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
+      - dependency-name: "react-dom"
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
+      - dependency-name: "react-native"
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
+      - dependency-name: "react-native-*"
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
     commit-message:
       prefix: "chore(deps)"
     labels:
@@ -66,6 +146,10 @@ updates:
     directory: "/services/api"
     schedule:
       interval: "weekly"
+    open-pull-requests-limit: 3
+    groups:
+      docker-api:
+        patterns: ["*"]
     commit-message:
       prefix: "chore(deps)"
     labels:
@@ -76,6 +160,10 @@ updates:
     directory: "/services/analysis"
     schedule:
       interval: "weekly"
+    open-pull-requests-limit: 3
+    groups:
+      docker-analysis:
+        patterns: ["*"]
     commit-message:
       prefix: "chore(deps)"
     labels:
