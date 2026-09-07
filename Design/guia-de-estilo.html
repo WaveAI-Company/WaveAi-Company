@@ -1,0 +1,563 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WaveAI — guia de estilo</title>
+<style>
+:root{color-scheme:dark;--pg:#0B1220;--card:#151E32;--alt:#1C2740;--tx:#F5F7FA;--tx2:#B6C1D4;--tx3:#8291A9;--bd:#2A3550;--ac:#4FD1C5}
+*{box-sizing:border-box}
+body{margin:0;padding:32px 20px 80px;background:var(--pg);color:var(--tx);
+     font:15px/1.6 -apple-system,"Segoe UI",Roboto,system-ui,sans-serif}
+.wrap{max-width:1100px;margin:0 auto}
+h1{font-size:32px;line-height:1.2;margin:0 0 6px}
+h2{font-size:22px;margin:56px 0 4px;padding-top:24px;border-top:1px solid var(--bd)}
+h3{font-size:15px;margin:28px 0 2px;letter-spacing:.02em}
+p{color:var(--tx2)}
+.lead{font-size:16px;max-width:70ch}
+.nota{color:var(--tx3);font-size:13.5px;margin:4px 0 14px;max-width:78ch}
+code{font-family:ui-monospace,Consolas,monospace}
+.grade{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px}
+.sw{display:flex;gap:12px;align-items:flex-start;background:var(--card);border:1px solid var(--bd);
+    border-radius:12px;padding:10px}
+.am{width:46px;height:46px;border-radius:9px;flex:0 0 auto;border:1px solid rgba(255,255,255,.14)}
+.meta{min-width:0}
+.nome{display:block;font-size:12.5px;color:var(--tx);word-break:break-all}
+.hex{display:block;font-size:12px;color:var(--tx3);text-transform:uppercase}
+.rs{display:flex;flex-wrap:wrap;gap:4px;margin-top:5px}
+.r{font-size:10.5px;color:var(--tx3);background:var(--alt);border-radius:5px;padding:1px 5px;white-space:nowrap}
+.tema.light .sw{background:#FFFFFF;border-color:rgba(15,23,38,.12)}
+.tema.light .nome{color:#0F1726}
+.tema.light .hex,.tema.light .r{color:#606E85}
+.tema.light .r{background:#EDF1F6}
+table{border-collapse:collapse;width:100%;font-size:14px;margin-top:10px}
+th,td{text-align:left;padding:7px 10px;border-bottom:1px solid var(--bd);vertical-align:top}
+th{color:var(--tx3);font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.06em}
+td code{color:var(--ac)}
+.tipo{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:14px 18px;margin:8px 0}
+.tipo .amostra{margin:0}
+.tipo .spec{color:var(--tx3);font-size:12px;margin:4px 0 0}
+.marcas{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:14px;margin-top:12px}
+.marca{border:1px solid var(--bd);border-radius:12px;padding:20px;text-align:center}
+.marca svg{width:110px;height:110px}
+.marca .cap{font-size:12.5px;color:var(--tx3);margin-top:10px}
+.fundoEscuro{background:#0B1220}
+.fundoClaro{background:#F5F7FA}
+.aviso{border-left:3px solid #F2C94C;background:rgba(242,201,76,.07);padding:12px 16px;border-radius:0 10px 10px 0;margin:14px 0}
+.aviso strong{color:#F2C94C}
+ul{color:var(--tx2)}li{margin:6px 0}
+.espaco{display:flex;align-items:flex-end;gap:14px;flex-wrap:wrap;margin-top:10px}
+.espaco div{text-align:center;font-size:11px;color:var(--tx3)}
+.espaco i{display:block;background:var(--ac);border-radius:3px;margin-bottom:6px}
+.rodape{color:var(--tx3);font-size:13px;margin-top:60px;border-top:1px solid var(--bd);padding-top:18px}
+</style>
+</head>
+<body><div class="wrap">
+
+<h1>WaveAI — guia de estilo</h1>
+<p class="lead">Marca, paleta, tipografia e as regras que restringem o desenho, num arquivo só.
+Feito para abrir no navegador — não é preciso repositório nem ferramenta.</p>
+
+<div class="aviso"><strong>Este arquivo é gerado.</strong> Ele não é uma cópia dos valores:
+ele <em>é</em> os tokens do produto, lidos de <code>apps/wave-app/src/theme/</code> e de
+<code>Design/logos_icones/</code>, renderizados. Editar este HTML à mão não muda o app e
+se perde na próxima geração. Para mudar uma cor, mude o token; depois rode
+<code>npm run gerar:guia</code> em <code>apps/wave-app</code>.</div>
+
+<h2>Como as cores funcionam aqui</h2>
+<p>Os tokens são <strong>semânticos, não literais</strong>: as telas pedem <code>text</code>,
+<code>surface</code>, <code>accentPatient</code> — nunca um hex. É isso que permite trocar o
+tema inteiro sem tocar em tela nenhuma.</p>
+<p>Há <strong>dois temas</strong> e <strong>dois papéis</strong> (paciente e profissional de
+bem-estar). Cada papel tem seu acento, e ele <strong>muda entre os temas</strong> — não por
+gosto: o turquesa que rende 10:1 sobre o fundo escuro cai para cerca de 1,8:1 sobre branco,
+ilegível como texto.</p>
+<p>Cada amostra abaixo traz o <strong>contraste calculado</strong> contra as três superfícies
+(fundo da página, cartão e trilho). Os pares obrigatórios são verificados no CI por
+<code>npm run check:contrast</code>, que reprova a mudança antes de ela chegar ao produto.</p>
+
+<div class="aviso"><strong>A armadilha que já nos pegou.</strong> O verificador valida cada tema
+contra as superfícies <em>daquele tema</em>. Onde a superfície é de cor <strong>fixa</strong> —
+o painel de autenticação é escuro nas larguras estreitas mesmo no tema claro —, o par "cor do
+tema claro sobre fundo escuro fixo" <strong>escapa</strong> da verificação. Foi assim que a marca
+ficou uma vez em 3,05:1. Se a superfície não acompanha o tema, passe as cores explicitamente e
+meça na tela.</div>
+
+<section class="tema dark" data-tema="dark">
+    <h2>Paleta — tema escuro</h2><h3>Superfícies</h3><p class="nota">Quatro níveis de elevação. O input preenchido usa `surfaceAlt`, e é sobre ele que o texto digitado precisa se sustentar.</p>
+      <div class="grade"><div class="sw">
+      <div class="am" style="background:#0B1220"></div>
+      <div class="meta"><code class="nome">background</code><code class="hex">#0B1220</code>
+        <div class="rs"><span class="r" title="contraste sobre background">fundo 1.00</span><span class="r" title="contraste sobre surface">surface 1.13</span><span class="r" title="contraste sobre surfaceAlt">alt 1.26</span></div>
+      </div>
+    </div><div class="sw">
+      <div class="am" style="background:#151E32"></div>
+      <div class="meta"><code class="nome">surface</code><code class="hex">#151E32</code>
+        <div class="rs"><span class="r" title="contraste sobre background">fundo 1.13</span><span class="r" title="contraste sobre surface">surface 1.00</span><span class="r" title="contraste sobre surfaceAlt">alt 1.12</span></div>
+      </div>
+    </div><div class="sw">
+      <div class="am" style="background:#1C2740"></div>
+      <div class="meta"><code class="nome">surfaceAlt</code><code class="hex">#1C2740</code>
+        <div class="rs"><span class="r" title="contraste sobre background">fundo 1.26</span><span class="r" title="contraste sobre surface">surface 1.12</span><span class="r" title="contraste sobre surfaceAlt">alt 1.00</span></div>
+      </div>
+    </div><div class="sw">
+      <div class="am" style="background:#233152"></div>
+      <div class="meta"><code class="nome">surfaceStrong</code><code class="hex">#233152</code>
+        <div class="rs"><span class="r" title="contraste sobre background">fundo 1.46</span><span class="r" title="contraste sobre surface">surface 1.29</span><span class="r" title="contraste sobre surfaceAlt">alt 1.15</span></div>
+      </div>
+    </div></div><h3>Limites</h3><p class="nota">`border` e `borderSoft` são decorativos e podem ter contraste baixo. `borderStrong` é limite de controle interativo e exige 3:1 — por isso é sólido, e não com alfa.</p>
+      <div class="grade"><div class="sw">
+      <div class="am" style="background:rgba(245, 247, 250, 0.10)"></div>
+      <div class="meta"><code class="nome">border</code><code class="hex">rgba(245, 247, 250, 0.10)</code>
+        <div class="rs"></div>
+      </div>
+    </div><div class="sw">
+      <div class="am" style="background:rgba(245, 247, 250, 0.055)"></div>
+      <div class="meta"><code class="nome">borderSoft</code><code class="hex">rgba(245, 247, 250, 0.055)</code>
+        <div class="rs"></div>
+      </div>
+    </div><div class="sw">
+      <div class="am" style="background:#5F719A"></div>
+      <div class="meta"><code class="nome">borderStrong</code><code class="hex">#5F719A</code>
+        <div class="rs"><span class="r" title="contraste sobre background">fundo 3.85</span><span class="r" title="contraste sobre surface">surface 3.41</span><span class="r" title="contraste sobre surfaceAlt">alt 3.05</span></div>
+      </div>
+    </div></div><h3>Texto</h3><p class="nota">Três níveis. O terceiro (`textSubtle`) é o mais apertado: o tom do mockup reprovava no tema claro.</p>
+      <div class="grade"><div class="sw">
+      <div class="am" style="background:#F5F7FA"></div>
+      <div class="meta"><code class="nome">text</code><code class="hex">#F5F7FA</code>
+        <div class="rs"><span class="r" title="contraste sobre background">fundo 17.45</span><span class="r" title="contraste sobre surface">surface 15.48</span><span class="r" title="contraste sobre surfaceAlt">alt 13.84</span></div>
+      </div>
+    </div><div class="sw">
+      <div class="am" style="background:#B6C1D4"></div>
+      <div class="meta"><code class="nome">textMuted</code><code class="hex">#B6C1D4</code>
+        <div class="rs"><span class="r" title="contraste sobre background">fundo 10.31</span><span class="r" title="contraste sobre surface">surface 9.15</span><span class="r" title="contraste sobre surfaceAlt">alt 8.18</span></div>
+      </div>
+    </div><div class="sw">
+      <div class="am" style="background:#8291A9"></div>
+      <div class="meta"><code class="nome">textSubtle</code><code class="hex">#8291A9</code>
+        <div class="rs"><span class="r" title="contraste sobre background">fundo 5.86</span><span class="r" title="contraste sobre surface">surface 5.20</span><span class="r" title="contraste sobre surfaceAlt">alt 4.65</span></div>
+      </div>
+    </div></div><h3>Acento por papel</h3><p class="nota">Paciente e profissional têm acentos próprios, e eles MUDAM entre os temas: o turquesa que rende 10:1 no escuro cai para ~1,8:1 sobre branco. `onAccentX` é a tinta que fica POR CIMA do preenchimento.</p>
+      <div class="grade"><div class="sw">
+      <div class="am" style="background:#4FD1C5"></div>
+      <div class="meta"><code class="nome">accentPatient</code><code class="hex">#4FD1C5</code>
+        <div class="rs"><span class="r" title="contraste sobre background">fundo 10.04</span><span class="r" title="contraste sobre surface">surface 8.91</span><span class="r" title="contraste sobre surfaceAlt">alt 7.96</span></div>
+      </div>
+    </div><div class="sw">
+      <div class="am" style="background:#4FD1C5"></div>
+      <div class="meta"><code class="nome">accentPatientText</code><code class="hex">#4FD1C5</code>
+        <div class="rs"><span class="r" title="contraste sobre background">fundo 10.04</span><span class="r" title="contraste sobre surface">surface 8.91</span><span class="r" title="contraste sobre surfaceAlt">alt 7.96</span></div>
+      </div>
+    </div><div class="sw">
+      <div class="am" style="background:#06231F"></div>
+      <div class="meta"><code class="nome">onAccentPatient</code><code class="hex">#06231F</code>
+        <div class="rs"><span class="r" title="contraste sobre background">fundo 1.13</span><span class="r" title="contraste sobre surface">surface 1.00</span><span class="r" title="contraste sobre surfaceAlt">alt 1.11</span></div>
+      </div>
+    </div><div class="sw">
+      <div class="am" style="background:#7AA2F7"></div>
+      <div class="meta"><code class="nome">accentDoctor</code><code class="hex">#7AA2F7</code>
+        <div class="rs"><span class="r" title="contraste sobre background">fundo 7.43</span><span class="r" title="contraste sobre surface">surface 6.60</span><span class="r" title="contraste sobre surfaceAlt">alt 5.90</span></div>
+      </div>
+    </div><div class="sw">
+      <div class="am" style="background:#7AA2F7"></div>
+      <div class="meta"><code class="nome">accentDoctorText</code><code class="hex">#7AA2F7</code>
+        <div class="rs"><span class="r" title="contraste sobre background">fundo 7.43</span><span class="r" title="contraste sobre surface">surface 6.60</span><span class="r" title="contraste sobre surfaceAlt">alt 5.90</span></div>
+      </div>
+    </div><div class="sw">
+      <div class="am" style="background:#0A1430"></div>
+      <div class="meta"><code class="nome">onAccentDoctor</code><code class="hex">#0A1430</code>
+        <div class="rs"><span class="r" title="contraste sobre background">fundo 1.03</span><span class="r" title="contraste sobre surface">surface 1.09</span><span class="r" title="contraste sobre surfaceAlt">alt 1.22</span></div>
+      </div>
+    </div><div class="sw">
+      <div class="am" style="background:#0B1220"></div>
+      <div class="meta"><code class="nome">onAccent</code><code class="hex">#0B1220</code>
+        <div class="rs"><span class="r" title="contraste sobre background">fundo 1.00</span><span class="r" title="contraste sobre surface">surface 1.13</span><span class="r" title="contraste sobre surfaceAlt">alt 1.26</span></div>
+      </div>
+    </div></div><h3>Estado</h3><p class="nota">Atenção e perigo. Não são cor de papel: usam a tinta neutra `onAccent` por cima.</p>
+      <div class="grade"><div class="sw">
+      <div class="am" style="background:#F2C94C"></div>
+      <div class="meta"><code class="nome">warning</code><code class="hex">#F2C94C</code>
+        <div class="rs"><span class="r" title="contraste sobre background">fundo 11.80</span><span class="r" title="contraste sobre surface">surface 10.47</span><span class="r" title="contraste sobre surfaceAlt">alt 9.36</span></div>
+      </div>
+    </div><div class="sw">
+      <div class="am" style="background:#F2C94C"></div>
+      <div class="meta"><code class="nome">warningText</code><code class="hex">#F2C94C</code>
+        <div class="rs"><span class="r" title="contraste sobre background">fundo 11.80</span><span class="r" title="contraste sobre surface">surface 10.47</span><span class="r" title="contraste sobre surfaceAlt">alt 9.36</span></div>
+      </div>
+    </div><div class="sw">
+      <div class="am" style="background:#F2777A"></div>
+      <div class="meta"><code class="nome">danger</code><code class="hex">#F2777A</code>
+        <div class="rs"><span class="r" title="contraste sobre background">fundo 6.86</span><span class="r" title="contraste sobre surface">surface 6.09</span><span class="r" title="contraste sobre surfaceAlt">alt 5.44</span></div>
+      </div>
+    </div><div class="sw">
+      <div class="am" style="background:#F2777A"></div>
+      <div class="meta"><code class="nome">dangerText</code><code class="hex">#F2777A</code>
+        <div class="rs"><span class="r" title="contraste sobre background">fundo 6.86</span><span class="r" title="contraste sobre surface">surface 6.09</span><span class="r" title="contraste sobre surfaceAlt">alt 5.44</span></div>
+      </div>
+    </div></div><h3>Bandas do espectro</h3><p class="nota">CATEGÓRICAS, nunca uma escala. Não há gradiente de pior para melhor e nenhum tom é mais alarmante que os outros: banda não tem valência, e pintar alfa de verde ou beta de vermelho inventaria um juízo que a análise não faz.</p>
+      <div class="grade"><div class="sw">
+      <div class="am" style="background:#5C7CFA"></div>
+      <div class="meta"><code class="nome">bandDelta</code><code class="hex">#5C7CFA</code>
+        <div class="rs"><span class="r" title="contraste sobre background">fundo 5.10</span><span class="r" title="contraste sobre surface">surface 4.53</span><span class="r" title="contraste sobre surfaceAlt">alt 4.05</span></div>
+      </div>
+    </div><div class="sw">
+      <div class="am" style="background:#CC5C7E"></div>
+      <div class="meta"><code class="nome">bandTheta</code><code class="hex">#CC5C7E</code>
+        <div class="rs"><span class="r" title="contraste sobre background">fundo 4.81</span><span class="r" title="contraste sobre surface">surface 4.27</span><span class="r" title="contraste sobre surfaceAlt">alt 3.82</span></div>
+      </div>
+    </div><div class="sw">
+      <div class="am" style="background:#1FA695"></div>
+      <div class="meta"><code class="nome">bandAlpha</code><code class="hex">#1FA695</code>
+        <div class="rs"><span class="r" title="contraste sobre background">fundo 6.19</span><span class="r" title="contraste sobre surface">surface 5.50</span><span class="r" title="contraste sobre surfaceAlt">alt 4.91</span></div>
+      </div>
+    </div><div class="sw">
+      <div class="am" style="background:#C98500"></div>
+      <div class="meta"><code class="nome">bandBeta</code><code class="hex">#C98500</code>
+        <div class="rs"><span class="r" title="contraste sobre background">fundo 6.10</span><span class="r" title="contraste sobre surface">surface 5.41</span><span class="r" title="contraste sobre surfaceAlt">alt 4.84</span></div>
+      </div>
+    </div><div class="sw">
+      <div class="am" style="background:#9085E9"></div>
+      <div class="meta"><code class="nome">bandGamma</code><code class="hex">#9085E9</code>
+        <div class="rs"><span class="r" title="contraste sobre background">fundo 5.99</span><span class="r" title="contraste sobre surface">surface 5.32</span><span class="r" title="contraste sobre surfaceAlt">alt 4.75</span></div>
+      </div>
+    </div></div></section>
+<section class="tema light" data-tema="light">
+    <h2>Paleta — tema claro</h2><h3>Superfícies</h3><p class="nota">Quatro níveis de elevação. O input preenchido usa `surfaceAlt`, e é sobre ele que o texto digitado precisa se sustentar.</p>
+      <div class="grade"><div class="sw">
+      <div class="am" style="background:#F5F7FA"></div>
+      <div class="meta"><code class="nome">background</code><code class="hex">#F5F7FA</code>
+        <div class="rs"><span class="r" title="contraste sobre background">fundo 1.00</span><span class="r" title="contraste sobre surface">surface 1.07</span><span class="r" title="contraste sobre surfaceAlt">alt 1.06</span></div>
+      </div>
+    </div><div class="sw">
+      <div class="am" style="background:#FFFFFF"></div>
+      <div class="meta"><code class="nome">surface</code><code class="hex">#FFFFFF</code>
+        <div class="rs"><span class="r" title="contraste sobre background">fundo 1.07</span><span class="r" title="contraste sobre surface">surface 1.00</span><span class="r" title="contraste sobre surfaceAlt">alt 1.13</span></div>
+      </div>
+    </div><div class="sw">
+      <div class="am" style="background:#EDF1F6"></div>
+      <div class="meta"><code class="nome">surfaceAlt</code><code class="hex">#EDF1F6</code>
+        <div class="rs"><span class="r" title="contraste sobre background">fundo 1.06</span><span class="r" title="contraste sobre surface">surface 1.13</span><span class="r" title="contraste sobre surfaceAlt">alt 1.00</span></div>
+      </div>
+    </div><div class="sw">
+      <div class="am" style="background:#E2E8F1"></div>
+      <div class="meta"><code class="nome">surfaceStrong</code><code class="hex">#E2E8F1</code>
+        <div class="rs"><span class="r" title="contraste sobre background">fundo 1.15</span><span class="r" title="contraste sobre surface">surface 1.23</span><span class="r" title="contraste sobre surfaceAlt">alt 1.09</span></div>
+      </div>
+    </div></div><h3>Limites</h3><p class="nota">`border` e `borderSoft` são decorativos e podem ter contraste baixo. `borderStrong` é limite de controle interativo e exige 3:1 — por isso é sólido, e não com alfa.</p>
+      <div class="grade"><div class="sw">
+      <div class="am" style="background:rgba(15, 23, 38, 0.12)"></div>
+      <div class="meta"><code class="nome">border</code><code class="hex">rgba(15, 23, 38, 0.12)</code>
+        <div class="rs"></div>
+      </div>
+    </div><div class="sw">
+      <div class="am" style="background:rgba(15, 23, 38, 0.06)"></div>
+      <div class="meta"><code class="nome">borderSoft</code><code class="hex">rgba(15, 23, 38, 0.06)</code>
+        <div class="rs"></div>
+      </div>
+    </div><div class="sw">
+      <div class="am" style="background:#6B7890"></div>
+      <div class="meta"><code class="nome">borderStrong</code><code class="hex">#6B7890</code>
+        <div class="rs"><span class="r" title="contraste sobre background">fundo 4.15</span><span class="r" title="contraste sobre surface">surface 4.45</span><span class="r" title="contraste sobre surfaceAlt">alt 3.93</span></div>
+      </div>
+    </div></div><h3>Texto</h3><p class="nota">Três níveis. O terceiro (`textSubtle`) é o mais apertado: o tom do mockup reprovava no tema claro.</p>
+      <div class="grade"><div class="sw">
+      <div class="am" style="background:#0F1726"></div>
+      <div class="meta"><code class="nome">text</code><code class="hex">#0F1726</code>
+        <div class="rs"><span class="r" title="contraste sobre background">fundo 16.71</span><span class="r" title="contraste sobre surface">surface 17.94</span><span class="r" title="contraste sobre surfaceAlt">alt 15.81</span></div>
+      </div>
+    </div><div class="sw">
+      <div class="am" style="background:#44526A"></div>
+      <div class="meta"><code class="nome">textMuted</code><code class="hex">#44526A</code>
+        <div class="rs"><span class="r" title="contraste sobre background">fundo 7.35</span><span class="r" title="contraste sobre surface">surface 7.89</span><span class="r" title="contraste sobre surfaceAlt">alt 6.96</span></div>
+      </div>
+    </div><div class="sw">
+      <div class="am" style="background:#606E85"></div>
+      <div class="meta"><code class="nome">textSubtle</code><code class="hex">#606E85</code>
+        <div class="rs"><span class="r" title="contraste sobre background">fundo 4.81</span><span class="r" title="contraste sobre surface">surface 5.16</span><span class="r" title="contraste sobre surfaceAlt">alt 4.55</span></div>
+      </div>
+    </div></div><h3>Acento por papel</h3><p class="nota">Paciente e profissional têm acentos próprios, e eles MUDAM entre os temas: o turquesa que rende 10:1 no escuro cai para ~1,8:1 sobre branco. `onAccentX` é a tinta que fica POR CIMA do preenchimento.</p>
+      <div class="grade"><div class="sw">
+      <div class="am" style="background:#0F7A70"></div>
+      <div class="meta"><code class="nome">accentPatient</code><code class="hex">#0F7A70</code>
+        <div class="rs"><span class="r" title="contraste sobre background">fundo 4.85</span><span class="r" title="contraste sobre surface">surface 5.20</span><span class="r" title="contraste sobre surfaceAlt">alt 4.58</span></div>
+      </div>
+    </div><div class="sw">
+      <div class="am" style="background:#0F7A70"></div>
+      <div class="meta"><code class="nome">accentPatientText</code><code class="hex">#0F7A70</code>
+        <div class="rs"><span class="r" title="contraste sobre background">fundo 4.85</span><span class="r" title="contraste sobre surface">surface 5.20</span><span class="r" title="contraste sobre surfaceAlt">alt 4.58</span></div>
+      </div>
+    </div><div class="sw">
+      <div class="am" style="background:#FFFFFF"></div>
+      <div class="meta"><code class="nome">onAccentPatient</code><code class="hex">#FFFFFF</code>
+        <div class="rs"><span class="r" title="contraste sobre background">fundo 1.07</span><span class="r" title="contraste sobre surface">surface 1.00</span><span class="r" title="contraste sobre surfaceAlt">alt 1.13</span></div>
+      </div>
+    </div><div class="sw">
+      <div class="am" style="background:#2A5BC7"></div>
+      <div class="meta"><code class="nome">accentDoctor</code><code class="hex">#2A5BC7</code>
+        <div class="rs"><span class="r" title="contraste sobre background">fundo 5.72</span><span class="r" title="contraste sobre surface">surface 6.14</span><span class="r" title="contraste sobre surfaceAlt">alt 5.41</span></div>
+      </div>
+    </div><div class="sw">
+      <div class="am" style="background:#2A5BC7"></div>
+      <div class="meta"><code class="nome">accentDoctorText</code><code class="hex">#2A5BC7</code>
+        <div class="rs"><span class="r" title="contraste sobre background">fundo 5.72</span><span class="r" title="contraste sobre surface">surface 6.14</span><span class="r" title="contraste sobre surfaceAlt">alt 5.41</span></div>
+      </div>
+    </div><div class="sw">
+      <div class="am" style="background:#FFFFFF"></div>
+      <div class="meta"><code class="nome">onAccentDoctor</code><code class="hex">#FFFFFF</code>
+        <div class="rs"><span class="r" title="contraste sobre background">fundo 1.07</span><span class="r" title="contraste sobre surface">surface 1.00</span><span class="r" title="contraste sobre surfaceAlt">alt 1.13</span></div>
+      </div>
+    </div><div class="sw">
+      <div class="am" style="background:#FFFFFF"></div>
+      <div class="meta"><code class="nome">onAccent</code><code class="hex">#FFFFFF</code>
+        <div class="rs"><span class="r" title="contraste sobre background">fundo 1.07</span><span class="r" title="contraste sobre surface">surface 1.00</span><span class="r" title="contraste sobre surfaceAlt">alt 1.13</span></div>
+      </div>
+    </div></div><h3>Estado</h3><p class="nota">Atenção e perigo. Não são cor de papel: usam a tinta neutra `onAccent` por cima.</p>
+      <div class="grade"><div class="sw">
+      <div class="am" style="background:#8A6100"></div>
+      <div class="meta"><code class="nome">warning</code><code class="hex">#8A6100</code>
+        <div class="rs"><span class="r" title="contraste sobre background">fundo 5.16</span><span class="r" title="contraste sobre surface">surface 5.54</span><span class="r" title="contraste sobre surfaceAlt">alt 4.88</span></div>
+      </div>
+    </div><div class="sw">
+      <div class="am" style="background:#8A6100"></div>
+      <div class="meta"><code class="nome">warningText</code><code class="hex">#8A6100</code>
+        <div class="rs"><span class="r" title="contraste sobre background">fundo 5.16</span><span class="r" title="contraste sobre surface">surface 5.54</span><span class="r" title="contraste sobre surfaceAlt">alt 4.88</span></div>
+      </div>
+    </div><div class="sw">
+      <div class="am" style="background:#B3261E"></div>
+      <div class="meta"><code class="nome">danger</code><code class="hex">#B3261E</code>
+        <div class="rs"><span class="r" title="contraste sobre background">fundo 6.09</span><span class="r" title="contraste sobre surface">surface 6.54</span><span class="r" title="contraste sobre surfaceAlt">alt 5.76</span></div>
+      </div>
+    </div><div class="sw">
+      <div class="am" style="background:#B3261E"></div>
+      <div class="meta"><code class="nome">dangerText</code><code class="hex">#B3261E</code>
+        <div class="rs"><span class="r" title="contraste sobre background">fundo 6.09</span><span class="r" title="contraste sobre surface">surface 6.54</span><span class="r" title="contraste sobre surfaceAlt">alt 5.76</span></div>
+      </div>
+    </div></div><h3>Bandas do espectro</h3><p class="nota">CATEGÓRICAS, nunca uma escala. Não há gradiente de pior para melhor e nenhum tom é mais alarmante que os outros: banda não tem valência, e pintar alfa de verde ou beta de vermelho inventaria um juízo que a análise não faz.</p>
+      <div class="grade"><div class="sw">
+      <div class="am" style="background:#3E63DD"></div>
+      <div class="meta"><code class="nome">bandDelta</code><code class="hex">#3E63DD</code>
+        <div class="rs"><span class="r" title="contraste sobre background">fundo 4.85</span><span class="r" title="contraste sobre surface">surface 5.21</span><span class="r" title="contraste sobre surfaceAlt">alt 4.59</span></div>
+      </div>
+    </div><div class="sw">
+      <div class="am" style="background:#963061"></div>
+      <div class="meta"><code class="nome">bandTheta</code><code class="hex">#963061</code>
+        <div class="rs"><span class="r" title="contraste sobre background">fundo 6.77</span><span class="r" title="contraste sobre surface">surface 7.26</span><span class="r" title="contraste sobre surfaceAlt">alt 6.40</span></div>
+      </div>
+    </div><div class="sw">
+      <div class="am" style="background:#009184"></div>
+      <div class="meta"><code class="nome">bandAlpha</code><code class="hex">#009184</code>
+        <div class="rs"><span class="r" title="contraste sobre background">fundo 3.63</span><span class="r" title="contraste sobre surface">surface 3.90</span><span class="r" title="contraste sobre surfaceAlt">alt 3.44</span></div>
+      </div>
+    </div><div class="sw">
+      <div class="am" style="background:#B87500"></div>
+      <div class="meta"><code class="nome">bandBeta</code><code class="hex">#B87500</code>
+        <div class="rs"><span class="r" title="contraste sobre background">fundo 3.51</span><span class="r" title="contraste sobre surface">surface 3.76</span><span class="r" title="contraste sobre surfaceAlt">alt 3.32</span></div>
+      </div>
+    </div><div class="sw">
+      <div class="am" style="background:#6D5AC4"></div>
+      <div class="meta"><code class="nome">bandGamma</code><code class="hex">#6D5AC4</code>
+        <div class="rs"><span class="r" title="contraste sobre background">fundo 5.00</span><span class="r" title="contraste sobre surface">surface 5.37</span><span class="r" title="contraste sobre surfaceAlt">alt 4.74</span></div>
+      </div>
+    </div></div></section>
+
+<h2>Tipografia</h2>
+<p>Escala com <strong>fontes do sistema</strong>, de propósito: fonte customizada é dependência
+nativa, e dependência nativa exige recompilar o app a cada mudança. A identidade vem de escala,
+peso e ritmo — não do desenho da letra.</p>
+<div class="tipo">
+      <p class="amostra" style="font-size:32px;font-weight:700;line-height:38px">
+        display — A calma tem um ritmo</p>
+      <p class="spec"><code>display</code> · 32px · peso 700 · entrelinha 38px</p>
+    </div><div class="tipo">
+      <p class="amostra" style="font-size:26px;font-weight:700;line-height:32px">
+        title — A calma tem um ritmo</p>
+      <p class="spec"><code>title</code> · 26px · peso 700 · entrelinha 32px</p>
+    </div><div class="tipo">
+      <p class="amostra" style="font-size:17px;font-weight:600;line-height:24px">
+        heading — A calma tem um ritmo</p>
+      <p class="spec"><code>heading</code> · 17px · peso 600 · entrelinha 24px</p>
+    </div><div class="tipo">
+      <p class="amostra" style="font-size:15px;font-weight:400;line-height:22px">
+        body — A calma tem um ritmo</p>
+      <p class="spec"><code>body</code> · 15px · peso 400 · entrelinha 22px</p>
+    </div><div class="tipo">
+      <p class="amostra" style="font-size:15px;font-weight:600;line-height:22px">
+        bodyStrong — A calma tem um ritmo</p>
+      <p class="spec"><code>bodyStrong</code> · 15px · peso 600 · entrelinha 22px</p>
+    </div><div class="tipo">
+      <p class="amostra" style="font-size:13px;font-weight:600;line-height:18px">
+        label — A calma tem um ritmo</p>
+      <p class="spec"><code>label</code> · 13px · peso 600 · entrelinha 18px</p>
+    </div><div class="tipo">
+      <p class="amostra" style="font-size:12px;font-weight:400;line-height:18px">
+        caption — A calma tem um ritmo</p>
+      <p class="spec"><code>caption</code> · 12px · peso 400 · entrelinha 18px</p>
+    </div>
+
+<h2>Espaçamento, raio e alvo de toque</h2>
+<div class="espaco"><div><i style="width:4px;height:6px"></i>xs 4</div><div><i style="width:8px;height:8px"></i>sm 8</div><div><i style="width:16px;height:16px"></i>md 16</div><div><i style="width:24px;height:24px"></i>lg 24</div><div><i style="width:32px;height:32px"></i>xl 32</div></div>
+<h3>Raio de canto</h3><table><tbody><tr><td><code>sm</code></td><td>8px</td></tr><tr><td><code>md</code></td><td>12px</td></tr><tr><td><code>lg</code></td><td>16px</td></tr><tr><td><code>pill</code></td><td>999px</td></tr></tbody></table>
+<h3>Alvo mínimo de toque</h3>
+<p class="nota">44px — o piso das diretrizes de acessibilidade das duas
+plataformas. Abaixo disso o controle fica difícil de acertar.</p>
+
+<h2>Movimento</h2>
+<p>Três durações, colhidas das transições dos mockups. Elas ficam num lugar só porque é a
+<strong>repetição</strong> da mesma curva que faz a interface parecer uma coisa só; um
+<code>.15s</code> copiado à mão garante que a próxima tela vá divergir.</p>
+<h3>Durações</h3><table><tbody><tr><td><code>rapida</code></td><td>150ms</td></tr><tr><td><code>media</code></td><td>200ms</td></tr><tr><td><code>suave</code></td><td>250ms</td></tr></tbody></table>
+<h3>Curvas</h3><table><tbody><tr><td><code>padrao</code></td><td>ease</td></tr><tr><td><code>assenta</code></td><td>cubic-bezier(.2,.7,.3,1)</td></tr></tbody></table>
+
+<h2>Larguras</h2>
+<h3>Cortes (breakpoints)</h3><table><tbody><tr><td><code>tiles</code></td><td>1280px</td></tr><tr><td><code>largo</code></td><td>1199px</td></tr><tr><td><code>auth</code></td><td>1100px</td></tr><tr><td><code>duasColunas</code></td><td>960px</td></tr><tr><td><code>movel</code></td><td>767px</td></tr></tbody></table>
+<h3>Colunas fixas</h3><table><tbody><tr><td><code>navegacao</code></td><td>240px</td></tr><tr><td><code>navegacaoRail</code></td><td>76px</td></tr><tr><td><code>trilhoLive</code></td><td>360px</td></tr><tr><td><code>trilhoSessoes</code></td><td>320px</td></tr><tr><td><code>listaPessoas</code></td><td>280px</td></tr></tbody></table>
+<h3>Teto de conteúdo por tipo de tela</h3><table><tbody><tr><td><code>painel</code></td><td>1720px</td></tr><tr><td><code>app</code></td><td>1600px</td></tr><tr><td><code>perfil</code></td><td>1400px</td></tr><tr><td><code>lista</code></td><td>1100px</td></tr><tr><td><code>documento</code></td><td>720px</td></tr></tbody></table>
+
+<h2>Marca</h2>
+<p>Tudo o que a marca é sai de <strong>um vetor só</strong>. Não existe segunda arte: os ícones
+do app, o favicon, a tela de abertura e o material de redes saem dos mesmos contornos, então
+nenhum deles pode envelhecer sozinho.</p>
+
+<h3>Duas formas</h3>
+<div class="marcas">
+  <div class="marca fundoEscuro"><svg width="512" height="512" viewBox="0 0 512 512"
+     xmlns="http://www.w3.org/2000/svg" role="img" aria-label="WaveAI">
+  <!-- WaveAI — marca completa (anel + onda + ponto).
+       Usada onde ha espaco: hero do site, ficha da loja, material.
+
+       FONTE DE VERDADE: os PNGs de icone e favicon sao gerados daqui, nao
+       desenhados a parte. Gradiente = accentPatient -> accentDoctor do tema
+       escuro (src/theme/tokens.ts): a marca atravessa os dois papeis do
+       produto sem escolher um lado. -->
+  <defs>
+    <linearGradient id="marca-ce" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#4FD1C5"/>
+      <stop offset="1" stop-color="#7AA2F7"/>
+    </linearGradient>
+  </defs>
+  <path d="M 236.28 26.1 C 243.13 25.96 267.47 25.82 276.56 26.1 C 285.65 26.38 283.83 26.52 290.82 27.78 C 297.81 29.03 310.82 31.69 318.51 33.65 C 326.2 35.61 329.0 36.31 336.97 39.52 C 344.94 42.74 357.11 47.91 366.34 52.95 C 375.57 57.98 385.91 64.97 392.35 69.73 C 398.78 74.48 402.84 77.98 404.93 81.48 C 407.03 84.97 405.63 88.61 404.93 90.71 C 404.23 92.8 402.14 93.5 400.74 94.06 C 399.34 94.62 401.72 97.42 396.54 94.06 C 391.37 90.71 377.1 78.96 369.69 73.92 C 362.28 68.89 358.23 66.93 352.07 63.86 C 345.92 60.78 341.86 58.54 332.77 55.46 C 323.68 52.39 307.74 47.63 297.53 45.4 C 287.32 43.16 282.43 42.46 271.52 42.04 C 260.61 41.62 244.95 41.48 232.09 42.88 C 219.22 44.28 204.54 47.77 194.33 50.43 C 184.12 53.09 177.41 56.16 170.84 58.82 C 164.26 61.48 163.28 61.34 154.89 66.37 C 146.5 71.41 128.74 83.01 120.49 89.03 C 112.24 95.04 110.84 97.0 105.39 102.45 C 99.93 107.91 93.36 114.76 87.77 121.75 C 82.17 128.74 76.86 136.01 71.83 144.41 C 66.79 152.8 61.48 163.14 57.56 172.09 C 53.65 181.04 50.99 188.46 48.33 198.1 C 45.68 207.75 43.02 221.46 41.62 229.99 C 40.22 238.52 39.94 240.06 39.94 249.29 C 39.94 258.52 40.78 276.14 41.62 285.37 C 42.46 294.6 43.3 297.81 44.98 304.67 C 46.65 311.52 49.31 320.61 51.69 326.48 C 54.07 332.35 56.58 336.55 59.24 339.91 C 61.9 343.26 65.39 345.22 67.63 346.62 C 69.87 348.02 70.29 348.02 72.67 348.3 C 75.04 348.58 78.54 349.14 81.9 348.3 C 85.25 347.46 88.33 347.04 92.8 343.26 C 97.28 339.49 103.57 333.19 108.75 325.64 C 113.92 318.09 117.97 302.57 123.85 297.95 C 129.72 293.34 144.54 291.94 143.99 297.95 C 143.43 303.97 125.81 326.2 120.49 334.03 C 115.18 341.86 115.32 341.3 112.1 344.94 C 108.88 348.58 105.81 352.63 101.19 355.85 C 96.58 359.06 89.59 362.84 84.41 364.24 C 79.24 365.64 73.92 364.66 70.15 364.24 C 66.37 363.82 64.55 362.98 61.76 361.72 C 58.96 360.46 55.88 358.64 53.37 356.69 C 50.85 354.73 49.45 354.17 46.65 349.97 C 43.86 345.78 39.8 340.33 36.59 331.52 C 33.37 322.71 29.45 308.16 27.36 297.11 C 25.26 286.07 24.42 275.44 24.0 265.23 C 23.58 255.02 23.86 245.79 24.84 235.86 C 25.82 225.93 27.5 215.73 29.87 205.66 C 32.25 195.59 35.19 185.66 39.1 175.45 C 43.02 165.24 48.89 152.94 53.37 144.41 C 57.84 135.87 60.78 131.54 65.95 124.27 C 71.13 117.0 78.68 107.35 84.41 100.77 C 90.15 94.2 93.22 90.98 100.35 84.83 C 107.49 78.68 117.14 70.43 127.2 63.86 C 137.27 57.28 151.96 49.73 160.77 45.4 C 169.58 41.06 171.53 40.5 180.07 37.84 C 188.6 35.19 202.72 31.27 211.95 29.45 C 221.18 27.64 231.39 27.5 235.44 26.94 C 239.5 26.38 229.43 26.24 236.28 26.1 Z" fill="url(#marca-ce)"/>
+  <path d="M 476.25 214.05 C 477.51 214.19 481.29 214.33 482.97 215.73 C 484.64 217.12 485.48 218.52 486.32 222.44 C 487.16 226.35 487.86 231.11 488.0 239.22 C 488.14 247.33 488.7 258.8 487.16 271.1 C 485.62 283.41 481.85 301.45 478.77 313.06 C 475.69 324.66 472.2 332.49 468.7 340.75 C 465.21 349.0 463.25 353.47 457.79 362.56 C 452.34 371.65 442.97 386.05 435.98 395.28 C 428.99 404.51 424.23 409.97 415.84 417.94 C 407.45 425.91 393.47 437.1 385.63 443.11 C 377.8 449.12 375.43 450.24 368.85 454.02 C 362.28 457.79 355.85 461.71 346.2 465.76 C 336.55 469.82 322.71 475.13 310.96 478.35 C 299.21 481.57 289.0 483.8 275.72 485.06 C 262.43 486.32 243.55 486.46 231.25 485.9 C 218.94 485.34 210.97 483.53 201.88 481.71 C 192.79 479.89 183.56 477.09 176.71 474.99 C 169.86 472.9 167.48 472.06 160.77 469.12 C 154.05 466.18 142.59 460.59 136.43 457.37 C 130.28 454.16 130.42 454.44 123.85 449.82 C 117.28 445.21 104.55 436.12 97.0 429.69 C 89.45 423.25 82.31 415.56 78.54 411.23 C 74.76 406.89 74.9 405.77 74.34 403.67 C 73.78 401.58 74.48 400.04 75.18 398.64 C 75.88 397.24 76.72 395.7 78.54 395.28 C 80.36 394.86 80.36 391.65 86.09 396.12 C 91.82 400.6 105.81 415.84 112.94 422.13 C 120.07 428.43 123.15 430.1 128.88 433.88 C 134.62 437.66 139.93 441.01 147.34 444.79 C 154.75 448.56 163.0 452.9 173.35 456.54 C 183.7 460.17 198.94 464.37 209.43 466.6 C 219.92 468.84 225.79 469.54 236.28 469.96 C 246.77 470.38 261.03 470.24 272.36 469.12 C 283.69 468.0 295.3 465.35 304.25 463.25 C 313.2 461.15 320.05 458.63 326.06 456.54 C 332.07 454.44 333.33 454.16 340.33 450.66 C 347.32 447.17 358.78 441.57 368.01 435.56 C 377.24 429.55 386.47 422.97 395.7 414.58 C 404.93 406.19 415.56 394.86 423.39 385.22 C 431.22 375.57 436.68 367.46 442.69 356.69 C 448.7 345.92 455.28 331.52 459.47 320.61 C 463.67 309.7 465.76 301.45 467.86 291.24 C 469.96 281.03 471.64 271.1 472.06 259.36 C 472.48 247.61 470.52 227.61 470.38 220.76 C 470.24 213.91 470.38 219.22 471.22 218.24 C 472.06 217.26 474.58 215.59 475.41 214.89 C 476.25 214.19 474.99 213.91 476.25 214.05 Z" fill="url(#marca-ce)"/>
+  <path d="M 227.05 167.06 C 230.27 166.92 240.62 166.64 245.51 167.06 C 250.41 167.48 252.08 168.04 256.42 169.58 C 260.75 171.12 267.19 173.91 271.52 176.29 C 275.86 178.67 278.24 180.34 282.43 183.84 C 286.63 187.34 292.78 193.21 296.69 197.27 C 300.61 201.32 298.65 198.1 305.92 208.17 C 313.2 218.24 332.63 247.47 340.33 257.68 C 348.02 267.89 348.58 266.63 352.07 269.42 C 355.57 272.22 357.81 273.48 361.3 274.46 C 364.8 275.44 370.11 275.44 373.05 275.3 C 375.99 275.16 376.54 274.74 378.92 273.62 C 381.3 272.5 383.4 272.08 387.31 268.59 C 391.23 265.09 396.4 260.47 402.42 252.64 C 408.43 244.81 416.82 226.77 423.39 221.6 C 429.97 216.42 440.31 217.68 441.85 221.6 C 443.39 225.51 435.7 236.0 432.62 245.09 C 429.55 254.18 427.45 263.83 423.39 276.14 C 419.34 288.44 412.48 308.44 408.29 318.93 C 404.09 329.42 401.44 333.47 398.22 339.07 C 395.0 344.66 392.91 348.02 388.99 352.49 C 385.08 356.97 378.22 362.98 374.73 365.92 C 371.23 368.85 370.67 368.85 368.01 370.11 C 365.36 371.37 362.98 372.77 358.78 373.47 C 354.59 374.17 346.9 374.45 342.84 374.31 C 338.79 374.17 337.95 373.75 334.45 372.63 C 330.96 371.51 325.64 369.55 321.87 367.59 C 318.09 365.64 316.41 364.94 311.8 360.88 C 307.18 356.83 302.01 353.19 294.18 343.26 C 286.35 333.33 273.06 312.5 264.81 301.31 C 256.56 290.12 250.83 282.71 244.67 276.14 C 238.52 269.56 233.49 265.37 227.89 261.87 C 222.3 258.38 216.14 256.28 211.11 255.16 C 206.08 254.04 201.04 254.88 197.69 255.16 C 194.33 255.44 194.19 255.58 190.97 256.84 C 187.76 258.1 183.7 259.08 178.39 262.71 C 173.07 266.35 164.68 272.92 159.09 278.65 C 153.49 284.39 150.56 294.04 144.82 297.11 C 139.09 300.19 124.13 305.78 124.69 297.11 C 125.25 288.44 142.31 257.54 148.18 245.09 C 154.05 232.65 155.59 229.85 159.93 222.44 C 164.26 215.03 169.16 207.05 174.19 200.62 C 179.23 194.19 185.66 187.9 190.13 183.84 C 194.61 179.79 197.55 178.39 201.04 176.29 C 204.54 174.19 207.61 172.65 211.11 171.25 C 214.61 169.86 219.5 168.46 222.02 167.9 C 224.54 167.34 225.37 168.04 226.21 167.9 C 227.05 167.76 223.84 167.2 227.05 167.06 Z" fill="url(#marca-ce)"/>
+  <circle cx="439.06" cy="159.04" r="23.66" fill="url(#marca-ce)"/>
+</svg>
+
+    <div class="cap"><code>completa</code> · para fundo escuro</div></div>
+  <div class="marca fundoClaro"><svg width="512" height="512" viewBox="0 0 512 512"
+     xmlns="http://www.w3.org/2000/svg" role="img" aria-label="WaveAI">
+  <!-- WaveAI — marca completa (anel + onda + ponto).
+       Usada onde ha espaco: hero do site, ficha da loja, material.
+
+       FONTE DE VERDADE: os PNGs de icone e favicon sao gerados daqui, nao
+       desenhados a parte. Gradiente = accentPatient -> accentDoctor do tema
+       escuro (src/theme/tokens.ts): a marca atravessa os dois papeis do
+       produto sem escolher um lado. -->
+  <defs>
+    <linearGradient id="marca-cc" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0F7A70"/>
+      <stop offset="1" stop-color="#2A5BC7"/>
+    </linearGradient>
+  </defs>
+  <path d="M 236.28 26.1 C 243.13 25.96 267.47 25.82 276.56 26.1 C 285.65 26.38 283.83 26.52 290.82 27.78 C 297.81 29.03 310.82 31.69 318.51 33.65 C 326.2 35.61 329.0 36.31 336.97 39.52 C 344.94 42.74 357.11 47.91 366.34 52.95 C 375.57 57.98 385.91 64.97 392.35 69.73 C 398.78 74.48 402.84 77.98 404.93 81.48 C 407.03 84.97 405.63 88.61 404.93 90.71 C 404.23 92.8 402.14 93.5 400.74 94.06 C 399.34 94.62 401.72 97.42 396.54 94.06 C 391.37 90.71 377.1 78.96 369.69 73.92 C 362.28 68.89 358.23 66.93 352.07 63.86 C 345.92 60.78 341.86 58.54 332.77 55.46 C 323.68 52.39 307.74 47.63 297.53 45.4 C 287.32 43.16 282.43 42.46 271.52 42.04 C 260.61 41.62 244.95 41.48 232.09 42.88 C 219.22 44.28 204.54 47.77 194.33 50.43 C 184.12 53.09 177.41 56.16 170.84 58.82 C 164.26 61.48 163.28 61.34 154.89 66.37 C 146.5 71.41 128.74 83.01 120.49 89.03 C 112.24 95.04 110.84 97.0 105.39 102.45 C 99.93 107.91 93.36 114.76 87.77 121.75 C 82.17 128.74 76.86 136.01 71.83 144.41 C 66.79 152.8 61.48 163.14 57.56 172.09 C 53.65 181.04 50.99 188.46 48.33 198.1 C 45.68 207.75 43.02 221.46 41.62 229.99 C 40.22 238.52 39.94 240.06 39.94 249.29 C 39.94 258.52 40.78 276.14 41.62 285.37 C 42.46 294.6 43.3 297.81 44.98 304.67 C 46.65 311.52 49.31 320.61 51.69 326.48 C 54.07 332.35 56.58 336.55 59.24 339.91 C 61.9 343.26 65.39 345.22 67.63 346.62 C 69.87 348.02 70.29 348.02 72.67 348.3 C 75.04 348.58 78.54 349.14 81.9 348.3 C 85.25 347.46 88.33 347.04 92.8 343.26 C 97.28 339.49 103.57 333.19 108.75 325.64 C 113.92 318.09 117.97 302.57 123.85 297.95 C 129.72 293.34 144.54 291.94 143.99 297.95 C 143.43 303.97 125.81 326.2 120.49 334.03 C 115.18 341.86 115.32 341.3 112.1 344.94 C 108.88 348.58 105.81 352.63 101.19 355.85 C 96.58 359.06 89.59 362.84 84.41 364.24 C 79.24 365.64 73.92 364.66 70.15 364.24 C 66.37 363.82 64.55 362.98 61.76 361.72 C 58.96 360.46 55.88 358.64 53.37 356.69 C 50.85 354.73 49.45 354.17 46.65 349.97 C 43.86 345.78 39.8 340.33 36.59 331.52 C 33.37 322.71 29.45 308.16 27.36 297.11 C 25.26 286.07 24.42 275.44 24.0 265.23 C 23.58 255.02 23.86 245.79 24.84 235.86 C 25.82 225.93 27.5 215.73 29.87 205.66 C 32.25 195.59 35.19 185.66 39.1 175.45 C 43.02 165.24 48.89 152.94 53.37 144.41 C 57.84 135.87 60.78 131.54 65.95 124.27 C 71.13 117.0 78.68 107.35 84.41 100.77 C 90.15 94.2 93.22 90.98 100.35 84.83 C 107.49 78.68 117.14 70.43 127.2 63.86 C 137.27 57.28 151.96 49.73 160.77 45.4 C 169.58 41.06 171.53 40.5 180.07 37.84 C 188.6 35.19 202.72 31.27 211.95 29.45 C 221.18 27.64 231.39 27.5 235.44 26.94 C 239.5 26.38 229.43 26.24 236.28 26.1 Z" fill="url(#marca-cc)"/>
+  <path d="M 476.25 214.05 C 477.51 214.19 481.29 214.33 482.97 215.73 C 484.64 217.12 485.48 218.52 486.32 222.44 C 487.16 226.35 487.86 231.11 488.0 239.22 C 488.14 247.33 488.7 258.8 487.16 271.1 C 485.62 283.41 481.85 301.45 478.77 313.06 C 475.69 324.66 472.2 332.49 468.7 340.75 C 465.21 349.0 463.25 353.47 457.79 362.56 C 452.34 371.65 442.97 386.05 435.98 395.28 C 428.99 404.51 424.23 409.97 415.84 417.94 C 407.45 425.91 393.47 437.1 385.63 443.11 C 377.8 449.12 375.43 450.24 368.85 454.02 C 362.28 457.79 355.85 461.71 346.2 465.76 C 336.55 469.82 322.71 475.13 310.96 478.35 C 299.21 481.57 289.0 483.8 275.72 485.06 C 262.43 486.32 243.55 486.46 231.25 485.9 C 218.94 485.34 210.97 483.53 201.88 481.71 C 192.79 479.89 183.56 477.09 176.71 474.99 C 169.86 472.9 167.48 472.06 160.77 469.12 C 154.05 466.18 142.59 460.59 136.43 457.37 C 130.28 454.16 130.42 454.44 123.85 449.82 C 117.28 445.21 104.55 436.12 97.0 429.69 C 89.45 423.25 82.31 415.56 78.54 411.23 C 74.76 406.89 74.9 405.77 74.34 403.67 C 73.78 401.58 74.48 400.04 75.18 398.64 C 75.88 397.24 76.72 395.7 78.54 395.28 C 80.36 394.86 80.36 391.65 86.09 396.12 C 91.82 400.6 105.81 415.84 112.94 422.13 C 120.07 428.43 123.15 430.1 128.88 433.88 C 134.62 437.66 139.93 441.01 147.34 444.79 C 154.75 448.56 163.0 452.9 173.35 456.54 C 183.7 460.17 198.94 464.37 209.43 466.6 C 219.92 468.84 225.79 469.54 236.28 469.96 C 246.77 470.38 261.03 470.24 272.36 469.12 C 283.69 468.0 295.3 465.35 304.25 463.25 C 313.2 461.15 320.05 458.63 326.06 456.54 C 332.07 454.44 333.33 454.16 340.33 450.66 C 347.32 447.17 358.78 441.57 368.01 435.56 C 377.24 429.55 386.47 422.97 395.7 414.58 C 404.93 406.19 415.56 394.86 423.39 385.22 C 431.22 375.57 436.68 367.46 442.69 356.69 C 448.7 345.92 455.28 331.52 459.47 320.61 C 463.67 309.7 465.76 301.45 467.86 291.24 C 469.96 281.03 471.64 271.1 472.06 259.36 C 472.48 247.61 470.52 227.61 470.38 220.76 C 470.24 213.91 470.38 219.22 471.22 218.24 C 472.06 217.26 474.58 215.59 475.41 214.89 C 476.25 214.19 474.99 213.91 476.25 214.05 Z" fill="url(#marca-cc)"/>
+  <path d="M 227.05 167.06 C 230.27 166.92 240.62 166.64 245.51 167.06 C 250.41 167.48 252.08 168.04 256.42 169.58 C 260.75 171.12 267.19 173.91 271.52 176.29 C 275.86 178.67 278.24 180.34 282.43 183.84 C 286.63 187.34 292.78 193.21 296.69 197.27 C 300.61 201.32 298.65 198.1 305.92 208.17 C 313.2 218.24 332.63 247.47 340.33 257.68 C 348.02 267.89 348.58 266.63 352.07 269.42 C 355.57 272.22 357.81 273.48 361.3 274.46 C 364.8 275.44 370.11 275.44 373.05 275.3 C 375.99 275.16 376.54 274.74 378.92 273.62 C 381.3 272.5 383.4 272.08 387.31 268.59 C 391.23 265.09 396.4 260.47 402.42 252.64 C 408.43 244.81 416.82 226.77 423.39 221.6 C 429.97 216.42 440.31 217.68 441.85 221.6 C 443.39 225.51 435.7 236.0 432.62 245.09 C 429.55 254.18 427.45 263.83 423.39 276.14 C 419.34 288.44 412.48 308.44 408.29 318.93 C 404.09 329.42 401.44 333.47 398.22 339.07 C 395.0 344.66 392.91 348.02 388.99 352.49 C 385.08 356.97 378.22 362.98 374.73 365.92 C 371.23 368.85 370.67 368.85 368.01 370.11 C 365.36 371.37 362.98 372.77 358.78 373.47 C 354.59 374.17 346.9 374.45 342.84 374.31 C 338.79 374.17 337.95 373.75 334.45 372.63 C 330.96 371.51 325.64 369.55 321.87 367.59 C 318.09 365.64 316.41 364.94 311.8 360.88 C 307.18 356.83 302.01 353.19 294.18 343.26 C 286.35 333.33 273.06 312.5 264.81 301.31 C 256.56 290.12 250.83 282.71 244.67 276.14 C 238.52 269.56 233.49 265.37 227.89 261.87 C 222.3 258.38 216.14 256.28 211.11 255.16 C 206.08 254.04 201.04 254.88 197.69 255.16 C 194.33 255.44 194.19 255.58 190.97 256.84 C 187.76 258.1 183.7 259.08 178.39 262.71 C 173.07 266.35 164.68 272.92 159.09 278.65 C 153.49 284.39 150.56 294.04 144.82 297.11 C 139.09 300.19 124.13 305.78 124.69 297.11 C 125.25 288.44 142.31 257.54 148.18 245.09 C 154.05 232.65 155.59 229.85 159.93 222.44 C 164.26 215.03 169.16 207.05 174.19 200.62 C 179.23 194.19 185.66 187.9 190.13 183.84 C 194.61 179.79 197.55 178.39 201.04 176.29 C 204.54 174.19 207.61 172.65 211.11 171.25 C 214.61 169.86 219.5 168.46 222.02 167.9 C 224.54 167.34 225.37 168.04 226.21 167.9 C 227.05 167.76 223.84 167.2 227.05 167.06 Z" fill="url(#marca-cc)"/>
+  <circle cx="439.06" cy="159.04" r="23.66" fill="url(#marca-cc)"/>
+</svg>
+
+    <div class="cap"><code>completa</code> · para fundo claro</div></div>
+  <div class="marca fundoEscuro"><svg width="512" height="512" viewBox="0 0 512 512"
+     xmlns="http://www.w3.org/2000/svg" role="img" aria-label="WaveAI">
+  <!-- WaveAI — simbolo reduzido (onda + ponto).
+       Usada na interface: header, rail, favicon, icone do app.
+       O anel sai de
+       proposito — seu traco tem 1,7% da largura da arte e some abaixo de ~48px.
+
+       FONTE DE VERDADE: os PNGs de icone e favicon sao gerados daqui, nao
+       desenhados a parte. Gradiente = accentPatient -> accentDoctor do tema
+       escuro (src/theme/tokens.ts): a marca atravessa os dois papeis do
+       produto sem escolher um lado. -->
+  <defs>
+    <linearGradient id="marca-se" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#4FD1C5"/>
+      <stop offset="1" stop-color="#7AA2F7"/>
+    </linearGradient>
+  </defs>
+  <path d="M 164.82 134.81 C 169.24 134.61 183.48 134.23 190.21 134.81 C 196.94 135.38 199.25 136.15 205.21 138.27 C 211.18 140.38 220.03 144.23 225.99 147.5 C 231.95 150.77 235.22 153.08 241.0 157.89 C 246.77 162.7 255.23 170.78 260.62 176.36 C 266.0 181.94 263.31 177.51 273.31 191.36 C 283.32 205.21 310.06 245.42 320.64 259.46 C 331.22 273.51 331.99 271.77 336.8 275.62 C 341.61 279.47 344.68 281.2 349.49 282.55 C 354.3 283.89 361.61 283.89 365.65 283.7 C 369.69 283.51 370.46 282.93 373.73 281.39 C 377.0 279.85 379.89 279.28 385.27 274.47 C 390.66 269.66 397.78 263.31 406.05 252.54 C 414.32 241.76 425.86 216.95 434.91 209.83 C 443.95 202.71 458.18 204.44 460.3 209.83 C 462.41 215.22 451.83 229.65 447.6 242.15 C 443.37 254.65 440.48 267.93 434.91 284.86 C 429.33 301.78 419.9 329.29 414.13 343.72 C 408.36 358.15 404.7 363.73 400.28 371.42 C 395.85 379.12 392.97 383.73 387.58 389.89 C 382.2 396.05 372.77 404.32 367.96 408.36 C 363.15 412.4 362.38 412.4 358.73 414.13 C 355.07 415.86 351.8 417.78 346.03 418.75 C 340.26 419.71 329.68 420.09 324.1 419.9 C 318.52 419.71 317.37 419.13 312.56 417.59 C 307.75 416.05 300.44 413.36 295.24 410.67 C 290.05 407.97 287.74 407.01 281.39 401.43 C 275.04 395.85 267.93 390.85 257.15 377.19 C 246.38 363.54 228.11 334.87 216.76 319.48 C 205.41 304.09 197.52 293.9 189.05 284.86 C 180.59 275.81 173.67 270.04 165.97 265.23 C 158.28 260.42 149.81 257.54 142.89 256.0 C 135.96 254.46 129.03 255.62 124.42 256.0 C 119.8 256.38 119.61 256.58 115.18 258.31 C 110.76 260.04 105.18 261.39 97.87 266.39 C 90.56 271.39 79.02 280.43 71.32 288.32 C 63.63 296.21 59.59 309.48 51.7 313.71 C 43.81 317.94 23.23 325.64 24.0 313.71 C 24.77 301.78 48.24 259.27 56.32 242.15 C 64.4 225.03 66.51 221.18 72.48 210.99 C 78.44 200.79 85.17 189.82 92.1 180.98 C 99.02 172.13 107.87 163.47 114.03 157.89 C 120.19 152.31 124.23 150.39 129.03 147.5 C 133.84 144.62 138.08 142.5 142.89 140.58 C 147.69 138.65 154.43 136.73 157.89 135.96 C 161.35 135.19 162.51 136.15 163.66 135.96 C 164.82 135.77 160.39 135.0 164.82 134.81 Z" fill="url(#marca-se)"/>
+  <circle cx="456.46" cy="123.77" r="32.55" fill="url(#marca-se)"/>
+</svg>
+
+    <div class="cap"><code>símbolo</code> · para fundo escuro</div></div>
+  <div class="marca fundoClaro"><svg width="512" height="512" viewBox="0 0 512 512"
+     xmlns="http://www.w3.org/2000/svg" role="img" aria-label="WaveAI">
+  <!-- WaveAI — simbolo reduzido (onda + ponto).
+       Usada na interface: header, rail, favicon, icone do app.
+       O anel sai de
+       proposito — seu traco tem 1,7% da largura da arte e some abaixo de ~48px.
+
+       FONTE DE VERDADE: os PNGs de icone e favicon sao gerados daqui, nao
+       desenhados a parte. Gradiente = accentPatient -> accentDoctor do tema
+       escuro (src/theme/tokens.ts): a marca atravessa os dois papeis do
+       produto sem escolher um lado. -->
+  <defs>
+    <linearGradient id="marca-sc" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0F7A70"/>
+      <stop offset="1" stop-color="#2A5BC7"/>
+    </linearGradient>
+  </defs>
+  <path d="M 164.82 134.81 C 169.24 134.61 183.48 134.23 190.21 134.81 C 196.94 135.38 199.25 136.15 205.21 138.27 C 211.18 140.38 220.03 144.23 225.99 147.5 C 231.95 150.77 235.22 153.08 241.0 157.89 C 246.77 162.7 255.23 170.78 260.62 176.36 C 266.0 181.94 263.31 177.51 273.31 191.36 C 283.32 205.21 310.06 245.42 320.64 259.46 C 331.22 273.51 331.99 271.77 336.8 275.62 C 341.61 279.47 344.68 281.2 349.49 282.55 C 354.3 283.89 361.61 283.89 365.65 283.7 C 369.69 283.51 370.46 282.93 373.73 281.39 C 377.0 279.85 379.89 279.28 385.27 274.47 C 390.66 269.66 397.78 263.31 406.05 252.54 C 414.32 241.76 425.86 216.95 434.91 209.83 C 443.95 202.71 458.18 204.44 460.3 209.83 C 462.41 215.22 451.83 229.65 447.6 242.15 C 443.37 254.65 440.48 267.93 434.91 284.86 C 429.33 301.78 419.9 329.29 414.13 343.72 C 408.36 358.15 404.7 363.73 400.28 371.42 C 395.85 379.12 392.97 383.73 387.58 389.89 C 382.2 396.05 372.77 404.32 367.96 408.36 C 363.15 412.4 362.38 412.4 358.73 414.13 C 355.07 415.86 351.8 417.78 346.03 418.75 C 340.26 419.71 329.68 420.09 324.1 419.9 C 318.52 419.71 317.37 419.13 312.56 417.59 C 307.75 416.05 300.44 413.36 295.24 410.67 C 290.05 407.97 287.74 407.01 281.39 401.43 C 275.04 395.85 267.93 390.85 257.15 377.19 C 246.38 363.54 228.11 334.87 216.76 319.48 C 205.41 304.09 197.52 293.9 189.05 284.86 C 180.59 275.81 173.67 270.04 165.97 265.23 C 158.28 260.42 149.81 257.54 142.89 256.0 C 135.96 254.46 129.03 255.62 124.42 256.0 C 119.8 256.38 119.61 256.58 115.18 258.31 C 110.76 260.04 105.18 261.39 97.87 266.39 C 90.56 271.39 79.02 280.43 71.32 288.32 C 63.63 296.21 59.59 309.48 51.7 313.71 C 43.81 317.94 23.23 325.64 24.0 313.71 C 24.77 301.78 48.24 259.27 56.32 242.15 C 64.4 225.03 66.51 221.18 72.48 210.99 C 78.44 200.79 85.17 189.82 92.1 180.98 C 99.02 172.13 107.87 163.47 114.03 157.89 C 120.19 152.31 124.23 150.39 129.03 147.5 C 133.84 144.62 138.08 142.5 142.89 140.58 C 147.69 138.65 154.43 136.73 157.89 135.96 C 161.35 135.19 162.51 136.15 163.66 135.96 C 164.82 135.77 160.39 135.0 164.82 134.81 Z" fill="url(#marca-sc)"/>
+  <circle cx="456.46" cy="123.77" r="32.55" fill="url(#marca-sc)"/>
+</svg>
+
+    <div class="cap"><code>símbolo</code> · para fundo claro</div></div>
+</div>
+<p class="nota"><strong>Completa</strong> (anel + onda + ponto) onde há espaço: capa, banner,
+slide, cabeçalho. Abaixo de ~48px o traço do anel vira um fio — ele tem 3,5% do lado da arte —,
+então não use a completa em coisa pequena. <strong>Símbolo</strong> (onda + ponto) para tamanhos
+pequenos e para quando a marca aparece junto de outros elementos. Dentro do produto:
+autenticação usa o símbolo; o app já logado usa a completa.</p>
+
+<h3>Os dois pares de cor</h3>
+<p class="nota">O nome do arquivo diz <strong>onde a arte pousa</strong>, não a cor dela.
+<code>-p-fundo-escuro</code> usa turquesa → azul (<code>#4FD1C5</code> → <code>#7AA2F7</code>);
+<code>-p-fundo-claro</code> usa verde-petróleo → azul (<code>#0F7A70</code> → <code>#2A5BC7</code>).
+Usar o par trocado é o que deixa a marca apagada: o par claro sobre fundo claro rende 1,8:1 e o
+escuro sobre fundo escuro rende 3,05:1 — contra os 10,04:1 do par certo. Não é gosto, é enxergar.</p>
+
+<h3>O que não fazer com a marca</h3>
+<ul>
+  <li><strong>Não redesenhe</strong> em outra ferramenta. Se divergir do vetor, os ícones do app e
+      o material passam a ser coisas diferentes.</li>
+  <li><strong>Não estique.</strong> A proporção é quadrada e o <code>viewBox</code> já traz o respiro.</li>
+  <li><strong>Não recolora à mão.</strong> Os dois pares existem por contraste medido; um terceiro
+      par inventado não passa por verificação nenhuma.</li>
+  <li><strong>Não use roxo/violeta perto da marca</strong> em gráficos: <code>#9085E9</code> /
+      <code>#6D5AC4</code> é a cor com que os gráficos significam a banda gama.</li>
+</ul>
+<p class="nota">Arquivos prontos para redes, apresentação e material: <code>Design/logos_icones/kit/</code>
+(PNG em 512/1024/2048 e SVG). Prefira o SVG sempre que a ferramenta aceitar. Os PNG de marca têm
+fundo transparente; só os <code>avatar-*</code> são opacos — um PNG transparente vira marca
+invisível quando a plataforma põe fundo branco por baixo.</p>
+
+<h2>Regras que restringem o desenho</h2>
+<p>Não são preferências. Vêm de decisões registradas, e uma tela que as viole não passa.</p>
+<ul>
+  <li><strong>Nada de claim clínica.</strong> O produto é exploratório e de bem-estar; não faz
+      diagnóstico e não substitui avaliação profissional. Termos aceitos: bem-estar, tendências,
+      estados mentais, exploratório.</li>
+  <li><strong>A tela nunca afirma o que não é verdade.</strong> Sem "enviado" quando não se sabe
+      se chegou, sem "só você vê" com o compartilhamento ligado, sem prazo que ninguém cumpre.
+      "Não foi medido direito" não é a mesma frase que "foi medido e não deu".</li>
+  <li><strong>Sem cor de bom/ruim onde não há valência.</strong> Bandas do espectro não têm juízo;
+      contato de sensor tem (é qualidade de medição, não de pessoa).</li>
+  <li><strong>eSense sempre rotulado</strong> como proprietário e não validado — é complemento
+      exploratório, nunca fundamento.</li>
+  <li><strong>Nenhuma medida é calculada na tela.</strong> Números vêm do servidor; a interface
+      exibe e rotula.</li>
+</ul>
+
+<p class="rodape">Gerado por <code>apps/wave-app/scripts/gerar-guia-de-estilo.mjs</code> a partir de
+<code>src/theme/tokens.ts</code>, <code>src/theme/motion.ts</code>, <code>src/theme/breakpoints.ts</code>
+e <code>Design/logos_icones/kit/</code>. Para atualizar: <code>npm run gerar:guia</code> em
+<code>apps/wave-app</code>.</p>
+
+</div></body>
+</html>
