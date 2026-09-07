@@ -13,8 +13,8 @@ jobs:
       run:
         working-directory: packages/wave-eeg
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.11"
       - name: Install
@@ -51,8 +51,8 @@ jobs:
       # Chave Fernet descartável só do CI (ADR-0026).
       WAVEAI_API_RESULT_ENCRYPTION_KEY: sRzpGGMSAff35dzYCgpeXTyI2rMfVLkVtN_nu5bhwTE=
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.11"
       - name: Install
@@ -71,7 +71,7 @@ jobs:
       WAVEAI_API_JWT_SECRET: ci-secret-nao-usar-fora-do-ci-0123456789abcdef
       WAVEAI_API_RESULT_ENCRYPTION_KEY: sRzpGGMSAff35dzYCgpeXTyI2rMfVLkVtN_nu5bhwTE=
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Subir o stack
         run: docker compose up -d --build --wait
       - name: Health checks
@@ -95,8 +95,8 @@ jobs:
       run:
         working-directory: apps/wave-app
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: "22"
       - name: Install
@@ -120,8 +120,8 @@ jobs:
       run:
         working-directory: services/analysis
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.11"
       - name: Install wave-eeg (dependência local do monorepo)
@@ -139,8 +139,8 @@ jobs:
       run:
         working-directory: packages/wave-corpus
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.11"
       - name: Install
@@ -155,8 +155,8 @@ jobs:
     # o CI passaria a reprovar código que ninguém tocou.
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.11"
       - name: Install
@@ -171,6 +171,6 @@ jobs:
     # ficam fora do escopo do guard de propósito.
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Termos proibidos (ADR-0032)
         run: bash infra/scripts/check_forbidden_terms.sh
