@@ -287,6 +287,26 @@ export function formatDuration(seconds: number | null): string | null {
   return s === 0 ? `${min} min` : `${min} min ${s} s`;
 }
 
+/**
+ * Rótulo de duração de uma sessão, **declarando o buraco quando existe**.
+ *
+ * - sem buraco: `"2 min 31 s"` — exatamente como sempre foi;
+ * - com buraco: `"1 min 47 s de sinal (1 min 40 s sem sinal)"`;
+ * - sem duração registrada: `null`.
+ *
+ * Existe para os lugares onde a duração é **texto corrido** numa linha de
+ * metadados (o cartão "Última sessão" do painel e o do `SessionsDashboard`),
+ * e não uma coluna com espaço para pílula como na linha do tempo. Os três
+ * lugares divergiam na apresentação; o que **não** pode divergir é o critério,
+ * e ele mora num lugar só (`signalGapSeconds`).
+ */
+export function formatSessionDurationLabel(result: SessionResult): string | null {
+  const duracao = formatDuration(sessionDurationSeconds(result.metrics));
+  if (duracao === null) return null;
+  const buraco = formatDuration(signalGapSeconds(result));
+  return buraco === null ? duracao : `${duracao} de sinal (${buraco} sem sinal)`;
+}
+
 /** Número com vírgula decimal (pt-BR), para não misturar "29.6" e "26,9". */
 export function formatNumber(value: number, casas = 1): string {
   return value.toFixed(casas).replace(".", ",");

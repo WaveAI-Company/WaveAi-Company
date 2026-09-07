@@ -3,9 +3,8 @@ import { StyleSheet, Text, View } from "react-native";
 
 import {
   formatDate,
-  formatDuration,
   formatPercent,
-  sessionDurationSeconds,
+  formatSessionDurationLabel,
   type SessionResult,
 } from "../api/results";
 import { useRoleAccent, useTheme, type Theme } from "../theme";
@@ -129,7 +128,7 @@ export function SessionsDashboard({
           grow
           eyebrow={[
             formatDate(ultima.created_at),
-            formatDuration(sessionDurationSeconds(ultima.metrics)),
+            formatSessionDurationLabel(ultima),
           ]
             .filter(Boolean)
             .join(" · ")}
