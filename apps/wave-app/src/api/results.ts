@@ -72,6 +72,19 @@ export type SessionResult = {
    * que a UI trata igual a "não há" — o selo simplesmente não aparece.
    */
   has_annotation?: boolean;
+  /**
+   * Metadados da captação que gerou este Result (emenda à ADR-0055). São o
+   * **relógio** da sessão — quanto tempo a pessoa passou captando —, contra o
+   * qual a duração de sinal (`n_samples` ÷ `fs`) revela o buraco que uma
+   * reconexão costura em silêncio.
+   *
+   * Opcionais pelo mesmo motivo de `has_annotation`, e com a mesma leitura:
+   * ausentes significam "não sei", nunca zero. `session_ended_at` é nulo
+   * enquanto a sessão não fechou.
+   */
+  session_status?: "active" | "completed" | "aborted" | null;
+  session_started_at?: string | null;
+  session_ended_at?: string | null;
 };
 
 type ResultsPayload = {
@@ -223,6 +236,47 @@ export function sessionDurationSeconds(metrics: ResultMetrics): number | null {
   return n / fs;
 }
 
+/**
+ * Piso, em segundos, para um buraco de sinal ser dito na tela.
+ *
+ * **É o teto de reconexão da ADR-0055**, e não uma calibragem inventada:
+ * abaixo de 10 s não cabe sequer uma reconexão completa; acima, houve pelo
+ * menos uma.
+ *
+ * **Por que segundos e não porcentagem** (emenda à ADR-0055): há um overhead
+ * estrutural que não é buraco — `started_at` é gravado no `start` do
+ * WebSocket, antes de existir a primeira amostra, e o `stop` chega depois da
+ * última. Medido em ~3,5 s na sessão real de 167,2 s (completude 97,9%). Esse
+ * overhead é aproximadamente **fixo**, não proporcional: um limiar percentual
+ * acusaria falsamente sessões curtas — os mesmos 3,5 s em 30 s de sessão dão
+ * 88% de completude sem queda nenhuma. Seria trocar uma tela que esconde por
+ * uma tela que inventa.
+ */
+export const BURACO_MINIMO_SEGUNDOS = 10;
+
+/**
+ * Quanto tempo de sinal faltou em relação ao relógio da sessão, em segundos.
+ *
+ * `null` quando não dá para saber (relógio ausente, sessão ainda aberta, sem
+ * `n_samples`/`fs`) — "não sabemos" nunca vira zero (ADR-0027). Também `null`
+ * quando o buraco fica abaixo do piso, que é o caso da esmagadora maioria das
+ * sessões: nada a declarar.
+ *
+ * Não é DSP e não fura o `AnalysisEngine`: é subtração de dois metadados de
+ * captação, o mesmo tipo de aritmética que a duração já era.
+ */
+export function signalGapSeconds(result: SessionResult): number | null {
+  const { session_started_at: inicio, session_ended_at: fim } = result;
+  if (!inicio || !fim) return null;
+
+  const relogio = (new Date(fim).getTime() - new Date(inicio).getTime()) / 1000;
+  const sinal = sessionDurationSeconds(result.metrics);
+  if (sinal === null || !Number.isFinite(relogio)) return null;
+
+  const buraco = relogio - sinal;
+  return buraco >= BURACO_MINIMO_SEGUNDOS ? buraco : null;
+}
+
 /** "8 min 20 s" — formato curto para subtítulo de sessão. */
 export function formatDuration(seconds: number | null): string | null {
   if (seconds === null || !Number.isFinite(seconds)) return null;
@@ -231,6 +285,26 @@ export function formatDuration(seconds: number | null): string | null {
   const s = total % 60;
   if (min === 0) return `${s} s`;
   return s === 0 ? `${min} min` : `${min} min ${s} s`;
+}
+
+/**
+ * Rótulo de duração de uma sessão, **declarando o buraco quando existe**.
+ *
+ * - sem buraco: `"2 min 31 s"` — exatamente como sempre foi;
+ * - com buraco: `"1 min 47 s de sinal (1 min 40 s sem sinal)"`;
+ * - sem duração registrada: `null`.
+ *
+ * Existe para os lugares onde a duração é **texto corrido** numa linha de
+ * metadados (o cartão "Última sessão" do painel e o do `SessionsDashboard`),
+ * e não uma coluna com espaço para pílula como na linha do tempo. Os três
+ * lugares divergiam na apresentação; o que **não** pode divergir é o critério,
+ * e ele mora num lugar só (`signalGapSeconds`).
+ */
+export function formatSessionDurationLabel(result: SessionResult): string | null {
+  const duracao = formatDuration(sessionDurationSeconds(result.metrics));
+  if (duracao === null) return null;
+  const buraco = formatDuration(signalGapSeconds(result));
+  return buraco === null ? duracao : `${duracao} de sinal (${buraco} sem sinal)`;
 }
 
 /** Número com vírgula decimal (pt-BR), para não misturar "29.6" e "26,9". */

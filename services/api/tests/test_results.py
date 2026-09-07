@@ -1266,3 +1266,190 @@ def test_excluir_conta_leva_a_propria_trilha_junto(db_session: Session):
         ).all()
         == []
     )
+
+
+# -- metadados de captação junto do Result (emenda à ADR-0055) -----------
+
+
+def _sessao_com_relogio(
+    db_session: Session,
+    patient: User,
+    *,
+    duracao_segundos: float,
+    status: SessionStatus = SessionStatus.COMPLETED,
+) -> CaptureSession:
+    """Sessão sintética com `started_at`/`ended_at` explícitos.
+
+    O relógio é o que a emenda à ADR-0055 compara com a duração de sinal; sem
+    controlá-lo aqui não dá para encenar um buraco.
+    """
+    from datetime import UTC, datetime, timedelta
+
+    fim = datetime.now(UTC)
+    sessao = CaptureSession(
+        patient_user_id=patient.id,
+        device="simulador",
+        sample_rate=512,
+        status=status,
+        started_at=fim - timedelta(seconds=duracao_segundos),
+        ended_at=None if status is SessionStatus.ACTIVE else fim,
+    )
+    db_session.add(sessao)
+    db_session.flush()
+    return sessao
+
+
+def test_listar_traz_relogio_e_desfecho_da_sessao(db_session: Session):
+    """Sem os três campos, o buraco de sinal é incalculável fora do banco."""
+    service = _service(db_session)
+    paciente = _paciente(db_session, consentiu=True)
+    sessao = _sessao_com_relogio(db_session, paciente, duracao_segundos=200.0)
+    service.persistir(
+        patient=paciente, session_id=sessao.id, metrics=METRICS_FALSAS
+    )
+
+    itens, _ = service.listar(titular=paciente, ator=paciente)
+
+    assert itens[0]["session_status"] == "completed"
+    assert itens[0]["session_started_at"] == sessao.started_at.isoformat()
+    assert itens[0]["session_ended_at"] == sessao.ended_at.isoformat()
+
+
+def test_listar_marca_a_sessao_que_terminou_por_queda(db_session: Session):
+    """`aborted` precisa chegar ao cliente: só o WS o conhecia, e quem perdeu
+    a conexão é justamente quem não recebe o frame `closed`."""
+    service = _service(db_session)
+    paciente = _paciente(db_session, consentiu=True)
+    sessao = _sessao_com_relogio(
+        db_session, paciente, duracao_segundos=90.0, status=SessionStatus.ABORTED
+    )
+    service.persistir(
+        patient=paciente, session_id=sessao.id, metrics=METRICS_FALSAS
+    )
+
+    itens, _ = service.listar(titular=paciente, ator=paciente)
+
+    assert itens[0]["session_status"] == "aborted"
+
+
+def test_sessao_ainda_ativa_sai_com_fim_nulo_e_nao_zerado(db_session: Session):
+    """"Não terminou" não pode virar "terminou às 00:00" (ADR-0027)."""
+    service = _service(db_session)
+    paciente = _paciente(db_session, consentiu=True)
+    sessao = _sessao_com_relogio(
+        db_session, paciente, duracao_segundos=30.0, status=SessionStatus.ACTIVE
+    )
+    service.persistir(
+        patient=paciente, session_id=sessao.id, metrics=METRICS_FALSAS
+    )
+
+    itens, _ = service.listar(titular=paciente, ator=paciente)
+
+    assert itens[0]["session_status"] == "active"
+    assert itens[0]["session_ended_at"] is None
+    assert itens[0]["session_started_at"] is not None
+
+
+def test_exportacao_leva_o_relogio_da_sessao(db_session: Session):
+    """Portabilidade é o direito a *tudo* — inclusive ao que denuncia o buraco."""
+    service = _service(db_session)
+    paciente = _paciente(db_session, consentiu=True)
+    sessao = _sessao_com_relogio(db_session, paciente, duracao_segundos=120.0)
+    service.persistir(
+        patient=paciente, session_id=sessao.id, metrics=METRICS_FALSAS
+    )
+
+    pacote = service.exportar(titular=paciente)
+
+    assert pacote["results"][0]["session_ended_at"] == sessao.ended_at.isoformat()
+
+
+def test_a_rota_do_titular_expoe_os_metadados_de_captacao(
+    client: TestClient, db_session: Session
+):
+    """O contrato visto de fora — é daqui que a tela lê."""
+    from app.models import normalize_email
+
+    titular = Paciente(client, consentiu=True)
+    user = db_session.scalars(
+        select(User).where(User.email == normalize_email(titular.email))
+    ).one()
+    sessao = _sessao_com_relogio(db_session, user, duracao_segundos=200.0)
+    _service(db_session).persistir(
+        patient=user, session_id=sessao.id, metrics=METRICS_FALSAS
+    )
+    db_session.flush()
+
+    resposta = titular.get("/me/results")
+
+    assert resposta.status_code == 200
+    item = resposta.json()["results"][0]
+    assert item["session_status"] == "completed"
+    assert item["session_started_at"] and item["session_ended_at"]
+
+
+def test_ler_a_sessao_sem_pedi_la_no_select_levanta_em_vez_de_consultar(
+    db_session: Session,
+):
+    """Guarda contra N+1 (`lazy="raise"`).
+
+    O laço de serialização decifra blob; uma consulta extra por linha passaria
+    despercebida no meio desse custo. Melhor explodir na hora do que degradar
+    em silêncio quando o histórico crescer.
+    """
+    from app.repositories.result import ResultRepository
+    from sqlalchemy.exc import InvalidRequestError
+
+    service = _service(db_session)
+    paciente = _paciente(db_session, consentiu=True)
+    sessao = _sessao_com_relogio(db_session, paciente, duracao_segundos=60.0)
+    service.persistir(
+        patient=paciente, session_id=sessao.id, metrics=METRICS_FALSAS
+    )
+    db_session.expunge_all()
+
+    sem_sessao = ResultRepository(db_session).listar_do_paciente(paciente.id)
+    with pytest.raises(InvalidRequestError):
+        _ = sem_sessao[0].session
+
+    db_session.expunge_all()
+    com_sessao = ResultRepository(db_session).listar_do_paciente(
+        paciente.id, com_sessao=True
+    )
+    assert com_sessao[0].session.id == sessao.id, "controle: com o join, carrega"
+
+
+def test_metadados_da_sessao_nao_geram_evento_de_auditoria_novo(db_session: Session):
+    """Metadado de captação viaja dentro de uma leitura que já foi contada.
+
+    NÃO discriminante: passava antes desta fatia também. Está aqui como
+    regressão da fronteira da ADR-0037 — se algum dia alguém auditar por
+    campo, este teste cai.
+    """
+    service = _service(db_session)
+    paciente = _paciente(db_session, consentiu=True)
+    for _ in range(3):
+        sessao = _sessao_com_relogio(db_session, paciente, duracao_segundos=60.0)
+        service.persistir(
+            patient=paciente, session_id=sessao.id, metrics=METRICS_FALSAS
+        )
+    antes = len(
+        db_session.scalars(
+            select(ResultAccessEvent).where(
+                ResultAccessEvent.patient_user_id == paciente.id,
+                ResultAccessEvent.action == ResultAccessAction.READ,
+            )
+        ).all()
+    )
+
+    service.listar(titular=paciente, ator=paciente)
+    db_session.flush()
+
+    eventos = db_session.scalars(
+        select(ResultAccessEvent).where(
+            ResultAccessEvent.patient_user_id == paciente.id,
+            ResultAccessEvent.action == ResultAccessAction.READ,
+        )
+    ).all()
+    assert len(eventos) == antes + 1, "uma leitura, um evento — não um por campo"
+    assert eventos[-1].count == 3
