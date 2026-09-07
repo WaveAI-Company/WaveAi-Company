@@ -1173,6 +1173,43 @@ Reusa o estado que a emenda à ADR-0053 criou. Se houve buraco dentro de uma fas
 **Consequências:** o app ganha detecção de desconexão no Android (paridade com o iOS) e um estado de "reconectando"; o gateway passa a gerar `Result` no `abortar()`, com o mínimo de uma janela. **Não** cria dado novo, tabela nem migração. A reentrância é a parte perigosa — a mesma área da ADR-0052/PR #219 —, e a reconexão precisa cancelar-se quando a pessoa encerra no meio. Relaciona ADR-0025, ADR-0026 (o gate que não muda), ADR-0027 (a tela e a notificação que hoje mentem), ADR-0040 (transporte), ADR-0052 (serviço em primeiro plano; e o limite do processo morto) e a emenda à ADR-0053 (o estado de roteiro incompleto que esta decisão reusa).
 
 
+### Emenda à ADR-0055 (2026-09-07) — o buraco passa a **aparecer na tela**, derivado do que já existe; e o limiar é em **segundos**, não em porcentagem
+**Status:** Proposta (2026-09-07) — vira Aceita no merge. Fecha o item **(a)** de "o que se abre mão" da ADR-0055. As Decisões 1, 2 e 3 seguem valendo sem alteração.
+
+**Contexto:** a ADR-0055 registrou como dívida escrita que "sessões com reconexão têm descontinuidade que o `Result` não declara", e adiou marcá-la porque "registrar um `gap` no protocolo seria dado novo e mais escopo". A varredura desta emenda mostrou que **não é preciso dado novo nenhum** — e que o problema em produção é pior do que "nada na tela mostra".
+
+**[FATO — verificado em 2026-09-07]**
+1. **A palavra `completude` não existe no código.** Varrido o repositório inteiro: só aparece em `.venv` e `node_modules`. Nada calcula, nada expõe, nada exibe. A frase da ADR-0055 ("a completude a denuncia para quem for procurar") descrevia uma conta que ninguém jamais fez.
+2. **Os dois lados da conta já estão gravados.** `capture_sessions` tem `started_at`, `ended_at` (escrito por `CaptureSessionRepository.encerrar`), `sample_rate`, `sample_count` e `status`; as métricas cifradas já carregam `n_samples` e `fs`. Duração de sinal ÷ duração de relógio é aritmética sobre metadado existente.
+3. **A tela não é apenas omissa — ela apresenta uma duração pela outra.** `sessionDurationSeconds` (`apps/wave-app/src/api/results.ts`) é `n_samples / fs`, ou seja a duração do **sinal**, e é exibida como o subtítulo da sessão em três lugares (`SessionRow`, `app/patient/index.tsx`, `SessionsDashboard`). Numa sessão que caiu e reconectou, o relógio correu dez minutos e a tela diz "8 min 20 s" sem em momento algum dizer que são grandezas diferentes. Isso é ADR-0027: a tela afirma como duração da sessão o que é duração do que foi medido.
+4. **`status = aborted` nunca chega ao cliente.** `sample_count` não sai por rota HTTP alguma — existe só no frame `closed` do WebSocket, que por definição não chega em quem perdeu a conexão.
+
+**Decisão 1 — o buraco é DERIVADO, nunca gravado.** Nenhuma coluna, nenhuma migração, nenhum campo no protocolo do stream. `buraco = (ended_at − started_at) − (n_samples ÷ fs)`. Motivo: o dado para responder já está no banco; criar um segundo lugar onde a mesma verdade mora é convidar os dois a divergirem.
+
+**Decisão 2 — o limiar é 10 segundos ABSOLUTOS, e não uma porcentagem.**
+- **Existe um overhead estrutural que não é buraco.** `started_at` é gravado no `start` do WebSocket, antes de a primeira amostra existir, e o `stop` chega depois da última. Na sessão real de 167,2 s com o aparelho do fundador, esse overhead foi de **~3,5 s** (a completude medida foi 97,9%).
+- **Ele é aproximadamente fixo, não proporcional.** Um limiar percentual, portanto, **acusaria falsamente sessões curtas**: os mesmos 3,5 s numa sessão de 30 s dão 88% de completude sem queda nenhuma. Trocaríamos uma tela que esconde por uma tela que inventa — as duas violam a ADR-0027.
+- **10 s é o teto de reconexão da própria ADR-0055.** Abaixo disso não cabe sequer uma reconexão completa; acima, houve pelo menos uma. O número não é calibragem arbitrária: ancora numa decisão já tomada. Margem contra o overhead medido: ~3×.
+
+**Decisão 3 — vale para TODA sessão com buraco, não só para as `aborted`.** Uma sessão que caiu e **reconectou com sucesso** termina `completed` — e é precisamente ela que a Decisão 1 da ADR-0055 criou. Filtrar por status deixaria de fora o caso que motivou esta emenda.
+
+**Decisão 4 — a API passa a devolver os metadados da sessão junto de cada `Result`** (`session_status`, `session_started_at`, `session_ended_at`). **Não gera evento de auditoria novo:** é o mesmo acesso que já audita a leitura do `Result`, e são metadados de captação — não sinal, não conteúdo derivado (mesma fronteira da emenda à ADR-0037 sobre existência e contagem, e da ADR-0050 sobre identidade no vínculo).
+
+**O que se abre mão, explicitamente:**
+(a) **O buraco continua sem posição no tempo.** Sabe-se *quanto* faltou, não *onde*. Localizá-lo exigiria marcação por amostra — o dado novo que a ADR-0055 recusou e esta emenda continua recusando.
+(b) **Vários buracos pequenos somam num só número.** Três quedas de 12 s aparecem como 36 s, indistinguíveis de uma queda de 36 s. Para o efeito na análise a soma é a grandeza relevante; para diagnosticar o aparelho, não seria.
+(c) **O limiar de 10 s é uma escolha, e sessões com buraco de 9 s seguem mudas.** Preferido a errar acusando: dizer "faltou sinal" onde não faltou destrói a confiança na única tela que fala de qualidade.
+(d) **Sem contagem de reconexões.** Quantas vezes caiu é dado que ninguém guarda hoje.
+
+**Alternativas consideradas:**
+- **Limiar percentual (ex.: "abaixo de 90% de completude").** Rejeitada pelos números do FATO 2/Decisão 2: pune sessão curta por overhead fixo.
+- **Gravar o `gap` numa coluna nova**, a opção que a ADR-0055 imaginou. Rejeitada: migração e dado redundante para responder o que a subtração já responde.
+- **Corrigir `sessionDurationSeconds` para usar o relógio.** Rejeitada, e é o erro tentador: a duração de **sinal** é a correta para "quanto foi medido" e é ela que a análise usa. O defeito não é qual das duas se mostra — é mostrar uma sem dizer que a outra existe.
+- **Marcar só as `aborted`.** Rejeitada pela Decisão 3.
+
+**Consequências:** `ResultService` passa a carregar a sessão junto do `Result` (join, sem N+1); o app ganha uma função de buraco e a `SessionRow` passa a declarar as duas durações quando ele é material. Texto **neutro, sem cor de erro**: menos sinal é pior para a análise, não é falha de quem captou (ADR-0027 — sem cor de bom/ruim onde não há valência sobre a pessoa). Nenhuma tabela, nenhuma migração, nenhum campo novo no stream. Relaciona ADR-0026 (o gate segue intocado), ADR-0027, ADR-0037 (a fronteira do que é metadado) e ADR-0055.
+
+
 ## ADR-0056 — Tela de abertura: **`expo-splash-screen`, com a arte saindo do mesmo vetor de sempre**
 **Status:** Proposta (2026-09-06) — vira Aceita no merge.
 
