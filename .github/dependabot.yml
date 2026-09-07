@@ -99,12 +99,29 @@ updates:
   # sem `build:web` e sem build nativo, então um bump de `react-native` fica
   # verde sem que uma linha de React Native tenha rodado.
   #
-  # Restrito a `semver-major` e `semver-minor` DE PROPÓSITO, por dois motivos:
-  #   1. os PATCHES continuam vindo, e patch é exatamente o que o SDK quer
-  #      (0.86.0 -> 0.86.3);
-  #   2. `version-update:*` afeta SOMENTE version updates — alerta de
-  #      segurança continua virando PR. Ignorar o pacote inteiro cortaria o
-  #      canal de segurança junto, e aí a cura seria pior que a doença.
+  # DOIS níveis de rigor, e a diferença é a forma como o Expo escreve a versão
+  # (emenda à ADR-0057, medida na PR agrupada #249):
+  #
+  #   - `expo`, `expo-*`, `@expo/*` estão pinados com `~`, que é o Expo dizendo
+  #     "patch pode subir". Ali basta ignorar MAJOR e MINOR: os patches são
+  #     exatamente o que o SDK quer, e a PR #249 acertou os dez em cheio
+  #     (`expo` -> 57.0.20, `expo-router` -> 57.0.19, ...).
+  #
+  #   - `react`, `react-dom`, `react-native` e `react-native-*` estão pinados
+  #     SEM `~` e SEM `^`, que é o Expo dizendo "é ESTA versão". Ali o PATCH
+  #     também desalinha, e isso foi medido: depois da #249 o
+  #     `npx expo install --check` reclamava de `react-dom@19.2.8` (esperado
+  #     `19.2.3`), `react-native-reanimated@4.5.5` (esperado `4.5.1`),
+  #     `react-native-svg@15.15.5` (esperado `15.15.4`) e
+  #     `react-native-worklets@0.10.4` (esperado `0.10.1`). Por isso os três
+  #     níveis. O custo, assumido: o patch que o SDK QUERIA (`react-native`
+  #     0.86.0 -> 0.86.3) também deixa de vir sozinho — quem o traz é o
+  #     `npx expo install`, que é o canal certo.
+  #
+  # Em nenhum dos casos a segurança é afetada: `version-update:*` vale SOMENTE
+  # para version updates, e PRs de segurança nem contam para o limite. Ignorar
+  # o pacote inteiro (com `versions`) cortaria o canal de segurança junto, e aí
+  # a cura seria pior que a doença.
   #
   # O padrão `react-native-*` pega TAMBÉM o que não é do SDK — hoje
   # `react-native-ble-plx` e `react-native-bluetooth-classic`. Isso é
@@ -128,14 +145,24 @@ updates:
         update-types: ["version-update:semver-major", "version-update:semver-minor"]
       - dependency-name: "@expo/*"
         update-types: ["version-update:semver-major", "version-update:semver-minor"]
+      # Pinados EXATOS pelo Expo: os três níveis (ver o bloco acima).
       - dependency-name: "react"
-        update-types: ["version-update:semver-major", "version-update:semver-minor"]
+        update-types: ["version-update:semver-major", "version-update:semver-minor", "version-update:semver-patch"]
       - dependency-name: "react-dom"
-        update-types: ["version-update:semver-major", "version-update:semver-minor"]
+        update-types: ["version-update:semver-major", "version-update:semver-minor", "version-update:semver-patch"]
       - dependency-name: "react-native"
-        update-types: ["version-update:semver-major", "version-update:semver-minor"]
+        update-types: ["version-update:semver-major", "version-update:semver-minor", "version-update:semver-patch"]
       - dependency-name: "react-native-*"
-        update-types: ["version-update:semver-major", "version-update:semver-minor"]
+        update-types: ["version-update:semver-major", "version-update:semver-minor", "version-update:semver-patch"]
+      # `typescript` só no MAJOR: o TS 7 mudou a API do compilador
+      # (`ts.ModuleKind` é `undefined`) e quebra os DOIS geradores do projeto —
+      # inclusive o `gerar-legal-estatico.mjs`, que roda dentro do `build:web`,
+      # que é o comando do Cloudflare Pages. Um major aqui derruba o deploy do
+      # site, não é uma atualização. Minor e patch do TS 6 continuam vindo, e
+      # esta linha SAI no dia em que os geradores forem portados para a API
+      # nova (emenda à ADR-0057).
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
     commit-message:
       prefix: "chore(deps)"
     labels:
