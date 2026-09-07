@@ -5,10 +5,9 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import { listCareLinks, listPendingInvites, type CareLink } from "../../src/api/care";
 import { getConsentStatus } from "../../src/api/consent";
 import {
-  formatDuration,
   formatPercent,
+  formatSessionDurationLabel,
   listMyResults,
-  sessionDurationSeconds,
   type SessionResult,
 } from "../../src/api/results";
 import { useAuth } from "../../src/auth/AuthContext";
@@ -284,7 +283,7 @@ export default function PatientHomeScreen() {
 
         <Text style={styles.ultimaMeta}>
           {[
-            formatDuration(sessionDurationSeconds(ultima.metrics)),
+            formatSessionDurationLabel(ultima),
             ultima.engine_version ? `motor ${ultima.engine_version}` : null,
           ]
             .filter(Boolean)
