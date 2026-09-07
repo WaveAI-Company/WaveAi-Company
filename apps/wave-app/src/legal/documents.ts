@@ -58,8 +58,8 @@ const CONTATO_SUPORTE = "waveai999.company@gmail.com";
 export const POLITICA_DE_PRIVACIDADE: DocumentoLegal = {
   slug: "privacidade",
   titulo: "Política de Privacidade",
-  versao: "1.3",
-  atualizadoEm: "2026-08-29",
+  versao: "1.4",
+  atualizadoEm: "2026-09-06",
   resumo:
     "O que o WaveAI coleta, por quanto tempo guarda, com quem compartilha e como você exerce seus direitos.",
   secoes: [
@@ -116,6 +116,25 @@ export const POLITICA_DE_PRIVACIDADE: DocumentoLegal = {
         "O acompanhamento ao vivo tem uma trava a mais: além do vínculo aceito, você precisa ligar o compartilhamento naquela sessão específica. Toda sessão começa com o compartilhamento desligado.",
         "Toda leitura dos seus dados por um profissional fica registrada na trilha de acesso, com data e quantidade.",
         "Não usamos serviços de análise de comportamento, rastreadores publicitários nem redes sociais dentro do produto.",
+      ],
+    },
+    {
+      titulo: "Quem opera a infraestrutura",
+      paragrafos: [
+        "Compartilhar é entregar seus dados a alguém que os usa por conta própria — e isso não fazemos. Diferente disso são as empresas que hospedam o serviço e tratam os dados por nossa conta, sob nossas instruções. Elas existem, então estão nomeadas aqui.",
+      ],
+      itens: [
+        "Microsoft Azure (Container Apps, região Brasil Sul): executa a nossa API. É por onde passam os dados enquanto o serviço funciona.",
+        "Neon (banco de dados PostgreSQL, região São Paulo): armazena o banco, onde ficam o cadastro, as medidas cifradas e as anotações cifradas.",
+        "Cloudflare (Pages e DNS): entrega os arquivos do aplicativo web. O endereço da nossa API não passa pelo proxy da Cloudflare, então seus dados não trafegam por ela — só o aplicativo em si.",
+        "Google (envio de e-mail): entrega os e-mails do produto, como verificação de endereço e recuperação de senha. Passam por ali o seu endereço de e-mail e o conteúdo dessas mensagens.",
+      ],
+    },
+    {
+      titulo: "Onde seus dados ficam",
+      paragrafos: [
+        "A API e o banco de dados ficam em região brasileira — foi decisão explícita manter em território nacional os dados derivados do seu sinal, e não uma consequência de preço.",
+        "O envio de e-mail é a exceção: ele usa a infraestrutura do Google, que é internacional. Nenhuma medida do seu sinal, anotação ou foto viaja por e-mail — o produto não envia esses dados por essa via.",
       ],
     },
     {
@@ -191,8 +210,9 @@ export const POLITICA_DE_PRIVACIDADE: DocumentoLegal = {
     {
       titulo: "Mudanças nesta política",
       paragrafos: [
-        "Se este texto mudar de forma material, publicaremos a nova versão aqui, com data e número de versão novos, e avisaremos no aplicativo.",
-        "Esta é a versão 1.3, de 29 de agosto de 2026. Ela acrescenta a foto de perfil, opcional, à lista do que se coleta. A versão 1.2 identificou o controlador e o canal de contato, que a anterior deixava em branco, e passou a dizer por quanto tempo cada tipo de dado é guardado. A versão 1.0 dizia que o encerramento da conta ainda não tinha caminho no aplicativo; desde a 1.1, tem.",
+        "Se este texto mudar de forma material, publicaremos a nova versão aqui, com data e número de versão novos.",
+        "Hoje o aplicativo não avisa quando isso acontece. Dizíamos que avisaria, e não era verdade — o número e a data no alto desta página são, por enquanto, o que permite você perceber que ela mudou.",
+        "Esta é a versão 1.4, de 6 de setembro de 2026. Ela nomeia as empresas que hospedam o serviço e diz onde os dados ficam. A versão 1.3 acrescentou a foto de perfil, opcional, à lista do que se coleta. A versão 1.2 identificou o controlador e o canal de contato, que a anterior deixava em branco, e passou a dizer por quanto tempo cada tipo de dado é guardado. A versão 1.0 dizia que o encerramento da conta ainda não tinha caminho no aplicativo; desde a 1.1, tem.",
       ],
     },
   ],
@@ -201,8 +221,8 @@ export const POLITICA_DE_PRIVACIDADE: DocumentoLegal = {
 export const TERMOS_DE_USO: DocumentoLegal = {
   slug: "termos",
   titulo: "Termos de Uso",
-  versao: "1.2",
-  atualizadoEm: "2026-08-29",
+  versao: "1.3",
+  atualizadoEm: "2026-09-06",
   resumo:
     "As regras para usar o WaveAI: o que ele faz, o que você pode esperar dele e o que esperamos de você.",
   secoes: [
@@ -291,8 +311,9 @@ export const TERMOS_DE_USO: DocumentoLegal = {
     {
       titulo: "Mudanças nestes Termos",
       paragrafos: [
-        "Se estes Termos mudarem de forma material, publicaremos a nova versão aqui, com data e número de versão novos, e avisaremos no aplicativo.",
-        "Esta é a versão 1.2, de 29 de agosto de 2026. Ela acompanha a versão 1.3 da Política de Privacidade — que passou a incluir a foto de perfil opcional — e que é parte destes Termos por referência. A versão 1.1 dizia que você pode litigar no foro do seu domicílio, o que a versão 1.0 deixava em branco.",
+        "Se estes Termos mudarem de forma material, publicaremos a nova versão aqui, com data e número de versão novos.",
+        "Hoje o aplicativo não avisa quando isso acontece. Dizíamos que avisaria, e não era verdade — o número e a data no alto desta página são, por enquanto, o que permite você perceber que ela mudou.",
+        "Esta é a versão 1.3, de 6 de setembro de 2026. Ela acompanha a versão 1.4 da Política de Privacidade — que passou a nomear as empresas que hospedam o serviço e a dizer onde os dados ficam — e que é parte destes Termos por referência. A versão 1.2 acompanhou a entrada da foto de perfil opcional. A versão 1.1 dizia que você pode litigar no foro do seu domicílio, o que a versão 1.0 deixava em branco.",
       ],
     },
   ],
