@@ -25,4 +25,8 @@ from __future__ import annotations
 #: 1.1: foro do domicílio do usuário nos Termos; identificação do controlador,
 #: canal de contato e prazos de retenção na Política (que foi para 1.2).
 #: 1.2: foto de perfil opcional entra na Política (que foi para 1.3) — ADR-0050.
-TERMS_VERSION = "1.2"
+#: 1.3: a Política (que foi para 1.4) passa a **nomear os operadores** que
+#: hospedam o serviço (Azure, Neon, Cloudflare, Google) e a dizer em que região
+#: os dados ficam. Os dois documentos também pararam de prometer aviso no
+#: aplicativo quando o texto muda — esse aviso nunca existiu (ADR-0027).
+TERMS_VERSION = "1.3"
