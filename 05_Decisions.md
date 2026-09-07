@@ -1248,3 +1248,37 @@ Dependência nativa nova, e por isso esta ADR (mesma régua da ADR-0054, `expo-k
 - **Definir só o `windowBackground` do tema nativo, sem pacote novo.** Consertaria o fundo no Android sem dependência alguma — mas exigiria mexer no tema nativo gerado pelo prebuild (que está no `.gitignore`) ou num plugin próprio, e continuaria sem fazer nada pelo iOS. Trocar uma dependência do próprio SDK por um plugin caseiro é pior negócio.
 
 **Consequências:** `app.json` ganha o plugin e duas variantes de cor; `apps/wave-app/assets/` ganha dois PNG novos, **gerados** e não desenhados; `gerar_assets.py` passa a escrevê-los e o `README.md` da marca a listá-los. Não cria dado, tabela, migração nem código de aplicação. Relaciona ADR-0027 (a primeira tela também não pode afirmar o que não é), ADR-0042 (design "Maré" e os tokens), ADR-0051 (build por EAS, onde isto será compilado) e ADR-0054 (o precedente de dependência nativa pequena entrando por ADR).
+
+
+## ADR-0057 — Dependências automáticas: **pacote do SDK do Expo sobe por `expo install`, nunca por PR do Dependabot**
+**Status:** Proposta (2026-09-07) — vira Aceita no merge.
+
+**Contexto:** o `.github/dependabot.yml` tinha 8 ecossistemas, todos `weekly`, **sem `groups` e sem `open-pull-requests-limit`**. O default é 5 PRs por ecossistema, ou seja um teto de **40 PRs simultâneas**. Havia 12 abertas (#204–#215), e elas disputam a fila do **Cloudflare Pages, que é plano free com concorrência 1** — os checks do Actions levam ~2 min e o preview já passou de 14 min esperando. O gargalo do nosso CI não é computação, é essa fila.
+
+**[FATO — verificado em 2026-09-07]**
+1. **O CI não valida o que essas PRs mudam.** O job do app roda `npm ci`, `typecheck`, `check:contrast` e `check:guia` — **não roda `build:web` nem build nativo**. Uma PR de `react-native` fica verde sem que uma linha de React Native tenha sido executada. Verde vazio é pior que vermelho: convida ao merge.
+2. **O Dependabot empurra o app para longe do SDK.** `npx expo install --check` mostra que o SDK 57 espera `react-native@0.86.3` (o Dependabot propôs `0.87.1`) e `react-native-screens@~4.26.0` (propôs `4.27.0`). Ele lê o registro do npm, que não sabe da matriz de compatibilidade do Expo.
+3. **Duas dessas PRs já falhavam com `ERESOLVE`** (react-native contra o peer de `react-native-reanimated@4.5.1`; `react-dom@19.2.8` contra `react@19.2.3` pinado exato) — e **uma passava verde estando errada** (`react-native-screens`), porque nada no CI enxerga incompatibilidade de runtime nativo.
+4. **O verde de uma PR do Dependabot envelhece em silêncio.** As 12 foram criadas em **2026-08-30**; o `check:guia` entrou no CI em **06/09** e o gerador dos documentos legais (dentro do `build:web`) na #243. O visto-bom delas é de um CI que tinha menos verificações — foi por isso que a PR do `typescript@7.0.2` aparecia verde **quebrando os dois geradores** (`ts.ModuleKind` é `undefined` no TS 7), um dos quais roda no `build:web` do Cloudflare e derrubaria o deploy do site.
+
+**Decisão 1 — `groups` por ecossistema.** Uma PR por ecossistema em vez de uma por pacote. É o que desafoga a fila de concorrência 1.
+
+**Decisão 2 — `open-pull-requests-limit: 3`** nos oito ecossistemas. **PRs de segurança não contam para este limite** (documentação do Dependabot), então apertá-lo não atrasa correção de vulnerabilidade.
+
+**Decisão 3 — os pacotes do SDK do Expo ficam no `ignore`, restrito a `semver-major` e `semver-minor`.**
+- **A regra que isto institui:** pacote gerenciado pelo SDK sobe por `npx expo install`, que consulta a matriz de compatibilidade, **nunca por PR automática** que consulta só o registro do npm.
+- **Por que major+minor e não tudo:** os **patches continuam vindo**, e patch é exatamente o que o SDK quer (`0.86.0 → 0.86.3`). Ignorar o pacote inteiro cortaria também o que é útil.
+- **Por que `update-types` e não `versions`:** `version-update:*` afeta **somente version updates**. Alerta de segurança continua virando PR, sem exceção. Isto é o que torna a decisão aceitável — a alternativa cortaria o canal de segurança junto.
+
+**O que se abre mão, explicitamente:**
+(a) **O app fica manualmente responsável por acompanhar o SDK.** Hoje ele já está atrás (`expo@57.0.7`, esperado `~57.0.20`, e mais dez pacotes) e o Dependabot não estava ajudando nisso — mas depois desta ADR ninguém mais nem tenta. O ritual passa a ser `npx expo install --check` de tempos em tempos, na mão.
+(b) **Um agrupamento esconde qual pacote quebrou.** Se a PR agrupada de npm ficar vermelha, é preciso abrir e olhar. Aceito: o custo da fila era maior.
+(c) **`ignore` é um silêncio que envelhece.** Quando o projeto subir de SDK, a lista precisa ser revista — daí ela viver aqui, com o motivo escrito, e não só no YAML.
+
+**Alternativas consideradas:**
+- **Desligar o Dependabot.** Rejeitada: perderíamos o canal de segurança, que é o que ele tem de melhor.
+- **Ignorar os pacotes do SDK por completo** (sem `update-types`). Rejeitada: cortaria os patches que o SDK espera **e** as PRs de segurança.
+- **Fazer o CI rodar `build:web` e build nativo** para que o verde signifique alguma coisa. É a correção de raiz e continua desejável para o `build:web`; o build nativo, porém, é EAS — fila de baixa prioridade, 15 builds/mês, e não cabe em PR de dependência. Fica **fora desta ADR e registrado como o que falta**.
+- **Desativar o preview do Cloudflare em toda branch.** Preterida por excluir apenas `dependabot/*`, que é onde está o volume — e isso se configura no painel do Cloudflare, não no repositório.
+
+**Consequências:** `.github/dependabot.yml` ganha `groups`, limite e `ignore`; nada no código de aplicação muda por causa desta ADR. O `Documentation/17` passa a registrar, ao lado da fila, que a exclusão de `dependabot/*` no Cloudflare é ajuste de painel. Relaciona ADR-0049 (topologia e o Cloudflare Pages) e ADR-0051 (build por EAS, que é por onde os pacotes nativos são de fato validados).
