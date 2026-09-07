@@ -43,3 +43,10 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# Cópia estática dos documentos legais: PRODUTO DE BUILD, como o `dist/`.
+# `npm run build:web` a regenera antes de exportar — e é esse mesmo comando que
+# o Cloudflare Pages roda ao publicar. Versioná-la criaria a única falha que
+# este gerador existe para impedir: o HTML publicado dizendo uma versão e o
+# `documents.ts` dizendo outra.
+/public/documentos/
