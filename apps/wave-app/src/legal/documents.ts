@@ -28,7 +28,7 @@ export type SecaoLegal = {
 };
 
 export type DocumentoLegal = {
-  slug: "privacidade" | "termos";
+  slug: "privacidade" | "termos" | "excluir-conta";
   titulo: string;
   /** Muda quando o texto muda de forma material (ver o cabeçalho do módulo). */
   versao: string;
@@ -298,7 +298,93 @@ export const TERMOS_DE_USO: DocumentoLegal = {
   ],
 };
 
+/**
+ * Exclusão de conta — a **página pública** que a Play Store exige.
+ *
+ * A loja pede, de todo app que permite criar conta, um endereço alcançável **sem
+ * instalar o app**, dizendo o que é apagado e como pedir. O aplicativo já
+ * apagava tudo na hora (ADR-0047); o que faltava era o endereço.
+ *
+ * **Não é um contrato e ninguém a aceita.** Ela tem versão como as outras
+ * porque é renderizada pela mesma moldura e porque quem lê quer saber se está
+ * velha — mas `versao` daqui **não** entra em lugar nenhum do aceite: quem
+ * responde por aquilo é `TERMOS_DE_USO.versao`, comparado contra o
+ * `TERMS_VERSION` da API (ADR-0048).
+ *
+ * ⚠️ **Este texto e a seção "Encerramento da conta" da Política dizem a mesma
+ * coisa em dois lugares.** É duplicação consciente: a loja precisa da página
+ * autônoma, e a Política não pode deixar de responder. Moram no mesmo arquivo,
+ * de propósito, para quem editar um ver o outro. **Mudou lá, muda aqui.**
+ */
+export const EXCLUSAO_DE_CONTA: DocumentoLegal = {
+  slug: "excluir-conta",
+  titulo: "Excluir sua conta e seus dados",
+  versao: "1.0",
+  atualizadoEm: "2026-09-06",
+  resumo:
+    "Como apagar sua conta do WaveAI, o que é apagado, o que sobrevive e por quê.",
+  secoes: [
+    {
+      titulo: "Pelo aplicativo — imediato",
+      paragrafos: [
+        "Entre na sua conta, abra o seu perfil e use “Encerrar conta”. É pedida a sua senha, para ninguém apagar a conta de outra pessoa a partir de um aparelho destravado.",
+        "Este é o caminho recomendado justamente porque não depende de ninguém responder: o apagamento acontece na hora, no momento em que você confirma.",
+        "O mesmo caminho existe no site e no aplicativo do celular — é a mesma conta e o mesmo botão.",
+      ],
+    },
+    {
+      titulo: "O que é apagado",
+      paragrafos: [
+        "Tudo o que é seu, de uma vez, sem período de carência, sem conta desativada e sem cópia guardada para restaurar depois.",
+      ],
+      itens: [
+        "Seu cadastro: e-mail, nome de exibição e senha.",
+        "Sua foto de perfil, se você tiver enviado uma.",
+        "Suas sessões de captação e as medidas derivadas delas.",
+        "Suas anotações de contexto.",
+        "Seus vínculos com profissionais de bem-estar, e os convites que os originaram.",
+        "A trilha de quem leu os seus dados.",
+      ],
+    },
+    {
+      titulo: "O que sobrevive, e por quê",
+      paragrafos: [
+        "Se você é profissional de bem-estar e leu dados de alguém, o registro dessa leitura continua na trilha daquela pessoa — mas deixa de ter o seu nome: passa a apontar para um identificador aleatório, e é mantido por até 12 meses contados dessa troca.",
+        "A razão é simples: essa evidência é da pessoa cujos dados foram lidos, não sua. Apagá-la junto com a sua conta tiraria dela justamente a prova de que o acesso aconteceu.",
+        "Se você nunca leu dados de outra pessoa, não há nada nesta situação.",
+      ],
+    },
+    {
+      titulo: "Se você não consegue entrar na conta",
+      paragrafos: [
+        `Escreva para ${CONTATO_ENCARREGADO} a partir do e-mail cadastrado na conta — é assim que sabemos que o pedido é seu, já que não guardamos documento nem telefone para conferir de outro jeito.`,
+        "Diga que quer excluir a conta. Não precisa justificar.",
+        "Este caminho depende de uma pessoa ler e atender o pedido, então ele não é instantâneo como o do aplicativo. Não prometemos aqui um prazo em dias porque não há ninguém de plantão para cumpri-lo; o que prometemos é que o pedido será atendido.",
+      ],
+    },
+    {
+      titulo: "Antes de apagar, se quiser levar seus dados",
+      paragrafos: [
+        "A exportação fica no seu perfil e sai em formato aberto. Faça antes: depois do encerramento não há de onde recuperar.",
+      ],
+    },
+    {
+      titulo: "Apagar não é a mesma coisa que revogar o consentimento",
+      paragrafos: [
+        "Revogar o consentimento interrompe novas gravações e deixa o seu histórico como está. Apagar remove o histórico. São dois atos separados, de propósito, para uma revogação não destruir seus dados por engano.",
+        "Os dois ficam no seu perfil, e você pode fazer um sem o outro.",
+      ],
+    },
+  ],
+};
+
+/**
+ * Registro dos documentos legais. É daqui que o rodapé de cada página monta a
+ * lista "leia também" — sem isto, acrescentar um terceiro documento exigiria
+ * lembrar de editar o rodapé, e a lista sairia de sincronia em silêncio.
+ */
 export const DOCUMENTOS: Record<DocumentoLegal["slug"], DocumentoLegal> = {
   privacidade: POLITICA_DE_PRIVACIDADE,
   termos: TERMOS_DE_USO,
+  "excluir-conta": EXCLUSAO_DE_CONTA,
 };

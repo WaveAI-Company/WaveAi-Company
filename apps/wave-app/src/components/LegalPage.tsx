@@ -2,7 +2,7 @@ import { useRouter } from "expo-router";
 import { useMemo } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
-import type { DocumentoLegal } from "../legal/documents";
+import { DOCUMENTOS, type DocumentoLegal } from "../legal/documents";
 import { useRoleAccent, useTheme, type Theme } from "../theme";
 import { LegalDocument } from "./LegalDocument";
 import { ScreenContainer } from "./ScreenContainer";
@@ -22,10 +22,16 @@ export function LegalPage({ documento }: { documento: DocumentoLegal }) {
   const { accentText } = useRoleAccent();
   const styles = useMemo(() => criarEstilos(t), [t]);
 
-  const outro =
-    documento.slug === "privacidade"
-      ? { rotulo: "Termos de Uso", destino: "/legal/termos" as const }
-      : { rotulo: "Política de Privacidade", destino: "/legal/privacidade" as const };
+  /**
+   * Os **outros** documentos, tirados do registro em vez de escritos aqui.
+   *
+   * Eram dois, e o rodapé alternava entre um e outro com um ternário. Com o
+   * terceiro (a página de exclusão, exigida pela loja) o ternário passaria a
+   * mentir por omissão: quem estivesse na exclusão só enxergaria a Política, e
+   * ninguém notaria. Derivar do registro faz um documento novo aparecer no
+   * rodapé sozinho.
+   */
+  const outros = Object.values(DOCUMENTOS).filter((d) => d.slug !== documento.slug);
 
   return (
     <ScreenContainer largura="app">
@@ -35,11 +41,16 @@ export function LegalPage({ documento }: { documento: DocumentoLegal }) {
 
         <View style={styles.rodape}>
           <Text style={styles.rodapeTexto}>Leia também: </Text>
-          <TextLink
-            label={outro.rotulo}
-            onPress={() => router.replace(outro.destino)}
-            accent={accentText}
-          />
+          {outros.map((d, i) => (
+            <View key={d.slug} style={styles.rodapeItem}>
+              {i > 0 ? <Text style={styles.rodapeTexto}>· </Text> : null}
+              <TextLink
+                label={d.titulo}
+                onPress={() => router.replace(`/legal/${d.slug}`)}
+                accent={accentText}
+              />
+            </View>
+          ))}
         </View>
         <View style={styles.rodape}>
           <TextLink
@@ -71,6 +82,12 @@ const criarEstilos = (t: Theme) =>
       marginTop: t.spacing.lg,
       maxWidth: 720,
       width: "100%",
+    },
+    // Cada link com o seu separador, para a linha quebrar entre os dois em vez
+    // de deixar um "·" órfão no fim da linha de cima.
+    rodapeItem: {
+      alignItems: "center",
+      flexDirection: "row",
     },
     rodapeTexto: {
       ...t.typography.body,
