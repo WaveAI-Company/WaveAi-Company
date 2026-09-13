@@ -1,0 +1,29 @@
+[   0.38s] == C: latência local (60 s de captação)
+[  63.03s] acks: n=120 mediana=15 ms p95=16 ms max=32 ms
+[  63.03s] janelas com features: 30; eventos no espectador: 30
+[  63.03s] frame que fecha a janela -> espectador: mediana=16 ms p95=32 ms
+[  63.03s] tamanho do evento SSE 'features': 1187–1195 B
+[  67.03s] == D: Analysis pausada no meio da captação (12 s)
+[  71.50s] analysis PAUSADA
+[  86.92s] analysis DESPAUSADA
+[  91.03s] acks durante a pausa: 12; lentos (>1 s): [(5.02, {'unavailable': True}), (5.02, {'unavailable': True}), (5.02, {'unavailable': True})]
+[  91.03s] /health lento (>1 s) durante a pausa: [(0.7, 4.7, '200'), (5.9, 4.53, '200'), (10.9, 4.52, '200')]
+[  91.03s] stop depois de despausar -> result={'persisted': True, 'result_id': '689aa7c3-af61-46ba-b37a-01ef58220268'}
+[  95.03s] == F-pause: Postgres pause no meio da captação
+[  99.48s] postgres: pause
+[ 139.48s] frame sem resposta por 40 s (40.3 s após o pause)
+[ 139.86s] postgres: unpause
+[ 147.86s] stop -> None
+[ 147.88s] /health afetado: [(0.6, 39.88, '200')]
+[ 148.25s] sessão no banco (status|amostras|results): completed|2304|1
+[ 152.25s] == F-stop: Postgres stop no meio da captação
+[ 157.20s] postgres: stop
+[ 157.23s] WS FECHADO 0.9 s após o stop: no close frame received or sent
+[ 157.80s] postgres: start
+[ 165.80s] /health afetado: []
+[ 166.19s] sessão no banco (status|amostras|results): active|2048|0
+[ 180.19s] == E: 16 espectadores SSE e depois uma rota REST que usa o banco
+[ 216.63s] GET /auth/me com 16 SSE abertos: 500 em 30.2 s
+[ 216.84s] GET /health com 16 SSE abertos: 200 em 0.22 s
+
+[exited with code 0]
