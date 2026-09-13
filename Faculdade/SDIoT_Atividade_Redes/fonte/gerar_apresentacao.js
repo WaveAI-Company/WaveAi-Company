@@ -30,7 +30,6 @@ const selo = (slide, texto, x, y, cor = TEAL, d = 0.42) => {
   slide.addShape(pres.shapes.OVAL, { x, y, w: d, h: d, fill: { color: cor }, line: { color: cor } });
   T(slide, texto, { x, y, w: d, h: d, fontSize: 11, bold: true, color: BRANCO, align: "center", valign: "middle" });
 };
-const rodape = (slide, quem, cor = SUAVE) => T(slide, quem, { x: 0.5, y: 5.2, w: 9, h: 0.25, fontSize: 10, color: cor, align: "right" });
 
 // 1 — Capa ------------------------------------------------------------------
 {
@@ -73,7 +72,6 @@ const rodape = (slide, quem, cor = SUAVE) => T(slide, quem, { x: 0.5, y: 5.2, w:
     T(s, n, { x: x + 0.25, y: 3.15, w: 2.4, h: 1.0, fontSize: 60, bold: true, color: i === 2 ? VERMELHO : TEAL });
     T(s, r, { x: x + 0.25, y: 4.15, w: 2.4, h: 0.65, fontSize: 13, color: SUAVE });
   });
-  rodape(s, "Tiago · 0:15–2:00");
   s.addNotes("TIAGO — até 2:00. Problema: queremos captar EEG de consumo e mostrar tendências de bem-estar sem prometer diagnóstico. Percorrer a fila de caixas: headset, celular, API, Analysis, banco, painel. Honestidade que abre o trabalho: a atividade pede o desenho antes do firmware, e o nosso sistema já está no ar e não tem firmware próprio — então mostramos a rede como construída e o que medimos. O número zero é o que mais importa: todos os sete enlaces passam por equipamento que não é nosso.");
 }
 
@@ -115,7 +113,6 @@ const rodape = (slide, quem, cor = SUAVE) => T(slide, quem, { x: 0.5, y: 5.2, w:
     ["E7", "SMTP 587 + STARTTLS", "API", "sob demanda · teto 500/dia", "Google"],
   ].map((l) => l.map((t, i) => ({ text: t, options: i === 0 ? { bold: true, color: TEAL } : {} })));
   s.addTable([cab, ...linhas], { x: 0.5, y: 1.05, w: 9, colW: [0.55, 2.75, 1.2, 2.7, 1.8], fontFace: F, fontSize: 12, color: TEXTO, fill: { color: BRANCO }, border: { type: "solid", pt: 0.5, color: "C9D3DF" }, rowH: 0.47, valign: "middle", margin: 0.05 });
-  rodape(s, "Gustavo · 3:30–4:30");
   s.addNotes("GUSTAVO — até 4:30. Destacar três leituras da tabela: (1) quem inicia nem sempre é quem manda o dado; (2) o volume do E2 foi medido, 941 a 1.339 bytes por frame; (3) a última coluna: nenhum trecho é infraestrutura nossa. Se perguntarem do DNS: a Cloudflare só resolve o nome da API (DNS only); dado de usuário não passa por ela.");
 }
 
@@ -138,7 +135,6 @@ const rodape = (slide, quem, cor = SUAVE) => T(slide, quem, { x: 0.5, y: 5.2, w:
     { text: "Por que não guardar e reenviar?", options: { bold: true, color: TEAL, fontSize: 16, breakLine: true } },
     { text: "Sinal de EEG é dado pessoal sensível. O projeto decidiu não gravar sinal bruto em lugar nenhum. Em troca, a perda é declarada na tela: “faltou sinal” quando sobram ≥ 10 s de duração sem amostras." },
   ], { x: 5.25, y: 1.2, w: 4.05, h: 3.6, fontSize: 13, valign: "top", paraSpaceAfter: 4 });
-  rodape(s, "Nickolas · 4:30–5:15");
   s.addNotes("NICKOLAS — até 5:15. Explicar as quatro palavras do mapa: perde, atrasa, duplica, fora de ordem. Duplicar e desordenar ficam fora porque cada captação é um único WebSocket sobre TCP e não há reenvio. O custo: o que se perde não volta — decisão de privacidade, e a perda é declarada na tela.");
 }
 
@@ -172,7 +168,6 @@ const rodape = (slide, quem, cor = SUAVE) => T(slide, quem, { x: 0.5, y: 5.2, w:
     T(s, n, { x: x + 0.2, y: 3.45, w: 2.5, h: 0.8, fontSize: 36, bold: true, color: c });
     T(s, r, { x: x + 0.2, y: 4.25, w: 2.5, h: 0.65, fontSize: 12, color: "C9D4E3" });
   });
-  rodape(s, "Nickolas · 5:15–7:15", "7F90A8");
   s.addNotes("NICKOLAS — até 7:15, é a parte central. Contar como história: isto aconteceu de verdade — com a tela apagada, o Android pausava o JavaScript, o envio parava, e a sessão chegava com 71,2% das amostras, sem erro nenhum. Reproduzimos: 12 s de sinal, depois silêncio com o socket aberto. Por 150 s o servidor não fechou e o painel continuou dizendo ao vivo, recebendo só keepalives. Por quê: depois da autenticação, o gateway permite silêncio entre blocos. Comparar: quando a rede cai de verdade, o ping percebe em 27,6 s e o relatório é gravado com o que chegou. Reação prevista: timeout de inatividade de 10 s, que reaproveita o caminho da queda. Dado: perde todo o período.");
 }
 
@@ -203,7 +198,6 @@ const rodape = (slide, quem, cor = SUAVE) => T(slide, quem, { x: 0.5, y: 5.2, w:
     { text: " ", options: { breakLine: true, fontSize: 6 } },
     { text: "Lição: /health sozinho mentiria. A disponibilidade se mede numa rota que usa o banco.", options: { italic: true, color: TEXTO } },
   ], { x: 6.6, y: 1.2, w: 2.75, h: 3.5, fontSize: 13, valign: "top", paraSpaceAfter: 4, color: TEXTO });
-  rodape(s, "Gustavo · 7:15–8:00");
   s.addNotes("GUSTAVO — até 8:00. O “M” nos cartões é de medido, no ambiente local, com sinal sintético. A degradação esperada funcionou (captação segue, ao vivo diz indisponível, relatório sai inteiro quando a Analysis volta), mas a medição revelou que uma dependência lenta congela a réplica única inteira. Quanto tempo o painel mostra algo errado: 27,6 s na queda de rede; sem limite no app congelado e na sessão órfã. Pontos únicos: com a API fora, param captação, ao vivo e histórico; com o banco fora, param login, histórico e a própria captação.");
 }
 
@@ -229,7 +223,6 @@ const rodape = (slide, quem, cor = SUAVE) => T(slide, quem, { x: 0.5, y: 5.2, w:
     T(s, d, { x: x + 0.18, y: y + 1.02, w: 2.5, h: 0.62, fontSize: 10.5, color: TEXTO });
     T(s, st, { x: x + 0.18, y: y + 1.62, w: 2.5, h: 0.25, fontSize: 10, bold: true, color: st === "Medido" || st === "Medido local" ? TEAL : st === "Parcial" ? "B26A00" : AZUL });
   });
-  rodape(s, "Nickolas · 8:00–9:00");
   s.addNotes("NICKOLAS — até 9:00. Um requisito só vale com número e método de verificação. Ler os seis eixos pelo número grande, não pelo texto. Dizer a situação com franqueza: latência e segurança medidas; disponibilidade e energia são metas com método definido; integridade é parcial porque o servidor devolve o número de sequência mas ainda não o valida. Os 10 funcionais estão no documento (RF-01 a RF-10).");
 }
 
@@ -252,7 +245,6 @@ const rodape = (slide, quem, cor = SUAVE) => T(slide, quem, { x: 0.5, y: 5.2, w:
     T(s, b, { x: x + 0.2, y: 2.53, w: 2.45, h: 0.6, fontSize: 15, bold: true, color: TEAL });
     T(s, c, { x: x + 0.2, y: 3.2, w: 2.45, h: 1.6, fontSize: 12, color: SUAVE, valign: "top" });
   });
-  rodape(s, "Tiago · 9:00–10:00");
   s.addNotes("TIAGO — até 10:00. O Anexo VII foi modelo de estudo: 13.000 veículos. Cada ausência aqui é decisão com motivo de escala, risco e objetivo: (1) redundância — escala de demonstração e custo zero em repouso; uma segunda réplica exigiria tirar da memória o fan-out ao vivo; (2) retenção de 15 dias — proibida pelo próprio desenho, por privacidade; (3) IP54 e RTC — produto de consumo em ambiente interno. Fechar: cada falha que mostramos virou número, inclusive as que ainda não corrigimos.");
 }
 
