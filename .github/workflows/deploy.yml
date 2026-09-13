@@ -31,9 +31,13 @@ on:
     # O `ci.yml` deliberadamente NÃO ganha este filtro: seus jobs são checks
     # exigidos pela proteção da `main` e, num PR filtrado, o check nunca
     # reporta — o PR ficaria travado em "esperando status" para sempre.
+    #
+    # `Faculdade/**`: entregas acadêmicas sobre o projeto (documento, diagrama
+    # draw.io, slides). Nada ali entra em imagem, no app ou no site.
     paths-ignore:
       - '**.md'
       - 'Design/**'
+      - 'Faculdade/**'
   # Sem gatilho manual, um deploy só aconteceria mexendo na `main` — o que é
   # exatamente o que ninguém quer fazer sob pressão para reverter algo.
   workflow_dispatch:
