@@ -38,5 +38,6 @@ apps/wave-app  services/api  services/analysis  packages/wave-eeg  infra/  + doc
 - Idioma do projeto: PT-BR (docs e comentários podem ser PT-BR; código em inglês).
 
 ## O que NÃO fazer
+- **Nunca** colocar o Claude como autor ou coautor de commit/PR: nada de `Co-Authored-By: Claude ...`, "Generated with Claude Code" ou qualquer atribuição ao Claude/Anthropic em mensagens de commit, descrições de PR ou `--author`. O autor é sempre o dev humano (reforçado em `.claude/settings.json` → `attribution`).
 - Não decidir claim clínica, parâmetros clínicos ou produto — isso vive nos docs/ADRs; se faltar, pare e registre em `04_Open_Questions.md`.
 - Não fazer PRs gigantes; não commitar segredos/dados reais; não acoplar a análise fora do `AnalysisEngine`.
