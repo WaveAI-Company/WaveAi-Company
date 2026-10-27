@@ -17,7 +17,7 @@ Mariano e Nickolas Maia de Araujo.
 | Arquivo | Para quem | O que tem |
 |---|---|---|
 | [`ROTEIRO_VIDEO_PITCH.md`](ROTEIRO_VIDEO_PITCH.md) | **Os três — leiam inteiro** | As falas, cronometradas e divididas por pessoa; a montagem efeito a efeito; a ordem das telas da demo; as fontes dos dados; com o que editar |
-| [`PROMPTS_DREAMINA.md`](PROMPTS_DREAMINA.md) | Quem for gerar a abertura | Os dois JSON do Seedance para os 35 s de abertura, e como rodar sem queimar crédito |
+| [`PROMPTS_DREAMINA.md`](PROMPTS_DREAMINA.md) | Quem for gerar a abertura | Os dois JSON do Seedance, o custo **medido** em créditos e a ordem de execução que deixa saldo para refazer |
 | [`BANNER_E_VIDEO_IA.md`](BANNER_E_VIDEO_IA.md) | Quem for fazer o banner | Texto pronto para colar no modelo do Canva, campo a campo, mais os quatro conceitos de vídeo que foram considerados |
 | `WaveAI_Pitch_Conecta.pptx` | Apresentação | O deck, no template da organização |
 
@@ -51,7 +51,9 @@ aquele é regenerado pelo CI a cada mudança de token, e este é entrega única.
 
 ## O que ainda falta
 
-- [ ] Gerar a abertura no Dreamina e escolher a melhor tentativa
+- [ ] Gerar a abertura no Dreamina — **orçamento apertado**: o plano gasta 4.780
+      dos 8.600 créditos e deixa 3.820 para refazer uma parte. Siga a ordem do
+      §5 do `PROMPTS_DREAMINA.md`; fora dela o saldo não fecha
 - [ ] Gravar as falas dos três e as telas da demo (checklist no §9 do roteiro)
 - [ ] Montar e cronometrar — **abaixo de 5:00 medido, não estimado**
 - [ ] Preencher o banner no Canva e exportar em PDF
