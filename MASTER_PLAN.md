@@ -83,12 +83,12 @@ Cada domínio terá documentação e roadmap próprios (ver [Documentation/00_Do
 
 ---
 
-## 6. Estrutura documental proposta
-A taxonomia completa está no **[Índice de Documentação](Documentation/00_Documentation_Index.md)**, mapeada às pastas existentes: Núcleo (raiz 00–09), `Medical/` (regulatório/clínico), `Architecture/`, `DataScience/` (sinais), `AI/`, `Backend/`, `Mobile/`, `Frontend/`, `Infrastructure/`, `Research/`, `RFC/`, `Documentation/`.
+## 6. Estrutura documental
+O mapa do que existe está no **[Índice de Documentação](Documentation/00_Documentation_Index.md)**, conferido arquivo por arquivo. As pastas que de fato existem são: Núcleo (raiz 00–09 + `CLAUDE.md`, `MASTER_PLAN.md`, `README.md`), `Documentation/` (governança e planos de trabalho), `Medical/` (regulatório/clínico), `Architecture/`, `DataScience/` (sinais), `Design/` (marca e referência visual), `infra/` (operação) e `Faculdade/` (entregas acadêmicas, fora do produto), mais os READMEs de `apps/`, `services/` e `packages/`.
 
-**Convenções:** docs-as-code (Markdown versionado); ADR para decisões; RFC para propostas; IDs estáveis (H-*, Q-*, ADR-*); status por documento; formato de resposta obrigatório (ver [08_AI_Instructions](08_AI_Instructions.md)).
+**Convenções:** docs-as-code (Markdown versionado); ADR para decisões; IDs estáveis (H-*, Q-*, ADR-*); status por documento; formato de resposta obrigatório (ver [08_AI_Instructions](08_AI_Instructions.md)).
 
-**Lacunas de estrutura sinalizadas:** ausência de áreas dedicadas a **Produto**, **UX** e **Segurança** (hoje diluídas) — decisão de criar pastas próprias fica pendente.
+**A taxonomia por disciplina de 2026-07-18 não se realizou, e não é dívida.** As pastas `AI/`, `Backend/`, `Mobile/`, `Frontend/`, `Infrastructure/`, `Research/` e `RFC/` que a versão anterior desta seção listava como existentes **nunca foram criadas** (conferido em 2026-10-27): o conteúdo foi para onde era mais útil, e o processo de RFC nunca foi necessário porque toda decisão vai direto a ADR no [05_Decisions](05_Decisions.md). O raciocínio está na §12 do Índice. A estrutura de pastas do repositório é objeto da frente de reorganização em curso e será decidida lá, com ADR.
 
 ---
 
