@@ -17,13 +17,16 @@ Medido na interface, não estimado. **Escala linear por segundo nos dois modelos
 | Seedance 2.5 **Draft** | 480p | 340 | 1.224 | **68** |
 | Seedance 2.5 **cheio** | 720p | 925 | 3.330 | **185** |
 
-Saldo na conta: **8.600 créditos**. Slider de duração vai **até 30 s**.
+Saldo na conta: **8.554 créditos** (conferido em 27/10). Slider de duração vai
+**até 30 s**. No plano Básico, **R$ 1 = 185 créditos** — e como o Seedance 2.5
+cheio em 720p custa 185 créditos por segundo, **1 segundo de vídeo final custa
+R$ 1,00**.
 
 ### O plano de gasto
 
 | Passo | Config | Custo |
 |---|---|---|
-| 1. Draft de risco | Draft 480p, **5 s**, só a Cena B | 340 |
+| 1. Rascunho de risco | Draft 480p, **5 s**, prompt do §3 | 340 |
 | 2. Parte A final | 2.5 cheio 720p, **12 s** | 2.220 |
 | 3. Parte B final | 2.5 cheio 720p, **12 s** | 2.220 |
 | | **Total** | **4.780** |
@@ -48,180 +51,135 @@ geração de 2.220, e todas as cinco são visíveis em 480p:
 4. Leu como ambiente médico?
 5. Obedeceu à ideia das linhas de luz saindo do corpo?
 
-Rode o draft **com o JSON da Parte B, Cena B2 (o vazio)** — é o plano mais
-difícil e o mais importante. Se ele passar, o resto passa.
+Rode o rascunho com o **prompt do §3 (o vazio)** — é o plano mais difícil e o
+mais importante do filme. Se ele passar, o resto passa.
 
 ---
 
-## 2. Antes de colar: três coisas
+## 2. Por que não é JSON
 
-1. **Apague do JSON as linhas de duração, proporção e resolução.** A interface
-   manda nelas, e repeti-las no texto só confunde o modelo. Os JSONs abaixo
-   **já estão sem elas**.
-2. **O JSON é convenção de prompt, não esquema oficial da interface.** O corpo
-   documentado (`prompt`, `model`, `ratio`, `duration`) é da **API**; na
-   interface você cola o JSON inteiro no campo de texto. Funciona bem, mas
-   nenhum campo é garantido.
-3. **Valores em inglês de propósito** — o modelo adere muito mais. A explicação
-   em português fica aqui.
+A primeira versão deste documento trazia os prompts em JSON. **Estava errado**, e
+a orientação da própria plataforma diz por quê: para o Seedance ela recomenda
+**texto descritivo de 30 a 100 palavras**, começando pelo sujeito, descrevendo só
+o que muda a cena e usando *negative prompt* **com moderação**. Em nenhum lugar
+ela sugere JSON.
+
+Dois problemas, e o segundo é o pior:
+
+1. **JSON não é esquema, é texto.** O corpo documentado (`prompt`, `model`,
+   `ratio`, `duration`) é da **API**. No campo da interface, as chaves, aspas e
+   vírgulas entram como tokens que não significam nada visualmente — ruído que
+   compete com a descrição.
+2. **Os JSONs tinham ~450 palavras cada: quatro a cinco vezes o recomendado.**
+   Prompt longo demais dilui a atenção do modelo, e a lista gigante de
+   `negative_prompt` era o oposto de "com moderação".
+
+Os prompts abaixo são **prosa descritiva**, e estes são os tamanhos contados:
+**100 palavras** o do rascunho (dentro da faixa recomendada), **172** a Parte A
+e **189** a Parte B. Os dois finais seguem acima das 100 porque encadeiam três
+ou quatro planos num clipe só — mas contra ~450 de antes. Se mesmo assim a
+aderência vier ruim, o caminho é **cortar um plano**, não encurtar as frases.
+Estão **em inglês de propósito**: o modelo adere bem mais.
+
+**A interface manda na duração, proporção e resolução.** Não repita nada disso
+no texto.
 
 ---
 
-## 3. Parte A — "o corpo medido" (12 s)
+## 3. Rascunho de risco — só o vazio (5 s, Draft 480p, 340 créditos)
+
+Este é o primeiro a rodar. **Não julgue beleza nele** — 480p é feio de
+propósito. Julgue só as cinco perguntas do §1.
+
+```text
+An adult seen from behind in a near-black room, face not visible, shoulders
+and neck glowing with drifting cyan light traces. The traces stop at the base
+of the skull: above the head there is nothing at all, pure empty black,
+unlit, while the body below still glows. Locked-off static shot, held
+completely still. Near the end the emptiness pulses once, very faintly, then
+goes dark. Cinematic photoreal, shallow depth of field, crushed blacks, cyan
+only.
+
+Negative: no text, letters or numbers. No voice or speech. No visible face.
+No brain, skull, scan, headset or medical imagery. No warm light.
+```
+
+---
+
+## 4. Parte A — "o corpo medido" (12 s)
 
 Cobre a narração: *"Você mede seus passos. Mede seus batimentos. Seu sono.
 Alguns de vocês medem a glicose."*
 
-```json
-{
-  "title": "Quantified Body - Part A",
-  "style": {
-    "look": "cinematic sci-fi realism, premium wearable-technology brand film",
-    "reference": "the visual language of a high-end running-shoe or smartwatch commercial shot at night",
-    "render": "photoreal, anamorphic shallow depth of field, very subtle film grain, no stylization, no illustration, no cartoon"
-  },
-  "global_subject": {
-    "who": "one adult person in their 30s, athletic build, plain dark grey sportswear, no logos, no jewellery",
-    "face_rule": "the face is never shown clearly: keep it cropped out of frame, turned away, or in deep shadow at all times",
-    "consistency": "identical person, identical clothing, identical skin tone and identical lighting character in every scene"
-  },
-  "global_environment": "a single continuous minimalist interior in near-darkness; the walls are barely visible; the only bright things in frame are the glowing light traces",
-  "light_phenomenon": {
-    "what_it_is": "volumetric cyan light that is emitted by the body itself, behaving like long-exposure light painting: it trails behind movement, curls slowly in the air like smoke, and dissipates after about two seconds",
-    "must_be_abstract": "the light forms smooth organic curves and waveform ribbons ONLY — never numbers, never letters, never charts with labels, never user-interface panels, never holographic screens"
-  },
-  "scenes": [
-    {
-      "id": "A1",
-      "time": "0.0 - 4.0",
-      "framing": "low-angle medium shot of the legs from the knees down, person walking slowly from frame left to frame right",
-      "action": "at each footfall a burst of cyan light is born at the sole and stretches upward into a long trailing ribbon that floats and slowly dissolves behind the leg; by the end of the scene four or five ribbons hang in the dark air",
-      "camera": "35mm lens, lateral dolly tracking at exactly walking pace, perfectly smooth, no handheld shake",
-      "depth_of_field": "feet razor sharp, the hanging ribbons softly out of focus in the background"
-    },
-    {
-      "id": "A2",
-      "time": "4.0 - 8.0",
-      "framing": "tight chest-level shot from the side, shoulders to waist, person now standing still",
-      "action": "a ring of cyan light pulses outward from the centre of the chest in a steady heartbeat rhythm, roughly one pulse per second; each ring expands, thins and fades; midway through the scene the image cross-dissolves to the same person lying asleep on their side, where a single slow luminous wave travels up and down the torso in time with breathing",
-      "camera": "85mm lens, very slow push in, then a soft 0.5 second cross-dissolve into the sleeping shot",
-      "depth_of_field": "chest sharp, head out of focus and out of frame"
-    },
-    {
-      "id": "A3",
-      "time": "8.0 - 12.0",
-      "framing": "macro on the inside of a forearm, then widening to a medium shot of the shoulders",
-      "action": "a dense swarm of tiny cyan particles settles on the skin, reads it, and reorganises into one clean glowing curve that lifts off the arm and hovers; then the camera begins to climb from the shoulders toward the neck, and the frame ends just below the jaw",
-      "camera": "macro to 50mm, beginning a slow steady crane upward in the final 1.5 seconds",
-      "note": "the climb must feel like the start of a movement that is not finished"
-    }
-  ],
-  "lighting": "one cool key light from the side at very low intensity; everything else is lit only by the cyan traces themselves; deep crushed blacks",
-  "color": {
-    "background": "#0B1220 near-black navy",
-    "light_primary": "#4FD1C5 cyan teal",
-    "light_secondary": "#2A5BC7 electric blue",
-    "forbidden": "absolutely no warm tones: no orange, no amber, no yellow, no red, no green, no skin-warm highlights"
-  },
-  "audio": {
-    "speech": "none",
-    "dialogue": "none",
-    "voiceover": "none",
-    "narration": "none",
-    "music": "one sustained low ambient synth pad, very quiet, slowly rising, no drums, no percussion, no melody",
-    "sfx": "a soft deep sub-bass thud under each light burst, barely audible"
-  },
-  "negative_prompt": "no spoken words, no voice, no singing, no text, no letters, no numbers, no digits, no captions, no subtitles, no watermark, no logo, no user interface, no HUD, no dashboard, no holographic screen, no chart with labels, no hospital, no clinic, no medical device, no lab coat, no stethoscope, no doctor, no nurse, no electrode cap, no wires attached to the body, no clear visible face, no eye contact with camera, no celebrity likeness, no warm light, no daylight, no sunset, no other people, no crowd, no camera shake, no rapid cuts, no zoom punch, no lens flare spam"
-}
+```text
+A single adult in plain dark grey sportswear moves through a near-black room,
+face always cropped out of frame or hidden in shadow. Cyan light is emitted by
+the body itself and trails behind like long-exposure light painting, curling
+and dissolving in the air. It forms smooth organic ribbons only. First, a low
+lateral tracking shot of the legs: each footfall throws a glowing ribbon
+upward that hangs in the dark. Then a slow push to the chest, where rings of
+light pulse outward in a heartbeat rhythm, cross-dissolving into the same
+person asleep, a slow luminous wave travelling along the torso. Finally a
+macro on the forearm, particles resolving into one clean glowing curve, as the
+camera cranes slowly up toward the head and stops just below the jaw.
+Cinematic photoreal, 35mm, smooth dolly moves, shallow depth of field, crushed
+blacks, cyan and electric blue only.
+
+Negative: no text, letters, numbers, charts or user interface. No voice or
+speech. No visible face. No hospital, clinic or medical equipment. No warm
+light.
 ```
+
+**Por que "ribbons" e não "graph":** a versão anterior pedia *a floating
+step-count graph*. Gráfico com contagem convida o modelo a escrever números, e
+número gerado por IA sai rabiscado — o prompt pedia justamente o artefato que o
+negativo proíbe.
 
 ---
 
-## 4. Parte B — "o vazio e as ondas" (12 s)
+## 5. Parte B — "o vazio e as ondas" (12 s)
 
 Cobre: *"Quando foi a última vez que você mediu o seu cérebro?"* + o silêncio +
 *"Nunca. Porque não dava."*
 
-**É a geração que decide o vídeo.** A Cena B2 é o único plano que o público vai
-lembrar — e é ela que o draft de 5 s deve testar primeiro.
+**É a geração que decide o vídeo**, e é ela que o rascunho de 5 s deve testar.
 
-```json
-{
-  "title": "Quantified Body - Part B - The Void and the Waves",
-  "continuity": "direct continuation of 'Quantified Body - Part A': identical person, identical dark grey sportswear, identical cyan light language, identical near-black navy environment. This clip starts exactly where the previous camera movement stopped, just below the jaw.",
-  "style": {
-    "look": "cinematic sci-fi realism, premium wearable-technology brand film",
-    "render": "photoreal, anamorphic shallow depth of field, very subtle film grain"
-  },
-  "scenes": [
-    {
-      "id": "B1",
-      "time": "0.0 - 3.0",
-      "framing": "three-quarter rear view, the camera finishes climbing from the shoulders and settles with the head centred in the upper third of frame",
-      "action": "the shoulders, neck and upper back are still alive with slow cyan light traces, exactly like the earlier scenes; the traces rise up the spine and then simply stop at the base of the skull",
-      "camera": "50mm, the last 1.5 seconds of a slow crane up, decelerating to a complete stop"
-    },
-    {
-      "id": "B2",
-      "time": "3.0 - 7.0",
-      "framing": "locked-off medium shot, head and shoulders, head slightly below centre so the empty space above dominates the frame",
-      "action": "around and above the head there is nothing at all: pure black, completely empty, conspicuously unlit while the body below still glows. Absolutely nothing moves in this scene except the faint drift of the traces on the shoulders. In the final half second the empty space pulses once, very faintly, a single dim cyan breath, and goes dark again",
-      "camera": "completely static, locked off, zero movement",
-      "emphasis": "this is the single most important shot of the film. The entire idea is the contrast between a body that is fully measured and a head that is not measured at all. Hold it. Do not cut away. Do not add anything to the empty space."
-    },
-    {
-      "id": "B3",
-      "time": "7.0 - 9.0",
-      "framing": "the frame goes fully black and then one single thin horizontal cyan line is drawn across it, left to right",
-      "action": "the line is drawn at a steady speed, like the first trace of an instrument that has finally been switched on; it leaves a faint glow behind it",
-      "camera": "static, wide"
-    },
-    {
-      "id": "B4",
-      "time": "9.0 - 12.0",
-      "framing": "wide, then very wide",
-      "action": "the single line multiplies into dozens of flowing horizontal waveform ribbons that fill the frame; the camera pulls back and the peaks of those waveforms resolve into the silhouette of a night-time city skyline made of light; the camera keeps pulling back until the entire city is revealed to be one single continuous glowing waveform floating in black space",
-      "camera": "continuous smooth dolly back, slightly accelerating, one unbroken move with no cuts",
-      "final_frame": "end on the wide shot of the glowing waveform-city, centred, with plenty of black space around it, held steady and clean so it can be extended with a slow zoom in editing"
-    }
-  ],
-  "lighting": "the cyan traces and the waveforms are the only light sources in the entire clip",
-  "color": {
-    "background": "#0B1220 near-black navy",
-    "light_primary": "#4FD1C5 cyan teal",
-    "light_secondary": "#2A5BC7 electric blue",
-    "forbidden": "no warm tones of any kind"
-  },
-  "audio": {
-    "speech": "none",
-    "dialogue": "none",
-    "voiceover": "none",
-    "narration": "none",
-    "music": "the ambient pad continues from Part A, dropping to near total silence during the empty-space shot, then swelling as the waveforms appear",
-    "sfx": "complete silence while the space above the head is empty, then one soft rising tone as the first line is drawn"
-  },
-  "negative_prompt": "no spoken words, no voice, no text, no letters, no numbers, no captions, no watermark, no logo, no user interface, no HUD, no anatomical brain, no brain illustration, no glowing brain, no skull, no x-ray, no MRI, no scan imagery, no hospital, no clinic, no medical device, no electrode cap, no wires on the head, no helmet, no headset, no clear visible face, no eye contact with camera, no celebrity likeness, no warm light, no daylight, no other people, no camera shake, no cuts during the dolly back, no text on the buildings, no readable signage in the city"
-}
+```text
+The same adult in the same dark grey sportswear and near-black room, seen
+from behind, face never visible. The camera finishes a slow crane up and locks
+off completely: the shoulders and neck still glow with drifting cyan traces,
+but the traces stop at the base of the skull, and above the head there is
+nothing at all — pure empty black, unlit, while the body below still glows.
+Hold perfectly still for a long beat. The emptiness pulses once, very faintly,
+then goes dark. The frame turns fully black and a single thin cyan line is
+drawn across it, left to right. The line multiplies into dozens of flowing
+waveforms filling the screen; the camera pulls back in one unbroken move and
+their peaks resolve into a night city skyline made of light, then keeps
+pulling back until the whole city is revealed as one continuous glowing wave
+in black space. End wide, centred and steady. Cinematic photoreal, cyan and
+electric blue only.
+
+Negative: no text, signage, letters or numbers. No voice or speech. No visible
+face. No brain, skull, scan, headset or medical imagery. No warm light.
 ```
 
-**Por que `no glowing brain` e `no headset` estão no negative:** a tentação do
-modelo, ao ler "cabeça" e "medir", é desenhar um cérebro brilhando ou um aparelho
-na cabeça. As duas coisas destroem o plano — **o ponto é a ausência**, e um
-aparelho na cabeça ainda por cima leria como equipamento médico, que o
+**Por que `no brain` e `no headset` no negativo:** lendo *cabeça* + *medir*, a
+tentação do modelo é desenhar um cérebro brilhando ou um aparelho na cabeça. As
+duas coisas destroem o plano — **o ponto é a ausência** — e ainda leem como
+equipamento médico, que o
 [`Medical/71`](../../Medical/71_Intended_Use_and_Regulatory_Positioning.md) não
-deixa.
+permite.
 
 ---
 
-## 5. A ordem de execução
+## 6. A ordem de execução
 
-1. **Draft, 480p, 5 s, 340 créditos.** Cole o JSON da Parte B mas deixe **só a
-   cena B2** na lista `scenes` (apague B1, B3 e B4) e ajuste o `time` para
-   `"0.0 - 5.0"`. Julgue as cinco perguntas de risco do §1 — e **só elas**.
-2. **Se passar:** Parte A no 2.5 cheio, 720p, 12 s (2.220).
+1. **Rascunho: Draft, 480p, 5 s, 340 créditos.** Cole o prompt do **§3**.
+   Julgue as cinco perguntas de risco do §1 — e **só elas**.
+2. **Se passar:** Parte A (**§4**) no 2.5 cheio, 720p, 12 s (2.220).
 3. **Salve um frame** do último segundo da Parte A, com a nuca/ombros bem
    enquadrados.
-4. **Parte B** no 2.5 cheio, 720p, 12 s (2.220), com esse frame carregado em
+4. **Parte B** (**§5**) no 2.5 cheio, 720p, 12 s (2.220), com esse frame em
    **"Referência universal"**. É isso que mantém a mesma pessoa; sem isso a
    Parte B vem com outra e a emenda não cola.
 5. **Confira cada resultado** antes de aprovar: sem fala, sem texto na imagem,
@@ -232,7 +190,7 @@ subir 720 → 1080 num plano escuro e difuso não aparece. Se quiser tentar, exi
 **"Amplificação criativa"** na interface — confira o custo dela antes, porque
 gerar direto em resolução maior sai mais caro por segundo.
 
-## 6. Se a consistência falhar
+## 7. Se a consistência falhar
 
 Se a pessoa mudar entre as partes e a "Referência universal" não resolver,
 abandone o personagem: refaça as duas partes **sem figura humana** — só as
