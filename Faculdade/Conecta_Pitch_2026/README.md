@@ -51,9 +51,9 @@ aquele é regenerado pelo CI a cada mudança de token, e este é entrega única.
 
 ## O que ainda falta
 
-- [ ] Gerar a abertura no Dreamina — **orçamento apertado**: o plano gasta 4.780
-      dos 8.554 créditos e deixa 3.774 para refazer uma parte. Siga a ordem do
-      §6 do `PROMPTS_DREAMINA.md`; fora dela o saldo não fecha
+- [x] ~~Gerar a abertura no Dreamina~~ — **feito em 27/10/2026**, nas três
+      gerações previstas (rascunho + duas partes de 12 s), 4.780 créditos.
+      Os prompts que de fato funcionaram estão no `PROMPTS_DREAMINA.md`
 - [ ] Gravar as falas dos três e as telas da demo (checklist no §9 do roteiro)
 - [ ] Montar e cronometrar — **abaixo de 5:00 medido, não estimado**
 - [ ] Preencher o banner no Canva e exportar em PDF

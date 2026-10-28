@@ -76,9 +76,11 @@ Dois problemas, e o segundo é o pior:
 
 Os prompts abaixo são **prosa descritiva**, e estes são os tamanhos contados:
 **100 palavras** o do rascunho (dentro da faixa recomendada), **172** a Parte A
-e **189** a Parte B. Os dois finais seguem acima das 100 porque encadeiam três
-ou quatro planos num clipe só — mas contra ~450 de antes. Se mesmo assim a
-aderência vier ruim, o caminho é **cortar um plano**, não encurtar as frases.
+e **227** a Parte B. Os dois finais ficam acima das 100 porque encadeiam três
+ou quatro planos num clipe só, e a Parte B ainda carrega a frase que limita a
+imagem de referência — mas contra ~450 de antes. **Os três foram usados nesta
+forma e funcionaram** (27/10/2026), então o tamanho não atrapalhou. Se um dia a
+aderência piorar, o caminho é **cortar um plano**, não encurtar as frases.
 Estão **em inglês de propósito**: o modelo adere bem mais.
 
 **A interface manda na duração, proporção e resolução.** Não repita nada disso
@@ -144,31 +146,59 @@ Cobre: *"Quando foi a última vez que você mediu o seu cérebro?"* + o silênci
 
 **É a geração que decide o vídeo**, e é ela que o rascunho de 5 s deve testar.
 
+**Exige a imagem de referência carregada** (ver §6). A primeira frase existe
+para limitar o que a referência controla.
+
 ```text
-The same adult in the same dark grey sportswear and near-black room, seen
+Use the reference image only for the person's identity, clothing and skin tone
+under cyan light — not for the camera angle or framing. The same adult, seen
 from behind, face never visible. The camera finishes a slow crane up and locks
 off completely: the shoulders and neck still glow with drifting cyan traces,
 but the traces stop at the base of the skull, and above the head there is
 nothing at all — pure empty black, unlit, while the body below still glows.
-Hold perfectly still for a long beat. The emptiness pulses once, very faintly,
-then goes dark. The frame turns fully black and a single thin cyan line is
-drawn across it, left to right. The line multiplies into dozens of flowing
-waveforms filling the screen; the camera pulls back in one unbroken move and
-their peaks resolve into a night city skyline made of light, then keeps
-pulling back until the whole city is revealed as one continuous glowing wave
-in black space. End wide, centred and steady. Cinematic photoreal, cyan and
-electric blue only.
+Hold perfectly still for a long beat. Then the camera arcs smoothly around to
+a profile silhouette, features lost in deep shadow, and a single small point
+of cyan light ignites on the forehead. From that one point a wave is born,
+travelling forward into the dark and leaving a glowing ribbon behind it. The
+ribbon multiplies into dozens of flowing waveforms filling the screen; the
+camera pulls back in one unbroken move and their peaks resolve into a night
+city skyline made of light, then keeps pulling back until the whole city is
+one continuous glowing wave in black space. End wide, centred and steady.
+Cinematic photoreal, cyan and electric blue only.
 
 Negative: no text, signage, letters or numbers. No voice or speech. No visible
-face. No brain, skull, scan, headset or medical imagery. No warm light.
+face, no face turned toward camera. No brain, skull, scan, headset or medical
+imagery. No warm light.
 ```
 
-**Por que `no brain` e `no headset` no negativo:** lendo *cabeça* + *medir*, a
-tentação do modelo é desenhar um cérebro brilhando ou um aparelho na cabeça. As
-duas coisas destroem o plano — **o ponto é a ausência** — e ainda leem como
-equipamento médico, que o
+### As três coisas desta versão que não eram óbvias
+
+**1. O ponto na testa, e não um cérebro.** A ideia de pôr um cérebro com ondas
+entre o vazio e a cidade foi levantada e **descartada por três motivos**. O
+principal: o WaveAI é **canal único em FP1**, um ponto na testa — um cérebro
+inteiro brilhando mostra atividade global, que é justamente o que o produto
+**não** mede, e a ADR-0027 (honestidade visual) não deixa a imagem afirmar o que
+não é verdade. Os outros dois: o cérebro **preenche o vazio**, que é a tese do
+filme inteiro; e cérebro anatômico é modo de falha conhecido desses modelos.
+O ponto único na testa dá a mesma virada dramática, é verdade sobre o produto e
+mantém a linguagem de luz abstrata. Por isso `no brain` e `no headset` seguem no
+negativo — lendo *cabeça* + *medir*, a tentação do modelo é desenhar exatamente
+isso, e ainda leria como equipamento médico, que o
 [`Medical/71`](../../Medical/71_Intended_Use_and_Regulatory_Positioning.md) não
 permite.
+
+**2. A primeira frase limita a referência.** O frame útil da Parte A é
+**frontal** (peito, pescoço, queixo), e esta cena abre **de costas**. Sem a
+frase de escopo, a referência arrasta o ângulo junto com a pessoa: o modelo vira
+o sujeito para a câmera, o que mata o plano do vazio — que depende de ver a nuca
+com o preto em cima — e ainda expõe o rosto. Daí também o
+`no face turned toward camera` no negativo.
+
+**3. Sumiu "in the same dark grey sportswear and near-black room".** A
+referência faz esse trabalho melhor do que a palavra, e a descrição estava em
+conflito com ela: o prompt dizia *cinza-escuro* e no frame a roupa aparece
+**azul-petróleo**, por causa da luz ciano. Descrever uma cor contra uma imagem
+que mostra outra só confunde o modelo.
 
 ---
 
@@ -177,11 +207,24 @@ permite.
 1. **Rascunho: Draft, 480p, 5 s, 340 créditos.** Cole o prompt do **§3**.
    Julgue as cinco perguntas de risco do §1 — e **só elas**.
 2. **Se passar:** Parte A (**§4**) no 2.5 cheio, 720p, 12 s (2.220).
-3. **Salve um frame** do último segundo da Parte A, com a nuca/ombros bem
-   enquadrados.
+3. **Salve um frame do último segundo da Parte A** — torso e pescoço, não as
+   pernas: é nesse enquadramento que a Parte B abre. Se o menu `...` do
+   resultado oferecer "estender" ou salvar o último quadro, use; senão baixe o
+   MP4 e pegue o frame inteiro em 16:9, sem recortar, e sem print de player
+   reduzido.
 4. **Parte B** (**§5**) no 2.5 cheio, 720p, 12 s (2.220), com esse frame em
-   **"Referência universal"**. É isso que mantém a mesma pessoa; sem isso a
-   Parte B vem com outra e a emenda não cola.
+   **"Referência universal"**. Confira que a caixinha virou miniatura e não
+   `+`, e **releia o custo** depois de subir a imagem.
+
+> **Estar na mesma sessão NÃO carrega o personagem.** Cada geração é
+> independente: o modelo recebe só o texto, e `"the same adult"` não tem
+> referente para ele — sai *um* adulto qualquer. **A única coisa que mantém a
+> mesma pessoa é a "Referência universal".** Foi essa a dúvida que quase custou
+> uma geração de 2.220.
+>
+> Calibragem, para não gastar ansiedade à toa: como o rosto **nunca** aparece em
+> nenhuma das duas partes, o que precisa casar é só roupa, tom de pele e o jeito
+> das fitas de luz. Não é "reconhecer a mesma pessoa", é "não estranhar".
 5. **Confira cada resultado** antes de aprovar: sem fala, sem texto na imagem,
    sem nada com cara de equipamento médico, rosto não identificável, paleta fria.
 
@@ -191,6 +234,9 @@ subir 720 → 1080 num plano escuro e difuso não aparece. Se quiser tentar, exi
 gerar direto em resolução maior sai mais caro por segundo.
 
 ## 7. Se a consistência falhar
+
+> **Não foi necessário em 27/10/2026** — as duas partes saíram consistentes com
+> a referência carregada. Fica registrado caso alguém precise regerar.
 
 Se a pessoa mudar entre as partes e a "Referência universal" não resolver,
 abandone o personagem: refaça as duas partes **sem figura humana** — só as
