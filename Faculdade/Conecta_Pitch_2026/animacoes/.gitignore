@@ -1,0 +1,8 @@
+# Saida do animar.py: ProRes 4444 com alfa pesa dezenas de MB por clipe e sai
+# do script em segundos. O versionado e o GERADOR, nao o render.
+# (Os fundos em ../fundos/ sao versionados porque pesam ~80 KB e sao
+# consultados como referencia de cor e zona.)
+*.mov
+*.mp4
+*.png
+_*/
