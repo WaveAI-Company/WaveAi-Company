@@ -17,8 +17,9 @@ Mariano e Nickolas Maia de Araujo.
 | Arquivo | Para quem | O que tem |
 |---|---|---|
 | [`ROTEIRO_VIDEO_PITCH.md`](ROTEIRO_VIDEO_PITCH.md) | **Os três — leiam inteiro** | As falas, cronometradas e divididas por pessoa; a montagem efeito a efeito; a ordem das telas da demo; as fontes dos dados; com o que editar |
-| [`PROMPTS_DREAMINA.md`](PROMPTS_DREAMINA.md) | Quem for gerar a abertura | Os dois JSON do Seedance para os 35 s de abertura, e como rodar sem queimar crédito |
+| [`PROMPTS_DREAMINA.md`](PROMPTS_DREAMINA.md) | Quem for gerar a abertura | Os dois JSON do Seedance, o custo **medido** em créditos e a ordem de execução que deixa saldo para refazer |
 | [`BANNER_E_VIDEO_IA.md`](BANNER_E_VIDEO_IA.md) | Quem for fazer o banner | Texto pronto para colar no modelo do Canva, campo a campo, mais os quatro conceitos de vídeo que foram considerados |
+| [`FUNDOS.md`](FUNDOS.md) | Quem for editar | Os três fundos 1920×1080 para os blocos de números, com as zonas em pixels e o contraste medido |
 | `WaveAI_Pitch_Conecta.pptx` | Apresentação | O deck, no template da organização |
 
 ## Antes de gravar ou falar qualquer coisa: leia o §0 do roteiro
@@ -32,6 +33,13 @@ como claim.**
 O roteiro usa dados de saúde mental para dimensionar o problema, e o §0 tem a
 tabela de *o que nunca dizer* × *o que dizer*. O risco não está no texto escrito
 — está em alguém improvisar na gravação.
+
+## Artefatos gerados nesta pasta
+
+| Script | Produz | Regra |
+|---|---|---|
+| [`gerar_fundos.py`](gerar_fundos.py) | `fundos/*.png` | **Nunca editar o PNG à mão** — mexa no script e rode de novo. Ele mede o contraste da zona dos números e imprime o resultado |
+| [`gerar_deck.py`](gerar_deck.py) | `WaveAI_Pitch_Conecta.pptx` | Ver abaixo: aqui a regra é o contrário |
 
 ## Sobre o `.pptx` e o `gerar_deck.py`
 
@@ -51,7 +59,9 @@ aquele é regenerado pelo CI a cada mudança de token, e este é entrega única.
 
 ## O que ainda falta
 
-- [ ] Gerar a abertura no Dreamina e escolher a melhor tentativa
+- [x] ~~Gerar a abertura no Dreamina~~ — **feito em 27/10/2026**, nas três
+      gerações previstas (rascunho + duas partes de 12 s), 4.780 créditos.
+      Os prompts que de fato funcionaram estão no `PROMPTS_DREAMINA.md`
 - [ ] Gravar as falas dos três e as telas da demo (checklist no §9 do roteiro)
 - [ ] Montar e cronometrar — **abaixo de 5:00 medido, não estimado**
 - [ ] Preencher o banner no Canva e exportar em PDF
