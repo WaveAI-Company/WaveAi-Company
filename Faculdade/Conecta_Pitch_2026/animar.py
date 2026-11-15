@@ -40,7 +40,10 @@ F_NUM = "C:/Windows/Fonts/verdanab.ttf"
 F_TXT = "C:/Windows/Fonts/segoeui.ttf"
 F_TXT_B = "C:/Windows/Fonts/seguisb.ttf"
 
-ZONA_X0, ZONA_X1 = 998, 1862
+# Tela cheia. Na primeira versao o rosto ocuparia a esquerda e os graficos
+# viviam so na faixa 998-1862; como a narracao virou so voz, a metade
+# esquerda ficava vazia. Agora a composicao e central.
+ZONA_X0, ZONA_X1 = 160, 1760
 ZONA_CX = (ZONA_X0 + ZONA_X1) // 2
 
 
@@ -108,13 +111,15 @@ def formata_mil(v):
 # ------------------------------------------------------------------- beats
 
 def beat_numero(valor, rotulo, dur_s=5.0, sufixo="", formatador=None,
-                cor=TEAL, tam_num=190):
+                cor=TEAL, tam_num=300, cx=None, larg=None):
     """Numero grande subindo de 0 ate o valor, com rotulo abaixo."""
     total = round(dur_s * FPS)
+    cx = ZONA_CX if cx is None else cx
+    larg = (ZONA_X1 - ZONA_X0 - 120) if larg is None else larg
     final = (formatador(valor) if formatador else
              f"{valor:,}".replace(",", ".")) + sufixo
-    fn = cabe(final, F_NUM, tam_num, ZONA_X1 - ZONA_X0 - 40)
-    fr = fonte(F_TXT, 34)
+    fn = cabe(final, F_NUM, tam_num, larg)
+    fr = fonte(F_TXT, 40)
     subida = round(total * 0.42)
 
     def render(f):
@@ -125,12 +130,18 @@ def beat_numero(valor, rotulo, dur_s=5.0, sufixo="", formatador=None,
         v = valor * p
         s = formatador(v) if formatador else f"{round(v):,}".replace(",", ".")
         # o numero sobe um pouco enquanto entra: 18 px de deslocamento
-        dy = (1 - suave(janela(f, 0, 14))) * 18
-        texto(d, (ZONA_CX, 452 + dy), s + sufixo, fn, cor, op)
+        dy = (1 - suave(janela(f, 0, 14))) * 26
+        # risco fino crescendo sob o numero: da base e movimento
+        lp = suave(janela(f, 10, 22))
+        if lp > 0:
+            meia = (fn.getbbox(s + sufixo)[2] - fn.getbbox(s + sufixo)[0]) / 2
+            d.line([(cx - meia * lp, 646), (cx + meia * lp, 646)],
+                   fill=(*cor, round(150 * op)), width=4)
+        texto(d, (cx, 470 + dy), s + sufixo, fn, cor, op)
         # o rotulo entra depois que o numero para de contar
         op_r = op * suave(janela(f, 6 + subida - 6, 12))
         for i, linha in enumerate(rotulo):
-            texto(d, (ZONA_CX, 596 + i * 46), linha, fr, CINZA, op_r)
+            texto(d, (cx, 700 + i * 54), linha, fr, CINZA, op_r)
         return img
 
     return total, render
@@ -143,11 +154,11 @@ def beat_grade(acesos, total_pontos=100, rotulo=(), dur_s=5.5):
     cinco pontos sem precisar de eixo nem de numero.
     """
     total = round(dur_s * FPS)
-    cols, r, gap = 10, 12, 42
+    cols, r, gap = 10, 17, 62
     larg = (cols - 1) * gap
-    x0, y0 = ZONA_CX - larg // 2, 348
-    fr = fonte(F_TXT, 34)
-    fnum = fonte(F_NUM, 86)
+    x0, y0 = ZONA_CX - larg // 2, 300
+    fr = fonte(F_TXT, 40)
+    fnum = fonte(F_NUM, 130)
 
     def render(f):
         img = Image.new("RGBA", (L, A), (0, 0, 0, 0))
@@ -170,9 +181,9 @@ def beat_grade(acesos, total_pontos=100, rotulo=(), dur_s=5.5):
                           fill=(*TEAL, round(255 * lig * op)))
         op_n = op * suave(janela(f, 4 + cols * 1.2 + 22, 14))
         # a grade termina em y=348+9*42=726; o numero comeca bem abaixo
-        texto(d, (ZONA_CX, 822), f"{acesos}%", fnum, TEAL, op_n)
+        texto(d, (ZONA_CX, 880), f"{acesos}%", fnum, TEAL, op_n)
         for i, linha in enumerate(rotulo):
-            texto(d, (ZONA_CX, 896 + i * 42), linha, fr, CINZA, op_n)
+            texto(d, (ZONA_CX, 972 + i * 48), linha, fr, CINZA, op_n)
         return img
 
     return total, render

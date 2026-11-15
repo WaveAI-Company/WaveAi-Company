@@ -35,9 +35,10 @@ AZUL = (0x2A, 0x5B, 0xC7)
 PALE = (0x7A, 0xA2, 0xF7)
 GELO = (0xF5, 0xF7, 0xFA)
 
-# Zona dos numeros, em fracao da largura. Nada de brilho forte entra aqui: e
-# onde o texto animado precisa de contraste.
-ZONA_NUM = (0.52, 0.97)
+# Zona de texto, em fracao da largura. Na primeira versao o rosto ficava a
+# esquerda e os graficos a direita; como a narracao passou a ser so voz, o
+# layout virou TELA CHEIA e a zona protegida e a faixa central.
+ZONA_NUM = (0.18, 0.82)
 
 
 def _tela():
@@ -156,10 +157,10 @@ def fundo_tracado():
     """Uma onda atravessa a tela. O mais tematico sem competir com o texto."""
     img = _tela()
     gradiente_vertical(img)
-    brilho(img, 0.26, 0.52, 0.42, AZUL, 0.17)
-    brilho(img, 0.20, 0.62, 0.22, TEAL, 0.10)
-    traco(img, 0.615, 0.085, TEAL, 0.50, semente=7)
-    traco(img, 0.655, 0.040, PALE, 0.16, semente=23, espessura=2)
+    brilho(img, 0.30, 0.78, 0.40, AZUL, 0.16)
+    brilho(img, 0.24, 0.84, 0.20, TEAL, 0.09)
+    traco(img, 0.855, 0.055, TEAL, 0.46, semente=7)
+    traco(img, 0.890, 0.028, PALE, 0.16, semente=23, espessura=2)
     vinheta(img)
     return img
 
@@ -172,6 +173,48 @@ def fundo_profundidade():
     brilho(img, 0.24, 0.58, 0.26, TEAL, 0.11)
     brilho(img, 0.78, 0.22, 0.30, AZUL, 0.05)
     vinheta(img, 0.62)
+    return img
+
+
+def fundo_centro():
+    """Composicao central: brilho no meio, ondas nas duas bordas.
+
+    E o fundo padrao do layout de tela cheia -- o texto fica no centro e as
+    ondas emolduram sem encostar.
+    """
+    img = _tela()
+    gradiente_vertical(img)
+    brilho(img, 0.50, 0.80, 0.46, AZUL, 0.15)
+    brilho(img, 0.50, 0.86, 0.22, TEAL, 0.07)
+    traco(img, 0.885, 0.048, TEAL, 0.40, semente=31, espessura=2)
+    traco(img, 0.920, 0.024, PALE, 0.14, semente=17, espessura=2)
+    vinheta(img, 0.60)
+    return img
+
+
+def fundo_preto():
+    """Quase preto. Para a pergunta-chave, onde tudo some menos a frase."""
+    img = Image.new("RGB", (L * SS, A * SS), (0x05, 0x08, 0x0E))
+    brilho(img, 0.50, 0.50, 0.40, AZUL, 0.07)
+    vinheta(img, 0.80)
+    return img
+
+
+def fundo_grade():
+    """Grade de pontos muito sutil. Da textura sem competir com o texto."""
+    img = _tela()
+    gradiente_vertical(img)
+    brilho(img, 0.50, 0.84, 0.46, AZUL, 0.13)
+    pts = Image.new("L", img.size, 0)
+    d = ImageDraw.Draw(pts)
+    passo, r = 56 * SS, 2 * SS
+    for y in range(passo, img.height, passo):
+        for x in range(passo, img.width, passo):
+            d.ellipse([x - r, y - r, x + r, y + r], fill=255)
+    img.paste(Image.new("RGB", img.size, PALE), (0, 0),
+              pts.point(lambda v: round(v * 0.085)))
+    traco(img, 0.925, 0.026, TEAL, 0.30, semente=43, espessura=2)
+    vinheta(img, 0.58)
     return img
 
 
@@ -209,7 +252,9 @@ def medir_contraste(img, nome):
     sumir num ponto. O pior caso e o que decide.
     """
     x0, x1 = int(ZONA_NUM[0] * img.width), int(ZONA_NUM[1] * img.width)
-    recorte = img.crop((x0, int(img.height * 0.12), x1, int(img.height * 0.88)))
+    # So a faixa onde o texto de fato cai. Medir o quadro inteiro reprovaria
+    # qualquer decoracao, inclusive a que esta de proposito fora do caminho.
+    recorte = img.crop((x0, int(img.height * 0.26), x1, int(img.height * 0.76)))
     dados = recorte.tobytes()
     pix = (tuple(dados[i:i + 3]) for i in range(0, len(dados), 3))
     pior = max(pix, key=_lum)
@@ -230,6 +275,9 @@ def main():
         "fundo-tracado": fundo_tracado,
         "fundo-profundidade": fundo_profundidade,
         "fundo-onda-cidade": fundo_onda_cidade,
+        "fundo-centro": fundo_centro,
+        "fundo-preto": fundo_preto,
+        "fundo-grade": fundo_grade,
     }
     print(f"gerando em {DEST} ({L}x{A})\n")
     for nome, fn in fundos.items():

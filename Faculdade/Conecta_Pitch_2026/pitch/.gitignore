@@ -1,0 +1,19 @@
+# Material BRUTO e saida da montagem: 253 MB, num repositorio PUBLICO cujo
+# .git tem 12 MB. Versionar isto o deixaria 21x maior para sempre -- historia
+# de git nao encolhe sem reescrever -- e poria as vozes e as gravacoes de tela
+# do grupo em repositorio publico em definitivo.
+#
+# O que se versiona e o PIPELINE (montar_audio.py, montar_video.py,
+# gerar_legendas.py), que refaz o video inteiro a partir deste material.
+#
+# ONDE O MATERIAL VIVE: na maquina do fundador, em
+# Faculdade/Conecta_Pitch_2026/pitch/. Estrutura esperada pelos scripts:
+#   00-inicio/Video_IA.mp4      abertura gerada no Dreamina
+#   tiago/   1-Tiago.mp4  2-Tiago.mp4  3-Tiago.mp4
+#   nickolas/nickolas.mp4       (um arquivo linear, cortado pelos tempos)
+#   gustavo/ gustavo1..4.mp4
+#   demo/    login, patient_index, patient_live (2), patient_history, doctor
+#   neurosky/foto-cinematografica.mp4
+#   linkedin/tiagooriginal.jpeg  nickolas.jpeg  gustavo.png
+*
+!.gitignore
