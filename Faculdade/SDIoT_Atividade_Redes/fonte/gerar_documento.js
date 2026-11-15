@@ -77,7 +77,7 @@ const cabecalho = [
   new Paragraph({ children: [new TextRun({ text: "Rede do WaveAI: enlaces, mapa de falhas e requisitos", font: FONTE, size: 34, bold: true, color: COR_TITULO })], spacing: { after: 60 } }),
   P("Sistemas Distribuídos Aplicado à Internet das Coisas · Prof. Rodrigo dos Santos Faustino", { size: 20, after: 20, align: AlignmentType.LEFT }),
   P("Análise e Desenvolvimento de Sistemas — AMS · 2º ano, noite · setembro de 2026", { size: 20, after: 20, align: AlignmentType.LEFT }),
-  P("**Grupo:** Tiago Bryan Ramos de Oliveira · Gustavo Mendes Vetieri Mariano · Nickolas Maia de Araujo", { size: 20, after: 160, align: AlignmentType.LEFT }),
+  P("**Grupo:** Tiago Bryan Ramos de Oliveira · Gustavo Mendes Ventieri Mariano · Nickolas Maia de Araujo", { size: 20, after: 160, align: AlignmentType.LEFT }),
 ];
 
 const contexto = [

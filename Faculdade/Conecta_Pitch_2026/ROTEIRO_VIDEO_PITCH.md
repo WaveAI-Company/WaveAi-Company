@@ -5,7 +5,7 @@
 | Evento | Encontro da Regional 4 — CPS · apresentação em **27/11/2026** |
 | Entrega do vídeo | **30/10/2026** |
 | Duração alvo | **5:00** (300 s) |
-| Apresentadores | Tiago Bryan Ramos de Oliveira · Gustavo Mendes Vetieri Mariano · Nickolas Maia de Araujo |
+| Apresentadores | Tiago Bryan Ramos de Oliveira · Gustavo Mendes Ventieri Mariano · Nickolas Maia de Araujo |
 | Estado para validação | **Dados levantados, fontes citadas, pendente de validação do fundador** |
 
 ---

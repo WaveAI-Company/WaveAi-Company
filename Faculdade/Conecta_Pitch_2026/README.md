@@ -9,7 +9,7 @@ do deploy.
 | **30/10/2026** | Entrega do **vídeo pitch** (5 min) e do **banner em PDF** |
 | **27/11/2026** | Apresentação presencial |
 
-Apresentam os três: Tiago Bryan Ramos de Oliveira, Gustavo Mendes Vetieri
+Apresentam os três: Tiago Bryan Ramos de Oliveira, Gustavo Mendes Ventieri
 Mariano e Nickolas Maia de Araujo.
 
 ## Por onde começar

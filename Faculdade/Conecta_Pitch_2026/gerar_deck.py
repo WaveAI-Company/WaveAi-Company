@@ -178,7 +178,7 @@ for sh in ident.shapes:
         ps[0].runs[0].font.bold = True
         ps[0].runs[0].font.size = Pt(16)
         ps[1].runs[0].text = ("Tiago Bryan Ramos de Oliveira  ·  "
-                              "Gustavo Mendes Vetieri Mariano  ·  "
+                              "Gustavo Mendes Ventieri Mariano  ·  "
                               "Nickolas Maia de Araujo")
         ps[1].runs[0].font.size = Pt(13)
         ps[1].runs[0].font.color.rgb = CINZA
@@ -366,7 +366,7 @@ tf2 = texto(p7, 0.95, 5.92, 11.43, 0.30, PP_ALIGN.CENTER)
 run(tf2.paragraphs[0], "waveai.tec.br", 15, AZUL, True)
 tf3 = texto(p7, 0.95, 6.28, 11.43, 0.28, PP_ALIGN.CENTER)
 run(tf3.paragraphs[0],
-    "Tiago Bryan Ramos de Oliveira  ·  Gustavo Mendes Vetieri Mariano  ·  "
+    "Tiago Bryan Ramos de Oliveira  ·  Gustavo Mendes Ventieri Mariano  ·  "
     "Nickolas Maia de Araujo", 10, CINZA_CL)
 
 pres.save("WaveAI_Pitch_Conecta.pptx")

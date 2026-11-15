@@ -2,7 +2,7 @@
 
 **Disciplina:** Sistemas Distribuídos Aplicado à Internet das Coisas · **Professor:** Rodrigo dos Santos Faustino
 **Curso:** Análise e Desenvolvimento de Sistemas — AMS · 2º ano, noite
-**Grupo:** Tiago Bryan Ramos de Oliveira · Gustavo Mendes Vetieri Mariano · Nickolas Maia de Araujo
+**Grupo:** Tiago Bryan Ramos de Oliveira · Gustavo Mendes Ventieri Mariano · Nickolas Maia de Araujo
 
 Entrega acadêmica **sobre** o WaveAI, separada do produto: nada desta pasta entra em
 imagem, no app ou no site (`Faculdade/**` está no `paths-ignore` do `deploy.yml`).
