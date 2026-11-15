@@ -138,7 +138,7 @@ pediram.
 
 **Integrantes**
 
-> Tiago Bryan Ramos de Oliveira · Gustavo Mendes Vetieri Mariano · Nickolas Maia de Araujo
+> Tiago Bryan Ramos de Oliveira · Gustavo Mendes Ventieri Mariano · Nickolas Maia de Araujo
 
 **Problema / contexto** *(~45 palavras — banner se lê de pé, a 2 metros)*
 

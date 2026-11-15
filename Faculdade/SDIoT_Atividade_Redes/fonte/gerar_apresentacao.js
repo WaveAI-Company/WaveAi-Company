@@ -39,7 +39,7 @@ const selo = (slide, texto, x, y, cor = TEAL, d = 0.42) => {
   T(s, "Rede do WaveAI", { x: 0.6, y: 1.15, w: 8.8, h: 1.0, fontSize: 48, bold: true, color: BRANCO });
   T(s, "Enlaces, falhas e requisitos de um sistema de EEG de consumo que já está em produção", { x: 0.6, y: 2.15, w: 8.2, h: 0.8, fontSize: 20, color: "C9D4E3" });
   T(s, [
-    { text: "Tiago Bryan Ramos de Oliveira · Gustavo Mendes Vetieri Mariano · Nickolas Maia de Araujo", options: { breakLine: true } },
+    { text: "Tiago Bryan Ramos de Oliveira · Gustavo Mendes Ventieri Mariano · Nickolas Maia de Araujo", options: { breakLine: true } },
     { text: "Sistemas Distribuídos Aplicado à Internet das Coisas · Prof. Rodrigo dos Santos Faustino", options: { breakLine: true } },
     { text: "ADS AMS · 2º ano, noite · setembro de 2026" },
   ], { x: 0.6, y: 3.9, w: 8.8, h: 1.0, fontSize: 13, color: "9FB0C6", paraSpaceAfter: 4 });
