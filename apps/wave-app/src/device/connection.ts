@@ -13,7 +13,7 @@
  * propósito.
  */
 
-import { PermissionsAndroid, Platform } from "react-native";
+import { DeviceEventEmitter, PermissionsAndroid, Platform } from "react-native";
 import RNBluetoothClassic, {
   type BluetoothDevice,
 } from "react-native-bluetooth-classic";
@@ -45,6 +45,52 @@ let inscricao: { remove(): void } | null = null;
  * o handler filtra pelo endereço antes de fazer qualquer coisa.
  */
 let inscricaoQueda: { remove(): void } | null = null;
+/**
+ * Assinatura do **fechamento do canal** — a queda que chega primeiro.
+ *
+ * Medido no aparelho real (2026-11-23): quando o MindWave fecha o canal RFCOMM,
+ * a biblioteca emite `DEVICE_DISCONNECTED@<endereço>`, o evento **por
+ * aparelho**, e não o geral que `onDeviceDisconnected` assina. O geral só sai
+ * quando o Android derruba o enlace inteiro (ACL), e isso levou **37 s** depois
+ * do canal fechado: 23 s de espera ociosa + 10 s de timeout do L2CAP. Nesse
+ * intervalo a tela dizia "AO VIVO" sem entrar uma amostra. A biblioteca não
+ * expõe o evento por aparelho na API dela; ele é ouvido direto no emissor do RN.
+ */
+let inscricaoCanal: { remove(): void } | null = null;
+/**
+ * Vigia de silêncio: o aparelho que para de mandar bytes **caiu**, avise ele ou
+ * não. O ThinkGear emite 512 amostras por segundo em fluxo contínuo, inclusive
+ * fora da cabeça (aí com `poorSignal` alto) — silêncio de vários segundos não é
+ * estado normal de nenhum uso.
+ */
+let vigia: ReturnType<typeof setInterval> | null = null;
+let ultimoByteMs = 0;
+/**
+ * Quanto silêncio conta como queda. **Calibragem, não decisão de ADR**: 5 s é
+ * 2.560 amostras perdidas — folga larga contra um engasgo do rádio, e ainda
+ * curto perto do teto de reconexão de 10 s da ADR-0055.
+ */
+const SILENCIO_MAX_MS = 5_000;
+/**
+ * Token da conexão corrente. Cada `connect` ganha o seu, e um aviso de queda só
+ * vale se ainda for da conexão da vez: os três detectores (canal, enlace e
+ * vigia) podem disparar para a MESMA queda, e o do enlace chega dezenas de
+ * segundos depois — quando já pode existir uma conexão nova, de uma reconexão
+ * que deu certo, que ele derrubaria por engano.
+ */
+let geracaoConexao = 0;
+
+/** Solta tudo o que pertence à conexão corrente, sem avisar ninguém. */
+function soltarConexao(): void {
+  inscricao?.remove();
+  inscricao = null;
+  inscricaoQueda?.remove();
+  inscricaoQueda = null;
+  inscricaoCanal?.remove();
+  inscricaoCanal = null;
+  if (vigia) clearInterval(vigia);
+  vigia = null;
+}
 
 /**
  * Trava de conexão — **o recurso é único e a guarda mora com ele**.
@@ -199,24 +245,48 @@ export const deviceConnection: DeviceConnection = {
     }
     conectando = false;
 
-    // Queda da conexão (ADR-0055) — assinada ANTES de qualquer dado chegar, e
-    // filtrada pelo endereço: `onDeviceDisconnected` é do módulo e dispara para
-    // todo aparelho que cai, não só para o nosso.
-    inscricaoQueda?.remove();
+    // Queda da conexão (ADR-0055) — assinada ANTES de qualquer dado chegar.
+    // Três detectores para a mesma queda, porque cada um enxerga um caso; o
+    // token garante que só o primeiro conta.
+    const minha = ++geracaoConexao;
+    const conexao = dispositivo;
+    const avisarQueda = (motivo: string) => {
+      if (minha !== geracaoConexao) return;
+      geracaoConexao += 1;
+      // Solta o estado local ANTES de avisar: quem ouvir vai tentar reconectar,
+      // e a trava de `connect` recusaria enquanto `dispositivo` estiver de pé.
+      soltarConexao();
+      dispositivo = null;
+      conectando = false;
+      // O vigia acusa um socket que pode estar aberto: fecha, para a reconexão
+      // não encontrar o canal ocupado. Nos outros dois casos já está fechado.
+      void conexao.disconnect().catch(() => undefined);
+      handlers.onStatus?.("disconnected", motivo);
+    };
+
+    // 1. O canal fechou (o caso medido): chega na hora.
+    inscricaoCanal = DeviceEventEmitter.addListener(`DEVICE_DISCONNECTED@${deviceId}`, () =>
+      avisarQueda("o canal com o aparelho fechou"),
+    );
+    // 2. O enlace caiu. `onDeviceDisconnected` é do módulo e dispara para todo
+    // aparelho que cai, não só para o nosso — daí o filtro pelo endereço.
     inscricaoQueda = RNBluetoothClassic.onDeviceDisconnected((evento) => {
       const caiu = evento?.device?.address ?? evento?.device?.id;
       if (caiu !== deviceId) return;
-      // Solta o estado local ANTES de avisar: quem ouvir vai tentar reconectar,
-      // e a trava de `connect` recusaria enquanto `dispositivo` estiver de pé.
-      inscricao?.remove();
-      inscricao = null;
-      dispositivo = null;
-      conectando = false;
-      handlers.onStatus?.("disconnected", "conexão com o aparelho perdida");
+      avisarQueda("conexão com o aparelho perdida");
     });
+    // 3. Silêncio: o rádio sumiu sem ninguém fechar nada. É timer, então não
+    // roda com a tela apagada — lá valem os dois de cima, que são eventos.
+    ultimoByteMs = Date.now();
+    vigia = setInterval(() => {
+      if (Date.now() - ultimoByteMs > SILENCIO_MAX_MS) {
+        avisarQueda("o aparelho parou de enviar dados");
+      }
+    }, 1_000);
 
     const parser = new ThinkGearParser();
     inscricao = dispositivo.onDataReceived((evento) => {
+      ultimoByteMs = Date.now();
       for (const pacote of parser.feed(paraBytes(evento.data))) {
         if (pacote.poorSignal !== undefined) {
           handlers.onSignalQuality?.({ poorSignal: pacote.poorSignal });
@@ -240,12 +310,11 @@ export const deviceConnection: DeviceConnection = {
   },
 
   async disconnect(): Promise<void> {
-    inscricao?.remove();
-    inscricao = null;
-    // Sai junto: sem isto, desconectar de propósito dispararia o aviso de queda
-    // e a sessão tentaria reconectar a um aparelho que ninguém quer mais.
-    inscricaoQueda?.remove();
-    inscricaoQueda = null;
+    // Invalida a conexão corrente ANTES de fechar: desconectar de propósito não
+    // é queda, e um aviso atrasado dela não pode disparar a reconexão de um
+    // aparelho que ninguém quer mais.
+    geracaoConexao += 1;
+    soltarConexao();
     if (dispositivo) {
       await dispositivo.disconnect().catch(() => undefined);
       dispositivo = null;
