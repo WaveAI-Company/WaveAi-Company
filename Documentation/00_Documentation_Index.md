@@ -2,9 +2,9 @@
 
 | Campo | Valor |
 |---|---|
-| Versão | 0.2 |
+| Versão | 0.3 |
 | Status | Vivo (mapa da documentação) |
-| Data | 2026-10-27 |
+| Data | 2026-11-23 |
 
 Mapa dos documentos que **existem** no repositório. A versão 0.1 (18/07/2026)
 tabulava a estrutura *ideal* e relegava a real a um changelog no pé — com o
@@ -13,7 +13,7 @@ documentos já escritos. Esta versão inverte: **o corpo do índice é o que exi
 e foi conferido**; o que é meta vive na §12, dito com todas as letras.
 
 > **Regra deste documento:** a tabela lista arquivo versionado e conferido na
-> data acima (`git ls-files '*.md'` → **43 arquivos**, todos abaixo). Pasta ou
+> data acima (`git ls-files '*.md'` → **44 arquivos**, todos abaixo). Pasta ou
 > documento que não existe **não entra em tabela**: entra na §12 como meta.
 
 > **Este índice não tem coluna de status, de propósito.** O status de um
@@ -26,23 +26,24 @@ e foi conferido**; o que é meta vive na §12, dito com todas as letras.
 
 ---
 
-## 1. Núcleo — raiz `/` (13 arquivos)
+## 1. Núcleo — raiz `/` e `Fundacao/` (14 arquivos)
 
 | Código | Arquivo | Propósito |
 |---|---|---|
-| 00 | [`00_Project_Vision.md`](../00_Project_Vision.md) | Visão e proposta de valor |
-| 01 | [`01_Project_Objectives.md`](../01_Project_Objectives.md) | Objetivos e critérios de sucesso |
-| 02 | [`02_Project_Glossary.md`](../02_Project_Glossary.md) | Glossário de termos |
-| 03 | [`03_Assumptions.md`](../03_Assumptions.md) | Hipóteses e premissas (IDs `H-*`) |
+| 00 | [`Fundacao/00_Project_Vision.md`](../Fundacao/00_Project_Vision.md) | Visão e proposta de valor |
+| 01 | [`Fundacao/01_Project_Objectives.md`](../Fundacao/01_Project_Objectives.md) | Objetivos e critérios de sucesso |
+| 02 | [`Fundacao/02_Project_Glossary.md`](../Fundacao/02_Project_Glossary.md) | Glossário de termos |
+| 03 | [`Fundacao/03_Assumptions.md`](../Fundacao/03_Assumptions.md) | Hipóteses e premissas (IDs `H-*`) |
 | 04 | [`04_Open_Questions.md`](../04_Open_Questions.md) | Perguntas em aberto (IDs `Q-*`) — **fonte de verdade** |
 | 05 | [`05_Decisions.md`](../05_Decisions.md) | Registro de decisões (ADR-0001…) — **fonte de verdade** |
-| 06 | [`06_Master_Roadmap.md`](../06_Master_Roadmap.md) | Roadmap mestre por fases |
-| 07 | [`07_Tech_Stack.md`](../07_Tech_Stack.md) | Stack tecnológico |
-| 08 | [`08_AI_Instructions.md`](../08_AI_Instructions.md) | Instruções de trabalho da IA |
-| 09 | [`09_Project_Backlog.md`](../09_Project_Backlog.md) | Backlog do projeto |
+| 06 | [`Fundacao/06_Master_Roadmap.md`](../Fundacao/06_Master_Roadmap.md) | Roadmap mestre por fases |
+| 07 | [`Fundacao/07_Tech_Stack.md`](../Fundacao/07_Tech_Stack.md) | Stack tecnológico |
+| 08 | [`Fundacao/08_AI_Instructions.md`](../Fundacao/08_AI_Instructions.md) | Instruções de trabalho da IA |
+| 09 | [`Fundacao/09_Project_Backlog.md`](../Fundacao/09_Project_Backlog.md) | Backlog do projeto |
 | — | [`CLAUDE.md`](../CLAUDE.md) | Contexto do repositório para o Claude Code |
 | — | [`MASTER_PLAN.md`](../MASTER_PLAN.md) | Plano diretor |
 | — | [`README.md`](../README.md) | Porta de entrada do repositório |
+| — | [`Fundacao/README.md`](../Fundacao/README.md) | O que é a pasta `Fundacao/` |
 
 **`CLAUDE.md` e `README.md` ficam na raiz por restrição:** é de lá que o Claude
 Code lê as instruções do projeto ao iniciar. Os outros onze podem ser movidos —
@@ -198,15 +199,15 @@ só registra.
 | Arquivo | O que o cabeçalho diz hoje | Por que está atrás |
 |---|---|---|
 | [`MASTER_PLAN.md`](../MASTER_PLAN.md) | "fase atual: **Análise & Ciência** (ver Documentation/13)" | Aquela fase fechou em 26/07/2026; vieram Produto & UX, P13, P14, infra, P16, P17 e P18 |
-| [`06_Master_Roadmap.md`](../06_Master_Roadmap.md) | "fase atual: **Produto & UX**" | Também encerrada |
+| [`Fundacao/06_Master_Roadmap.md`](../Fundacao/06_Master_Roadmap.md) | "fase atual: **Produto & UX**" | Também encerrada |
 | [`14_Product_UX_Phase_Work_Breakdown.md`](14_Product_UX_Phase_Work_Breakdown.md) | "Vivo — fonte das issues da fase de Produto & UX" | A fase fechou; o documento é registro dela |
 | [`11_MVP_Work_Breakdown.md`](11_MVP_Work_Breakdown.md) | "Vivo — fonte das issues do GitHub" | As issues do MVP (M0–M5) foram entregues |
 | [`Medical/71`](../Medical/71_Intended_Use_and_Regulatory_Positioning.md) | "Rascunho" | É a **fonte de verdade** do que se pode afirmar, citada pelo `CLAUDE.md` e obedecida por toda a UI |
 | [`Architecture/22`](../Architecture/22_MVP_Platform_Architecture.md) | "Rascunho — base para especificação do MVP" | É a **fonte de verdade** da arquitetura, e o MVP foi construído e está no ar |
 | [`Architecture/21`](../Architecture/21_NeuroSky_Integration_and_Capture.md) | "Rascunho — resolve o spike Q-TEC-05" | A captação funciona com o aparelho real, inclusive em segundo plano |
 | [`DataScience/31`](../DataScience/31_Signal_Fidelity_Study_Protocol.md) | "Rascunho — pronto para execução piloto" | O piloto foi executado; o resultado é o [`33`](../DataScience/33_Signal_Fidelity_Report.md) |
-| [`01_Project_Objectives.md`](../01_Project_Objectives.md) | "Rascunho (Fase 0)" | Não existe mais Fase 0 |
-| [`07_Tech_Stack.md`](../07_Tech_Stack.md) | "Candidato — **nada travado**" | A stack está travada pela prática e por ADR (Expo, FastAPI, Postgres/Neon, Container Apps) |
+| [`Fundacao/01_Project_Objectives.md`](../Fundacao/01_Project_Objectives.md) | "Rascunho (Fase 0)" | Não existe mais Fase 0 |
+| [`Fundacao/07_Tech_Stack.md`](../Fundacao/07_Tech_Stack.md) | "Candidato — **nada travado**" | A stack está travada pela prática e por ADR (Expo, FastAPI, Postgres/Neon, Container Apps) |
 
 > **Resolvido:** os cabeçalhos da tabela acima foram corrigidos em 2026-11-23 (PR `docs/cabecalhos-defasados`). A tabela fica como registro do que dizia antes.
 
@@ -222,6 +223,12 @@ Mais quatro, sem linha de `| Status`, defasados no corpo:
 ---
 
 ## Mudanças
+
+**2026-11-23 (v0.3)** — os oito documentos fundacionais da raiz (`00`–`03` e
+`06`–`09`: visão, objetivos, glossário, premissas, roadmap, stack, instruções de
+IA e backlog) foram movidos para `Fundacao/`, com `git mv` e todos os links
+relativos corrigidos. Ficam na raiz as fontes de verdade vivas (`04_Open_Questions.md`,
+`05_Decisions.md`, `MASTER_PLAN.md`), além de `CLAUDE.md` e `README.md`.
 
 **2026-10-27 (v0.2)** — reescrito na varredura de documentação. O índice passa a
 listar os 43 `.md` versionados, conferidos um a um, e a separar fato de meta.

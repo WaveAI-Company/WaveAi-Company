@@ -77,4 +77,4 @@ git push -u origin feat/minha-tarefa
 - [ ] Sem dados sensíveis/segredos no diff.
 
 ## 7. Relação com a documentação
-Mudanças estruturais entram como **RFC** (pasta `RFC/`) antes de virarem **ADR** ([05_Decisions](../05_Decisions.md)). Ver convenções em [08_AI_Instructions](../08_AI_Instructions.md).
+Mudanças estruturais entram como **RFC** (pasta `RFC/`) antes de virarem **ADR** ([05_Decisions](../05_Decisions.md)). Ver convenções em [08_AI_Instructions](../Fundacao/08_AI_Instructions.md).

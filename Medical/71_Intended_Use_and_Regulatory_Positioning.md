@@ -5,7 +5,7 @@
 | Versão | 0.1 |
 | Status | Vigente — fonte de verdade (resolve Q-CLN-01 e Q-CLN-04) |
 | Data | 2026-07-18 |
-| Documentos relacionados | [MASTER_PLAN](../MASTER_PLAN.md), [70_Regulatory_Clinical_Strategy](70_Regulatory_Clinical_Strategy.md), [05_Decisions](../05_Decisions.md), [01_Project_Objectives](../01_Project_Objectives.md) |
+| Documentos relacionados | [MASTER_PLAN](../MASTER_PLAN.md), [70_Regulatory_Clinical_Strategy](70_Regulatory_Clinical_Strategy.md), [05_Decisions](../05_Decisions.md), [01_Project_Objectives](../Fundacao/01_Project_Objectives.md) |
 
 > **[AVISO]** Base de trabalho de engenharia/produto — **não é parecer jurídico ou regulatório**. Rótulos: **[FATO] / [HIPÓTESE] / [OPINIÃO] / [RECOMENDAÇÃO]**.
 
@@ -75,7 +75,7 @@
 ## 7. Impacto em hipóteses/decisões
 - **Q-CLN-01** resolvida (claim precisa, não-diagnóstica, faseada).
 - **Q-CLN-04** contornada: a fase atual **não** depende de neurologista.
-- Revisar **H-REG-01/H-REG-02** ([03_Assumptions](../03_Assumptions.md)): na trilha de bem-estar, **[HIPÓTESE]** o produto provavelmente fica **fora do escopo SaMD** — a confirmar por parecer regulatório antes de qualquer comunicação pública.
+- Revisar **H-REG-01/H-REG-02** ([03_Assumptions](../Fundacao/03_Assumptions.md)): na trilha de bem-estar, **[HIPÓTESE]** o produto provavelmente fica **fora do escopo SaMD** — a confirmar por parecer regulatório antes de qualquer comunicação pública.
 
 ---
 

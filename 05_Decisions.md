@@ -412,7 +412,7 @@ Recompilar, por sua vez, esbarrou num problema de ambiente da máquina de desenv
 
 ## ADR-0037 — Anotações contextuais de sessão: nota livre cifrada, por sessão, visível ao profissional via CareLink (PUX-D1)
 **Status:** Aceita (2026-07-26)
-**Contexto:** A fase **Produto & UX** vai construir a **P2** (o "pop-up de contexto"): a [Visão](00_Project_Vision.md) previa que o paciente adicione **contexto a um momento** para correlacionar com o sinal — nunca implementado (não há tabela de anotação). **PUX-D1** ([Documentation/14](Documentation/14_Product_UX_Phase_Work_Breakdown.md)) pede o modelo. Persona = bem-estar/estresse (ADR-0036). A **v1 é manual** (o disparo por evento/desvio Nσ depende de baseline maduro — ADR-0032 — e fica para v2, sem o termo "anomalia").
+**Contexto:** A fase **Produto & UX** vai construir a **P2** (o "pop-up de contexto"): a [Visão](Fundacao/00_Project_Vision.md) previa que o paciente adicione **contexto a um momento** para correlacionar com o sinal — nunca implementado (não há tabela de anotação). **PUX-D1** ([Documentation/14](Documentation/14_Product_UX_Phase_Work_Breakdown.md)) pede o modelo. Persona = bem-estar/estresse (ADR-0036). A **v1 é manual** (o disparo por evento/desvio Nσ depende de baseline maduro — ADR-0032 — e fica para v2, sem o termo "anomalia").
 
 **[FATO] O padrão de dado sensível do titular já existe.** O `Result` cifra em repouso (ADR-0026), audita acesso por titular (`ResultAccessEvent`) e a leitura pelo profissional exige **CareLink ativo** (ADR-0024). A anotação **espelha** isso em vez de inventar um caminho novo.
 
@@ -500,7 +500,7 @@ Recompilar, por sua vez, esbarrou num problema de ambiente da máquina de desenv
 
 ## ADR-0039 — Espectador ao vivo: fan-out do gateway + assinatura SSE (cookie); titular e profissional via CareLink auditado
 **Status:** Proposta (2026-07-28) — vira Aceita no merge.
-**Contexto:** A [Visão](00_Project_Vision.md) e um pedido do fundador: com o **celular captando** (app), ver os dados e a captação **em tempo real no navegador**. Hoje é impossível — o gateway `/stream` é **1:1**: as features/eSense de cada janela voltam **só ao socket que capta** ([services/api/app/services/streaming.py](services/api/app/services/streaming.py), `_samples`), sem fan-out. O web **não capta** (superfície por plataforma, ADR-0038/P6-b) mas **pode assistir** — capability por plataforma coerente: **mobile capta, web assiste**. Frente própria, com ADR próprio, como decidido em ADR-0038.
+**Contexto:** A [Visão](Fundacao/00_Project_Vision.md) e um pedido do fundador: com o **celular captando** (app), ver os dados e a captação **em tempo real no navegador**. Hoje é impossível — o gateway `/stream` é **1:1**: as features/eSense de cada janela voltam **só ao socket que capta** ([services/api/app/services/streaming.py](services/api/app/services/streaming.py), `_samples`), sem fan-out. O web **não capta** (superfície por plataforma, ADR-0038/P6-b) mas **pode assistir** — capability por plataforma coerente: **mobile capta, web assiste**. Frente própria, com ADR próprio, como decidido em ADR-0038.
 
 **[FATO] O padrão de leitura sensível do titular pelo profissional já existe.** CareLink `active` (ADR-0024) + consentimento (ADR-0026) + auditoria dedicada (`ResultAccessEvent`/`AnnotationAccessEvent`). O espectador profissional **espelha** isso em vez de inventar caminho novo.
 

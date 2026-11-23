@@ -5,7 +5,7 @@
 | Versão | 0.1 (semente) |
 | Status | Semente — a validar na Fase 1 |
 | Data | 2026-07-18 |
-| Documentos relacionados | [MASTER_PLAN](../MASTER_PLAN.md), [03_Assumptions](../03_Assumptions.md), [Medical/70_Regulatory_Clinical_Strategy](../Medical/70_Regulatory_Clinical_Strategy.md) |
+| Documentos relacionados | [MASTER_PLAN](../MASTER_PLAN.md), [03_Assumptions](../Fundacao/03_Assumptions.md), [Medical/70_Regulatory_Clinical_Strategy](../Medical/70_Regulatory_Clinical_Strategy.md) |
 
 > Documento mais crítico do ponto de vista científico. Rótulos: **[FATO] / [HIPÓTESE] / [OPINIÃO] / [RECOMENDAÇÃO]**.
 
