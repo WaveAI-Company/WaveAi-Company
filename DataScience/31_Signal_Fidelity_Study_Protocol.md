@@ -3,7 +3,7 @@
 | Campo | Valor |
 |---|---|
 | Versão | 0.1 |
-| Status | Rascunho — pronto para execução piloto |
+| Status | Executado — resultado em DataScience/33 |
 | Data | 2026-07-18 |
 | Dispositivo | NeuroSky MindWave Mobile 2 (canal único, FP1, 512 Hz) |
 | Documentos relacionados | [30_EEG_Signal_Processing_Strategy](30_EEG_Signal_Processing_Strategy.md), [03_Assumptions](../03_Assumptions.md) (H-SIG-01/02), [MASTER_PLAN](../MASTER_PLAN.md) |

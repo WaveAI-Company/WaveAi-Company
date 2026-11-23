@@ -3,7 +3,7 @@
 | Campo | Valor |
 |---|---|
 | Versão | 0.1 |
-| Status | Rascunho — base para especificação do MVP |
+| Status | Vigente — fonte de verdade da arquitetura (MVP construído e em produção) |
 | Data | 2026-07-18 |
 | Documentos relacionados | [20_System_Architecture_Overview](20_System_Architecture_Overview.md), [21_NeuroSky_Integration_and_Capture](21_NeuroSky_Integration_and_Capture.md), [Documentation/11_MVP_Work_Breakdown](../Documentation/11_MVP_Work_Breakdown.md), [05_Decisions](../05_Decisions.md) |
 

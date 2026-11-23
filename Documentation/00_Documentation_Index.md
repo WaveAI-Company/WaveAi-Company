@@ -208,6 +208,8 @@ só registra.
 | [`01_Project_Objectives.md`](../01_Project_Objectives.md) | "Rascunho (Fase 0)" | Não existe mais Fase 0 |
 | [`07_Tech_Stack.md`](../07_Tech_Stack.md) | "Candidato — **nada travado**" | A stack está travada pela prática e por ADR (Expo, FastAPI, Postgres/Neon, Container Apps) |
 
+> **Resolvido:** os cabeçalhos da tabela acima foram corrigidos em 2026-11-23 (PR `docs/cabecalhos-defasados`). A tabela fica como registro do que dizia antes.
+
 Mais quatro, sem linha de `| Status`, defasados no corpo:
 
 | Arquivo | O que diz hoje |

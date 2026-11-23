@@ -3,7 +3,7 @@
 | Campo | Valor |
 |---|---|
 | Versão | 0.1 |
-| Status | Rascunho (Fase 0) |
+| Status | Registro — objetivos da Fase 0; produto hoje em produção (ver 06_Master_Roadmap) |
 | Data | 2026-07-18 |
 | Responsável | Arquitetura (cofundador técnico) |
 | Documentos relacionados | [00_Project_Vision](00_Project_Vision.md), [MASTER_PLAN](MASTER_PLAN.md), [03_Assumptions](03_Assumptions.md) |
