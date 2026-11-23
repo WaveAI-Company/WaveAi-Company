@@ -127,6 +127,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
+  // O refresh foi recusado no meio do uso: a sessão acabou de verdade. Sem
+  // isto, as telas seguiam abertas recebendo 401 e mostrando "vazio" — o
+  // início chegou a convidar para a primeira sessão quem tinha sete.
+  useEffect(() => api.aoPerderSessao(() => setUser(null)), []);
+
   const signIn = useCallback(async (email: string, password: string) => {
     setUser(await api.login(email, password));
   }, []);
