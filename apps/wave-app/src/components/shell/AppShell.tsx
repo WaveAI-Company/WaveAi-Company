@@ -33,6 +33,7 @@ import { Disclaimer } from "../Disclaimer";
 import { Logo } from "../brand/Logo";
 import { Icon, type IconName } from "../Icon";
 import { Button } from "../Button";
+import { AvisoDeTermos } from "./AvisoDeTermos";
 import { NavList } from "./NavList";
 
 const PAINEL_W = larguras.navegacao;
@@ -123,7 +124,10 @@ export function AppShell({ children }: { children: ReactNode }) {
           onMenu={lateral ? undefined : () => setAberto(true)}
           onBack={onVoltar}
         />
-        <View style={styles.conteudo}>{children}</View>
+        <View style={styles.conteudo}>
+          <AvisoDeTermos />
+          {children}
+        </View>
       </View>
 
       {!lateral && aberto ? (

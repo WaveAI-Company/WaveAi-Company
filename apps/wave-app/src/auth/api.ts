@@ -25,6 +25,11 @@ export type AuthUser = {
   email: string;
   role: UserRole;
   display_name: string | null;
+  /**
+   * Versão dos Termos aceita, ou `null` sem registro (contas anteriores à
+   * ADR-0048). O `AvisoDeTermos` compara com a que este app exibe.
+   */
+  accepted_terms_version?: string | null;
 };
 
 export class ApiError extends Error {
@@ -328,6 +333,14 @@ export async function deleteAccount(password: string): Promise<void> {
     setAccessToken(null);
     await tokenStorage.clearRefreshToken();
   }
+}
+
+/**
+ * Aceita, já com conta, a versão dos Termos que o app **exibiu** (emenda à
+ * ADR-0048). 409 se ela não for mais a vigente no servidor.
+ */
+export async function acceptTerms(version: string): Promise<void> {
+  await request("/auth/me/terms", { method: "POST", auth: true, body: { version } });
 }
 
 export async function me(): Promise<AuthUser> {
