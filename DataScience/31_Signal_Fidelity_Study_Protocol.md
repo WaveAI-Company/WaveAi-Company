@@ -6,7 +6,7 @@
 | Status | Executado — resultado em DataScience/33 |
 | Data | 2026-07-18 |
 | Dispositivo | NeuroSky MindWave Mobile 2 (canal único, FP1, 512 Hz) |
-| Documentos relacionados | [30_EEG_Signal_Processing_Strategy](30_EEG_Signal_Processing_Strategy.md), [03_Assumptions](../03_Assumptions.md) (H-SIG-01/02), [MASTER_PLAN](../MASTER_PLAN.md) |
+| Documentos relacionados | [30_EEG_Signal_Processing_Strategy](30_EEG_Signal_Processing_Strategy.md), [03_Assumptions](../Fundacao/03_Assumptions.md) (H-SIG-01/02), [MASTER_PLAN](../MASTER_PLAN.md) |
 
 > Rótulos: **[FATO] / [HIPÓTESE] / [OPINIÃO] / [RECOMENDAÇÃO]**. Este é o de-risking mais importante do projeto (valida ou refuta H-SIG-01/02).
 
@@ -193,7 +193,7 @@ Pipeline conforme [doc 30]: PSD por Welch; potências absolutas e **relativas** 
 - **Estado de repouso neutro obrigatório:** operador calmo, concentrado na tarefa, **sem** falar/rir/mastigar; qualquer violação de estado é **registrada** e a sessão é marcada como tal (não entra no conjunto de replicação de estado controlado).
 - **Transparência:** sessões de estado violado **não são apagadas** — ficam documentadas com a razão (evita p-hacking por exclusão silenciosa).
 
-**[RESULTADO — Exp. B FECHADO]** Em estado controlado, o alfa **OF>OA** foi **detectável e replicável** em **2 sessões independentes** (d1: razão 1,74, d=1,79; d2b: razão 1,48, d=1,57), consistente com a literatura. A sessão de estado violado (d2) não passou e está documentada. **Exp. B atinge a sua parte do gate; não requer mais sessões.** Relatório: [33_Signal_Fidelity_Report](33_Signal_Fidelity_Report.md). H-SIG-01 → 🟡 ([03_Assumptions](../03_Assumptions.md)). **Não** fecha o "segue" completo (faltam Exp. C reatividade e Exp. D artefatos).
+**[RESULTADO — Exp. B FECHADO]** Em estado controlado, o alfa **OF>OA** foi **detectável e replicável** em **2 sessões independentes** (d1: razão 1,74, d=1,79; d2b: razão 1,48, d=1,57), consistente com a literatura. A sessão de estado violado (d2) não passou e está documentada. **Exp. B atinge a sua parte do gate; não requer mais sessões.** Relatório: [33_Signal_Fidelity_Report](33_Signal_Fidelity_Report.md). H-SIG-01 → 🟡 ([03_Assumptions](../Fundacao/03_Assumptions.md)). **Não** fecha o "segue" completo (faltam Exp. C reatividade e Exp. D artefatos).
 
 ---
 

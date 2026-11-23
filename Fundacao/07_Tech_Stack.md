@@ -6,7 +6,7 @@
 | Status | Vigente — stack travada por prática e ADR (Expo, FastAPI, Postgres/Neon, Container Apps); demais itens seguem candidatos |
 | Data | 2026-07-18 |
 
-> **[HIPÓTESE/RECOMENDAÇÃO]** Tudo aqui é **proposta**, não decisão. Cada escolha vira ADR em [05_Decisions](05_Decisions.md) somente após a pergunta em aberto correspondente ser resolvida. O objetivo é registrar candidatos com trade-offs, não comprometer prematuramente.
+> **[HIPÓTESE/RECOMENDAÇÃO]** Tudo aqui é **proposta**, não decisão. Cada escolha vira ADR em [05_Decisions](../05_Decisions.md) somente após a pergunta em aberto correspondente ser resolvida. O objetivo é registrar candidatos com trade-offs, não comprometer prematuramente.
 
 ---
 
@@ -50,7 +50,7 @@
 **[RECOMENDAÇÃO]** Começar simples (WebSocket/MQTT); adotar Kafka só quando o volume justificar (ADR-0011).
 
 ## Processamento de Sinais
-- **Candidato:** Python — `numpy`, `scipy`, `mne`, `pywavelets`. Ver [DataScience/30_EEG_Signal_Processing_Strategy](DataScience/30_EEG_Signal_Processing_Strategy.md).
+- **Candidato:** Python — `numpy`, `scipy`, `mne`, `pywavelets`. Ver [DataScience/30_EEG_Signal_Processing_Strategy](../DataScience/30_EEG_Signal_Processing_Strategy.md).
 
 ## IA / ML
 - **Candidato:** `scikit-learn` para baseline; `PyTorch` se/quando deep learning se justificar.

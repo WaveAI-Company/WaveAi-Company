@@ -5,7 +5,7 @@
 | Versão | 0.1 |
 | Status | Registro — fase de Produto & UX encerrada; fonte histórica das issues |
 | Data | 2026-07-26 |
-| Documentos relacionados | [13_Analysis_Phase_Work_Breakdown](13_Analysis_Phase_Work_Breakdown.md), [06_Master_Roadmap](../06_Master_Roadmap.md), [Medical/71](../Medical/71_Intended_Use_and_Regulatory_Positioning.md), [05_Decisions](../05_Decisions.md), [00_Project_Vision](../00_Project_Vision.md), [01_Project_Objectives](../01_Project_Objectives.md) |
+| Documentos relacionados | [13_Analysis_Phase_Work_Breakdown](13_Analysis_Phase_Work_Breakdown.md), [06_Master_Roadmap](../Fundacao/06_Master_Roadmap.md), [Medical/71](../Medical/71_Intended_Use_and_Regulatory_Positioning.md), [05_Decisions](../05_Decisions.md), [00_Project_Vision](../Fundacao/00_Project_Vision.md), [01_Project_Objectives](../Fundacao/01_Project_Objectives.md) |
 
 ## Contexto e objetivo
 A fase **Análise & Ciência** (N1–N6, [doc 13](13_Analysis_Phase_Work_Breakdown.md)) está **concluída**: o servidor produz features do Catálogo, qualidade (ADR-0031), baseline pessoal (ADR-0032), relatórios longitudinais (N5), narrativa-LLM aterrada (ADR-0035) e o eSense ao vivo validado no NeuroSky **real** (N6-c). O motor tem base científica honesta e as saídas existem.
@@ -32,7 +32,7 @@ Tornar compreensível o que já existe, **persona-agnóstico** e de baixo risco.
 - Entregável: usuário consegue **ler** um número sem saber DSP, sem que a UI afirme mais do que o dado sustenta.
 
 ### P2 — Anotações contextuais (o "pop-up de contexto") — v1 manual *(ADR-0037)*
-Retoma a ideia da Visão ([00_Project_Vision](../00_Project_Vision.md)), adiada no esqueleto.
+Retoma a ideia da Visão ([00_Project_Vision](../Fundacao/00_Project_Vision.md)), adiada no esqueleto.
 - **v1 = manual por sessão:** o paciente adiciona uma **nota de texto livre** à sessão. Modelo `SessionAnnotation` (1 por sessão, upsert), **cifrado** como o `Result`; migration 0008; leitura pelo profissional via **CareLink** e **auditada** (`annotation_access_events`). Entra em export/erasure.
 - O profissional vê a anotação **ao lado do sinal/relatório**, rotulada **"autorrelato do paciente"** e read-only — correlação contexto × sinal, marcada **[HIPÓTESE]** (valor com canal único ainda não demonstrado).
 - **Split:** **P2-a** = backend (modelo + migration + serviço + rotas + testes sintéticos). **P2-b** = UI (captura no fim da sessão + edição no histórico; exibição rotulada).

@@ -5,7 +5,7 @@
 | Versão | 0.1 (semente) |
 | Status | Semente — a expandir na Fase 1 |
 | Data | 2026-07-18 |
-| Documentos relacionados | [MASTER_PLAN](../MASTER_PLAN.md), [03_Assumptions](../03_Assumptions.md), [04_Open_Questions](../04_Open_Questions.md) |
+| Documentos relacionados | [MASTER_PLAN](../MASTER_PLAN.md), [03_Assumptions](../Fundacao/03_Assumptions.md), [04_Open_Questions](../04_Open_Questions.md) |
 
 > **[AVISO]** Este documento é uma **base de trabalho**, não parecer regulatório ou jurídico. Antes de qualquer submissão, é indispensável consultoria regulatória e jurídica especializada. Rótulos: **[FATO] / [HIPÓTESE] / [OPINIÃO] / [RECOMENDAÇÃO]**.
 

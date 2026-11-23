@@ -3,10 +3,10 @@
 | Campo | Valor |
 |---|---|
 | Versão | 0.1 |
-| Status | Registro — objetivos da Fase 0; produto hoje em produção (ver 06_Master_Roadmap) |
+| Status | Registro — objetivos da Fase 0; produto hoje em produção (ver Fundacao/06_Master_Roadmap.md) |
 | Data | 2026-07-18 |
 | Responsável | Arquitetura (cofundador técnico) |
-| Documentos relacionados | [00_Project_Vision](00_Project_Vision.md), [MASTER_PLAN](MASTER_PLAN.md), [03_Assumptions](03_Assumptions.md) |
+| Documentos relacionados | [00_Project_Vision](00_Project_Vision.md), [MASTER_PLAN](../MASTER_PLAN.md), [03_Assumptions](03_Assumptions.md) |
 
 > Convenção de rótulos usada em todo o projeto: **[FATO]** conhecimento consolidado/verificável · **[HIPÓTESE]** suposição a validar · **[OPINIÃO]** juízo técnico · **[RECOMENDAÇÃO]** curso de ação sugerido.
 
@@ -18,7 +18,7 @@ Construir uma plataforma multiplataforma (móvel + web) que capte sinais de EEG 
 
 O sistema tem dois ambientes: **Paciente** (coleta, contexto, visualização pessoal) e **Médico** (gestão de pacientes, análise, emissão de vereditos e recomendações). A IA atua estritamente como **ferramenta de apoio à decisão clínica** (CDS), com o profissional sempre como autoridade final (*human-in-the-loop*).
 
-> **[RECOMENDAÇÃO]** Como o projeto foi definido como **produto comercial SaMD** (ver [05_Decisions](05_Decisions.md), ADR-0001), o objetivo geral deve ser lido sob a ótica de *dispositivo médico regulado*, não de app de bem-estar. Isso muda o rigor exigido em validação, rastreabilidade e gestão de risco.
+> **[RECOMENDAÇÃO]** Como o projeto foi definido como **produto comercial SaMD** (ver [05_Decisions](../05_Decisions.md), ADR-0001), o objetivo geral deve ser lido sob a ótica de *dispositivo médico regulado*, não de app de bem-estar. Isso muda o rigor exigido em validação, rastreabilidade e gestão de risco.
 
 ---
 
@@ -62,11 +62,11 @@ O sistema tem dois ambientes: **Paciente** (coleta, contexto, visualização pes
 
 | Dimensão | Métrica candidata | Observação |
 |---|---|---|
-| Sinal | SNR utilizável; % de janelas descartadas por artefato; concordância com referência | Definir protocolo em [DataScience/30_EEG_Signal_Processing_Strategy](DataScience/30_EEG_Signal_Processing_Strategy.md) |
+| Sinal | SNR utilizável; % de janelas descartadas por artefato; concordância com referência | Definir protocolo em [DataScience/30_EEG_Signal_Processing_Strategy](../DataScience/30_EEG_Signal_Processing_Strategy.md) |
 | IA | Sensibilidade/especificidade dos detectores; taxa de falso-positivo por hora | **[HIPÓTESE]** metas numéricas dependem do estudo de viabilidade |
 | Produto | Adesão (dias de uso/semana); tempo até primeiro insight; NPS do médico | — |
 | Clínico | Utilidade percebida pelo neurologista; concordância inter-avaliador | Requer validação com profissionais |
-| Regulatório | Enquadramento de classe definido; dossiê técnico completo | Ver [Medical/70_Regulatory_Clinical_Strategy](Medical/70_Regulatory_Clinical_Strategy.md) |
+| Regulatório | Enquadramento de classe definido; dossiê técnico completo | Ver [Medical/70_Regulatory_Clinical_Strategy](../Medical/70_Regulatory_Clinical_Strategy.md) |
 | Negócio | CAC/LTV; custo por paciente monitorado | Fora do foco da Fase 0 |
 
 > **[HIPÓTESE]** Os valores-alvo numéricos ainda **não** podem ser fixados: dependem do estudo de fidelidade de sinal (Fase 1). Fixá-los agora seria tratar hipótese como fato.
@@ -80,9 +80,9 @@ Ver o roadmap completo em [06_Master_Roadmap](06_Master_Roadmap.md). Em resumo: 
 ---
 
 ## 6. Perguntas em Aberto vinculadas a este documento
-- Qual é a *claim* clínica exata do produto? (define a classe de risco) → ver [04_Open_Questions](04_Open_Questions.md), Q-CLN-01.
+- Qual é a *claim* clínica exata do produto? (define a classe de risco) → ver [04_Open_Questions](../04_Open_Questions.md), Q-CLN-01.
 - Existe um caminho de bem-estar (não-SaMD) como on-ramp? → Q-REG-03.
 
 ---
 
-> **Atualização (2026-07-18):** a *claim* do produto foi refinada e reenquadrada para uma trilha **não-clínica / não-diagnóstica** na fase atual, com **SaMD como destino futuro** (ADR-0012). A Declaração de Uso Pretendido canônica está em [Medical/71_Intended_Use_and_Regulatory_Positioning](Medical/71_Intended_Use_and_Regulatory_Positioning.md).
+> **Atualização (2026-07-18):** a *claim* do produto foi refinada e reenquadrada para uma trilha **não-clínica / não-diagnóstica** na fase atual, com **SaMD como destino futuro** (ADR-0012). A Declaração de Uso Pretendido canônica está em [Medical/71_Intended_Use_and_Regulatory_Positioning](../Medical/71_Intended_Use_and_Regulatory_Positioning.md).

@@ -6,7 +6,7 @@
 | Status | **Estudo Nível 1 COMPLETO — B ✓ (alfa replicado) · C ✗-primária/teta-pista · D ✓ (artefatos gerenciáveis); H-SIG-01 → 🟡; seguir para N3** |
 | Data | 2026-07-25 |
 | Dispositivo | NeuroSky MindWave Mobile 2 (canal único, FP1, 512 Hz) |
-| Documentos relacionados | [30](30_EEG_Signal_Processing_Strategy.md), [31](31_Signal_Fidelity_Study_Protocol.md) (§8.1 piloto, §12 pré-registro), [03_Assumptions](../03_Assumptions.md) (H-SIG-01), [05_Decisions](../05_Decisions.md) (ADR-0028/0030/0031) |
+| Documentos relacionados | [30](30_EEG_Signal_Processing_Strategy.md), [31](31_Signal_Fidelity_Study_Protocol.md) (§8.1 piloto, §12 pré-registro), [03_Assumptions](../Fundacao/03_Assumptions.md) (H-SIG-01), [05_Decisions](../05_Decisions.md) (ADR-0028/0030/0031) |
 
 > Rótulos: **[FATO] / [HIPÓTESE] / [OPINIÃO] / [RECOMENDAÇÃO]**. Entregável da **N1** ([Documentation/13](../Documentation/13_Analysis_Phase_Work_Breakdown.md)). Este é o de-risking existencial (H-SIG-01).
 
@@ -147,7 +147,7 @@ research ingest --from-capture --input captures/exp-b/d3/b1_oc.csv \
 
 ## 6. Impacto em hipóteses e decisão (vai / não-vai)
 - **Gate §12 — parte do Exp. B: ATINGIDO.** Alfa OF>OA **detectável e replicável** em estado controlado (d1, d2b). **Exp. B fecha** para este efeito.
-- **H-SIG-01: sobe para 🟡.** O sinal reproduz de forma confiável o fenômeno canônico do alfa no *nosso* setup — de-risking real da pergunta mais básica. Atualização em [03_Assumptions](../03_Assumptions.md).
+- **H-SIG-01: sobe para 🟡.** O sinal reproduz de forma confiável o fenômeno canônico do alfa no *nosso* setup — de-risking real da pergunta mais básica. Atualização em [03_Assumptions](../Fundacao/03_Assumptions.md).
 - **[RÍGIDO — limites, para não superinterpretar]** 🟡, **não** 🟢: (a) **N=1 sujeito** (não generaliza entre pessoas); (b) alfa OF/OA é o **piso** (o efeito mais fácil/estabelecido) — nada diz ainda sobre reatividade a carga (Exp. C), artefatos (Exp. D) ou **valor clínico**; (c) **sem EEG de referência** (Q-SIG-03 aberta); (d) a exclusão do d2 foi pós-hoc (mitigada pela emenda de estado no §12 e pelas duas replicações independentes).
 - **Exp. C (reatividade): FECHADO.** Primária (alfa↓ na carga) **negativa**; teta↑ na carga é **pista exploratória** (§4c) — não muda H-SIG-01, que segue **🟡** (o Exp. B sustenta). Não rebaixa: reatividade existe (teta), só não no alfa.
 - **Exp. D (artefatos): FECHADO.** Artefatos grandes 100% detectáveis por amplitude; EMG=gamma, ocular=delta; EOG sutil é o resíduo (§4d). Alimenta ADR-0031 (gate grosso) e [doc 30](30_EEG_Signal_Processing_Strategy.md) §E3 (rejeição por amplitude + assinatura espectral).

@@ -23,7 +23,7 @@ Arquitetura de Software · Arquitetura de IA · Ciência de Dados · Engenharia 
 4. **Sempre comparar alternativas** com vantagens, desvantagens, riscos e impactos antes de recomendar.
 5. **Identificar lacunas antes de avançar.**
 6. **Priorizar profundidade e robustez** em vez de velocidade.
-7. **Rastrear cada decisão** relevante em [05_Decisions](05_Decisions.md) e indicar quais documentos criar/atualizar.
+7. **Rastrear cada decisão** relevante em [05_Decisions](../05_Decisions.md) e indicar quais documentos criar/atualizar.
 
 ## 4. Formato obrigatório de resposta
 Toda resposta relevante termina com:

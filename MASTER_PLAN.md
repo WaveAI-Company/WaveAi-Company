@@ -18,7 +18,7 @@ Servir como **referência estratégica única** que conecta visão, restrições
 ---
 
 ## 2. Avaliação do estado atual (o que existe hoje)
-- Existe **apenas a visão** (`00_Project_Vision.md`): uma descrição ampla e crua da ideia.
+- Existe **apenas a visão** (`Fundacao/00_Project_Vision.md`): uma descrição ampla e crua da ideia.
 - Havia uma estrutura de pastas por disciplina (AI, Architecture, Backend, DataScience, Documentation, Frontend, Infrastructure, Medical, Mobile, RFC, Research), **toda vazia**.
 - Nesta rodada foram populados os fundamentos (01–09), criada a taxonomia documental e escritas três sementes críticas.
 
@@ -43,7 +43,7 @@ Servir como **referência estratégica única** que conecta visão, restrições
 
 **[FATO]** As métricas eSense são **caixa-preta e não validadas clinicamente**; não podem fundamentar uma *claim* médica.
 
-**[OPINIÃO / ALERTA DO ARQUITETO]** Este é o **risco existencial** do WaveAI. Construir uma plataforma SaMD inteira sobre um sinal cuja **validade clínica ainda não foi demonstrada** é a maior ameaça ao projeto. A hipótese H-SIG-01 ([03_Assumptions](03_Assumptions.md)) precisa ser testada **antes** de investimento pesado.
+**[OPINIÃO / ALERTA DO ARQUITETO]** Este é o **risco existencial** do WaveAI. Construir uma plataforma SaMD inteira sobre um sinal cuja **validade clínica ainda não foi demonstrada** é a maior ameaça ao projeto. A hipótese H-SIG-01 ([03_Assumptions](Fundacao/03_Assumptions.md)) precisa ser testada **antes** de investimento pesado.
 
 **[RECOMENDAÇÃO]** Adotar uma **estratégia de duas velocidades**:
 1. **Trilha honesta de valor imediato** — posicionar o produto no que o canal único *comprovadamente* consegue (tendências longitudinais de estados como atenção/relaxamento, engajamento, biofeedback, bem-estar), possivelmente como on-ramp **não-SaMD**.
@@ -86,14 +86,14 @@ Cada domínio terá documentação e roadmap próprios (ver [Documentation/00_Do
 ## 6. Estrutura documental
 O mapa do que existe está no **[Índice de Documentação](Documentation/00_Documentation_Index.md)**, conferido arquivo por arquivo. As pastas que de fato existem são: Núcleo (raiz 00–09 + `CLAUDE.md`, `MASTER_PLAN.md`, `README.md`), `Documentation/` (governança e planos de trabalho), `Medical/` (regulatório/clínico), `Architecture/`, `DataScience/` (sinais), `Design/` (marca e referência visual), `infra/` (operação) e `Faculdade/` (entregas acadêmicas, fora do produto), mais os READMEs de `apps/`, `services/` e `packages/`.
 
-**Convenções:** docs-as-code (Markdown versionado); ADR para decisões; IDs estáveis (H-*, Q-*, ADR-*); status por documento; formato de resposta obrigatório (ver [08_AI_Instructions](08_AI_Instructions.md)).
+**Convenções:** docs-as-code (Markdown versionado); ADR para decisões; IDs estáveis (H-*, Q-*, ADR-*); status por documento; formato de resposta obrigatório (ver [08_AI_Instructions](Fundacao/08_AI_Instructions.md)).
 
 **A taxonomia por disciplina de 2026-07-18 não se realizou, e não é dívida.** As pastas `AI/`, `Backend/`, `Mobile/`, `Frontend/`, `Infrastructure/`, `Research/` e `RFC/` que a versão anterior desta seção listava como existentes **nunca foram criadas** (conferido em 2026-10-27): o conteúdo foi para onde era mais útil, e o processo de RFC nunca foi necessário porque toda decisão vai direto a ADR no [05_Decisions](05_Decisions.md). O raciocínio está na §12 do Índice. A estrutura de pastas do repositório é objeto da frente de reorganização em curso e será decidida lá, com ADR.
 
 ---
 
 ## 7. Fases de desenvolvimento (alto nível)
-Detalhe em [06_Master_Roadmap](06_Master_Roadmap.md). Síntese com foco nos **gates**:
+Detalhe em [06_Master_Roadmap](Fundacao/06_Master_Roadmap.md). Síntese com foco nos **gates**:
 
 | Fase | Objetivo | Gate de saída |
 |---|---|---|
@@ -136,7 +136,7 @@ Detalhe em [Medical/70_Regulatory_Clinical_Strategy](Medical/70_Regulatory_Clini
 ## 11. Governança e cadência
 - Toda decisão relevante → **ADR** em [05_Decisions](05_Decisions.md).
 - Mudanças estruturais → **RFC** antes de virar ADR.
-- Hipóteses e perguntas mantidas vivas em [03_Assumptions](03_Assumptions.md) e [04_Open_Questions](04_Open_Questions.md).
+- Hipóteses e perguntas mantidas vivas em [03_Assumptions](Fundacao/03_Assumptions.md) e [04_Open_Questions](04_Open_Questions.md).
 - Cada resposta do cofundador técnico encerra com o formato obrigatório de 6 seções.
 
 ---

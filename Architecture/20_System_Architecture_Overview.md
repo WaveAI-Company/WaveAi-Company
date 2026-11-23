@@ -5,7 +5,7 @@
 | Versão | 0.1 (semente) |
 | Status | Semente — **arquitetura de referência, não travada** |
 | Data | 2026-07-18 |
-| Documentos relacionados | [MASTER_PLAN](../MASTER_PLAN.md), [07_Tech_Stack](../07_Tech_Stack.md), [05_Decisions](../05_Decisions.md) |
+| Documentos relacionados | [MASTER_PLAN](../MASTER_PLAN.md), [07_Tech_Stack](../Fundacao/07_Tech_Stack.md), [05_Decisions](../05_Decisions.md) |
 
 > **[HIPÓTESE]** Esta é uma **arquitetura de referência conceitual** para orientar discussões. As decisões estruturais (edge-vs-nuvem, streaming, banco) permanecem abertas como ADRs. Não implementar a partir daqui.
 

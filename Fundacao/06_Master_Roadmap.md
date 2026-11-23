@@ -5,7 +5,7 @@
 | Versão | 0.1 |
 | Status | Vivo — produto em produção desde ago/2026; MVP, **Análise & Ciência** (2026-07-26) e **Produto & UX** concluídos; fase atual (nov/2026): **estabilização e manutenção** (ver Documentation/17) |
 | Data | 2026-07-18 |
-| Documentos relacionados | [MASTER_PLAN](MASTER_PLAN.md), [09_Project_Backlog](09_Project_Backlog.md), [Documentation/13](Documentation/13_Analysis_Phase_Work_Breakdown.md), [Documentation/14](Documentation/14_Product_UX_Phase_Work_Breakdown.md) |
+| Documentos relacionados | [MASTER_PLAN](../MASTER_PLAN.md), [09_Project_Backlog](09_Project_Backlog.md), [Documentation/13](../Documentation/13_Analysis_Phase_Work_Breakdown.md), [Documentation/14](../Documentation/14_Product_UX_Phase_Work_Breakdown.md) |
 
 Roadmap de **alto nível** por fases, cada uma com objetivo, entregáveis e **critérios de saída (gates)**. Este é o roadmap "raiz"; roadmaps detalhados por disciplina descendem dele (roadmaps dentro de roadmaps).
 
@@ -72,7 +72,7 @@ Trilhas contínuas (transversais): Segurança & Privacidade · MLOps · Pós-mer
 ---
 
 ## Roadmaps descendentes (a criar)
-Cada disciplina terá seu próprio roadmap, derivado deste: Sinais (DataScience), IA/ML (AI), Backend, Mobile, Frontend, Infra, Segurança, Regulatório/Clínico (Medical), UX. Ver a taxonomia em [Documentation/00_Documentation_Index](Documentation/00_Documentation_Index.md).
+Cada disciplina terá seu próprio roadmap, derivado deste: Sinais (DataScience), IA/ML (AI), Backend, Mobile, Frontend, Infra, Segurança, Regulatório/Clínico (Medical), UX. Ver a taxonomia em [Documentation/00_Documentation_Index](../Documentation/00_Documentation_Index.md).
 
 ---
 
@@ -80,6 +80,6 @@ Cada disciplina terá seu próprio roadmap, derivado deste: Sinais (DataScience)
 O **MVP de plataforma** (equivalente à "Fase 3" deste roadmap) foi **entregue** (M0–M5): captação+streaming de EEG real, `Result` cifrado, dashboards, jornada ponta a ponta e design system.
 
 ## Estado (2026-07-26) — Análise & Ciência concluída; início de Produto & UX
-A fase **Motor de Análise & Ciência** ([Documentation/13](Documentation/13_Analysis_Phase_Work_Breakdown.md)) — que retomou o de-risking científico (H-SIG-01, [DataScience/31](DataScience/31_Signal_Fidelity_Study_Protocol.md)) — está **concluída** (N1–N6): estudo de fidelidade, Catálogo de Features, qualidade (ADR-0031), baseline pessoal (ADR-0032), relatórios longitudinais (N5), narrativa-LLM aterrada (ADR-0035) e **eSense ao vivo validado no NeuroSky real** (N6-c). Veredito: sinal sustenta **tendências/insights de bem-estar** (não-clínico), não claim clínica.
+A fase **Motor de Análise & Ciência** ([Documentation/13](../Documentation/13_Analysis_Phase_Work_Breakdown.md)) — que retomou o de-risking científico (H-SIG-01, [DataScience/31](../DataScience/31_Signal_Fidelity_Study_Protocol.md)) — está **concluída** (N1–N6): estudo de fidelidade, Catálogo de Features, qualidade (ADR-0031), baseline pessoal (ADR-0032), relatórios longitudinais (N5), narrativa-LLM aterrada (ADR-0035) e **eSense ao vivo validado no NeuroSky real** (N6-c). Veredito: sinal sustenta **tendências/insights de bem-estar** (não-clínico), não claim clínica.
 
-A **fase atual** é **Produto & UX** ([Documentation/14](Documentation/14_Product_UX_Phase_Work_Breakdown.md)): tornar as saídas do motor um produto **didático e interativo** para médico e paciente, mantendo o posicionamento não-clínico — e **só depois** o deploy (nuvem + APK + Play Store). Validação clínica/QMS/ANVISA (Fases 4–6) seguem **futuras** e condicionadas ao resultado da ciência.
+A **fase atual** é **Produto & UX** ([Documentation/14](../Documentation/14_Product_UX_Phase_Work_Breakdown.md)): tornar as saídas do motor um produto **didático e interativo** para médico e paciente, mantendo o posicionamento não-clínico — e **só depois** o deploy (nuvem + APK + Play Store). Validação clínica/QMS/ANVISA (Fases 4–6) seguem **futuras** e condicionadas ao resultado da ciência.
