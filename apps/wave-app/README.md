@@ -1,87 +1,88 @@
 # apps/wave-app — App WaveAI (Expo universal)
 
-Cliente único React para **iOS, Android e Web** (ADR-0016), com UI por papel
-(paciente/médico). Nesta fase (M0) é o **boot + navegação**: telas placeholder
-com dados fictícios, sem login real e sem captação.
+Cliente único em React Native (Expo + expo-router) para **Android, iOS e Web**
+(ADR-0016), com UI por papel: **paciente** (`app/patient`) e **profissional de
+bem-estar** (`app/doctor`, o identificador técnico do papel é `doctor`). Uso
+exploratório de bem-estar — **não-clínico e não-diagnóstico**
+(`Medical/71_Intended_Use_and_Regulatory_Positioning.md`).
 
-> Uso exploratório de bem-estar — **não-clínico e não-diagnóstico**
-> (ver `Medical/71_Intended_Use_and_Regulatory_Positioning.md`).
+Fontes de verdade: decisões em `05_Decisions.md` (ADRs), arquitetura em
+`Architecture/22_MVP_Platform_Architecture.md`, infra/deploy em `infra/README.md`.
 
-## Instalação
+## O que tem
 
-```bash
-cd apps/wave-app
-npm install
-```
+- **Auth real** contra a API: cadastro, verificação de e-mail, login,
+  recuperação de senha, guarda de rota por papel (ADR-0021).
+- **Captação de EEG** (NeuroSky MindWave Mobile 2): Android por Bluetooth
+  Classic/SPP (`src/device/connection.ts`), iOS por BLE
+  (`src/device/connection.ios.ts`); a web não captura e mostra aviso. Parser
+  ThinkGear em `src/device/thinkgear.ts`.
+- **Serviço em primeiro plano** Android (`modules/captacao-foreground`, módulo
+  nativo) para a captação seguir com o app em segundo plano.
+- **Histórico, tendências e relatório longitudinal**, anotações de sessão,
+  protocolo guiado, espectador ao vivo (paciente transmite, profissional assiste).
+- **Vínculos** paciente-profissional, consentimento, exportação e exclusão de
+  dados, textos legais (`src/legal`, `app/legal`), foto de perfil.
+- **Design system** "Maré" em `src/theme` (tokens, temas claro/escuro,
+  movimento reduzido) e `src/components`.
 
 ## Rodar
 
 ```bash
-npm run web        # abre no navegador (http://localhost:8081)
-npm run android    # emulador/dispositivo Android
-npm run ios        # simulador iOS (requer macOS)
+cd apps/wave-app
+npm install
+cp .env.example .env     # EXPO_PUBLIC_API_URL aponta para a API
+npm run web              # http://localhost:8081
+npm run android          # exige dev client/build nativo
+npm run ios              # exige macOS e build nativo
 ```
 
-Outros scripts: `npm run typecheck` (tsc), `npm run build:web` (bundle de produção).
+Os módulos nativos (`react-native-bluetooth-classic`, `react-native-ble-plx`,
+`captacao-foreground`) não rodam no Expo Go: use dev client (`expo-dev-client`)
+ou build EAS (`eas.json`).
 
-## Navegação (expo-router)
+### Scripts do `package.json`
 
-Roteamento por arquivo, compartilhado entre web e nativo:
-
-```
-app/_layout.tsx        # Stack raiz (tema e headers)
-app/index.tsx          # tela inicial — escolha de papel (MOCK, sem login)
-app/patient/index.tsx  # área do paciente (placeholder)
-app/doctor/index.tsx   # área do médico (placeholder)
-src/                   # tema e componentes compartilhados
-```
-
-No web, cada tela tem URL própria (`/`, `/patient`, `/doctor`).
-
-## Autenticação (ADR-0021)
-
-Login/registro reais contra a API, com **guarda de rota por papel**: ao entrar,
-paciente vai para `/patient` e médico para `/doctor`; tentar a área do outro
-papel redireciona de volta.
-
-### Onde o token fica — e a assimetria que importa
-
-O access token vive **só em memória**, nunca em disco, nas duas plataformas.
-O refresh é uma **capability por plataforma** (`src/auth/storage*.ts`):
-
-| Plataforma | Refresh token |
+| Script | Para quê |
 |---|---|
-| **Web** | Cookie `httpOnly` setado pelo backend. O app **não guarda nada** — `saveRefreshToken` é no-op e `getRefreshToken` devolve `null`. O navegador anexa o cookie sozinho (`credentials: "include"`). |
-| **Mobile** | `expo-secure-store` (Keychain/Keystore); enviado no corpo da requisição. |
+| `npm run typecheck` | `tsc --noEmit` |
+| `npm run build:web` | gera o texto legal estático e o bundle web (`expo export`) |
+| `npm run check:contrast` | verifica o contraste dos tokens de cor |
+| `npm run gerar:guia` / `npm run check:guia` | gera / confere `Design/guia-de-estilo.html` (sai dos tokens; nunca editar à mão) |
+| `npm run gerar:legal-estatico` | gera as páginas legais estáticas |
 
-No web o token é **inacessível ao JS por design**: um XSS não tem o que roubar.
-**Nunca** usar `localStorage`/`sessionStorage` para tokens.
+O CI roda `typecheck`, `check:contrast` e `check:guia`. Não há suíte de testes
+unitários neste app; o que depende de hardware (Bluetooth) não é exercitável em
+CI, e por isso o parser do protocolo vive em módulo puro (`thinkgear.ts`).
 
-### Configuração
+## Variáveis de ambiente (`EXPO_PUBLIC_*`)
 
-`EXPO_PUBLIC_API_URL` aponta para a API (ver `.env.example`). Em produção o MVP
-assume **same-origin** (app e API no mesmo domínio/proxy), o que mantém o cookie
-simples e permite `SameSite=Lax` mitigar CSRF. Em dev o Expo serve na 8081 e a
-API na 8000, então a API libera essas origens por CORS com credenciais.
+`EXPO_PUBLIC_API_URL` (URL da API), `EXPO_PUBLIC_ENABLE_SIMULATOR` e
+`EXPO_PUBLIC_ENABLE_BLE_DIAG` (ferramentas de desenvolvimento). Exemplo em
+`.env.example`. Variáveis `EXPO_PUBLIC_*` vão para o bundle: **nada secreto**.
 
-> Cenário **cross-site** (`SameSite=None; Secure` + token anti-CSRF) é um TODO
-> deliberado, não implementado — ver issue de endurecimento de auth.
+## Autenticação: onde o token fica
 
-## O que ainda NÃO existe (por design)
+O access token vive **só em memória**. O refresh é capability por plataforma
+(`src/auth/storage*.ts`): na **web**, cookie `httpOnly` setado pela API (o app
+não guarda nada; `credentials: "include"`); no **mobile**, `expo-secure-store`.
+**Nunca** usar `localStorage`/`sessionStorage` para tokens. Em produção app e
+API ficam em hosts diferentes, então a API precisa listar a origem do app em
+`WAVEAI_API_CORS_ORIGINS` (ver `services/api/README.md`).
 
-| Assunto | Issue |
-|---|---|
-| Captação de EEG (BLE/SPP no mobile) | #12 |
-| Telas do médico com dados reais | #10 |
-| Histórico do paciente com dados reais | #11 |
-| Design system / identidade por papel | #18 |
+## Estrutura
 
-A seleção de papel na tela inicial é **simulada** e os dados listados são
-**fictícios**, rotulados na UI (regra rígida: nunca exibir mock sem indicar que
-não é dado real; nenhum dado de pessoa real em dev — LGPD).
+```
+app/            # rotas (expo-router): login, register, patient/*, doctor/*, legal/*
+src/api/        # clientes da API (HTTP, stream, ao vivo)
+src/auth/       # contexto de auth e armazenamento de token por plataforma
+src/capture/    # sessão de captação, disponibilidade e veredito de qualidade
+src/device/     # conexão Bluetooth (SPP/BLE), parser ThinkGear, contato do sensor
+src/components/ # componentes compartilhados
+src/theme/      # tokens e tema (design system)
+modules/        # módulo nativo captacao-foreground (Android)
+scripts/        # check-contrast, guia de estilo, legal estático
+```
 
-## Renderização web
-
-`app.json` usa `web.output: "single"` (SPA). O modo de renderização estática
-não traz benefício para um app atrás de login e disparava um erro de SSR
-("multiple renderers") com os componentes do react-native-web.
+`app.json` usa `web.output: "single"` (SPA). Dados fictícios de desenvolvimento
+são rotulados na UI; nenhum dado de pessoa real em dev (LGPD).
