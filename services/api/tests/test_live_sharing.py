@@ -444,14 +444,16 @@ def test_publicar_le_o_compartilhamento_do_banco(
 
     O teste de fluxo acima **não** pega isso: no `TestClient` as duas pontas
     compartilham a mesma sessão pelo override do `get_session`, e o objeto já
-    vem atualizado. Aqui a segunda sessão é criada à mão, e o alvo é
-    `_publicar_ao_vivo` — o **ponto de uso**, não o helper: testar o helper
-    sozinho deixaria passar justamente a regressão de alguém voltar a ler
-    `sessao.live_sharing_enabled` na hora de publicar.
+    vem atualizado. Aqui a segunda sessão é criada à mão, e o alvo é o
+    caminho de publicação inteiro — `_compartilhamento_se_houver` (o que
+    `_processar` e `_abortar` chamam na thread, ADR-0058) seguido de
+    `_publicar_ao_vivo`: testar só o helper de leitura deixaria passar a
+    regressão de alguém voltar a ler `sessao.live_sharing_enabled` na hora de
+    publicar.
     """
     from types import SimpleNamespace
 
-    from app.api.stream import _publicar_ao_vivo
+    from app.api.stream import _compartilhamento_se_houver, _publicar_ao_vivo
 
     paciente = _user(db_session, Ator(client).email)
     sessao = _sessao_ativa(db_session, paciente)
@@ -476,7 +478,8 @@ def test_publicar_le_o_compartilhamento_do_banco(
     async def cenario() -> str:
         bus = LiveBus()
         async with bus.subscribe(paciente.id, espectador=True) as fila:
-            _publicar_ao_vivo(bus, protocolo, {"features": {"a": 1}}, db_session)
+            compartilhado = _compartilhamento_se_houver(protocolo, db_session)
+            _publicar_ao_vivo(bus, protocolo, {"features": {"a": 1}}, compartilhado)
             return await _vazio_ou_recebeu(fila)
 
     assert asyncio.run(cenario()) == "recebeu"

@@ -16,6 +16,7 @@ import logging
 
 from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect
 from sqlalchemy.orm import Session
+from starlette.concurrency import run_in_threadpool
 
 from ..config import Settings, get_settings
 from ..db.session import get_session
@@ -60,38 +61,60 @@ def _compartilhamento_agora(db: Session, sessao: CaptureSession) -> bool:
     return sessao.live_sharing_enabled
 
 
+def _compartilhamento_se_houver(protocolo: StreamProtocol, db: Session) -> bool | None:
+    """Releitura do compartilhamento, ou `None` sem sessão aberta (nada a publicar)."""
+    sessao = protocolo.state.session
+    if protocolo.state.user is None or sessao is None:
+        return None
+    return _compartilhamento_agora(db, sessao)
+
+
+def _processar(
+    protocolo: StreamProtocol, mensagem: object, db: Session
+) -> tuple[dict, bool | None]:
+    """O trabalho **síncrono** de uma mensagem: protocolo, banco e Analysis.
+
+    Roda numa thread do pool (ADR-0058, Decisão 4). Antes rodava no loop de
+    eventos, e uma Analysis lenta parava a réplica inteira: medido em 13/09,
+    cada janela levou 5,02 s e o `/health` de **outras** requisições, 4,5–4,7 s.
+    Uma mensagem por vez por conexão, então a sessão do SQLAlchemy nunca é usada
+    por duas threads ao mesmo tempo.
+    """
+    resposta = protocolo.handle(mensagem)
+    return resposta, _compartilhamento_se_houver(protocolo, db)
+
+
+def _abortar(protocolo: StreamProtocol, db: Session) -> bool | None:
+    """`abortar()` + a releitura do compartilhamento, também fora do loop."""
+    protocolo.abortar()
+    return _compartilhamento_se_houver(protocolo, db)
+
+
 def _publicar_ao_vivo(
-    bus: LiveBus, protocolo: StreamProtocol, resposta: dict, db: Session
+    bus: LiveBus, protocolo: StreamProtocol, resposta: dict, compartilhado: bool | None
 ) -> None:
     """Espelha a resposta do gateway para os espectadores ao vivo (ADR-0039).
 
     Quem publica informa se a sessão está **compartilhada** (ADR-0045): a
-    fonte da verdade é a linha da sessão no banco, relida a cada janela.
+    fonte da verdade é a linha da sessão no banco, relida a cada janela (na
+    thread, por `_processar`). Publicar fica no loop: o `LiveBus` é `asyncio`.
     """
     user = protocolo.state.user
     sessao = protocolo.state.session
-    if user is None or sessao is None:
+    if user is None or sessao is None or compartilhado is None:
         return
-    publicar_janela(
-        bus,
-        user.id,
-        sessao.id,
-        resposta,
-        compartilhado=_compartilhamento_agora(db, sessao),
-    )
+    publicar_janela(bus, user.id, sessao.id, resposta, compartilhado=compartilhado)
 
 
 def _publicar_encerrada_se_ativa(
-    bus: LiveBus, protocolo: StreamProtocol, db: Session
+    bus: LiveBus, protocolo: StreamProtocol, compartilhado: bool | None
 ) -> None:
     """Avisa os espectadores que a captação parou (queda sem `stop`)."""
     user = protocolo.state.user
     sessao = protocolo.state.session
-    if user is None or sessao is None:
+    if user is None or sessao is None or compartilhado is None:
         return
-    publicar_encerrada(
-        bus, user.id, sessao.id, compartilhado=_compartilhamento_agora(db, sessao)
-    )
+    publicar_encerrada(bus, user.id, sessao.id, compartilhado=compartilhado)
 
 
 @router.websocket("/stream")
@@ -140,10 +163,12 @@ async def stream(
             except json.JSONDecodeError:
                 raise StreamError(CloseCode.PROTOCOLO_INVALIDO, "json invalido") from None
 
-            resposta = protocolo.handle(mensagem)
+            resposta, compartilhado = await run_in_threadpool(
+                _processar, protocolo, mensagem, db
+            )
             await websocket.send_json(resposta)
             # Espelha a janela (features/eSense) ou o `closed` aos espectadores.
-            _publicar_ao_vivo(bus, protocolo, resposta, db)
+            _publicar_ao_vivo(bus, protocolo, resposta, compartilhado)
 
             if protocolo.state.encerrada:
                 await websocket.close()
@@ -153,18 +178,18 @@ async def stream(
         # Motivo genérico: não diz se o token expirou, é de outro papel etc.
         await websocket.send_json({"type": "error", "detail": erro.reason})
         await websocket.close(code=erro.code.value, reason=erro.reason)
-        protocolo.abortar()
-        _publicar_encerrada_se_ativa(bus, protocolo, db)
+        compartilhado = await run_in_threadpool(_abortar, protocolo, db)
+        _publicar_encerrada_se_ativa(bus, protocolo, compartilhado)
     except TimeoutError:
         await websocket.close(
             code=CloseCode.NAO_AUTENTICADO.value, reason="autenticacao expirou"
         )
-        protocolo.abortar()
-        _publicar_encerrada_se_ativa(bus, protocolo, db)
+        compartilhado = await run_in_threadpool(_abortar, protocolo, db)
+        _publicar_encerrada_se_ativa(bus, protocolo, compartilhado)
     except WebSocketDisconnect:
         # Queda no meio da captação: a sessão não pode ficar ativa para sempre.
-        protocolo.abortar()
-        _publicar_encerrada_se_ativa(bus, protocolo, db)
+        compartilhado = await run_in_threadpool(_abortar, protocolo, db)
+        _publicar_encerrada_se_ativa(bus, protocolo, compartilhado)
     except Exception:
         # Qualquer outra falha (banco fora, erro de programação) também encerra
         # pelo caminho de sempre (ADR-0058, Decisão 2). Medido antes: Postgres
@@ -172,12 +197,12 @@ async def stream(
         # banco estiver fora, o `abortar()` falha também — aí vale a varredura
         # de órfãs do expurgo diário (Decisão 3).
         logger.exception("falha inesperada no /stream; encerrando a sessão")
-        db.rollback()
+        await run_in_threadpool(db.rollback)
         with contextlib.suppress(Exception):  # o socket pode já estar fechado
             await websocket.close(code=1011, reason="erro interno")
         try:
-            protocolo.abortar()
-            _publicar_encerrada_se_ativa(bus, protocolo, db)
+            compartilhado = await run_in_threadpool(_abortar, protocolo, db)
+            _publicar_encerrada_se_ativa(bus, protocolo, compartilhado)
         except Exception:
-            db.rollback()
+            await run_in_threadpool(db.rollback)
             logger.exception("abortar() falhou; a sessão fica para a varredura de órfãs")

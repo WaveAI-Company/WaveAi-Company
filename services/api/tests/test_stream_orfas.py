@@ -158,3 +158,50 @@ def test_expurgo_encerra_so_as_orfas(db_session: Session, hasher):
     assert velha.ended_at == agora
     # Uma captação de uma hora atrás pode estar acontecendo agora mesmo.
     assert viva.status is SessionStatus.ACTIVE
+
+
+class _AnalysisLenta(AnalysisFake):
+    """Analysis que demora — como a medida em 13/09 (5 s por janela)."""
+
+    def analyze_window(self, samples, fs, device=None):
+        import time
+
+        time.sleep(1.0)
+        return super().analyze_window(samples, fs, device)
+
+
+def test_janela_lenta_nao_trava_as_outras_requisicoes(db_session: Session):
+    """ADR-0058, Decisão 4: o trabalho síncrono do gateway roda fora do loop.
+
+    Antes, enquanto uma janela esperava a Analysis, o loop de eventos inteiro
+    ficava parado — e o `/health` de outra requisição esperava junto.
+    """
+    import threading
+    import time
+
+    app.dependency_overrides[get_session] = lambda: db_session
+    app.dependency_overrides[get_analysis_client] = lambda: _AnalysisLenta()
+    medida: dict[str, float] = {}
+    try:
+        with TestClient(app, base_url="https://testserver") as client:
+            token = _token(client)
+            with client.websocket_connect("/stream") as ws:
+                _abrir_sessao(ws, token)
+                # Fecha uma janela: a Analysis vai segurar 1 s.
+                ws.send_json({"type": "samples", "seq": 1, "data": [1.0] * 1024})
+                time.sleep(0.2)
+
+                def bater_no_health() -> None:
+                    inicio = time.perf_counter()
+                    assert client.get("/health").status_code == 200
+                    medida["segundos"] = time.perf_counter() - inicio
+
+                outra = threading.Thread(target=bater_no_health)
+                outra.start()
+                outra.join(timeout=5)
+                assert ws.receive_json()["type"] == "ack"
+    finally:
+        app.dependency_overrides.clear()
+
+    # Com o trabalho no loop, o /health esperava os ~0,8 s restantes da janela.
+    assert medida["segundos"] < 0.4, medida
