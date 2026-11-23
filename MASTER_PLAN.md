@@ -3,7 +3,7 @@
 | Campo | Valor |
 |---|---|
 | Versão | 0.1 |
-| Status | Vivo — MVP (M0–M5) concluído; fase atual: **Análise & Ciência** (ver Documentation/13) |
+| Status | Vivo — produto em produção desde ago/2026; MVP (M0–M5), Análise & Ciência (N1–N6) e Produto & UX (P1–P7) concluídos; fase atual (nov/2026): **estabilização e manutenção** (ver Documentation/17) |
 | Data | 2026-07-18 |
 | Autor | Cofundador técnico / Arquiteto-chefe (IA) |
 | Escopo | Guia mestre de toda a evolução do WaveAI |

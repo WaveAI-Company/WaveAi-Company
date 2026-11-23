@@ -3,7 +3,7 @@
 | Campo | Valor |
 |---|---|
 | Versão | 0.1 |
-| Status | Rascunho — resolve o spike Q-TEC-05 |
+| Status | Vigente — spike Q-TEC-05 resolvido; captação validada com o aparelho real |
 | Data | 2026-07-18 |
 | Dispositivo | NeuroSky MindWave Mobile 2 |
 | Documentos relacionados | [31_Signal_Fidelity_Study_Protocol](../DataScience/31_Signal_Fidelity_Study_Protocol.md), [20_System_Architecture_Overview](20_System_Architecture_Overview.md), [07_Tech_Stack](../07_Tech_Stack.md), [05_Decisions](../05_Decisions.md) |

@@ -3,7 +3,7 @@
 | Campo | Valor |
 |---|---|
 | Versão | 0.1 |
-| Status | Vivo — fonte das issues da fase de Produto & UX |
+| Status | Registro — fase de Produto & UX encerrada; fonte histórica das issues |
 | Data | 2026-07-26 |
 | Documentos relacionados | [13_Analysis_Phase_Work_Breakdown](13_Analysis_Phase_Work_Breakdown.md), [06_Master_Roadmap](../06_Master_Roadmap.md), [Medical/71](../Medical/71_Intended_Use_and_Regulatory_Positioning.md), [05_Decisions](../05_Decisions.md), [00_Project_Vision](../00_Project_Vision.md), [01_Project_Objectives](../01_Project_Objectives.md) |
 

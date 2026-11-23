@@ -3,7 +3,7 @@
 | Campo | Valor |
 |---|---|
 | Versão | 0.1 |
-| Status | Vivo — MVP concluído; **Análise & Ciência concluída** (2026-07-26); fase atual: **Produto & UX** |
+| Status | Vivo — produto em produção desde ago/2026; MVP, **Análise & Ciência** (2026-07-26) e **Produto & UX** concluídos; fase atual (nov/2026): **estabilização e manutenção** (ver Documentation/17) |
 | Data | 2026-07-18 |
 | Documentos relacionados | [MASTER_PLAN](MASTER_PLAN.md), [09_Project_Backlog](09_Project_Backlog.md), [Documentation/13](Documentation/13_Analysis_Phase_Work_Breakdown.md), [Documentation/14](Documentation/14_Product_UX_Phase_Work_Breakdown.md) |
 

@@ -3,7 +3,7 @@
 | Campo | Valor |
 |---|---|
 | Versão | 0.1 |
-| Status | Rascunho — resolve Q-CLN-01 e Q-CLN-04 |
+| Status | Vigente — fonte de verdade (resolve Q-CLN-01 e Q-CLN-04) |
 | Data | 2026-07-18 |
 | Documentos relacionados | [MASTER_PLAN](../MASTER_PLAN.md), [70_Regulatory_Clinical_Strategy](70_Regulatory_Clinical_Strategy.md), [05_Decisions](../05_Decisions.md), [01_Project_Objectives](../01_Project_Objectives.md) |
 

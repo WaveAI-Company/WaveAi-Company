@@ -3,7 +3,7 @@
 | Campo | Valor |
 |---|---|
 | Versão | 0.1 |
-| Status | Vivo — fonte das issues do GitHub |
+| Status | Registro — issues do MVP (M0–M5) entregues; fonte histórica |
 | Data | 2026-07-18 |
 | Documentos relacionados | [Architecture/22_MVP_Platform_Architecture](../Architecture/22_MVP_Platform_Architecture.md), [12_Claude_Code_Guide](12_Claude_Code_Guide.md), [10_Git_Workflow](10_Git_Workflow.md) |
 
