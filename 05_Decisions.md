@@ -1210,6 +1210,16 @@ Reusa o estado que a emenda à ADR-0053 criou. Se houve buraco dentro de uma fas
 **Consequências:** `ResultService` passa a carregar a sessão junto do `Result` (join, sem N+1); o app ganha uma função de buraco e a `SessionRow` passa a declarar as duas durações quando ele é material. Texto **neutro, sem cor de erro**: menos sinal é pior para a análise, não é falha de quem captou (ADR-0027 — sem cor de bom/ruim onde não há valência sobre a pessoa). Nenhuma tabela, nenhuma migração, nenhum campo novo no stream. Relaciona ADR-0026 (o gate segue intocado), ADR-0027, ADR-0037 (a fronteira do que é metadado) e ADR-0055.
 
 
+
+### Emenda à ADR-0055 (2026-11-23) — a queda é **detectada pelo canal**, não só pelo enlace; e silêncio de dados também é queda
+**Status:** Aceita (2026-11-23), por autonomia delegada pelo fundador. As Decisões 1, 2 e 3 seguem valendo; muda só **como** a queda é percebida no Android.
+
+**Contexto — medido no aparelho real (Motorola Edge 50 Fusion, Android 16, MindWave Mobile 2, produção):** o canal RFCOMM fechou **20,0 s** depois de abrir, e o headset parou de responder ao rádio (page timeout ao tentar de novo, do celular e do PC). O app só percebeu **37 s depois**: a biblioteca `react-native-bluetooth-classic` avisa o fechamento do canal pelo evento **por aparelho** (`DEVICE_DISCONNECTED@<endereço>`), e o app assinava apenas o evento **geral**, que só sai quando o Android derruba o enlace ACL (23 s de ociosidade + 10 s de timeout do L2CAP). Nesse intervalo a tela dizia "AO VIVO" sem entrar uma amostra — a falha silenciosa que a ADR-0055 existe para impedir. E cada tentativa de reconexão que falhava punha "O aparelho demorou a responder" em vermelho, por cima do aviso de reconexão.
+
+**Decisão:** três detectores para a mesma queda, com um token de conexão para que só o primeiro conte: (1) o evento por aparelho, que chega na hora; (2) o evento geral do enlace, mantido como rede; (3) um vigia de silêncio — sem byte nenhum por **5 s** é queda (calibragem: o ThinkGear emite 512 amostras/s mesmo fora da cabeça). Durante a reconexão o erro de cada tentativa não vai para a tela; o desfecho é dito uma vez, pelo teto. A mensagem de encerramento por queda passa a sugerir **trocar a pilha por uma AAA alcalina nova**, que o guia do fabricante lista como causa de desconexão.
+
+**O que se abre mão:** o vigia é timer e não roda com a tela apagada (vale a limitação já registrada na ADR-0052); lá contam os dois detectores por evento. **Não está provado** que a causa do fechamento em 20 s seja a pilha — o headset desligou, o que é compatível, e as cinco sessões de 29/10 somam todas ~20 s, o que também é compatível com um temporizador do firmware. A dica da pilha é o primeiro passo barato; se uma pilha nova não mudar nada, a próxima hipótese é um handshake que o firmware espere do host.
+
 ## ADR-0056 — Tela de abertura: **`expo-splash-screen`, com a arte saindo do mesmo vetor de sempre**
 **Status:** Proposta (2026-09-06) — vira Aceita no merge.
 

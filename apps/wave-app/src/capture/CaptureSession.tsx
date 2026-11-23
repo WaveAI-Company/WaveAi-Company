@@ -92,9 +92,17 @@ const INTERVALO_RECONEXAO_MS = 2_000;
  * que o captado foi aproveitado deixaria a pessoa supondo que perdeu tudo
  * (ADR-0027 — a tela não afirma o que não é verdade, e omitir o desfecho é
  * deixá-la adivinhar).
+ *
+ * **A dica da pilha vem de medição.** No aparelho real (2026-11-23) o MindWave
+ * fechou o canal 20 s depois de conectar e em seguida parou de responder ao
+ * rádio — desligou. O guia do fabricante lista pilha fraca, ou que não seja
+ * alcalina, como causa de desconexão inesperada. Sem a dica, a pessoa tentaria
+ * de novo e cairia de novo, achando que o problema é o app.
  */
 const MOTIVO_QUEDA =
-  "A conexão com o aparelho caiu e não voltou. A sessão foi encerrada com o sinal que já havia sido captado.";
+  "A conexão com o aparelho caiu e não voltou. A sessão foi encerrada com o sinal que já havia sido captado. " +
+  "Se isso se repetir logo depois de conectar, troque a pilha do MindWave por uma AAA alcalina nova: " +
+  "segundo o fabricante, pilha fraca é a causa mais comum de desconexão.";
 
 /**
  * Quanto se espera pelo relatório depois do `stop`, antes de a tela desistir.
@@ -699,7 +707,15 @@ export function CaptureSessionProvider({ children }: { children: ReactNode }) {
           // resto (recusa, permissão, característica ausente) e continua sendo
           // uma mensagem na tela.
           if (status === "disconnected") aoCairAConexao();
-          else if (status === "error") setErro(mensagemBluetooth(detalhe));
+          // Durante a reconexão, cada tentativa que falha emite `error` — e
+          // falhar é o esperado enquanto o rádio não volta. Mostrar isso punha
+          // "O aparelho demorou a responder" em vermelho por cima do aviso de
+          // reconexão (medido no aparelho, 2026-11-23): duas frases para um
+          // fato só, e a vermelha com a causa errada. Quem fala do desfecho é
+          // o teto, com `MOTIVO_QUEDA`.
+          else if (status === "error" && !reconectandoRef.current) {
+            setErro(mensagemBluetooth(detalhe));
+          }
         },
       };
       aparelhoAtual.current = device;
