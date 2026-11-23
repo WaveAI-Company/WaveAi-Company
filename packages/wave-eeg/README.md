@@ -1,45 +1,64 @@
-# eeg-capture-spike
+# wave-eeg — motor de análise de EEG do WaveAI
 
-Spike de **captação e análise de EEG** (NeuroSky MindWave Mobile 2, protocolo ThinkGear).
-Objetivo: validar as ferramentas de conexão/extração/análise **antes** de comprometer o stack do produto — ver `Architecture/21` e `DataScience/31` (Exp. B), decisão em ADR-0013.
+Pacote Python (`wave_eeg`; versão em `src/wave_eeg/__init__.py`) com o DSP e a
+ciência de dados do produto para o NeuroSky MindWave Mobile 2 (canal único,
+FP1, 512 Hz, protocolo ThinkGear). É o **motor de análise de produção**: o
+`AnalysisEngine` de `services/analysis` (`WaveEegEngine`) embrulha este pacote,
+e nenhum DSP deve ser espalhado pela API ou pela UI. Nasceu como spike de
+validação (ADR-0013) e hoje é o motor completo.
 
-## Por que dá para rodar sem o aparelho
-O código é dividido em camadas testáveis:
-- `thinkgear.py` — parser puro do protocolo (byte stream → eventos).
-- `simulator.py` — gera um stream ThinkGear sintético (para testes/CI).
-- `reader.py` — `DeviceReader` com `SimulatedReader` (sem hardware) e `SerialReader` (real).
-- `analysis.py` — PSD, potências de banda e o teste do alfa (olhos fechados vs. abertos).
-- `cli.py` — comandos `demo`, `capture`, `analyze`.
+Uso **exploratório de bem-estar — não-clínico e não-diagnóstico**; sem claim
+clínica (`Medical/71_Intended_Use_and_Regulatory_Positioning.md`). Decisões em
+`05_Decisions.md` (ADRs 0013, 0027, 0028, 0031–0035); ciência em `DataScience/`
+(protocolo `31`, features `32`); arquitetura em
+`Architecture/22_MVP_Platform_Architecture.md`.
 
-## Instalação
+## Módulos (`src/wave_eeg/`)
+
+| Módulo | Papel |
+|---|---|
+| `thinkgear.py`, `simulator.py`, `reader.py` | parser do protocolo, simulador sintético, `DeviceReader` (simulado e serial) |
+| `devices.py` | modelo de sinal device-agnóstico e montagem (ADR-0033) |
+| `analysis.py` | pré-processamento, PSD, potências de banda, teste do alfa |
+| `features.py` | catálogo de features transparentes e interpretáveis |
+| `quality.py` | veredito de qualidade de sinal, score 0..1 (ADR-0031) |
+| `baseline.py` | baseline pessoal e desvio em N sigma (ADR-0032) |
+| `longitudinal.py`, `summary.py` | tendências entre sessões e sumário determinístico em PT-BR (ADR-0035) |
+| `esense.py` | métricas eSense da NeuroSky, separadas do catálogo de features (ADR-0034) |
+| `exp_b.py`, `exp_c.py`, `exp_d.py` | experimentos do protocolo de fidelidade (`DataScience/31`) |
+| `cli.py` | comando `wave-eeg` |
+
+Todo resultado do serviço grava a `engine_version` (rastreabilidade).
+
+## Instalar e testar
+
 ```bash
 cd packages/wave-eeg
 python -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install -e ".[serial,dev]"
+pytest -q                # testes em tests/ (dados 100% sintéticos)
 ```
 
-## Rodar sem hardware (demo + testes)
+Requer Python >= 3.9; dependências `numpy` e `scipy` (`pyserial` no extra
+`serial`). O CI roda `pytest -q` e `ruff check .` (config no `ruff.toml` da raiz).
+
+## CLI
+
 ```bash
-wave-eeg demo            # roda o Exp. B em dados sintéticos e imprime o veredito
-pytest -q                # roda a suíte de testes
+wave-eeg demo                # Exp. B em dados sintéticos, sem hardware
+wave-eeg capture --port COM5 --secs 60 --condition OC --out oc.csv
+wave-eeg analyze sessao.csv  # CSV com colunas t,raw,condition
+wave-eeg --help              # demais subcomandos (experimentos B, C, D)
 ```
 
-## Captura com o dispositivo real
-1. Pareie o MindWave Mobile 2 via Bluetooth (SPP) no SO. Isso cria uma porta serial:
-   - Windows: `COMx` (veja em Gerenciador de Dispositivos → Portas COM).
-   - Linux: `/dev/rfcomm0` (após `rfcomm bind`).
-2. Capture blocos rotulados por condição (Exp. B):
-   ```bash
-   wave-eeg capture --port COM5 --secs 60 --condition OC --out of.csv   # olhos fechados
-   wave-eeg capture --port COM5 --secs 60 --condition OA --out oa.csv   # olhos abertos
-   ```
-3. Junte num único CSV (colunas `raw,condition`) e analise:
-   ```bash
-   wave-eeg analyze sessao.csv
-   ```
+Captura real: pareie o aparelho por Bluetooth SPP no SO (porta `COMx` no
+Windows, `/dev/rfcomm0` no Linux). **Privacidade (LGPD):** testes e fixtures
+são sempre sintéticos; CSVs de sinal ficam fora do Git (`.gitignore`). A única
+exceção é a autocaptação do próprio desenvolvedor, nos termos da ADR-0028, que
+nunca é commitada.
 
-> **Privacidade (LGPD):** CSVs de sinal ficam fora do Git por padrão (`.gitignore`). Não comite dados de pessoas identificáveis.
+## Uso pelo serviço
 
-## Próximos passos
-- Substituir os stubs de artefato/qualidade pelos experimentos A, D, E do protocolo (`DataScience/31`).
-- Migrar o `SerialReader` para a fundação durável de captação do produto (mesma interface `DeviceReader`).
+`services/analysis` instala este pacote a partir do monorepo (o contexto de
+build do `Dockerfile` de `services/analysis` é a raiz) e o expõe por HTTP. Ver
+`services/analysis/README.md`.
