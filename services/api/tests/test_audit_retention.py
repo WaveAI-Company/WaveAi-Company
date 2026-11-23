@@ -274,3 +274,22 @@ def test_a_data_do_evento_nao_serve_de_criterio(db_session: Session):
     assert db_session.get(ResultAccessEvent, evento.id) is not None, (
         "o prazo conta da pseudonimização, não da data do evento"
     )
+
+
+def test_expurgo_tem_indice_parcial_nas_tres_trilhas(db_session):
+    """Migration 0020: o expurgo diário não varre a tabela inteira."""
+    from sqlalchemy import text
+
+    nomes = set(
+        db_session.execute(
+            text(
+                "select indexname from pg_indexes where indexname like "
+                "'ix_%_access_events_pseudonymized_at'"
+            )
+        ).scalars()
+    )
+    assert nomes == {
+        "ix_result_access_events_pseudonymized_at",
+        "ix_annotation_access_events_pseudonymized_at",
+        "ix_live_view_access_events_pseudonymized_at",
+    }

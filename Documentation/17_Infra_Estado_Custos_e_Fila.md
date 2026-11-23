@@ -430,7 +430,7 @@ exige — **já existe** e está no ar.
   destino natural é um provedor transacional com `waveai.tec.br` — registrado
   como alternativa preterida na emenda à ADR-0044.
 - **Revisão jurídica** dos documentos legais: pendente desde que foram escritos.
-- **Sem índice em `pseudonymized_at`**: irrelevante no volume atual.
+- ~~**Sem índice em `pseudonymized_at`**~~ — **feito em 2026-11-23** (migration 0020, índice parcial nas três trilhas).
 
 ---
 
