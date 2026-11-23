@@ -14,6 +14,7 @@ import { useAuth } from "../../src/auth/AuthContext";
 import { capturaDisponivel } from "../../src/capture/availability";
 import { PersonAvatar } from "../../src/components/profile/PersonAvatar";
 import { Button } from "../../src/components/Button";
+import { StateView } from "../../src/components/StateView";
 import { Chip } from "../../src/components/Chip";
 import { Disclaimer } from "../../src/components/Disclaimer";
 import { EmptyState } from "../../src/components/EmptyState";
@@ -121,6 +122,13 @@ export default function PatientHomeScreen() {
   const [acompanhantes, setAcompanhantes] = useState<CareLink[]>([]);
   const [sessoes, setSessoes] = useState<SessionResult[]>([]);
   const [carregando, setCarregando] = useState(true);
+  /**
+   * A última carga falhou. Existe para a falha **não virar vazio**: antes, uma
+   * carga que falhava deixava `sessoes` em `[]` e a tela convidava para a
+   * "primeira onda" quem tinha sete sessões (medido em produção, 23/11/2026,
+   * com o token vencido) — a tela afirmando o que não é verdade (ADR-0027).
+   */
+  const [falhou, setFalhou] = useState(false);
 
   const carregar = useCallback(async () => {
     try {
@@ -134,9 +142,12 @@ export default function PatientHomeScreen() {
       setPendentes(convites.length);
       setAcompanhantes(vinculos.filter((v) => v.status === "active"));
       setSessoes(resultados);
+      setFalhou(false);
     } catch {
-      // A home não deve quebrar se os avisos falharem; ficam ocultos.
+      // A home não deve quebrar se os avisos falharem; ficam ocultos. As
+      // sessões já carregadas ficam onde estão — uma falha não as apaga.
       setConsentido(null);
+      setFalhou(true);
     } finally {
       setCarregando(false);
     }
@@ -413,8 +424,16 @@ export default function PatientHomeScreen() {
         />
       ) : null}
 
+      {/* ===== falha sem nada carregado: erro, nunca o convite da primeira vez ===== */}
+      {sessoes.length === 0 && falhou ? (
+        <StateView
+          error="Não foi possível carregar suas sessões agora."
+          onRetry={() => void carregar()}
+        />
+      ) : null}
+
       {/* ===== primeira vez ===== */}
-      {sessoes.length === 0 ? (
+      {sessoes.length === 0 && !falhou ? (
         <EmptyState
           adorno={{ tipo: "figura" }}
           titulo="Sua primeira onda começa aqui"
