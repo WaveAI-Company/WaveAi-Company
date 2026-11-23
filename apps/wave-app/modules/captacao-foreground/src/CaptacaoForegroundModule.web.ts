@@ -8,6 +8,9 @@ import { registerWebModule, NativeModule } from "expo";
 class CaptacaoForegroundModule extends NativeModule {
   iniciar(): void {}
   parar(): void {}
+  esperar(ms: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
 }
 
 export default registerWebModule(CaptacaoForegroundModule, "CaptacaoForeground");

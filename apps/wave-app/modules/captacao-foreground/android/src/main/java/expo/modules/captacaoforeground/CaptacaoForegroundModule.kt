@@ -1,5 +1,8 @@
 package expo.modules.captacaoforeground
 
+import android.os.Handler
+import android.os.Looper
+import expo.modules.kotlin.Promise
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
 
@@ -28,6 +31,20 @@ class CaptacaoForegroundModule : Module() {
     /** Derruba o serviço e a notificação junto. */
     Function("parar") {
       appContext.reactContext?.let { CaptacaoService.parar(it) }
+    }
+
+    /**
+     * Espera `ms` e resolve — **com a tela apagada também**.
+     *
+     * Existe porque timer de JS (`setTimeout`/`setInterval`) não dispara no
+     * Android com a activity pausada: o relógio deles anda pelo Choreographer,
+     * que para junto com a tela (medição da ADR-0052). Já a resolução de uma
+     * promessa nativa chega ao JS como os eventos do Bluetooth, que seguem
+     * chegando. O `Handler` do looper principal segue rodando porque o
+     * serviço em primeiro plano mantém o processo vivo.
+     */
+    AsyncFunction("esperar") { ms: Int, promise: Promise ->
+      Handler(Looper.getMainLooper()).postDelayed({ promise.resolve(null) }, ms.toLong())
     }
   }
 }

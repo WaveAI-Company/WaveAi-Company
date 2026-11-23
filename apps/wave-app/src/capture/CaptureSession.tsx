@@ -35,6 +35,7 @@ import {
 } from "react";
 
 import {
+  esperarComTelaApagada,
   iniciarServicoCaptacao,
   pararServicoCaptacao,
   pedirPermissaoDeAviso,
@@ -117,9 +118,13 @@ const MOTIVO_QUEDA =
  */
 const TETO_RELATORIO_MS = 30_000;
 
-/** `setTimeout` como promessa, para a reconexão ser um laço e não uma recursão. */
+/**
+ * Espera como promessa, para a reconexão ser um laço e não uma recursão. Pelo
+ * relógio nativo no Android, que anda com a tela apagada (ver
+ * `esperarComTelaApagada`).
+ */
 function esperar(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+  return esperarComTelaApagada(ms);
 }
 
 type Sessao = {
@@ -433,14 +438,11 @@ export function CaptureSessionProvider({ children }: { children: ReactNode }) {
    * limpar. `minhaGeracao` é o token: se ele mudou, esta tentativa pertence a uma
    * captação que já acabou e tudo o que ela conseguir tem de ser desfeito.
    *
-   * ⚠️ **Com a tela apagada só a primeira tentativa acontece.** Ela é disparada
-   * pelo evento de queda, que o módulo nativo entrega mesmo com a activity
-   * pausada — mas a espera entre as tentativas seguintes é `setTimeout`, e timer
-   * de RN no Android não dispara nesse estado (é a mesma medição da ADR-0052 que
-   * fez o envio deixar de depender do relógio). Na prática: falhou a primeira, a
-   * sessão fica parada até a tela voltar, e aí o teto já venceu e ela encerra com
-   * a explicação. Corrigir isso exigiria a contagem dentro do serviço em primeiro
-   * plano, em Kotlin — fora do escopo desta fatia.
+   * **Com a tela apagada.** A primeira tentativa vem do evento de queda, que o
+   * módulo nativo entrega mesmo com a activity pausada. As seguintes esperavam
+   * por `setTimeout`, que não dispara nesse estado — só a primeira acontecia.
+   * Desde 2026-11-23 a espera é pelo `Handler` do serviço em primeiro plano
+   * (`esperarComTelaApagada`), e o laço inteiro anda com a tela apagada.
    */
   const reconectar = useCallback(
     async (minhaGeracao: number) => {
@@ -658,14 +660,22 @@ export function CaptureSessionProvider({ children }: { children: ReactNode }) {
     // (o selo "simulado" da tela já avisa que nada aqui é medição de ninguém).
     const simulador = new SignalSimulator(SAMPLE_RATE);
     simuladorRef.current = simulador;
-    timer.current = setInterval(() => {
-      stream.sendSamples(
-        simulador.nextBlock(BLOCO),
-        simulador.nextEsense(),
-        faseAtual.current ?? undefined,
-      );
-      setPoorSignal(simulador.nextPoorSignal());
-    }, INTERVALO_MS);
+    // Laço com espera nativa, e não `setInterval`: com a tela apagada o
+    // intervalo parava e a sessão simulada ficava muda — e desde a ADR-0058 o
+    // servidor encerra quem fica 30 s sem mandar nada. O token de geração para
+    // o laço quando a captação acaba, como na reconexão.
+    const minhaGeracao = geracao.current;
+    void (async () => {
+      while (geracao.current === minhaGeracao) {
+        stream.sendSamples(
+          simulador.nextBlock(BLOCO),
+          simulador.nextEsense(),
+          faseAtual.current ?? undefined,
+        );
+        setPoorSignal(simulador.nextPoorSignal());
+        await esperar(INTERVALO_MS);
+      }
+    })();
   }, [
     abrindoSessao,
     ativo,

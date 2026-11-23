@@ -62,6 +62,28 @@ export function iniciarServicoCaptacao(): void {
   }
 }
 
+function esperarNoJs(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Espera `ms` por um relógio que **anda com a tela apagada**.
+ *
+ * No Android usa o `Handler` nativo do módulo: `setTimeout` não dispara com a
+ * activity pausada, e era isso que limitava a reconexão em segundo plano a uma
+ * tentativa só (ADR-0055) e fazia o simulador parar de gerar. Nas outras
+ * plataformas, e se o nativo falhar por qualquer motivo, cai no `setTimeout` —
+ * o comportamento de antes, nunca pior que ele.
+ */
+export function esperarComTelaApagada(ms: number): Promise<void> {
+  if (!disponivel) return esperarNoJs(ms);
+  try {
+    return CaptacaoForegroundModule.esperar(ms).catch(() => esperarNoJs(ms));
+  } catch {
+    return esperarNoJs(ms);
+  }
+}
+
 /** Derruba o serviço e a notificação. */
 export function pararServicoCaptacao(): void {
   if (!disponivel) return;
