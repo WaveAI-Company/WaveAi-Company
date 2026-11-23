@@ -270,6 +270,16 @@ def test_sessao_encerrada_nao_aceita_compartilhamento(
 # -- o que o profissional vê ----------------------------------------------
 
 
+def _sessao_do_request(db_session: Session) -> Session:
+    """Sessão própria para a rota, sobre a conexão do teste — como em produção.
+
+    A rota SSE fecha a sessão dela antes de transmitir (ADR-0058). Passar a
+    `db_session` do teste faria esse `close` desanexar os objetos que o teste
+    ainda usa depois, o que nunca acontece com uma sessão por request.
+    """
+    return Session(bind=db_session.connection(), join_transaction_mode="create_savepoint")
+
+
 def _abrir_transmissao(db_session: Session, paciente: User, medico: User, bus: LiveBus):
     from app.api.live import transmissao_do_paciente
 
@@ -278,7 +288,7 @@ def _abrir_transmissao(db_session: Session, paciente: User, medico: User, bus: L
         request=_FakeRequest(),
         paciente=paciente,
         ator=medico,
-        session=db_session,
+        session=_sessao_do_request(db_session),
         bus=bus,
     )
 

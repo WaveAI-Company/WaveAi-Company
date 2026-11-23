@@ -9,9 +9,11 @@ features/eSense rotulado, **nunca raw** (ADR-0025/0034); sem veredito (ADR-0027)
 `/auth`); o cliente web lê o stream via `fetch` com o header `Authorization` — a
 mesma intenção do ADR (SSE read-only, sem token na URL, reusando a auth do app).
 
-TODO(nuvem): o SSE mantém a conexão do banco aberta durante a transmissão (a
-sessão do request só fecha no fim). Aceitável para poucos espectadores por
-instância; ao escalar, usar sessão de vida curta / driver assíncrono.
+**Conexão do banco:** as rotas leem o que precisam e **fecham a sessão antes de
+transmitir** (ADR-0058). Antes, a sessão do request só fechava no fim do
+stream, e cada espectador segurava uma conexão do pool por toda a transmissão:
+medido em 13/09, com o pool padrão (5 + 10) o 16º espectador esgotava o banco e
+as rotas com banco respondiam 500 em 30,2 s — com o `/health` em 200.
 """
 
 from __future__ import annotations
@@ -111,8 +113,11 @@ async def minha_transmissao(
         )
         is not None
     )
+    # Solta a conexão antes de transmitir: daqui em diante só o barramento.
+    titular = user.id
+    session.close()
     return StreamingResponse(
-        _transmitir(bus, user.id, request, ativa),
+        _transmitir(bus, titular, request, ativa),
         media_type="text/event-stream",
         headers=SSE_HEADERS,
     )
@@ -183,17 +188,22 @@ async def transmissao_do_paciente(
         actor_id=ator.id,
         session_id=ativa.id if ativa is not None else None,
     )
+    # Lidos antes do `commit` e do `close`: depois deles o objeto pode estar
+    # expirado e sem sessão para recarregar. Sem captação ativa não há o que
+    # compartilhar; com ela, quem manda é a chave do titular (ADR-0045).
+    paciente_id = paciente.id
+    compartilhado = ativa is not None and ativa.live_sharing_enabled
     session.commit()
+    # Solta a conexão antes de transmitir: daqui em diante só o barramento.
+    session.close()
     return StreamingResponse(
         _transmitir(
             bus,
-            paciente.id,
+            paciente_id,
             request,
             ativa is not None,
             espectador=True,
-            # Sem captação ativa não há o que compartilhar; com ela, quem manda é
-            # a chave que o titular ligou nesta sessão (ADR-0045).
-            compartilhado=ativa is not None and ativa.live_sharing_enabled,
+            compartilhado=compartilhado,
         ),
         media_type="text/event-stream",
         headers=SSE_HEADERS,
