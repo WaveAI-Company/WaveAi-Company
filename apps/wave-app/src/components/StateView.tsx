@@ -2,11 +2,17 @@ import { useMemo } from "react";
 import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 
 import { useRoleAccent, useTheme, type Theme } from "../theme";
+import { Button } from "./Button";
 
 type Props = {
   loading?: boolean;
   error?: string | null;
   empty?: string | null;
+  /**
+   * Com erro, oferece tentar de novo. Sem isto a tela de erro era um beco:
+   * a mensagem sozinha, sem filtro nem botão, até a pessoa sair e voltar.
+   */
+  onRetry?: () => void;
 };
 
 /**
@@ -16,7 +22,7 @@ type Props = {
  * distinção que importa quando o vazio pode significar "nenhum paciente
  * autorizou o acompanhamento".
  */
-export function StateView({ loading, error, empty }: Props) {
+export function StateView({ loading, error, empty, onRetry }: Props) {
   const t = useTheme();
   const { accent } = useRoleAccent();
   const styles = useMemo(() => criarEstilos(t), [t]);
@@ -34,6 +40,11 @@ export function StateView({ loading, error, empty }: Props) {
         <Text style={styles.erro} accessibilityRole="alert">
           {error}
         </Text>
+        {onRetry ? (
+          <View style={styles.acao}>
+            <Button label="Tentar de novo" onPress={onRetry} variant="secondary" accent={accent} />
+          </View>
+        ) : null}
       </View>
     );
   }
@@ -58,6 +69,9 @@ const criarEstilos = (t: Theme) =>
       color: t.colors.dangerText,
       fontSize: 14,
       textAlign: "center",
+    },
+    acao: {
+      marginTop: t.spacing.md,
     },
     vazio: {
       ...t.typography.body,

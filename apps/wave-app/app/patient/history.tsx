@@ -281,7 +281,7 @@ export default function PatientHistoryScreen() {
         </>
       ) : null}
 
-      <StateView error={erro} />
+      <StateView error={erro} onRetry={() => void carregar()} />
 
       {/* Vazio: convite, não erro — a tela ainda não tem o que mostrar. */}
       {nuncaCaptou ? (
