@@ -18,13 +18,6 @@
   # externa poderia sobrepor a tela de login e capturar cliques.
   X-Frame-Options: DENY
 
-  # `no-transform` proíbe proxies de reescrever a resposta — e é o mecanismo
-  # documentado para a Cloudflare NÃO injetar o beacon do Web Analytics
-  # (`cloudflareinsights.com/beacon.min.js`). Medido em produção em 2026-10-27 e
-  # 2026-11-23: o beacon entrava em todas as páginas, e a Política diz que pela
-  # Cloudflare passa "só o aplicativo em si", sem analytics. O resto do valor
-  # repete o que o Pages já mandava, para não mudar o comportamento de cache.
-  Cache-Control: public, max-age=0, must-revalidate, no-transform
 
   # O web não captura EEG (`src/device/connection.web.ts` reporta supported:false)
   # e nenhuma tela pede localização, microfone ou câmera. Negar por padrão é

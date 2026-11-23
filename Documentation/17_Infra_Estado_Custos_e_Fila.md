@@ -434,6 +434,18 @@ exige — **já existe** e está no ar.
 
 ---
 
+### Cloudflare — medido em 2026-11-23
+
+- **E-mail do encarregado ofuscado: corrigido por código** (PR #280). O gerador
+  das páginas estáticas marca cada e-mail com `<!--email_off-->`. Em produção, depois
+  do deploy: 2 ocorrências em claro, 0 ofuscadas.
+- **Beacon do Web Analytics: SÓ PELO PAINEL.** `Cache-Control: no-transform` (o
+  mecanismo que a FAQ do Web Analytics cita) chegou à resposta e o beacon
+  **continuou** sendo injetado — a injeção do Pages não respeita o cabeçalho. O
+  cabeçalho foi retirado. Falta: painel da Cloudflare → Workers & Pages → projeto
+  `waveai-company` → Metrics / Web Analytics → desligar. Até lá, a Política
+  afirma algo que o site não cumpre.
+
 ## 6. Datas
 
 | Quando | O quê |
