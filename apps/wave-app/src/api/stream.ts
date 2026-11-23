@@ -5,7 +5,7 @@
  * log de servidor, proxy e histórico.
  */
 
-import { API_URL, getAccessToken } from "../auth/api";
+import { API_URL, obterAcessoValido } from "../auth/api";
 import type { PhaseComparison, ResultMetrics } from "./results";
 
 export type LiveFeatures = {
@@ -102,10 +102,12 @@ export class StreamSession {
 
   constructor(private readonly handlers: StreamHandlers) {}
 
-  connect(device: string, sampleRate: number): Promise<void> {
-    const token = getAccessToken();
+  async connect(device: string, sampleRate: number): Promise<void> {
+    // Renovado antes, se preciso: o gateway confere o token só no `auth`, e um
+    // vencido derrubaria a captação logo no começo.
+    const token = await obterAcessoValido();
     if (!token) {
-      return Promise.reject(new Error("sem sessao autenticada"));
+      throw new Error("sem sessao autenticada");
     }
 
     return new Promise((resolve, reject) => {

@@ -10,10 +10,10 @@
  * bem. Avatar tem dezenas de KB, então o base64 é barato.
  */
 
-import { API_URL, ApiError, getAccessToken } from "../auth/api";
+import { API_URL, ApiError, obterAcessoValido } from "../auth/api";
 
-function autorizacao(): Record<string, string> {
-  const token = getAccessToken();
+async function autorizacao(): Promise<Record<string, string>> {
+  const token = await obterAcessoValido();
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
@@ -34,7 +34,7 @@ function blobParaDataUri(blob: Blob): Promise<string> {
 export async function fetchPhotoDataUri(alvo: "me" | string): Promise<string | null> {
   const path = alvo === "me" ? "/me/photo" : `/users/${alvo}/photo`;
   const resp = await fetch(`${API_URL}${path}`, {
-    headers: autorizacao(),
+    headers: await autorizacao(),
     credentials: "include",
   });
   if (resp.status === 404) return null;
@@ -48,7 +48,7 @@ export async function uploadMyPhoto(imagem: Blob): Promise<void> {
     method: "PUT",
     headers: {
       "Content-Type": imagem.type || "application/octet-stream",
-      ...autorizacao(),
+      ...(await autorizacao()),
     },
     body: imagem,
     credentials: "include",
@@ -64,7 +64,7 @@ export async function uploadMyPhoto(imagem: Blob): Promise<void> {
 export async function deleteMyPhoto(): Promise<void> {
   const resp = await fetch(`${API_URL}/me/photo`, {
     method: "DELETE",
-    headers: autorizacao(),
+    headers: await autorizacao(),
     credentials: "include",
   });
   if (resp.status !== 204) {

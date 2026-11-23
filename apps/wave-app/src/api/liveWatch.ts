@@ -8,7 +8,7 @@
  * corpo em stream (a tela é oferecida só no web).
  */
 
-import { API_URL, getAccessToken, request } from "../auth/api";
+import { API_URL, obterAcessoValido, request } from "../auth/api";
 import type { LiveEsense, LiveFeatures } from "./stream";
 
 export type WatchClosed = { report: unknown; result: unknown };
@@ -86,7 +86,7 @@ async function consumir(
   controller: AbortController,
   h: WatchHandlers,
 ): Promise<void> {
-  const token = getAccessToken();
+  const token = await obterAcessoValido();
   if (!token) {
     h.onError?.("sem sessao autenticada");
     return;

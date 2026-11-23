@@ -38,6 +38,21 @@ export class ApiError extends Error {
 
 /** Access token em memória — nunca em disco, nunca em localStorage. */
 let accessToken: string | null = null;
+/**
+ * Quando o access token vence, em ms de época. `0` = desconhecido.
+ *
+ * Existe porque o token dura **15 min** (`access_token_ttl_minutes`) e, até
+ * 2026-11-23, o app só o renovava ao abrir: medido no aparelho, depois de 15
+ * min de uso **toda** chamada autenticada dava 401 — o histórico dizia "Não foi
+ * possível carregar suas sessões" e o início mostrava "Sua primeira onda começa
+ * aqui" para quem tinha sete sessões.
+ */
+let accessExpiraEm = 0;
+/**
+ * Renova quando falta menos que isto. Um minuto cobre o relógio do aparelho
+ * levemente adiantado e a ida e volta da própria renovação.
+ */
+const FOLGA_RENOVACAO_MS = 60_000;
 
 export function getAccessToken(): string | null {
   return accessToken;
@@ -45,7 +60,31 @@ export function getAccessToken(): string | null {
 
 export function setAccessToken(token: string | null): void {
   accessToken = token;
+  if (token === null) accessExpiraEm = 0;
 }
+
+/** Quem precisa saber que a sessão acabou de vez (o `AuthContext`). */
+const ouvintesDaPerda = new Set<() => void>();
+
+/**
+ * Assina a perda **definitiva** da sessão: o refresh foi recusado (vencido,
+ * revogado, ou a família foi derrubada por reuso — ADR-0021). Devolve a função
+ * que desassina.
+ */
+export function aoPerderSessao(ouvinte: () => void): () => void {
+  ouvintesDaPerda.add(ouvinte);
+  return () => ouvintesDaPerda.delete(ouvinte);
+}
+
+/**
+ * A renovação em curso, compartilhada.
+ *
+ * **Uma só de cada vez, e isso é obrigatório:** o servidor rotaciona o refresh
+ * a cada uso e, se um refresh já usado reaparece, revoga a família inteira
+ * (ADR-0021). Três telas recebendo 401 juntas e renovando cada uma por si
+ * mandariam o mesmo refresh três vezes — e a segunda derrubaria a sessão.
+ */
+let renovacaoEmVoo: Promise<boolean> | null = null;
 
 type TokenResponse = {
   access_token: string;
@@ -57,23 +96,21 @@ type TokenResponse = {
  * Chamada HTTP à API. Exportada para os demais módulos reusarem o mesmo
  * tratamento de erro, o access token em memória e o `credentials: "include"`
  * (sem o qual o cookie do refresh não trafega no web).
+ *
+ * Com `auth`, cuida da validade do token: renova **antes** de vencer e, se
+ * mesmo assim vier 401, renova e tenta **uma** vez de novo. O 401 da segunda
+ * tentativa é devolvido como veio — é o caso de quem chama distinguir (senha
+ * atual errada na troca de senha também responde 401, e não é sessão vencida).
  */
 export async function request<T>(
   path: string,
   options: { method?: string; body?: unknown; auth?: boolean } = {},
 ): Promise<T> {
-  const headers: Record<string, string> = { "Content-Type": "application/json" };
-  if (options.auth && accessToken) {
-    headers.Authorization = `Bearer ${accessToken}`;
+  if (options.auth) await obterAcessoValido();
+  let response = await enviar(path, options);
+  if (response.status === 401 && options.auth && accessToken !== null) {
+    if (await renovarAcesso()) response = await enviar(path, options);
   }
-
-  const response = await fetch(`${API_URL}${path}`, {
-    method: options.method ?? "GET",
-    headers,
-    body: options.body === undefined ? undefined : JSON.stringify(options.body),
-    // Necessário para o cookie httpOnly do refresh ir e voltar no web.
-    credentials: "include",
-  });
 
   if (response.status === 204) {
     return undefined as T;
@@ -90,9 +127,82 @@ export async function request<T>(
   return data as T;
 }
 
+function enviar(
+  path: string,
+  options: { method?: string; body?: unknown; auth?: boolean },
+): Promise<Response> {
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (options.auth && accessToken) {
+    headers.Authorization = `Bearer ${accessToken}`;
+  }
+  return fetch(`${API_URL}${path}`, {
+    method: options.method ?? "GET",
+    headers,
+    body: options.body === undefined ? undefined : JSON.stringify(options.body),
+    // Necessário para o cookie httpOnly do refresh ir e voltar no web.
+    credentials: "include",
+  });
+}
+
+/**
+ * O access token, renovado antes se estiver para vencer. `null` sem sessão.
+ *
+ * É o que usam os caminhos que **não** passam por `request` — o WebSocket da
+ * captação, a transmissão ao vivo (SSE) e a foto — e por isso não ganham a
+ * segunda tentativa: mandam um token que sabidamente ainda vale.
+ */
+export async function obterAcessoValido(): Promise<string | null> {
+  if (accessToken === null) return null;
+  if (accessExpiraEm !== 0 && Date.now() >= accessExpiraEm - FOLGA_RENOVACAO_MS) {
+    await renovarAcesso();
+  }
+  return accessToken;
+}
+
+/**
+ * Troca o refresh por um par novo. `true` se renovou.
+ *
+ * Só um **401 da própria renovação** encerra a sessão: falta de rede não é
+ * motivo para deslogar ninguém, e aí a chamada original falha como falharia.
+ */
+export function renovarAcesso(): Promise<boolean> {
+  if (!renovacaoEmVoo) {
+    renovacaoEmVoo = (async () => {
+      try {
+        await aceitarTokens(await trocarRefresh());
+        return true;
+      } catch (erro) {
+        if (erro instanceof ApiError && erro.status === 401) {
+          setAccessToken(null);
+          for (const ouvinte of ouvintesDaPerda) ouvinte();
+        }
+        return false;
+      } finally {
+        renovacaoEmVoo = null;
+      }
+    })();
+  }
+  return renovacaoEmVoo;
+}
+
+async function trocarRefresh(): Promise<TokenResponse> {
+  const body: { client: string; refresh_token?: string } = { client: CLIENT };
+  // No web não enviamos nada: o navegador anexa o cookie. No mobile mandamos o
+  // refresh guardado no secure-store.
+  if (!tokenStorage.usesHttpOnlyCookie) {
+    const guardado = await tokenStorage.getRefreshToken();
+    if (!guardado) {
+      throw new ApiError(401, "sem sessao");
+    }
+    body.refresh_token = guardado;
+  }
+  return request<TokenResponse>("/auth/refresh", { method: "POST", body });
+}
+
 /** Guarda o par de tokens conforme a plataforma. */
 async function aceitarTokens(tokens: TokenResponse): Promise<void> {
   setAccessToken(tokens.access_token);
+  accessExpiraEm = Date.now() + tokens.expires_in * 1000;
   // No web `refresh_token` vem nulo (foi para o cookie) e salvar é no-op.
   if (tokens.refresh_token) {
     await tokenStorage.saveRefreshToken(tokens.refresh_token);
@@ -172,25 +282,13 @@ export async function login(email: string, password: string): Promise<AuthUser> 
 }
 
 /**
- * Renova a sessão. No web não enviamos nada: o navegador anexa o cookie.
- * No mobile mandamos o refresh guardado no secure-store.
+ * Renova a sessão ao abrir o app. Passa pela mesma renovação compartilhada
+ * das chamadas, para nunca correr em paralelo com ela.
  */
 export async function refresh(): Promise<AuthUser> {
-  const body: { client: string; refresh_token?: string } = { client: CLIENT };
-
-  if (!tokenStorage.usesHttpOnlyCookie) {
-    const guardado = await tokenStorage.getRefreshToken();
-    if (!guardado) {
-      throw new ApiError(401, "sem sessao");
-    }
-    body.refresh_token = guardado;
+  if (!(await renovarAcesso())) {
+    throw new ApiError(401, "sem sessao");
   }
-
-  const tokens = await request<TokenResponse>("/auth/refresh", {
-    method: "POST",
-    body,
-  });
-  await aceitarTokens(tokens);
   return me();
 }
 
