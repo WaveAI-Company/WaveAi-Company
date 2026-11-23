@@ -30,7 +30,15 @@ from sqlalchemy.orm import Session
 from starlette.websockets import WebSocketDisconnect
 
 from .conftest import SENHA
-from .test_stream import AnalysisFake, _abrir_sessao, _token, client  # noqa: F401
+from .test_stream import AnalysisFake, _abrir_sessao, _token
+
+
+@pytest.fixture
+def cliente(db_session: Session) -> Iterator[TestClient]:
+    app.dependency_overrides[get_session] = lambda: db_session
+    with TestClient(app, base_url="https://testserver") as c:
+        yield c
+    app.dependency_overrides.clear()
 
 
 @pytest.fixture
@@ -208,7 +216,7 @@ def test_janela_lenta_nao_trava_as_outras_requisicoes(db_session: Session):
 
 
 def test_cancelamento_no_meio_do_encerramento_nao_pula_o_abortar(
-    client: TestClient, db_session: Session, monkeypatch: pytest.MonkeyPatch
+    cliente: TestClient, db_session: Session, monkeypatch: pytest.MonkeyPatch
 ):
     """O encerramento roda até o fim mesmo com a tarefa sendo cancelada.
 
@@ -229,8 +237,8 @@ def test_cancelamento_no_meio_do_encerramento_nao_pula_o_abortar(
 
     monkeypatch.setattr(gateway, "run_in_threadpool", com_atraso)
 
-    token = _token(client)
-    with client.websocket_connect("/stream") as ws:
+    token = _token(cliente)
+    with cliente.websocket_connect("/stream") as ws:
         session_id = _abrir_sessao(ws, token)
         # Sai sem `stop`: desconexão + cancelamento.
 
