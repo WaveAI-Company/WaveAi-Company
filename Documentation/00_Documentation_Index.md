@@ -58,7 +58,7 @@ decisão da frente de reorganização, ainda não tomada.
 | [`11_MVP_Work_Breakdown.md`](11_MVP_Work_Breakdown.md) | Issues do MVP (M0–M5) |
 | [`12_Claude_Code_Guide.md`](12_Claude_Code_Guide.md) | Como operar o Claude Code no projeto |
 | [`13_Analysis_Phase_Work_Breakdown.md`](13_Analysis_Phase_Work_Breakdown.md) | Plano da fase Análise & Ciência (N1–N6) |
-| [`13_Device_E2E_Runbook.md`](13_Device_E2E_Runbook.md) | Runbook da demonstração com o aparelho real |
+| [`19_Device_E2E_Runbook.md`](19_Device_E2E_Runbook.md) | Runbook da demonstração com o aparelho real |
 | [`14_Product_UX_Phase_Work_Breakdown.md`](14_Product_UX_Phase_Work_Breakdown.md) | Plano da fase Produto & UX |
 | [`15_UI_Fine_Comb_Work_Breakdown.md`](15_UI_Fine_Comb_Work_Breakdown.md) | Pente fino de UI/UX (P13) |
 | [`17_Infra_Estado_Custos_e_Fila.md`](17_Infra_Estado_Custos_e_Fila.md) | **Documento operacional**: estado medido, custos, desligar/religar, fila |
@@ -67,9 +67,9 @@ decisão da frente de reorganização, ainda não tomada.
 **Duas irregularidades de numeração, registradas de propósito** (corrigi-las
 mexe em links e cabe à frente de reorganização, não aqui):
 
-- **Dois documentos numerados 13.** `13_Analysis_Phase_Work_Breakdown.md` é
-  citado por 8 arquivos; `13_Device_E2E_Runbook.md`, por 1
-  (`11_MVP_Work_Breakdown.md`). Renomear o segundo é o barato.
+- ~~**Dois documentos numerados 13.**~~ Resolvido em 2026-11-23: o runbook do
+  aparelho virou `19_Device_E2E_Runbook.md` (tinha uma referência só, em
+  `11_MVP_Work_Breakdown.md`); o `13_Analysis_Phase_Work_Breakdown.md` fica.
 - **O número 16 não existe aqui.** Está reservado a um arquivo de trabalho do
   fundador, fora do versionamento.
 
