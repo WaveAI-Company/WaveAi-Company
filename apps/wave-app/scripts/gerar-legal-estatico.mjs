@@ -64,6 +64,23 @@ function esc(s) {
     .replace(/"/g, "&quot;");
 }
 
+/**
+ * Marca cada e-mail para a Cloudflare **não** ofuscar.
+ *
+ * Medido em produção (2026-10-27 e de novo em 2026-11-23): a página servida
+ * trocava o contato do encarregado por `[email protected]`, legível só com o
+ * script da Cloudflare rodando — e esta página existe justamente para ser lida
+ * **sem JavaScript** (é a URL que a Play Store visita). O par de comentários
+ * `email_off` é o mecanismo documentado da própria Cloudflare para excluir um
+ * endereço da ofuscação, sem desligar o recurso no painel.
+ */
+function semOfuscar(html) {
+  return html.replace(
+    /[\w.+-]+@[\w-]+(?:\.[\w-]+)+/g,
+    (email) => `<!--email_off-->${email}<!--/email_off-->`,
+  );
+}
+
 /** `2026-09-06` -> `06/09/2026`. Sem fuso: a data é do documento, não do leitor. */
 function data(iso) {
   const [a, m, d] = iso.split("-");
@@ -120,8 +137,8 @@ footer a { color:var(--marca); }
 function pagina(doc, outros) {
   const secoes = doc.secoes
     .map((s) => {
-      const ps = (s.paragrafos ?? []).map((p) => `      <p>${esc(p)}</p>`).join("\n");
-      const li = (s.itens ?? []).map((i) => `        <li>${esc(i)}</li>`).join("\n");
+      const ps = (s.paragrafos ?? []).map((p) => `      <p>${semOfuscar(esc(p))}</p>`).join("\n");
+      const li = (s.itens ?? []).map((i) => `        <li>${semOfuscar(esc(i))}</li>`).join("\n");
       const lista = li ? `      <ul>\n${li}\n      </ul>` : "";
       return `      <h2>${esc(s.titulo)}</h2>\n${[ps, lista].filter(Boolean).join("\n")}`;
     })
