@@ -14,6 +14,7 @@ import contextlib
 import json
 import logging
 
+import anyio
 from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect
 from sqlalchemy.orm import Session
 from starlette.concurrency import run_in_threadpool
@@ -88,6 +89,20 @@ def _abortar(protocolo: StreamProtocol, db: Session) -> bool | None:
     """`abortar()` + a releitura do compartilhamento, também fora do loop."""
     protocolo.abortar()
     return _compartilhamento_se_houver(protocolo, db)
+
+
+async def _abortar_blindado(protocolo: StreamProtocol, db: Session) -> bool | None:
+    """Roda `_abortar` na thread **mesmo que a tarefa esteja sendo cancelada**.
+
+    Desde que o trabalho saiu do loop (ADR-0058, Decisão 4), o encerramento
+    passou a ter um `await`, e um cancelamento que chegasse antes da thread
+    começar pulava o `abortar()` inteiro: a sessão ficava `active` e o captado
+    não virava Result. Quem cancela: o servidor ao desligar (um deploy) e o
+    `TestClient` ao sair do `with` — foi assim que o CI pegou a corrida.
+    Encerrar a sessão é exatamente o trabalho que não pode ser interrompido.
+    """
+    with anyio.CancelScope(shield=True):
+        return await run_in_threadpool(_abortar, protocolo, db)
 
 
 def _publicar_ao_vivo(
@@ -178,17 +193,17 @@ async def stream(
         # Motivo genérico: não diz se o token expirou, é de outro papel etc.
         await websocket.send_json({"type": "error", "detail": erro.reason})
         await websocket.close(code=erro.code.value, reason=erro.reason)
-        compartilhado = await run_in_threadpool(_abortar, protocolo, db)
+        compartilhado = await _abortar_blindado(protocolo, db)
         _publicar_encerrada_se_ativa(bus, protocolo, compartilhado)
     except TimeoutError:
         await websocket.close(
             code=CloseCode.NAO_AUTENTICADO.value, reason="autenticacao expirou"
         )
-        compartilhado = await run_in_threadpool(_abortar, protocolo, db)
+        compartilhado = await _abortar_blindado(protocolo, db)
         _publicar_encerrada_se_ativa(bus, protocolo, compartilhado)
     except WebSocketDisconnect:
         # Queda no meio da captação: a sessão não pode ficar ativa para sempre.
-        compartilhado = await run_in_threadpool(_abortar, protocolo, db)
+        compartilhado = await _abortar_blindado(protocolo, db)
         _publicar_encerrada_se_ativa(bus, protocolo, compartilhado)
     except Exception:
         # Qualquer outra falha (banco fora, erro de programação) também encerra
@@ -201,7 +216,7 @@ async def stream(
         with contextlib.suppress(Exception):  # o socket pode já estar fechado
             await websocket.close(code=1011, reason="erro interno")
         try:
-            compartilhado = await run_in_threadpool(_abortar, protocolo, db)
+            compartilhado = await _abortar_blindado(protocolo, db)
             _publicar_encerrada_se_ativa(bus, protocolo, compartilhado)
         except Exception:
             await run_in_threadpool(db.rollback)
