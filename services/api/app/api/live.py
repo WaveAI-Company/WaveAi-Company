@@ -20,12 +20,14 @@ import asyncio
 import json
 import uuid
 from collections.abc import AsyncIterator
+from datetime import timedelta
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
+from ..config import get_settings
 from ..db.session import get_session
 from ..models.live_share import LiveShareEvent
 from ..models.session import SessionStatus
@@ -48,6 +50,11 @@ SSE_HEADERS = {
 #: Sem evento por este tempo, manda um comentário de keepalive (mantém a conexão
 #: viva através de proxies) e checa se o cliente ainda está ali.
 KEEPALIVE_SEGUNDOS = 15.0
+
+
+def _limiar_de_orfa() -> timedelta:
+    """Idade a partir da qual uma sessão `active` é órfã (ADR-0058)."""
+    return timedelta(hours=get_settings().stream_orphan_after_hours)
 
 
 def _sse(evento: str, dados: dict[str, Any]) -> str:
@@ -98,7 +105,12 @@ async def minha_transmissao(
     bus: LiveBus = Depends(get_live_bus),
 ) -> StreamingResponse:
     """Titular assiste à **própria** captação ao vivo (sem CareLink — é seu dado)."""
-    ativa = CaptureSessionRepository(session).ativa_do_paciente(user.id) is not None
+    ativa = (
+        CaptureSessionRepository(session).ativa_do_paciente(
+            user.id, orfa_apos=_limiar_de_orfa()
+        )
+        is not None
+    )
     return StreamingResponse(
         _transmitir(bus, user.id, request, ativa),
         media_type="text/event-stream",
@@ -160,7 +172,9 @@ async def transmissao_do_paciente(
 ) -> StreamingResponse:
     """Profissional assiste à captação ao vivo do paciente (CareLink + auditado)."""
     sessions = CaptureSessionRepository(session)
-    ativa = sessions.ativa_do_paciente(paciente.id)
+    ativa = sessions.ativa_do_paciente(
+        paciente.id, orfa_apos=_limiar_de_orfa()
+    )
     # Auditoria (ADR-0039): registra que o profissional abriu a transmissão —
     # inclusive quando não há compartilhamento, porque a **tentativa** de olhar
     # também é informação da trilha.

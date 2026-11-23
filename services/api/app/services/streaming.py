@@ -49,6 +49,8 @@ class CloseCode(int, enum.Enum):
     PAPEL_INVALIDO = 4003
     PROTOCOLO_INVALIDO = 4400
     LIMITE_EXCEDIDO = 4413
+    #: Cliente autenticado parou de mandar frames (ADR-0058).
+    INATIVO = 4408
 
 
 #: Faixa do eSense (ADR-0034): a NeuroSky entrega Attention/Meditation em 0..100.

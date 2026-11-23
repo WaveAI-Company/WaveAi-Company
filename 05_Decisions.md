@@ -1318,3 +1318,32 @@ Dependência nativa nova, e por isso esta ADR (mesma régua da ADR-0054, `expo-k
 - **Portar os geradores para a API do TS 7 agora**, para poder aceitar o major. É a correção de raiz e continua desejável — mas é fatia própria, não um ajuste de configuração.
 
 **Consequências:** `.github/dependabot.yml` ganha `typescript` e o `semver-patch` nos pacotes pinados exatos. O alinhamento do app com o SDK 57 (hoje atrás em treze pacotes) vira **trabalho manual e explícito**, por `npx expo install`, com validação no EAS — e não uma PR automática que o CI não sabe verificar. Relaciona ADR-0051 (EAS) e ADR-0057.
+
+## ADR-0058 — Gateway de captação: **sessão nunca fica órfã, e trabalho síncrono sai do loop**
+**Status:** Aceita (2026-11-23), por autonomia delegada pelo fundador.
+
+**Contexto:** as medições da atividade de Sistemas Distribuídos (13/09/2026, stack local, sinal sintético; logs em `Faculdade/SDIoT_Atividade_Redes/fonte/medicao/`) acharam quatro defeitos reais no `/stream` e no SSE, registrados como backlog em 27/10:
+1. **Sem timeout de inatividade depois do `auth`.** Cliente que para de mandar amostras com o socket aberto (o pong do WebSocket segue automático): **150 s** sem o servidor fechar, e o painel do espectador seguia "ao vivo" só com keepalives. É a falha silenciosa da ADR-0052 do lado do servidor.
+2. **O gateway é `async`, mas o trabalho é síncrono.** `StreamProtocol.handle` chama a Analysis por `httpx` síncrono e o banco por SQLAlchemy síncrono **dentro do loop de eventos**. Analysis pausada → cada janela levou 5,02 s e o `/health` da réplica, 4,5–4,7 s: a réplica **inteira** parou junto com uma captação.
+3. **Erro inesperado no meio da captação não passa por `abortar()`.** O `except` da rota pega só `StreamError`, `TimeoutError` e `WebSocketDisconnect`. Com o Postgres parado, o WebSocket caiu em 0,9 s (1006) e a sessão ficou `active` para sempre, com 0 Result.
+4. **O SSE segura uma conexão do pool durante toda a transmissão** — tratado como correção de defeito, sem decisão nova (ver Consequências).
+
+**Decisão 1 — timeout de inatividade de 30 s depois do `auth`.** Sem frame nenhum do cliente por `stream_idle_timeout_seconds` (30 s), o gateway fecha com o código novo **4408** (`INATIVO`) e passa por `abortar()`, que já gera o Result com o que foi captado (ADR-0055). **Por que 30:** o app manda um frame a cada ~500 ms enquanto há sinal; a maior pausa legítima é a reconexão do aparelho, com teto de **10 s** (ADR-0055) mais a própria tentativa. 30 s são três tetos, e ficam abaixo dos 40 s que o ping do uvicorn leva para derrubar uma rede que sumiu.
+
+**Decisão 2 — qualquer exceção inesperada encerra a sessão pelo caminho de sempre.** Um `except Exception` final faz `rollback`, fecha com **1011** e chama `abortar()`, **sem engolir a causa**: o erro é registrado no log. Se o banco estiver fora, o próprio `abortar()` falha, e para isso existe a Decisão 3.
+
+**Decisão 3 — sessão `active` com mais de 12 h é órfã.** Nenhuma captação real dura isso (a sessão guiada leva 2 min). (a) `ativa_do_paciente` deixa de considerar ativas as sessões começadas há mais de `stream_orphan_after_hours` (12), para o espectador não ver "ao vivo" uma sessão morta (ADR-0027). (b) O expurgo diário (o único job agendado) passa a marcar essas sessões como `aborted`. **Sem Result**: o raw só existe na memória do processo que caiu, e não há o que analisar.
+
+**Decisão 4 — o trabalho síncrono do gateway roda numa thread do pool (`run_in_threadpool`).** `handle`, `abortar` e a releitura do compartilhamento saem do loop. A ordem continua a mesma: uma mensagem por vez por conexão, e a sessão do SQLAlchemy nunca é usada por duas threads ao mesmo tempo. Só a publicação no `LiveBus`, que é `asyncio`, fica no loop.
+
+**O que se abre mão:**
+(a) **Uma pausa de mais de 30 s encerra a sessão.** Um app que congelasse 30 s inteiros perde a captação dali em diante. O que já foi captado vira Result.
+(b) **Uma sessão órfã continua `active` no banco por até 36 h** (12 h de limiar + até 24 h até o próximo expurgo). Para quem assiste, ela já não conta como ativa a partir das 12 h.
+(c) **Concorrência limitada pelo pool de threads** do AnyIO (40 por padrão). Com uma réplica e poucas captações simultâneas, sobra.
+
+**Alternativas consideradas:**
+- **Driver assíncrono (asyncpg + httpx.AsyncClient)**, a correção "de raiz" da Decisão 4. Rejeitada agora: reescreveria repositórios e serviços inteiros e a suíte de 458 testes, para o mesmo efeito observável que a thread entrega.
+- **Varrer as sessões ativas no boot da API.** Rejeitada: durante um deploy, a revisão nova sobe enquanto a velha ainda serve uma captação, e a varredura mataria uma sessão viva.
+- **Coluna de "última atividade"** para medir a orfandade pelo silêncio, e não pela idade. Rejeitada: é dado novo e uma escrita a cada frame, para resolver o que 12 h resolvem.
+
+**Consequências:** `Settings` ganha `stream_idle_timeout_seconds` e `stream_orphan_after_hours`; `CloseCode` ganha `INATIVO = 4408`. O app já trata o fechamento do canal (`onDisconnected`, PR #238) e mostra o desfecho honesto. A Decisão 4 e o SSE (defeito 4: a rota `/me/live` consultava o banco, nunca fazia `commit` e segurava a conexão até o fim do stream; com o pool padrão de 5 + 10, o 16º espectador esgotava o banco, como medido) entram em PRs próprias. Relaciona ADR-0025, ADR-0039, ADR-0052 e ADR-0055.
