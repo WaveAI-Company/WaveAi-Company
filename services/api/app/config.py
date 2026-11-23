@@ -96,6 +96,11 @@ class Settings(BaseSettings):
     #: (fail-closed): a app não sobe sem ela. Gere com:
     #:   python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
     result_encryption_key: str = Field(...)
+    #: Chaves **anteriores**, separadas por vírgula, só para decifrar durante uma
+    #: rotação (emenda à ADR-0026). Vazio no dia a dia. Roteiro: a nova vira a
+    #: `result_encryption_key`, a velha entra aqui, deploy,
+    #: `python -m scripts.rotate_result_key`, e a velha sai daqui.
+    result_encryption_previous_keys: str = ""
     #: GATE de produção (ADR-0026): quando `False`, nenhum Result de pessoa
     #: real é persistido. Fica desligado em produção até o consentimento no
     #: fluxo (#29). Em dev/test, ligado — mas só com dados sintéticos.
@@ -234,6 +239,26 @@ class Settings(BaseSettings):
                 f"{JWT_SECRET_MIN_BYTES} bytes (gere com: openssl rand -hex 32)"
             )
         return value
+
+    @field_validator("result_encryption_previous_keys")
+    @classmethod
+    def _validar_chaves_anteriores(cls, value: str) -> str:
+        """Fail-closed também aqui: uma chave anterior inválida é erro de configuração."""
+        from cryptography.fernet import Fernet
+
+        for chave in (c.strip() for c in value.split(",") if c.strip()):
+            try:
+                Fernet(chave.encode("utf-8"))
+            except Exception as exc:
+                raise ValueError(
+                    "WAVEAI_API_RESULT_ENCRYPTION_PREVIOUS_KEYS tem uma chave invalida"
+                ) from exc
+        return value.strip()
+
+    @property
+    def result_encryption_previous_key_list(self) -> list[str]:
+        """Chaves anteriores, só para decifrar (emenda à ADR-0026)."""
+        return [c.strip() for c in self.result_encryption_previous_keys.split(",") if c.strip()]
 
     @field_validator("result_encryption_key")
     @classmethod

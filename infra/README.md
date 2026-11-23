@@ -272,6 +272,18 @@ antes:
 2026-08-29T04:00:17Z  expurgo da trilha pseudonimizada: 0 registros apagados (retenção 365 dias, corte em 2025-08-29T04:00:15…)
 ```
 
+### Rotação da chave do Result (emenda à ADR-0026)
+
+A `WAVEAI_API_RESULT_ENCRYPTION_KEY` cifra as métricas de todo Result. Para trocá-la sem deixar nada ilegível:
+
+1. Gere a nova: `python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"`.
+2. No Container App da API: a **nova** vira `WAVEAI_API_RESULT_ENCRYPTION_KEY` e a **velha** entra em `WAVEAI_API_RESULT_ENCRYPTION_PREVIOUS_KEYS`. Deploy (nova revisão). A partir daqui a API cifra com a nova e lê as duas.
+3. Confira e re-cifre o acervo, com o mesmo ambiente da API (o job de expurgo usa a mesma imagem):
+   `python -m scripts.rotate_result_key --simular` e depois `python -m scripts.rotate_result_key`.
+4. Só então **remova** a velha de `WAVEAI_API_RESULT_ENCRYPTION_PREVIOUS_KEYS` e faça um novo deploy.
+
+Pular o passo 3 e remover a velha deixa ilegíveis todos os Result gravados antes da troca. O script para no primeiro registro que nenhuma chave decifra, e é esse o aviso.
+
 ## CI
 
 `.github/workflows/ci.yml` roda em PR e push para `main`:

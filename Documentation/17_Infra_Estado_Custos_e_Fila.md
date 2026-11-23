@@ -418,8 +418,9 @@ exige — **já existe** e está no ar.
   anteriores seguem com `accepted_terms_version` nulo. Preterido **por tamanho**
   na ADR-0048, não por mérito. Deixa de ser barato no dia em que houver gente de
   fora e o texto mudar.
-- **Rotação da chave de cifra** (`app/security/crypto.py`): Fernet simples, sem
-  caminho de rotação.
+- ~~**Rotação da chave de cifra**~~ — **feita em 2026-11-23** (emenda à ADR-0026):
+  `MultiFernet` com chaves anteriores só para decifrar e `scripts/rotate_result_key.py`;
+  roteiro no `infra/README.md`.
 - **Redis para o rate limiter**: congelado com justificativa enquanto houver uma
   réplica só; volta a ser bloqueante na segunda.
 - **SSE segura a conexão do banco** durante toda a transmissão
