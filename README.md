@@ -94,7 +94,7 @@ cp .env.example .env   # EXPO_PUBLIC_API_URL aponta para a API
 npm run web
 ```
 
-A captação com o headset exige o app Android ou iOS; a web mostra um aviso.
+A captação com o headset exige o app Android (no iOS ela está implementada, mas ainda não foi validada num aparelho); a web mostra um aviso.
 
 ## Documentação
 
