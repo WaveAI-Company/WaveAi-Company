@@ -831,6 +831,17 @@ A decisão original (link com token opaco, 24 h / 30 min) foi tomada sobre esse 
 
 **Consequências:** duas colunas anuláveis em `users` + **migration**; `app/legal.py` com `TERMS_VERSION`; `RegisterRequest` ganha o campo e a rota passa a devolver **409** para versão desatualizada — sem tocar a resposta **uniforme** de e-mail já cadastrado, que continua sendo 202 (ADR-0024: a recusa aqui é sobre o texto, nunca sobre o endereço); caixa nova na tela de cadastro. Não altera consentimento, papéis, vínculos nem o `AnalysisEngine`. Relaciona ADR-0026 (o padrão copiado), ADR-0041 (cadastro sem KYC — provar aceite não é identificar ninguém), ADR-0024 (anti-enumeração), ADR-0027 (a tela não pode dizer que registrou o que não registrou) e ADR-0047.
 
+### Emenda à ADR-0048 (2026-11-23) — o aviso de Termos atualizados existe, e **não bloqueia**
+**Status:** Aceita (2026-11-23), por autonomia delegada pelo fundador. Fecha a lacuna que a própria ADR registrou em "o que se abre mão".
+
+**Contexto:** a Política promete que, mudando os Termos de forma material, *"avisaremos no aplicativo"*. A ADR-0048 não construiu esse aviso e preteriu o gate "por tamanho", adiando-o para quando houvesse usuário de fora. Com a Play Store como alvo declarado, esse dia é o próximo.
+
+**Decisão:** (1) `GET /auth/me` devolve `accepted_terms_version` (nulo = sem registro). (2) `POST /auth/me/terms {version}` registra versão e data, com a **mesma regra do cadastro**: versão diferente da vigente → **409**, porque aceitar um texto que já mudou não é aceite informado. (3) No app, um **aviso não bloqueante** no topo da área logada, para quem não aceitou a versão que o app exibe: "Ler os Termos" e "Li e aceito". Para quem nunca teve aceite registrado, a frase diz exatamente isso ("não temos registro"), e não "você recusou".
+
+**O que se abre mão:** o app **segue funcionando sem o aceite**. A ADR-0048 rejeitou o gate pelo risco de trancar alguém fora, e esta emenda mantém essa escolha: o aviso cumpre a promessa da Política sem esse risco. Se um dia uma mudança de Termos **exigir** aceite para continuar, aí sim é o gate, em decisão própria.
+
+**Alternativas consideradas:** o gate bloqueante, preterido pelo motivo acima; e e-mail aos usuários, que não substitui o aviso no app que o texto promete e depende da entregabilidade ainda frágil do remetente `@gmail.com` (`Documentation/17` §5).
+
 ## ADR-0049 — Hospedagem: **serviços gerenciados gratuitos que escalam a zero**, em São Paulo, com **uma instância só**; sem servidor próprio
 **Status:** Proposta (2026-08-23) — vira Aceita no merge.
 

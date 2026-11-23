@@ -250,6 +250,16 @@ def test_me_live_status_reflete_sessao_ativa(client: TestClient, db_session: Ses
     assert asyncio.run(status()) == {"live": True}
 
 
+def _sessao_do_request(db_session: Session) -> Session:
+    """Sessão própria para a rota, sobre a conexão do teste — como em produção.
+
+    A rota SSE fecha a sessão dela antes de transmitir (ADR-0058). Passar a
+    `db_session` do teste faria esse `close` desanexar os objetos que o teste
+    ainda usa depois, o que nunca acontece com uma sessão por request.
+    """
+    return Session(bind=db_session.connection(), join_transaction_mode="create_savepoint")
+
+
 def test_profissional_so_assiste_com_vinculo(client: TestClient, db_session: Session):
     """Sem CareLink → 403 (via HTTP); com vínculo, a abertura é auditada."""
     from app.api.live import transmissao_do_paciente
@@ -273,7 +283,7 @@ def test_profissional_so_assiste_com_vinculo(client: TestClient, db_session: Ses
             request=_FakeRequest(),
             paciente=paciente_user,
             ator=medico_user,
-            session=db_session,
+            session=_sessao_do_request(db_session),
             bus=bus,
         )
         return _status_do_primeiro_chunk(await _primeiro_evento(resp))
@@ -287,3 +297,28 @@ def test_profissional_so_assiste_com_vinculo(client: TestClient, db_session: Ses
     ).all()
     assert len(eventos) == 1
     assert eventos[0].actor_user_id == medico_user.id  # ator = profissional
+
+
+def test_transmissao_solta_a_conexao_do_banco(client: TestClient, db_session: Session):
+    """ADR-0058: o SSE não segura conexão do pool enquanto transmite.
+
+    Medido em 13/09: cada espectador segurava a sua até o fim do stream, e o
+    16º esgotava o pool padrão (5 + 10) — as rotas com banco respondiam 500.
+    Uma sessão sem transação aberta é uma sessão sem conexão emprestada.
+    """
+    from app.api.live import minha_transmissao
+
+    p_user = _user(db_session, Ator(client).email)
+    _sessao_ativa(db_session, p_user)
+    db_session.commit()
+    bus = LiveBus()
+
+    async def abrir() -> bool:
+        resp = await minha_transmissao(
+            request=_FakeRequest(), user=p_user, session=db_session, bus=bus
+        )
+        segurando = db_session.in_transaction()
+        await _primeiro_evento(resp)
+        return segurando
+
+    assert asyncio.run(abrir()) is False

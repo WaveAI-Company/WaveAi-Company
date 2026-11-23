@@ -113,6 +113,12 @@ jobs:
       # deixaria o guia dizendo uma coisa e o produto fazendo outra.
       - name: Guia de estilo em dia com os tokens
         run: npm run check:guia
+      # O `typecheck` não prova que o app EMPACOTA: import que só falha no
+      # bundler, gerador dos documentos legais quebrado, módulo nativo vazando
+      # para o bundle web. A ADR-0057 registrou que uma PR do Dependabot ficou
+      # verde quebrando os geradores, porque o CI não rodava isto.
+      - name: Build web (empacota de verdade)
+        run: npm run build:web
 
   test-analysis:
     runs-on: ubuntu-latest

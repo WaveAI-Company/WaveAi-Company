@@ -34,6 +34,14 @@ from .test_stream import AnalysisFake, _abrir_sessao, _token
 
 
 @pytest.fixture
+def cliente(db_session: Session) -> Iterator[TestClient]:
+    app.dependency_overrides[get_session] = lambda: db_session
+    with TestClient(app, base_url="https://testserver") as c:
+        yield c
+    app.dependency_overrides.clear()
+
+
+@pytest.fixture
 def client_impaciente(db_session: Session) -> Iterator[TestClient]:
     """Cliente com o timeout de inatividade curto, para o teste não esperar 30 s."""
     curto = get_settings().model_copy(update={"stream_idle_timeout_seconds": 0.3})
@@ -205,3 +213,35 @@ def test_janela_lenta_nao_trava_as_outras_requisicoes(db_session: Session):
 
     # Com o trabalho no loop, o /health esperava os ~0,8 s restantes da janela.
     assert medida["segundos"] < 0.4, medida
+
+
+def test_cancelamento_no_meio_do_encerramento_nao_pula_o_abortar(
+    cliente: TestClient, db_session: Session, monkeypatch: pytest.MonkeyPatch
+):
+    """O encerramento roda até o fim mesmo com a tarefa sendo cancelada.
+
+    Sair do `with websocket_connect` manda a desconexão e **cancela** a tarefa
+    do app — como o servidor faz ao desligar. Se o cancelamento chega antes de
+    a thread do `abortar()` começar, ele era pulado e a sessão ficava `active`
+    (o CI pegou isso na #275). O atraso abaixo abre essa janela de propósito,
+    para a corrida deixar de depender da sorte do escalonador.
+    """
+    import anyio
+    from app.api import stream as gateway
+
+    original = gateway.run_in_threadpool
+
+    async def com_atraso(func, *args, **kwargs):
+        await anyio.sleep(0.2)
+        return await original(func, *args, **kwargs)
+
+    monkeypatch.setattr(gateway, "run_in_threadpool", com_atraso)
+
+    token = _token(cliente)
+    with cliente.websocket_connect("/stream") as ws:
+        session_id = _abrir_sessao(ws, token)
+        # Sai sem `stop`: desconexão + cancelamento.
+
+    db_session.expire_all()
+    sessao = db_session.get(CaptureSession, uuid.UUID(session_id))
+    assert sessao.status is SessionStatus.ABORTED
