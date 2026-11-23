@@ -1,5 +1,9 @@
 """Apaga a trilha de leitura pseudonimizada vencida (emenda à ADR-0047).
 
+Desde a ADR-0058 também encerra as sessões de captação **órfãs** — `active` há
+mais de `stream_orphan_after_hours`, cujo processo morreu sem fechá-las. É o
+único job agendado da infraestrutura, e por isso a tarefa mora aqui.
+
 É este comando que cumpre a promessa da Política de Privacidade 1.2: registros
 de leitura que perderam o dono duram **até 12 meses**. Sem alguém executando
 isto de tempos em tempos, o texto publicado afirma o que o produto não faz.
@@ -25,9 +29,11 @@ from __future__ import annotations
 
 import argparse
 import sys
+from datetime import timedelta
 
 from app.config import get_settings
 from app.db.session import get_engine
+from app.repositories.session import CaptureSessionRepository
 from app.services.audit_retention import expurgar_trilha_pseudonimizada
 from sqlalchemy.orm import Session
 
@@ -56,7 +62,11 @@ def main(argv: list[str] | None = None) -> int:
             retencao_dias=retencao,
             simulacao=args.simular,
         )
+        orfas = 0
         if not args.simular:
+            orfas = CaptureSessionRepository(session).encerrar_orfas(
+                orfa_apos=timedelta(hours=settings.stream_orphan_after_hours)
+            )
             session.commit()
 
     verbo = "sairiam" if resultado.simulacao else "apagados"
@@ -68,6 +78,11 @@ def main(argv: list[str] | None = None) -> int:
     )
     for tabela, quantidade in resultado.apagados.items():
         print(f"  {tabela}: {quantidade}")
+    if not args.simular:
+        print(
+            f"sessões de captação órfãs encerradas: {orfas} "
+            f"(ativas há mais de {settings.stream_orphan_after_hours} h)"
+        )
     return 0
 
 

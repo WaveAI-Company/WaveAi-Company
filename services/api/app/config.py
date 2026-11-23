@@ -68,6 +68,13 @@ class Settings(BaseSettings):
     #: Segundos para o cliente autenticar após conectar. Sem isso, conexões
     #: anônimas ficariam abertas consumindo recursos.
     stream_auth_timeout_seconds: float = 10.0
+    #: Depois do `auth`, silêncio máximo do cliente antes de o gateway encerrar
+    #: a sessão (ADR-0058). Três vezes o teto de reconexão do app (ADR-0055).
+    stream_idle_timeout_seconds: float = 30.0
+    #: Sessão `active` começada há mais que isto é órfã (ADR-0058): não conta
+    #: como ativa e o expurgo diário a encerra. Bem acima das ~2 h do teto de
+    #: amostras por sessão logo abaixo.
+    stream_orphan_after_hours: int = 12
     #: Teto de amostras por bloco (evita estourar memória num único frame).
     stream_max_block_samples: int = 4096
     #: Teto de amostras por sessão (~2 h a 512 Hz).

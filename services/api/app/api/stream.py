@@ -10,7 +10,9 @@ fora da URL.
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import json
+import logging
 
 from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect
 from sqlalchemy.orm import Session
@@ -31,6 +33,7 @@ from ..services.streaming import CloseCode, StreamError, StreamProtocol
 from .deps import get_analysis_client, get_hasher, get_result_service
 
 router = APIRouter(tags=["stream"])
+logger = logging.getLogger(__name__)
 
 
 def _compartilhamento_agora(db: Session, sessao: CaptureSession) -> bool:
@@ -105,6 +108,9 @@ async def stream(
 
     Aceita a conexão e **exige autenticação na primeira mensagem**, dentro de
     `stream_auth_timeout_seconds` — conexão anônima parada é recurso preso.
+    Depois do `auth`, silêncio maior que `stream_idle_timeout_seconds` encerra a
+    sessão (ADR-0058): o pong do WebSocket é automático, e sem este limite um
+    cliente morto com o socket aberto deixava a sessão "ao vivo" indefinidamente.
     """
     await websocket.accept()
     protocolo = StreamProtocol(
@@ -113,15 +119,21 @@ async def stream(
 
     try:
         while True:
-            # Antes de autenticar vale o timeout; depois, o cliente pode ficar
-            # em silêncio entre blocos sem ser derrubado.
+            # Antes de autenticar vale o timeout de auth; depois, o de
+            # inatividade, bem mais largo (cobre a reconexão do aparelho).
             if protocolo.state.user is None:
                 bruto = await asyncio.wait_for(
                     websocket.receive_text(),
                     timeout=settings.stream_auth_timeout_seconds,
                 )
             else:
-                bruto = await websocket.receive_text()
+                try:
+                    bruto = await asyncio.wait_for(
+                        websocket.receive_text(),
+                        timeout=settings.stream_idle_timeout_seconds,
+                    )
+                except TimeoutError:
+                    raise StreamError(CloseCode.INATIVO, "sem dados do cliente") from None
 
             try:
                 mensagem = json.loads(bruto)
@@ -153,3 +165,19 @@ async def stream(
         # Queda no meio da captação: a sessão não pode ficar ativa para sempre.
         protocolo.abortar()
         _publicar_encerrada_se_ativa(bus, protocolo, db)
+    except Exception:
+        # Qualquer outra falha (banco fora, erro de programação) também encerra
+        # pelo caminho de sempre (ADR-0058, Decisão 2). Medido antes: Postgres
+        # parado derrubava o socket e a sessão ficava `active` para sempre. Se o
+        # banco estiver fora, o `abortar()` falha também — aí vale a varredura
+        # de órfãs do expurgo diário (Decisão 3).
+        logger.exception("falha inesperada no /stream; encerrando a sessão")
+        db.rollback()
+        with contextlib.suppress(Exception):  # o socket pode já estar fechado
+            await websocket.close(code=1011, reason="erro interno")
+        try:
+            protocolo.abortar()
+            _publicar_encerrada_se_ativa(bus, protocolo, db)
+        except Exception:
+            db.rollback()
+            logger.exception("abortar() falhou; a sessão fica para a varredura de órfãs")
