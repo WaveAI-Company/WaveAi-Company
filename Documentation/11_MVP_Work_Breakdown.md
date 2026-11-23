@@ -238,7 +238,7 @@ Entregue:
 - **Correção no cliente WS:** ele fechava o socket logo após o `stop`, o que descartava a resposta `closed`. Agora quem fecha é o handler do `closed`, com um estado "Encerrando a sessão…" cobrindo o cálculo da sessão inteira (alguns segundos).
 - **Relatório inline na `live`**, reusando `BandBars`/`SignalQuality` da #16, dizendo explicitamente se foi guardado — e por que não, quando não foi.
 - **Refresh ao focar** nas telas que leem estado do servidor: sem isso, a sessão recém-encerrada não aparecia no histórico sem recarregar o app.
-- **Runbook** do teste físico: [13_Device_E2E_Runbook](13_Device_E2E_Runbook.md).
+- **Runbook** do teste físico: [19_Device_E2E_Runbook](19_Device_E2E_Runbook.md).
 
 **Decisão de dado real:** a demonstração usa **autocaptação do próprio desenvolvedor**, sob a **ADR-0028** — exceção estreita à regra de "sem dado real em dev", com titular = operador, consentimento pelo fluxo real, banco local descartável e **fixtures/seeds seguindo 100% sintéticos**.
 
