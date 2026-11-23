@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
+
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from sqlalchemy.orm import Session
 
@@ -44,6 +46,7 @@ from .deps import (
     get_single_use_token_service,
 )
 from .schemas import (
+    AcceptTermsRequest,
     ChangeEmailRequest,
     ChangePasswordRequest,
     ClientPlatform,
@@ -141,6 +144,7 @@ def _resposta_usuario(user: User) -> UserResponse:
         role=user.role,
         display_name=perfil.display_name if perfil else None,
         created_at=user.created_at,
+        accepted_terms_version=user.accepted_terms_version,
     )
 
 
@@ -488,6 +492,30 @@ def logout(
 @router.get("/me", response_model=UserResponse)
 def me(user: User = Depends(get_current_user)) -> UserResponse:
     return _resposta_usuario(user)
+
+
+@router.post("/me/terms", status_code=status.HTTP_204_NO_CONTENT)
+def accept_terms(
+    payload: AcceptTermsRequest,
+    user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+) -> Response:
+    """Quem já tem conta aceita a versão vigente dos Termos (emenda à ADR-0048).
+
+    É o "avisaremos no aplicativo" que a Política promete quando os Termos
+    mudam. Mesma regra do cadastro: o app manda a versão que **exibiu**, e se ela
+    não for a vigente a recusa é 409 — aceitar um texto que mudou desde que a
+    tela abriu não é aceite informado.
+    """
+    if payload.version != TERMS_VERSION:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="termos desatualizados; recarregue a pagina",
+        )
+    user.accepted_terms_version = payload.version
+    user.accepted_terms_at = datetime.now(UTC)
+    session.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.patch("/me", response_model=UserResponse)

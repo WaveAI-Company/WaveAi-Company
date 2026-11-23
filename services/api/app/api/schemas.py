@@ -181,6 +181,15 @@ class UserResponse(BaseModel):
     #: Quando a conta foi criada — o "membro desde" do painel de conta. Já
     #: existia no modelo; faltava sair pela API.
     created_at: datetime
+    #: Versão dos Termos que a pessoa aceitou, ou `None` sem registro (contas
+    #: anteriores à ADR-0048). O app compara com a vigente e avisa quando muda.
+    accepted_terms_version: str | None = None
+
+
+class AcceptTermsRequest(BaseModel):
+    """Aceite, por quem já tem conta, da versão dos Termos que o app exibiu."""
+
+    version: str = Field(min_length=1, max_length=32)
 
 
 class UpdateMeRequest(BaseModel):

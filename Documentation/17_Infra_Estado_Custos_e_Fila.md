@@ -413,7 +413,7 @@ exige — **já existe** e está no ar.
 
 ## 5. Dívidas registradas, não esquecidas
 
-- **O aviso de mudança dos Termos não existe.** A Política 1.1 promete
+- ~~**O aviso de mudança dos Termos não existe.**~~ **Feito em 2026-11-23** (emenda à ADR-0048): aviso não bloqueante no app + `POST /auth/me/terms`. Registro do que dizia antes: a Política 1.1 promete
   *"avisaremos no aplicativo"*; ninguém é interrompido ao entrar, e contas
   anteriores seguem com `accepted_terms_version` nulo. Preterido **por tamanho**
   na ADR-0048, não por mérito. Deixa de ser barato no dia em que houver gente de
