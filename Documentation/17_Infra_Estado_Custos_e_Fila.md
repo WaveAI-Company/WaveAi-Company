@@ -439,7 +439,9 @@ exige — **já existe** e está no ar.
 - **E-mail do encarregado ofuscado: corrigido por código** (PR #280). O gerador
   das páginas estáticas marca cada e-mail com `<!--email_off-->`. Em produção, depois
   do deploy: 2 ocorrências em claro, 0 ofuscadas.
-- **Beacon do Web Analytics: SÓ PELO PAINEL.** `Cache-Control: no-transform` (o
+- **Beacon do Web Analytics: desligado no painel pelo fundador em 2026-11-23.**
+  Medido depois: 0 ocorrências de `cloudflareinsights` na raiz e na Política.
+  Histórico de como se chegou aqui: `Cache-Control: no-transform` (o
   mecanismo que a FAQ do Web Analytics cita) chegou à resposta e o beacon
   **continuou** sendo injetado — a injeção do Pages não respeita o cabeçalho. O
   cabeçalho foi retirado. Falta: painel da Cloudflare → Workers & Pages → projeto

@@ -1233,6 +1233,8 @@ Reusa o estado que a emenda à ADR-0053 criou. Se houve buraco dentro de uma fas
 
 **O que se abre mão:** o vigia é timer e não roda com a tela apagada (vale a limitação já registrada na ADR-0052); lá contam os dois detectores por evento. **Não está provado** que a causa do fechamento em 20 s seja a pilha — o headset desligou, o que é compatível, e as cinco sessões de 29/10 somam todas ~20 s, o que também é compatível com um temporizador do firmware. A dica da pilha é o primeiro passo barato; se uma pilha nova não mudar nada, a próxima hipótese é um handshake que o firmware espere do host.
 
+**Verificado no aparelho (2026-11-23, pelo fundador, com o APK `v1.0.0-teste.2026-11-23`):** a detecção da queda, a reconexão com a **tela apagada** (#275) e a sessão passando de 15 min sem cair (#268) — os três passaram.
+
 ## ADR-0056 — Tela de abertura: **`expo-splash-screen`, com a arte saindo do mesmo vetor de sempre**
 **Status:** Proposta (2026-09-06) — vira Aceita no merge.
 
