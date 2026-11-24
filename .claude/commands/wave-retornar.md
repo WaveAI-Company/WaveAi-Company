@@ -58,25 +58,26 @@ Claude. Ancore por mensagem de commit ou número de PR.
 
 ## A fila, nesta ordem
 
-1. **A demanda nova da faculdade** — é o que vem primeiro. Pergunte ao fundador
-   qual é antes de supor; ela não estava definida quando este comando foi
-   escrito. Entregas acadêmicas vivem em `Faculdade/`, que está no
-   `paths-ignore` do deploy e **não é produto**.
-2. **O defeito de produção na captação** — ao gravar a demonstração do pitch em
-   30/10, a conexão caiu com "falha na conexão" **cerca de 10 s** depois de
-   conectar, em produção. Não foi investigado. Os dez segundos coincidem com o
-   timeout de autenticação do WebSocket (ADR da fatia de auth do `/stream`), e é
-   por aí que eu começaria — **medindo, não supondo**.
-3. **A varredura de documentação**, congelada em 27/10 para o pitch. A fila
-   medida está na **§13 do `Documentation/00_Documentation_Index.md`**: 14
-   cabeçalhos defasados, citados literalmente. Não redescubra.
-4. **Azure** — o crédito acaba em **01/01/2027**. Nada mais é automático (varrido
-   em 27/10: sem budget, sem job por data, sem segredo com validade; os
-   certificados vão além da data). O `az` CLI **não está nesta máquina**; o
-   fundador roda no Cloud Shell pelo navegador.
-5. **O backlog registrado** — está em `Documentation/17` e na memória
-   *estado-out-2026-e-backlog-registrado*. Traga quando ele perguntar ou quando
-   a fatia em curso encostar no item.
+> **Estado de 23/11/2026:** a queda de conexão do pitch, a varredura de
+> documentação e o backlog de 27/10 foram tratados numa rodada autônoma
+> (PRs #267–#286, verificadas no aparelho pelo fundador; APK
+> `v1.0.0-teste.2026-11-23` no repositório privado `WaveAI-Company/waveai-releases`).
+> Detalhe na memória *rodada-autonoma-23-11-concluida*.
+
+1. **O pedido novo do fundador** — pergunte qual é antes de supor. O último
+   anunciado foi uma **estilização do repositório**.
+2. **O que é dele, e não meu:** Play Store (conta, ficha, teste fechado), revisão
+   jurídica dos documentos legais, e a **Azure**, cujo crédito acaba em
+   **01/01/2027** (nada automático; o `az` CLI não está nesta máquina, ele usa o
+   Cloud Shell).
+3. **Dívidas registradas** (`Documentation/17` §5 e a issue #26): lockout,
+   backoff e auditoria do login; Redis só quando houver segunda réplica;
+   provedor de e-mail transacional; branch control do Pages para `dependabot/*`
+   (painel). Traga quando ele perguntar ou quando a fatia encostar no item.
+4. **Próximo release do APK** — o publicado (`f002f77`) não contém a #257
+   (patches do SDK 57). Gere pelo EAS numa worktree limpa (a pasta
+   `Faculdade/SDIoT_Reposicao_Custos/` não versionada tem dado pessoal e não
+   pode subir para a Expo).
 
 ---
 
